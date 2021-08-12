@@ -1,0 +1,73 @@
+#----------------------------------user input
+
+#always assume units of:
+#mass: solar masses
+#distance: kpc
+#time: Gyr
+#velocity: km/s
+#unless otherwise stated
+
+
+#---- general
+simulationTime 2.0                     #total simulation time
+randomSeed 772516                      #random seed
+galaxyName NGCa3607b                    #file name
+
+
+#---- file information
+saveLocation /scratch/pjohanss/arawling/collisionless_merger/stability-tests                            #parent save directory
+figureLocation figures           #figures saved in saveLocation/figureLocation
+dataLocation output              #simulation output saved here
+litDataLocation lit_data         #path to where literature data is
+
+
+#---- stellar properties
+stellarCored 0
+logStellarMass 11.2                       #total log10 stellar mass
+stellarParticleMass 1e5                #mass of stellar particle
+stellarScaleRadius 2.3                 #star Dehnen scale radius
+stellarGamma 1.4                       #star Dehnen gamma
+maximumRadius 8000                     #maximum galaxy radius
+minimumRadius 1.5e-3                   #prevent tight orbits
+anisotropyRadius 0.3                   #Osipkov Merrit anisotropy radius
+stellar_softening 3.5e-3               #stellar softening to be used
+
+
+#---- halo properties
+use_NFW 1                              #use NFW profile, otherwise Dehnen
+DMParticleMass 6.0e7                   #mass of halo particle
+DM_softening 0.1                       #DM softening to be used
+DM_mass_from Behroozi                  #which scaling relation to use
+
+
+#---- black hole properties
+BH_softening 3e-3                      #BH softening length
+BH_spin [-0.76144,+0.08653,+0.02657]
+real_BH_mass 8.94                      #measured log BH mass
+
+
+#---- literature files
+bulgeBHData sahu_20.txt                #BH - bulge relation data
+massData sdss_z.csv                    #stellar mass distribution
+BHsigmaData bosch_16.txt               #BH - sigma relation data
+fDMData jin_2020.dat                   #inner dm fraction data
+
+
+#----------------------------------returned values
+BH_mass 1.63662e+09
+DM_peak_mass 2.37427e+13
+redshift 1.69439e-01
+DM_actual_total_mass 6.90750e+13
+DM_concentration 7.31528e+00
+STARS_count 1.58416e+06
+DM_HALO_count 1.14195e+06
+BH_count 1.00000e+00
+number_ketju_particles 2.27000e+02
+halfMassRadius 4.24189e+00
+projectedHalfMassRadius 3.15862e+00
+innerDMfraction 1.83908e-01
+virialRadius 4.43879e+02
+virialMass 2.03284e+13
+inner_100_star_radius 7.14004e-03
+inner_1000_star_radius 2.43375e-02
+LOS_velocity_dispersion 2.39244e+02
