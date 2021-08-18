@@ -1,3 +1,4 @@
+from . import analysis
 from . import cosmology
 from . import general
 from . import initialise
