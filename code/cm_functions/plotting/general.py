@@ -1,9 +1,10 @@
+from collections import OrderedDict
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import scipy.interpolate
 
 
-__all__ = ['draw_sizebar', 'mplColours']
+__all__ = ['draw_sizebar', 'mplColours', 'mplLines']
 
 
 def draw_sizebar(ax, length, units, location='lower right', pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert=None):
@@ -51,3 +52,37 @@ def mplColours():
     the colour array, to be used in plt.plot(x,y,color=THIS)
     """
     return plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+
+def mplLines(regular=5, loose=10, dense=1):
+    """
+    Create an ordered dictionary that allows for different linestyles. The
+    default parameter values are taken from the matplotlib example.
+
+    Parameters
+    ----------
+    regular: spacing between lines/points for "normal" appearance
+    loose: spacing between lines/points for "loose" appearance
+    dense: spacing between lines/points for "dense" appearance
+
+    Returns
+    -------
+    OrderedDict, with linestyles that can be accessed by keyword or .items()
+    notation
+    """
+    return OrderedDict([
+            ('solid',                    (0, ())),
+            ('dotted',                   (0, (1,1))),
+            ('dashed',                   (0, (5,regular))),
+            ('dashdotted',               (0, (3,regular,1,regular))),
+            ('dashdotdotted',            (0, (3,regular,1,regular,1,regular))),
+
+            ('densely dashed',           (0, (5,dense))),
+            ('densely dashdotted',       (0, (3,dense,1,dense))),
+            ('densely dashdotdotted',    (0, (3,dense,1,dense,1,dense))),
+
+            ('loosely dotted',           (0, (1,loose))),
+            ('loosely dashed',           (0, (5,loose))),
+            ('loosely dashdotted',       (0, (3,loose,1,loose))),
+            ('loosely dashdotdotted',    (0,(3,loose,1,loose,1,loose))),
+    ])

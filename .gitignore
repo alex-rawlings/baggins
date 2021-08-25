@@ -6,6 +6,10 @@ dist/
 __pycache__
 *.pyc
 *.pkl
+*.pickle
+
+# Personal code testing directory
+#code/misc
 
 # Compiled Python bytecode
 *.py[cod]
@@ -182,6 +186,7 @@ TSWLatexianTemp*
 # WinEdt
 *.bak
 *.sav
+*.vscode
 
 # Texpad
 .texpadtmp
