@@ -2,10 +2,10 @@ import numpy as np
 import scipy.linalg
 import pygad
 
-__all__ = ['get_coms_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_all_id_masks', 'get_id_mask']
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios']
 
 
-def get_coms_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10):
+def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10):
     """
     Determine the centre of mass of each galaxy in the simulation, assuming each
     galaxy has a single SMBH near its centre.
@@ -41,7 +41,7 @@ def get_coms_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, m
     return coms
 
 
-def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=1e4, verbose=True):
+def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5e4, verbose=True):
     """
     Determine the centre of mass velocity of each galaxy in the simulation,
     assuming each galaxy has an SMBH near its centre.
@@ -79,67 +79,6 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=1
         ball_mask = pygad.BallMask(pygad.UnitQty(ball_radius, 'kpc'), center=xcom[idx])
         vcoms[idx] = pygad.analysis.mass_weighted_mean(subsnap[ball_mask], qty='vel')
     return vcoms
-
-
-def get_all_id_masks(snap, radius=20, family='stars'):
-    """
-    Return a list of masks that mask the chosen particles by ID number to a
-    specific galaxy, assuming each galaxy has a single SMBH in it. The list of
-    masks is organised so that the first mask corresponds to particles around
-    the SMBH with the lower ParticleID number.
-
-    Parameters
-    ----------
-    snap: pygad <Snapshot> object
-    radius: radius within which particles are assumed to belong to the host
-            galaxy of the SMBH (see notes on <get_id_masks> for types)
-    family: particle type we want to mask, usually 'stars'
-
-    Returns
-    -------
-    masks: dict of pygad <IDMask> objects, with keys corresponding to the host
-           galaxy SMBH particle ID
-    """
-    masks = dict()
-    bh_idx_in_decreasing_id = snap.bh['ID'][np.argsort(snap.bh['ID'])]
-    for i, idx in enumerate(bh_idx_in_decreasing_id):
-        masks[idx] = get_id_mask(snap, idx, radius=radius, family=family)
-    return masks
-
-
-def get_id_mask(snap, bhid, radius=10, family='stars'):
-    """
-    Obtain a mask that allows filtering of particular particles.
-
-    Parameters
-    ----------
-    snap: pygad <Snapshot> object
-    bhid: SMBH id number we want to find particles around
-    radius: radius within which particles are assumed to belong to the host
-            galaxy of the SMBH; int/float for all particles in a ball, or
-            [lower, upper] for all particles in a shell
-    family: particle type we want to mask, usually 'stars'
-
-    Returns
-    -------
-    pygad <IDMask> object to mask future snapshots of the same simulation
-    """
-    assert(snap._phys_units_requested)
-    assert(family in ['stars', 'dm', 'bh'])
-    subsnap = getattr(snap, family)
-    #find the IDs of all particles close to the BH
-    if isinstance(radius, int) or isinstance(radius, float):
-        #option 1: in a ball
-        mask = pygad.BallMask(pygad.UnitQty(radius, 'kpc'), snap.bh['pos'][snap.bh['ID']==bhid])
-    elif isinstance(radius, list):
-        #option 2: a shell
-        assert(radius[1] > radius[0])
-        outer_mask = pygad.BallMask(pygad.UnitQty(radius[1], 'kpc'), snap.bh['pos'][snap.bh['ID']==bhid])
-        inner_mask = pygad.BallMask(pygad.UnitQty(radius[0], 'kpc'), snap.bh['pos'][snap.bh['ID']==bhid])
-        mask = outer_mask & ~inner_mask
-    ids = np.array(subsnap[mask]['ID'])
-    snap.delete_blocks()
-    return pygad.IDMask(ids)
 
 
 def get_galaxy_axis_ratios(snap, xcom=None, vcom=None, family='stars', return_eigenvectors=False):

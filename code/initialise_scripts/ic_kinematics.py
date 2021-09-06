@@ -1,4 +1,3 @@
-import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -27,21 +26,13 @@ galaxy.bh.mass = (args.verbose, None)
 #this is the "snapshot"
 icfile = galaxy.general.save_location + '/' + galaxy.general.name +'.hdf5'
 
-try:
-    virialRadius = pfv.virial_radius
-    print('Using a previously defined virial radius')
-    find_vir_rad_flag = False
-except AttributeError:
-    print('Virial radius will be searched for using maximum radius.')
-    virialRadius = galaxy.general.maximum_radius
-    find_vir_rad_flag = True
-
 markersz = 1.5
 linewd = 1
 capsize=2
 sim_col = 'tab:blue'
 fit_col = ['tab:orange', 'tab:red', 'tab:green']
 erralpha=0.9
+legend_font_size = 'x-small'
 
 #load literature data
 bulgeBHData = pd.read_table(galaxy.general.lit_location + '/' + pfv.bulgeBHData, sep=',', header=0)
@@ -56,8 +47,8 @@ BHsigmaData = pd.read_table(galaxy.general.lit_location + '/' + pfv.BHsigmaData,
 
 radial_bin_edges = dict(
     stars = np.logspace(-2, 2, 50),
-    dm = np.logspace(1, np.log10(virialRadius), 50),
-    stars_dm = np.logspace(-2, np.log10(virialRadius), 50)
+    dm = np.logspace(1, np.log10(galaxy.general.maximum_radius), 50),
+    stars_dm = np.logspace(-2, np.log10(galaxy.general.maximum_radius), 50)
 )
 
 radial_bin_centres = dict()
@@ -98,7 +89,7 @@ ax1.plot(radial_bin_centres['stars'], radial_surf_dens['stars'], color=sim_col, 
 if isinstance(galaxy.stars, cmf.initialise.stellar_cuspy_ic):
     dehnen_params_fitted = cmf.literature.fit_Dehnen_profile(radial_bin_centres['stars'], radial_surf_dens['stars'], total_stellar_mass, bounds=([1, 0.5], [20,2]))
     ax1.plot(radial_bin_centres['stars'], cmf.literature.Dehnen(radial_bin_centres['stars'], *dehnen_params_fitted, total_stellar_mass), color=fit_col[0], label=r'a:{:.1f}, $\gamma$:{:.1f}'.format(*dehnen_params_fitted))
-    ax1.legend(fontsize='x-small')
+    ax1.legend(fontsize=legend_font_size)
 
 ax2.set_xscale('log')
 ax2.set_yscale('log')
@@ -110,7 +101,7 @@ ax2.plot(radial_bin_centres['dm'], radial_surf_dens['dm'], color=sim_col, lw=5*l
 if isinstance(galaxy.dm, cmf.initialise.dm_halo_dehnen):
     dehnen_params_fitted = cmf.literature.fit_Dehnen_profile(radial_bin_centres['dm'], radial_surf_dens['dm'], total_dm_mass)
     ax2.plot(radial_bin_centres['dm'], cmf.literature.Dehnen(radial_bin_centres['dm'], *dehnen_params_fitted, total_dm_mass), color=fit_col[0], label=r'a:{:.1f}, $\gamma$:{:.1f}'.format(*dehnen_params_fitted))
-    ax2.legend(fontsize='x-small')
+    ax2.legend(fontsize=legend_font_size)
 
 ax3.set_xscale('log')
 ax3.set_yscale('log')
@@ -122,7 +113,7 @@ ax3.plot(radial_bin_centres['stars_dm'], radial_surf_dens['stars_dm'], color=sim
 if isinstance(galaxy.stars, cmf.initialise.stellar_cuspy_ic) and isinstance(galaxy.dm, cmf.initialise.dm_halo_dehnen):
     dehnen_params_fitted = cmf.initialise.fit_Dehnen_profile(radial_bin_centres['stars_dm'], radial_surf_dens['stars_dm'], total_stellar_mass + total_dm_mass + ic.bh['mass'])
     ax3.plot(radial_bin_centres['stars_dm'], cmf.initialise.Dehnen(radial_bin_centres['stars_dm'], *dehnen_params_fitted, total_stellar_mass+total_dm_mass+ic.bh['mass']), color=fit_col[0], label=r'a:{:.1f}, $\gamma$:{:.1f}'.format(*dehnen_params_fitted))
-    ax3.legend(fontsize='x-small')
+    ax3.legend(fontsize=legend_font_size)
 ax3.plot(radial_bin_edges['stars'][:-1], radial_surf_dens['stars'], color='k', lw=0.8, alpha=0.6, ls=':')
 ax3.plot(radial_bin_edges['dm'][:-1], radial_surf_dens['dm'], color='k', lw=0.8, alpha=0.6, ls='--')
 
@@ -155,7 +146,7 @@ ax4.errorbar(logRe_vals, bulgeBHData.loc[:, 'logM*_sph'], yerr=bulgeBHData.loc[:
 logRe_seq = np.linspace(np.min(logRe_vals)*0.99, 1.01*np.max(logRe_vals))
 ax4.plot(logRe_seq, cmf.literature.Sahu20(logRe_seq), lw=linewd, c=fit_col[0])
 ax4.scatter(np.log10(pygad.analysis.half_mass_radius(ic.stars, center=mass_centre)), np.log10(np.unique(ic.stars['mass']) * len(ic.stars['mass'])), color=sim_col, zorder=10, label='Actual')
-ax4.legend(fontsize='x-small')
+ax4.legend(fontsize=legend_font_size)
 
 
 #inner dark matter
@@ -197,12 +188,11 @@ ax5.set_ylim(0, 1)
 ax5.set_xlabel(r'log(M$_*$/M$_\odot$)')
 ax5.set_ylabel(r'f$_\mathrm{DM}(r<1\,$R$_\mathrm{e})$')
 ax5.set_title('Inner DM Fraction', fontsize='small')
-ax5.legend(loc='upper left', fontsize='x-small')
+ax5.legend(loc='upper left', fontsize=legend_font_size)
 
 
 #virial info
-if find_vir_rad_flag:
-    pfv.virial_radius, pfv.virial_mass = pygad.analysis.virial_info(ic, center=mass_centre, N_min=10)
+pfv.virial_radius, pfv.virial_mass = pygad.analysis.virial_info(ic, center=mass_centre, N_min=10)
 ax6.set_xlabel('log(r/kpc)')
 ax6.set_ylabel('Count')
 ax6.set_title('Star Count', fontsize='small')
@@ -211,9 +201,14 @@ star_rad_dist = np.sort(np.log10(ic.stars['r']))
 ax6.hist(star_rad_dist, 100)
 ax6.axvline(star_rad_dist[100], c=fit_col[0], label=r'$10^2$')
 ax6.axvline(star_rad_dist[1000], c=fit_col[1], label=r'$10^3$')
-ax6.legend(fontsize='x-small')
+ax6.legend(fontsize=legend_font_size)
 pfv.inner_100_star_radius = 10**star_rad_dist[100]
 pfv.inner_1000_star_radius = 10**star_rad_dist[1000]
+#add the virial radius to the density plots
+for axi in (ax2, ax3):
+    axi.axvline(pfv.virial_radius, c=fit_col[1], zorder=0, lw=0.7, label=r'R$_\mathrm{vir}$')
+    axi.axvline(5*pfv.virial_radius, c=fit_col[2], zorder=0, lw=0.7, label=r'5R$_\mathrm{vir}$')
+ax2.legend(fontsize=legend_font_size)
 
 
 #histogram of LOS velocities
@@ -234,7 +229,7 @@ pfv.LOS_vel_dispersion = np.sqrt(np.mean(LOS_vel_variance) * args.num_rots * 3 /
 print('LOS velocity dispersion calculated                       ')
 ax8.scatter(np.log10(pfv.LOS_vel_dispersion), np.log10(ic.bh['mass']), zorder=10, color=sim_col)
 ax8.errorbar(BHsigmaData.loc[:,'logsigma'], BHsigmaData.loc[:,'logBHMass'], xerr=BHsigmaData.loc[:,'e_logsigma'], yerr=[BHsigmaData.loc[:,'e_logBHMass'], BHsigmaData.loc[:,'E_logBHMass']], marker='.', ls='None', elinewidth=0.5, capsize=0, color=fit_col[0], ms=markersz, zorder=1, label='Bosch+16')
-ax8.legend(fontsize='x-small')
+ax8.legend(fontsize=legend_font_size)
 ax8.set_xlabel(r'log($\sigma_*$/ km/s)')
 ax8.set_ylabel(r'log(M$_\bullet$/M$_\odot$)')
 ax8.set_title('BH Mass - Stellar Dispersion', fontsize='small')
@@ -258,6 +253,7 @@ ax9.set_ylabel('PDF')
 
 fig.subplots_adjust(left=0.1, right=0.98, top=0.95, bottom=0.08, hspace=0.5, wspace=0.5)
 plt.savefig(galaxy.general.figure_location + '/' + galaxy.general.name + '_kinematics.png', dpi=300)
+plt.close()
 
 if args.verbose:
     print('Update <user input> variables in {} if necessary, and re-run ./galaxy_gen.py, and then this script.'.format(args.paramFile))

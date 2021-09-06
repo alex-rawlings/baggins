@@ -4,14 +4,9 @@ import scipy.integrate, scipy.constants
 from functools import cached_property
 import os
 
-from ..utils import param_io
 from ..literature import *
 from ..cosmology import *
 from ..general import *
-#from . import astro_functions as kfa
-#from . import literature_functions as kfl
-#from . import general as kfg
-
 
 __all__ = ['galaxy_ic_base', 'ic_general_data', 'stellar_component', 'stellar_cuspy_ic', 'stellar_cored_ic', 'dm_component', 'dm_halo_NFW', 'dm_halo_dehnen', 'smbh']
 
@@ -74,7 +69,11 @@ class ic_general_data:
             self.anisotropy_radius = parameter_file.anisotropyRadius
         except AttributeError:
             self.anisotropy_radius = None
-        self.redshift = time2z(self.simulation_time, pres=True)
+        if self.simulation_time < 1e-6:
+            #we are using redshift 0
+            self.redshift = 0
+        else:
+            self.redshift = time2z(self.simulation_time, pres=True)
         self.parameter_file.redshift = self.redshift
         self.cosmology = cosmology
         self.mass_units = 'msol'

@@ -1,4 +1,3 @@
-import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats
@@ -72,11 +71,38 @@ else:
     star_distribution = mg.DehnenSphere(mass=galaxy.stars.total_mass, scale_radius=galaxy.stars.scale_radius, gamma=galaxy.stars.gamma, particle_mass=galaxy.stars.particle_mass, particle_type=mg.ParticleType.STARS)
 
 if isinstance(galaxy.dm, cmf.initialise.dm_halo_NFW):
-    dm_distribution = mg.NFWSphere(Mvir=galaxy.dm.peak_mass, particle_mass=galaxy.dm.particle_mass, particle_type=mg.ParticleType.DM_HALO, z=galaxy.general.redshift, use_cut=True)
+    if hasattr(pfv, 'DM_cut'):
+        cut_params = pfv.DM_cut
+        if args.verbose:
+            print('Using user-defined NFW cut parameters...')
+    else:
+        cut_params = dict(
+            slope = 1,
+            approx0 = 1e-5,
+            max_scaled_radius = 20
+        )
+        if args.verbose:
+            print('Using default NFW cut parameters...')
+    dm_distribution = mg.NFWSphere(Mvir=galaxy.dm.peak_mass, particle_mass=galaxy.dm.particle_mass, particle_type=mg.ParticleType.DM_HALO, z=galaxy.general.redshift, use_cut=True, cut_params=cut_params)
     pfv.DM_actual_total_mass = dm_distribution.mass*1e10
     pfv.DM_concentration = galaxy.dm.concentration
     parameters_to_update.append('DM_actual_total_mass')
     parameters_to_update.append('DM_concentration')
+
+    #plot the cut function
+    x = np.linspace(0, 10, 1000)
+    div99 = (cut_params['shift'] - np.log(1/(1-0.99) - 1)) / cut_params['slope'] #where the function reaches 0.99
+    y = -1/(1+np.exp(-cut_params['slope']* x + cut_params['shift'])) + 1
+    fig, ax = plt.subplots(1,1)
+    ax.plot(x, y)
+    ax.scatter(div99, 0.99, c='tab:orange', zorder=10, label='({:.2f}, 0.99)'.format(div99))
+    ax.legend()
+    ax.set_xlabel(r'r/R$_\mathrm{vir}$')
+    ax.set_ylabel('Cut Function')
+    plt.tight_layout()
+    fig.savefig(galaxy.general.figure_location + '/' + galaxy.general.name + '_nfwcut.png', dpi=300)
+    plt.close()
+
 else:
     dm_distribution = mg.DehnenSphere(mass=galaxy.dm.peak_mass, scale_radius=galaxy.dm.scale_radius, gamma=galaxy.dm.gamma, particle_mass=galaxy.dm.particle_mass, particle_type=mg.ParticleType.DM_HALO)
 
