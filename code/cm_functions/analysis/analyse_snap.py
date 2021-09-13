@@ -5,7 +5,7 @@ import pygad
 __all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios']
 
 
-def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10):
+def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars'):
     """
     Determine the centre of mass of each galaxy in the simulation, assuming each
     galaxy has a single SMBH near its centre.
@@ -24,24 +24,25 @@ def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, mi
     coms: dict with n keys, where each key corresponds to the centre of mass
           of each galaxy
     """
-    assert(snap._phys_units_requested)
+    assert(snap.phys_units_requested)
     num_bhs = len(snap.bh['mass'])
     if masks is not None:
         assert(len(masks) == num_bhs)
+    subsnap = getattr(snap, family)
     #prepare dict that will hold the centre of masses
     coms = dict()
     for ind, idx in enumerate(snap.bh['ID']):
         if verbose:
             print('Finding CoM by centring on BH {}'.format(ind))
         if masks is not None:
-            subsnap = snap.stars[masks[idx]]
+            masked_subsnap = subsnap[masks[idx]]
         else:
-            subsnap = snap.stars
-        coms[idx] = pygad.analysis.shrinking_sphere(subsnap, snap.bh['pos'][snap.bh['ID']==idx, :], initial_radius, stop_N=min_particle_count)
+            masked_subsnap = subsnap
+        coms[idx] = pygad.analysis.shrinking_sphere(masked_subsnap, snap.bh['pos'][snap.bh['ID']==idx, :], initial_radius, stop_N=min_particle_count)
     return coms
 
 
-def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5e4, verbose=True):
+def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5e4, verbose=True, family='stars'):
     """
     Determine the centre of mass velocity of each galaxy in the simulation,
     assuming each galaxy has an SMBH near its centre.
@@ -61,27 +62,28 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
     vcoms: dict with n keys, where each key corresponds to the centre of mass
           velocity of each galaxy
     """
-    assert(snap._phys_units_requested)
+    assert(snap.phys_units_requested)
     num_bhs = len(snap.bh['mass'])
     if masks is not None:
         assert(len(masks) == num_bhs)
+    subsnap = getattr(snap, family)
     #prepare the dict that will hold the velocity centre of masses
     vcoms = dict()
     for ind, idx in enumerate(snap.bh['ID']):
         if masks is not None:
-            subsnap = snap.stars[masks[idx]]
+            masked_subsnap = subsnap[masks[idx]]
         else:
-            subsnap = snap.stars
+            masked_subsnap = subsnap
         #make a ball about the CoM
-        ball_radius = np.sort(pygad.utils.dist(subsnap['pos'], xcom[idx]))[int(min_particle_count)]
+        ball_radius = np.sort(pygad.utils.dist(masked_subsnap['pos'], xcom[idx]))[int(min_particle_count)]
         if verbose:
             print('Maximum radius for velocity CoM set to {} kpc'.format(ball_radius))
         ball_mask = pygad.BallMask(pygad.UnitQty(ball_radius, 'kpc'), center=xcom[idx])
-        vcoms[idx] = pygad.analysis.mass_weighted_mean(subsnap[ball_mask], qty='vel')
+        vcoms[idx] = pygad.analysis.mass_weighted_mean(masked_subsnap[ball_mask], qty='vel')
     return vcoms
 
 
-def get_galaxy_axis_ratios(snap, xcom=None, vcom=None, family='stars', return_eigenvectors=False):
+def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', return_eigenvectors=False):
     """
     Determine the axis ratios b/a and c/a of a galaxy
     """
@@ -89,16 +91,14 @@ def get_galaxy_axis_ratios(snap, xcom=None, vcom=None, family='stars', return_ei
         xcom = pygad.UnitArr([0,0,0], 'kpc')
     elif not isinstance(xcom, pygad.UnitArr):
         xcom = pygad.UnitArr(xcom, 'kpc')
-    if vcom is None:
-        vcom = pygad.UnitArr([0,0,0], 'km/s')
-    elif not isinstance(vcom, pygad.UnitArr):
-        vcom = pygad.UnitArr(vcom, 'km/s')
-    
     subsnap = getattr(snap, family)
-    #move to CoM coordinates
-    subsnap['pos'] -= xcom
-    subsnap['vel'] -= vcom
-    #get the reduced inertia tensor
+    #move entire subsnap to CoM coordinates
+    #just doing this for a masked section results in the radial distance 'r'
+    #block not being rederived...
+    pygad.Translation(-xcom).apply(subsnap)
+    if radial_mask is not None:
+        #apply either a ball or shell mask
+        subsnap = subsnap[radial_mask]
     rit = pygad.analysis.reduced_inertia_tensor(subsnap)
     eigen_vals, eigen_vecs = scipy.linalg.eig(rit)
     #need to sort the eigenvalues

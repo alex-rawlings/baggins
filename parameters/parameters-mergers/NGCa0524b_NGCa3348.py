@@ -9,22 +9,22 @@
 
 
 #---- general
-galaxyName1 = "test1"                       #galaxy 1 name
-galaxyName2 = "test2"                       #galaxy 2 name
+galaxyName1 = "A"                       #galaxy 1 name
+galaxyName2 = "C"                       #galaxy 2 name
 
 
 #--- file location
-file1 = "/Volumes/Rawlings_Storage/KETJU/initialise/galaxies/NGCa0524b/NGCa0524b.hdf5"
-file2 = "/Volumes/Rawlings_Storage/KETJU/initialise/galaxies/NGCa3348/NGCa3348.hdf5"
-saveLocation = "/Volumes/Rawlings_Storage/KETJU/initialise/merger/"
+#file1 = "/Volumes/Rawlings_Storage/KETJU/initialise/galaxies/NGCa0524b/NGCa0524b.hdf5"
+#file2 = "/Volumes/Rawlings_Storage/KETJU/initialise/galaxies/NGCa3348/NGCa3348.hdf5"
+#saveLocation = "/Volumes/Rawlings_Storage/KETJU/initialise/merger/"
 
-#file1 /scratch/pjohanss/arawling/collisionless_merger/stability-test/NGCa0524b/output/NGCa0524b_009.hdf5                #file to generate IC from
-#file2 /scratch/pjohanss/arawling/collisionless_merger/stability-test/NGCa3348/output/NGCa3348_009.hdf5                #file to generate IC from
-#saveLocation /scratch/pjohanss/arawling/collisionless_merger/orbit-test/        #file will be saved to saveLocation/galaxyName_1-galaxyName_2
+file1 = "/scratch/pjohanss/arawling/collisionless_merger/stability-test/NGCa0524b/output/NGCa0524_008.hdf5"            #file to generate IC from
+file2 = "/scratch/pjohanss/arawling/collisionless_merger/stability-test/NGCa3348/output/NGCa3348_009.hdf5"             #file to generate IC from
+saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/res-test/fiducial/"      #file will be saved to saveLocation/galaxyName_1-galaxyName_2
 
 
 #---- orbital properties
-initialSeparation = "virial2"       #'touch', 'overlapXX', 'virialX' or number
+initialSeparation = "virial3"       #'touch', 'overlapXX', 'virialX' or number
 pericentreDistance = "virial1e-3"   #distance at first pericentre
 
 #----------------------------------returned values

@@ -9,6 +9,10 @@ def get_id_mask(snap, bhid, family='stars'):
     first filtered to the host galaxy depending on their particle ID number, 
     where it is necessarily assumed that the particle ID ordering follows:
         galaxy 1 IDs --> galaxy 2 IDs
+    To obtain a mask of all particles in a system, the routine can be run 
+    for each particle family, and the masks combined as e.g.:
+        all_id_mask = star_id_mask & dm_id_mask & bh_id_mask
+    #TODO should this be a separate method??
 
     Parameters
     ----------
@@ -68,7 +72,6 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
     """
     Create a radial-based mask, can be either a ball or a shell. The default
     function arguments are designed for compatability with get_all_radial_masks.
-    Note the status of <snap> being in physical units is not checked. 
 
     Parameters
     ----------
@@ -84,8 +87,8 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
     -------
     mask: pygad mask object
     """
+    assert(snap.phys_units_requested)
     if family is not None:
-        print('get fam')
         assert(family in ['stars', 'dm', 'bh'])
         snap = getattr(snap, family)
     if centre is None:
@@ -95,7 +98,7 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
         mask = pygad.BallMask(pygad.UnitQty(radius, 'kpc'), centre)
     elif isinstance(radius, list):
         #option 2: a shell
-        assert(radius[1] > radius[0])
+        assert(radius[1] > radius[0] and len(radius)==2)
         outer_mask = pygad.BallMask(pygad.UnitQty(radius[1], 'kpc'), centre)
         inner_mask = pygad.BallMask(pygad.UnitQty(radius[0], 'kpc'), centre)
         mask = outer_mask & ~inner_mask
@@ -121,6 +124,8 @@ def get_all_radial_masks(snap, radius, centre=None, id_masks=None, family='stars
             to construct a ball mask, or a list of [inner_radius, outer_radius]
             to construct a shell mask
     centre: the centre from which the radial measurements should be made
+            may be None (corresponds to [0,0,0]), a dict of coordinate arrays (e.g. the CoM) with keys corresponding to the BH ids, or "bh" to  
+            centre on a BH
     id_masks: dict of ID masks to constrain particles to a given galaxy
     family: particle type to construct the mask for
 
@@ -130,7 +135,7 @@ def get_all_radial_masks(snap, radius, centre=None, id_masks=None, family='stars
            galaxy SMBH particle ID number
     """
     assert(snap._phys_units_requested)
-    assert(family in ['stars', 'dm', 'bh'])
+    assert(isinstance(family, str) and family in ['stars', 'dm', 'bh'])
     #restrict snap to a particle type so we're dealing with smaller objects
     subsnap = getattr(snap, family)
     if centre is None:
@@ -149,15 +154,13 @@ def get_all_radial_masks(snap, radius, centre=None, id_masks=None, family='stars
             centre[idx] = snap.bh['pos'][snap.bh['ID']==idx, :]
     else:
         raise ValueError('parameter <centre> must be one of None, dict, or "bh"!')
+    if id_masks is None:
+        #select all particles of the subsnap
+        id_masks = dict()
+        for idx in snap.bh['ID']:
+            id_masks[idx] = pygad.IDMask(subsnap['ID'])
     masks = dict()
-    print("Family: {}".format(family))
-    print('  Radius: {}'.format(radius))
     for i, idx in enumerate(centre.keys()):
-        masks[idx] = get_radial_mask(subsnap, radius=radius, centre=centre[idx])
-        print('    BH ID: {}'.format(idx))
-        print('      {}'.format(len(snap[masks[idx]])))
-        if id_masks is not None:
-            masks[idx] = masks[idx] & id_masks[idx]
-        print('      {}'.format(len(snap[masks[idx]])))
+        masks[idx] = get_radial_mask(subsnap, radius=radius, centre=centre[idx], id_mask=id_masks[idx])
     snap.delete_blocks()
     return masks
