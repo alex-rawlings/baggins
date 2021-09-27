@@ -1,7 +1,8 @@
 import pickle
+import os
 
 
-__all__ = ['save_data', 'load_data']
+__all__ = ['save_data', 'load_data', 'get_snapshots_in_dir']
 
 
 # TODO: not memory efficient to be using dicts for data
@@ -36,3 +37,24 @@ def load_data(filename):
     """
     with open(filename, 'rb') as f:
         return pickle.load(f)
+
+
+def get_snapshots_in_dir(path, ext='.hdf5'):
+    """
+    Get a list of the full-path name of all snapshots within a directory.
+
+    Parameters
+    ----------
+    path: host directory of snapshot files
+
+    Returns
+    -------
+    snap_files: alphabetically-sorted list of snapshot files
+    """
+    snap_files = []
+    with os.scandir(path) as s:
+        for entry in s:
+            if entry.name.endswith(ext) and 'ketju_bhs' not in entry.name:
+                snap_files.append(entry.path)
+    snap_files.sort()
+    return snap_files

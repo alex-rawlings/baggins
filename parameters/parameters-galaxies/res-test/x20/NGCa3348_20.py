@@ -59,3 +59,25 @@ fDMData = "jin_2020.dat"                   #inner dm fraction data
 
 
 #----------------------------------returned values
+BH_mass = 3.14341e+09
+DM_peak_mass = 5.12764e+13
+input_Rb_in_kpc = 1.18148e-01
+input_Re_in_kpc = 4.04507e+00
+redshift = 0.00000e+00
+#----------------------
+DM_actual_total_mass = 1.01431e+14
+DM_concentration = 7.51247e+00
+count_BH = 1.00000e+00
+count_DM_HALO = 1.69051e+05
+count_STARS = 1.28685e+05
+stellar_actual_total_mass = 2.57370e+11
+#----------------------
+LOS_vel_dispersion = 2.84073e+02
+inner_1000_star_radius = 1.51652e-01
+inner_100_star_radius = 5.55801e-02
+inner_DM_fraction = 1.87058e-01
+number_ketju_particles = 3.00000e+00
+projected_half_mass_radius = 4.09571e+00
+virial_mass = 4.14157e+13
+virial_radius = 5.62731e+02
+#----------------------

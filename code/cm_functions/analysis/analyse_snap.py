@@ -2,7 +2,7 @@ import numpy as np
 import scipy.linalg
 import pygad
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios']
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy']
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars'):
@@ -18,6 +18,7 @@ def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, mi
     verbose: print verbose output
     min_particle_count: stop the shrinking_sphere method when this many
                         particles or less are contained
+    family: particle family to analyse
 
     Returns
     -------
@@ -86,6 +87,21 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
 def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', return_eigenvectors=False):
     """
     Determine the axis ratios b/a and c/a of a galaxy
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    xcom: dict of CoM coordinates for each galaxy, assumes the dict keys are the
+          BH particle IDs
+    masks: pygad radial masks to apply to the (sub) snapshot
+    family: particle family to analyse
+    return_eigenvectors: bool, true to return eigenvectors as well as axis 
+                         ratios
+    
+    Returns
+    -------
+    axis ratios in order b/a, c/a
+    optionally return eigenvectors corresponding to a, b, c
     """
     if xcom is None:
         xcom = pygad.UnitArr([0,0,0], 'kpc')
@@ -110,3 +126,41 @@ def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', re
         return axis_ratios, eigen_vecs
     else:
         return axis_ratios
+
+
+def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
+    """
+    Extract the virial mass and radius from either the initial set up of a 
+    merger system, or when the merger has relaxed.
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    xcom: dict of CoM coordinates for each galaxy, assumes the dict keys are the
+          BH particle IDs
+    masks: particle ID masks. Can be either a dict (thus only one particle 
+           family goes into the calculation), or a list of dicts (thus stars 
+           and dm go into the calculation)
+
+    Returns
+    -------
+    virial_mass: virial mass of system. If masks were used, this is a dict with 
+                 the keys being the BH IDs and the mass corresponding to that 
+                 galaxy as 
+                 values
+    virial_radius: virial radius of the system. Same output style as virial_mass
+    """
+    if masks is None:
+        return pygad.analysis.virial_info(snap, center=xcom)
+    elif isinstance(masks, list):
+        mask_list = masks
+        masks = dict()
+        for key in mask_list[0].keys():
+            masks[key] = mask_list[0][key] | mask_list[1][key]
+    elif not isinstance(masks, dict):
+        raise ValueError("masks must be a list of dicts, a single dict, or None!")
+    virial_mass = dict()
+    virial_radius = dict()
+    for key, this_com in xcom.items():
+        virial_mass[key], virial_radius[key] = pygad.analysis.virial_info(snap[masks[key]], center=this_com)
+    return virial_mass, virial_mass

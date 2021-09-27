@@ -1,0 +1,135 @@
+%  Relevant files
+InitCondFile    ['gadget_paramfile', 'A10-C10-3.0-0.001.hdf5']
+OutputDir         output
+EnergyFile        energy.txt
+InfoFile          info.txt
+TimingsFile       timings.txt
+CpuFile           cpu.txt
+TimebinFile       timebin.txt
+
+SnapshotFileBase  1000
+RestartFile       restart
+
+
+% CPU-time limit
+
+TimeLimitCPU	  1209600
+ResubmitOn        0
+ResubmitCommand   resubmit.sh 
+
+
+% Code options
+
+ICFormat    3
+SnapFormat  3
+NumFilesPerSnapshot	   1
+NumFilesWrittenInParallel  1
+
+MaxMemSize         3000
+PartAllocFactor    3
+BufferSize         300
+
+
+% System of units
+
+UnitLength_in_cm         3.085678e21        ;  1.0 kpc
+UnitMass_in_g            1.989e43           ;  1.0e10 solar masses
+UnitVelocity_in_cm_per_s 1e5                ;  1 km/sec
+GravityConstantInternal  0
+
+ 
+%  Characteristics of run
+
+TimeBegin           0.0
+TimeMax	            2.0
+
+ComovingIntegrationOn  0
+CoolingOn      		   0
+StarformationOn		   0
+PeriodicBoundariesOn   0
+BoxSize                72000.0
+Omega0	              0.30   % total matter density
+OmegaLambda           0      % 
+OmegaBaryon           0.04825     
+HubbleParam           1
+
+% Output frequency
+
+OutputListOn        0
+OutputListFilename  outputtimelist.txt
+
+TimeBetSnapshot        0.1
+TimeOfFirstSnapshot    0.1
+ 
+CpuTimeBetRestartFile  3600.0  % every 1 hour 
+
+TimeBetStatistics      0.5
+
+
+% Softening lengths
+
+
+SofteningGas       0.02
+SofteningHalo      0.10
+SofteningDisk      0.01
+SofteningBulge     0.01           
+SofteningStars     0.0035           %original: 0.05
+SofteningBndry     0.0030        % this will be the black hole particles -> original: 0.05
+
+SofteningGasMaxPhys       0.02
+SofteningHaloMaxPhys      0.10
+SofteningDiskMaxPhys      0.02
+SofteningBulgeMaxPhys     0.02           
+SofteningStarsMaxPhys     0.006
+SofteningBndryMaxPhys     0.003
+
+MinGasHsmlFractional     0.1  % minimum gas smoothing in terms of the gravitational softening length
+
+
+% Accuracy of time integration
+
+TypeOfTimestepCriterion 0   
+ErrTolIntAccuracy       0.002  
+MaxSizeTimestep        0.01
+MinSizeTimestep        1.0e-12
+
+MaxRMSDisplacementFac  0.25
+
+% Tree algorithm and force accuracy
+
+ErrTolTheta             0.5
+
+TypeOfOpeningCriterion  1
+ErrTolForceAcc          0.005
+
+TreeDomainUpdateFrequency    0.1
+
+
+%ketju
+ketju_minimum_smbh_mass 0
+ketju_region_physical_radius 0.0105 % kpc/h_0
+ketju_GBS_relative_tolerance 1e-8
+ketju_output_time_relative_tolerance 1e-8
+ketju_output_time_interval 1e-5 % 5 kyr
+
+ketju_use_divide_and_conquer_mst 0
+ketju_max_tree_distance 2
+ketju_steps_between_mst_reconstruction 100
+
+ketju_use_PN 1
+
+ketju_no_star_star_gravity 0
+ketju_use_star_star_softening 1
+ketju_disable_integration 1
+
+ketju_enable_bh_merger_kicks 1
+ketju_minimum_particles_per_task 10
+
+%  Parameters of SPH
+
+DesNumNgb           100
+MaxNumNgbDeviation  1
+ArtBulkViscConst    1.00
+InitGasTemp         1040.0  
+MinGasTemp          10.0    
+CourantFac          0.30

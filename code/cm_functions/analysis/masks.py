@@ -77,7 +77,7 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
     ----------
     snap: pygad <Snapshot> object to create the mask for
     radius: the radius to constrain the particles to - can be either a number
-            to construct a ball mask, or a list of [inner_radius, outer_radius]
+            to construct a ball mask, or a tuple of (inner_radius, outer_radius)
             to construct a shell mask
     centre: the centre from which the radial measurements should be made
     id_masks: dict of ID masks to constrain particles to a given galaxy
@@ -96,14 +96,14 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
     if isinstance(radius, int) or isinstance(radius, float):
         #option 1: in a ball
         mask = pygad.BallMask(pygad.UnitQty(radius, 'kpc'), centre)
-    elif isinstance(radius, list):
+    elif isinstance(radius, tuple):
         #option 2: a shell
         assert(radius[1] > radius[0] and len(radius)==2)
         outer_mask = pygad.BallMask(pygad.UnitQty(radius[1], 'kpc'), centre)
         inner_mask = pygad.BallMask(pygad.UnitQty(radius[0], 'kpc'), centre)
         mask = outer_mask & ~inner_mask
     else:
-        raise ValueError('Radius must be either a number (ball mask) or a list (shell mask)!')
+        raise ValueError('Radius must be either a number (ball mask) or a tuple (shell mask)!')
     if id_mask is not None:
         mask = mask & id_mask
     snap.delete_blocks()
@@ -121,7 +121,7 @@ def get_all_radial_masks(snap, radius, centre=None, id_masks=None, family='stars
     ----------
     snap: pygad <Snapshot> object to create the mask for
     radius: the radius to constrain the particles to - can be either a number
-            to construct a ball mask, or a list of [inner_radius, outer_radius]
+            to construct a ball mask, or a tuple of (inner_radius, outer_radius)
             to construct a shell mask
     centre: the centre from which the radial measurements should be made
             may be None (corresponds to [0,0,0]), a dict of coordinate arrays (e.g. the CoM) with keys corresponding to the BH ids, or "bh" to  

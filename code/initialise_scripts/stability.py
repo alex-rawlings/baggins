@@ -20,9 +20,10 @@ print('\nRunning stability.py\n')
 pfv = cmf.utils.read_parameters(args.paramFile)
 #population percentages
 if args.percentages_to_check is None:
-    args.percentages_to_check = [5, 10, 30, 50, 80]
+    args.percentages_to_check = [5, 10, 30, 50, 80, 95]
 linewd = 2
-print(args.percentages_to_check)
+if args.verbose:
+    print('Stability checked at radii enclosing mass percentages: {}'.format(args.percentages_to_check))
 
 outpath = pfv.saveLocation + '/' + pfv.galaxyName
 datapath = outpath + '/' + pfv.dataLocation

@@ -15,7 +15,7 @@ galaxyName = "A05"                #file name
 
 
 #---- file information
-saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/res-test/x05/"                            #parent save directory
+saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/x05/"                            #parent save directory
 figureLocation = "figures"        #figures saved in saveLocation/figureLocation
 dataLocation = "output"           #simulation output saved here
 litDataLocation = "literature_data"      #path to where literature data is
@@ -57,3 +57,23 @@ fDMData = "jin_2020.dat"                   #inner dm fraction data
 
 #----------------------------------returned values
 
+BH_mass = 3.04220e+09
+DM_peak_mass = 4.88851e+13
+redshift = 0.00000e+00
+#----------------------
+DM_actual_total_mass = 9.65923e+13
+DM_concentration = 7.54736e+00
+count_BH = 1.00000e+00
+count_DM_HALO = 6.43949e+05
+count_STARS = 5.02056e+05
+#----------------------
+LOS_vel_dispersion = 2.72603e+02
+half_mass_radius = 5.90176e+00
+inner_1000_star_radius = 6.50670e-02
+inner_100_star_radius = 1.53860e-02
+inner_DM_fraction = 2.18746e-01
+number_ketju_particles = 5.30000e+01
+projected_half_mass_radius = 4.49883e+00
+virial_mass = 3.95834e+13
+virial_radius = 5.54290e+02
+#----------------------

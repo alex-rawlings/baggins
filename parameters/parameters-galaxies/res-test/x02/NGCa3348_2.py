@@ -16,7 +16,7 @@ distanceModulus = 33.08              #distance modulus to convert arcsec
 
 
 #---- file information
-saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/02"                #parent save directory
+saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/x02"                #parent save directory
 figureLocation = "figures"      #figures saved in saveLocation/figureLocation
 dataLocation = "output"         #simulation output saved here
 litDataLocation = "literature_data"    #path to where literature data is
@@ -59,3 +59,25 @@ fDMData = "jin_2020.dat"                   #inner dm fraction data
 
 
 #----------------------------------returned values
+BH_mass = 3.14341e+09
+DM_peak_mass = 5.12764e+13
+input_Rb_in_kpc = 1.18148e-01
+input_Re_in_kpc = 4.04507e+00
+redshift = 0.00000e+00
+#----------------------
+DM_actual_total_mass = 1.01431e+14
+DM_concentration = 7.51247e+00
+count_BH = 1.00000e+00
+count_DM_HALO = 1.69051e+06
+count_STARS = 1.28685e+06
+stellar_actual_total_mass = 2.57370e+11
+#----------------------
+LOS_vel_dispersion = 2.84379e+02
+inner_1000_star_radius = 5.75546e-02
+inner_100_star_radius = 2.20275e-02
+inner_DM_fraction = 2.17343e-01
+number_ketju_particles = 1.90000e+01
+projected_half_mass_radius = 4.03905e+00
+virial_mass = 4.13362e+13
+virial_radius = 5.62352e+02
+#----------------------

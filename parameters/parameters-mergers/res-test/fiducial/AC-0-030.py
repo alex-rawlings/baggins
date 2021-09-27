@@ -14,9 +14,9 @@ galaxyName2 = "Cf"                       #galaxy 2 name
 
 
 #--- file location
-file1 = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/fiducial/Af.hdf5"            #file to generate IC from
-file2 = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/fiducial/Cf.hdf5"             #file to generate IC from
-saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/res-test/fiducial/"      #file will be saved to saveLocation/galaxyName_1-galaxyName_2
+file1 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/NGCa0524/NGCa0524.hdf5"            #file to generate IC from
+file2 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/NGCa3348/NGCa3348.hdf5"             #file to generate IC from
+saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/fiducial/"      #file will be saved to saveLocation/galaxyName_1-galaxyName_2
 
 
 #---- orbital properties
@@ -24,3 +24,8 @@ initialSeparation = "virial3"       #'touch', 'overlapXX', 'virialX' or number
 pericentreDistance = "virial3e-2"   #distance at first pericentre
 
 #----------------------------------returned values
+e = 9.96323e-01
+r0 = 1.68714e+03
+rperi = 1.68714e+01
+virial_radius = 5.62380e+02
+#----------------------
