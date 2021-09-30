@@ -144,11 +144,10 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
 
     Returns
     -------
-    virial_mass: virial mass of system. If masks were used, this is a dict with 
-                 the keys being the BH IDs and the mass corresponding to that 
-                 galaxy as 
-                 values
-    virial_radius: virial radius of the system. Same output style as virial_mass
+    virial_radius: virial radius of system. If masks were used, this is a dict 
+                   with the keys being the BH IDs and the mass corresponding to 
+                   that galaxy as values
+    virial_mass: virial mass of system. Same output style as virial_radius
     """
     if masks is None:
         return pygad.analysis.virial_info(snap, center=xcom)
@@ -162,5 +161,5 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
     virial_mass = dict()
     virial_radius = dict()
     for key, this_com in xcom.items():
-        virial_mass[key], virial_radius[key] = pygad.analysis.virial_info(snap[masks[key]], center=this_com)
-    return virial_mass, virial_mass
+        virial_radius[key], virial_mass[key] = pygad.analysis.virial_info(snap[masks[key]], center=this_com)
+    return virial_radius, virial_mass

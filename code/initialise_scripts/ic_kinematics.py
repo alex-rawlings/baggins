@@ -156,10 +156,11 @@ fdm_radii = cmf.mathematics.get_histogram_bin_centres(binned_fdm[1])
 ax5.plot(fdm_radii, binned_fdm[0], '-x', c=fit_col[2], label='Median')
 #find the average projected half mass radius, as a proxy to the
 #(by defintion) projected effective radius
-r_half_mass_proj = 0
+# TODO clear this?
+"""r_half_mass_proj = 0
 for ind in range(3):
     r_half_mass_proj += pygad.analysis.half_mass_radius(ic.stars, proj=ind, center=mass_centre)
-r_half_mass_proj /= 3
+r_half_mass_proj /= 3"""
 
 #determine the LOS quantities
 rot_axis = np.ones(3)

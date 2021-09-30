@@ -13,19 +13,13 @@ parser.add_argument('-n', '--new', dest='new', action='store_true', help='analys
 parser.add_argument('-m', '--method', type=str, help='method of determining inertia tensor', dest='method', choices=['shell', 'ball'], default='shell')
 parser.add_argument('-f', '--family', type=str, help='particle family', dest='family', choices=['dm', 'stars'], default='dm')
 parser.add_argument('-S', '--statistic', type=str, help='statistic', dest='stat', choices=['median', 'mean', 'last'], default='median')
-parser.add_argument('-r', '--radii', type=cmf.utils.cl_str_2_space, help='radii to calculate inertia tensor at', dest='radii', default=np.linspace(0.1, 6, 20)*562)
+parser.add_argument('-r', '--radii', type=cmf.utils.cl_str_2_space, help='radii to calculate inertia tensor at', dest='radii', default=np.linspace(0.1, 6, 20))
 parser.add_argument('-s', '--savedir', type=str, help='save directory', dest='savedir', default='/users/arawling/figures/res-test/inertia')
 parser.add_argument('-v', '--verbose', dest='verbose', action='store_true', help='verbose printing in script')
 args = parser.parse_args()
 
 if args.new:
     #analyse a new dataset
-    #determine how to iterate over ball or shell
-    if args.method == 'ball':
-        radii_to_mask = args.radii
-    else:
-        radii_to_mask = list(zip(args.radii[:-1], args.radii[1:]))
-
     #get the full pathname of all the snapshots
     snap_files = cmf.utils.get_snapshots_in_dir(args.path)
 
@@ -61,7 +55,21 @@ if args.new:
                 stars = cmf.analysis.get_all_id_masks(snap),
                 dm = cmf.analysis.get_all_id_masks(snap, family='dm')
             )
-        xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=id_masks['stars'], verbose=args.verbose)
+            xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=id_masks['stars'], verbose=args.verbose)
+            #determine the larger virial radius
+            virial_radius, virial_mass = cmf.analysis.get_virial_info_of_each_galaxy(snap, xcom=xcom, masks=[id_masks['stars'], id_masks['dm']])
+            virial_keys = list(virial_radius.keys())
+            if virial_radius[virial_keys[0]] > virial_radius[virial_keys[1]]:
+                args.radii *= virial_radius[virial_keys[0]]
+            else:
+                args.radii *= virial_radius[virial_keys[1]]
+            #determine how to iterate over ball or shell
+            if args.method == 'ball':
+                radii_to_mask = args.radii
+            else:
+                radii_to_mask = list(zip(args.radii[:-1], args.radii[1:]))
+        else:
+            xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=id_masks['stars'], verbose=args.verbose)
 
         #set up temporary holding dicts
         temp_ratio = dict(
@@ -105,6 +113,8 @@ if args.new:
                 ratios[key_r][ind, :] = temp_ratio[key_r][:,-1]
                 particle_counts[key_r][ind] = temp_partcount[key_r][-1]
         snap.delete_blocks()
+        #delete the snapshot to preserve memory
+        del snap
         print('\n')
     save_dict = dict(
         time_of_snap = time_of_snap,
