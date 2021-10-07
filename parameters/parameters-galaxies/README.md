@@ -1,4 +1,4 @@
-#Description of the parameter file format
+# Description of the parameter file format
 
 For reproducibility, the initial condition parameter values for each model galaxy is saved within a parameter file from which the initial condition scripts reads the value in. Each parameter file consists of two sections: *specified inputs* and *returned values*. Unless otherwise stated:  
 1. Masses are in solar masses  
@@ -15,19 +15,19 @@ A brief description of the *specified inputs* is given below. Note that dependin
 4. Dehnen halo profile: **HD**  
 5. NFW halo profile: **NFW**  
 
-##General  
+## General  
 `simulationTime`: the (estimated) total simulation time -> used to estimate redshift-dependent properties of e.g. the halo mass  
 `randomSeed`: number to seed the random number generator with, makes the generator deterministic  
 `galaxyName`: prefix to attach to outputs  
 `distanceModulus`: for unit conversion from arcsec to kpc (**SC**)  
 
-##File Information  
+## File Information  
 `saveLocation`: parent directory where to save outputs to  
 `figureLocation`: subdirectory to save figures to  
 `dataLocation`: subdirectory where simulation data will be saved  
 `litDataLocation`: directory (relative to where initialisation is run) where literature data is located  
 
-##Stellar
+## Stellar
 `stellarCored`: bool, true if we want a Terzic-2005 cored density profile  
 `sersicN`: sersic index (**SC**)  
 `effectiveRadius`: half-light radius in arcsec (**SC**)  
@@ -45,25 +45,25 @@ A brief description of the *specified inputs* is given below. Note that dependin
 `anisotropyRadius`: radius at which beta profiles becomes radially dominant (**OM**)  
 `stellar_softening`: softening length of dm in the simulation  
 
-##Halo  
+## Halo  
 `use_NFW`: bool, true if we want to use an NFW profile  
-`DMParticleMass`: ass of a DM particle  
+`DMParticleMass`: mass of a DM particle  
 `DM_mass_from`: scaling relation from which to estimate halo mass from bulge mass  
 `DM_softening`: softening length of stars in the simulation  
 `DMScaleRadius`: scale radius (**HD**)  
 `DMGamma`: index of density profile (**HD**)  
 
-##SMBH  
+## SMBH  
 `BH_softening`: softening length for SMBH particles  
 `BH_spin`: dimensionless spin vector (random orientation), set as *random* to generate a new spin value, which overwrites the original *random* keyword  
 `real_BH_mass`: actual SMBH mass if observed (not critical to pipeline)  
 
-##Data Files  
+## Data Files  
 `bulgeData1`: path to observational data of BH-bulge mass relation  
 `massData`: path to observational data of ETG masses  
 `BHsigmaData1`: path to observational data of BH-sigma relation  
 
-##Returned Values  
+## Returned Values  
 `BH_mass`: SMBH mass estimate from bulge mass scaling relation  
 `DM_peak_mass`: peak halo mass estimate from (specified) bulge mass scaling relation (refer to Behroozi+19) for definition  
 `redshift`: estimated redshift from simulation time  

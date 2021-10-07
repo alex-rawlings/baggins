@@ -1,14 +1,14 @@
 from collections import OrderedDict
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
-import scipy.interpolate
+import itertools
 
 
-__all__ = ['draw_sizebar', 'mplColours', 'mplLines']
+__all__ = ["draw_sizebar", "mplColours", "mplLines", "shade_bool_regions"]
 
 
-def draw_sizebar(ax, length, units, location='lower right', pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert=None):
-    '''
+def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert=None):
+    """
     Draw a horizontal scale bar using the mpl toolkit
 
     Parameters
@@ -26,14 +26,14 @@ def draw_sizebar(ax, length, units, location='lower right', pad=0.1, borderpad=0
     Returns
     -------
         None (draw scale bar)
-    '''
+    """
     if unitconvert is None:
-        label = str(length)+' '+units
-    elif unitconvert == 'kilo2base':
-        label = str(length*1000)+' '+units
+        label = str(length)+" "+units
+    elif unitconvert == "kilo2base":
+        label = str(length*1000)+" "+units
     else:
         #TODO other unit conversions
-        raise NotImplementedError('Other unit conversions yet to be implemented')
+        raise NotImplementedError("Other unit conversions yet to be implemented")
     asb = AnchoredSizeBar(ax.transData, length, label, loc=location, pad=pad, borderpad=borderpad, sep=sep, frameon=frameon)
     ax.add_artist(asb)
 
@@ -51,7 +51,7 @@ def mplColours():
     -------
     the colour array, to be used in plt.plot(x,y,color=THIS)
     """
-    return plt.rcParams['axes.prop_cycle'].by_key()['color']
+    return plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
 
 def mplLines(regular=5, loose=10, dense=1):
@@ -71,18 +71,39 @@ def mplLines(regular=5, loose=10, dense=1):
     notation
     """
     return OrderedDict([
-            ('solid',                    (0, ())),
-            ('dotted',                   (0, (1,1))),
-            ('dashed',                   (0, (5,regular))),
-            ('dashdotted',               (0, (3,regular,1,regular))),
-            ('dashdotdotted',            (0, (3,regular,1,regular,1,regular))),
+            ("solid",                    (0, ())),
+            ("dotted",                   (0, (1,1))),
+            ("dashed",                   (0, (5,regular))),
+            ("dashdotted",               (0, (3,regular,1,regular))),
+            ("dashdotdotted",            (0, (3,regular,1,regular,1,regular))),
 
-            ('densely dashed',           (0, (5,dense))),
-            ('densely dashdotted',       (0, (3,dense,1,dense))),
-            ('densely dashdotdotted',    (0, (3,dense,1,dense,1,dense))),
+            ("densely dashed",           (0, (5,dense))),
+            ("densely dashdotted",       (0, (3,dense,1,dense))),
+            ("densely dashdotdotted",    (0, (3,dense,1,dense,1,dense))),
 
-            ('loosely dotted',           (0, (1,loose))),
-            ('loosely dashed',           (0, (5,loose))),
-            ('loosely dashdotted',       (0, (3,loose,1,loose))),
-            ('loosely dashdotdotted',    (0,(3,loose,1,loose,1,loose))),
+            ("loosely dotted",           (0, (1,loose))),
+            ("loosely dashed",           (0, (5,loose))),
+            ("loosely dashdotted",       (0, (3,loose,1,loose))),
+            ("loosely dashdotdotted",    (0,(3,loose,1,loose,1,loose))),
     ])
+
+
+def shade_bool_regions(ax, xdata, mask, **kwargs):
+    """
+    Shade regions of plot corresponding to the True regions of a mask
+
+    Parameters
+    ----------
+    ax: matplotlib axis object (where the plotting will be done)
+    xdata: array of x data values
+    mask: mask for xdata, will shade the true regions
+    **kwargs: keyword arguments for pyplot.axvspan()
+
+    Returns
+    -------
+    None
+    """
+    #get the first and last index of the True "blocks"
+    regions = [(group[0], group[-1]) for group in (list(group) for key, group in itertools.groupby(range(len(mask)), key=mask.__getitem__) if key)]
+    for region in regions:
+        ax.axvspan(xdata[region[0]], xdata[region[1]], **kwargs)
