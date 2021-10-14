@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats
-import sys
+import warnings
 
 import merger_ic_generator as mg
 import cm_functions as cmf
@@ -99,7 +99,6 @@ if isinstance(galaxy.dm, cmf.initialise.dm_halo_NFW):
     ax.legend()
     ax.set_xlabel(r'r/R$_\mathrm{vir}$')
     ax.set_ylabel('Cut Function')
-    plt.tight_layout()
     fig.savefig(galaxy.general.figure_location + '/' + galaxy.general.name + '_nfwcut.png', dpi=300)
     plt.close()
 

@@ -10,6 +10,7 @@ import cm_functions as cmf
 parser = argparse.ArgumentParser(description='Determine radially-dependent axis ratios for a range of snapshots', allow_abbrev=False)
 parser.add_argument(type=str, help='path to snapshots or data', dest='path')
 parser.add_argument('-n', '--new', dest='new', action='store_true', help='analyse a new dataset')
+parser.add_argument("-i", "--isolated", help="analysis for an isolated system", dest="isolated", action="store_true")
 parser.add_argument('-m', '--method', type=str, help='method of determining inertia tensor', dest='method', choices=['shell', 'ball'], default='shell')
 parser.add_argument('-f', '--family', type=str, help='particle family', dest='family', choices=['dm', 'stars'], default='dm')
 parser.add_argument('-S', '--statistic', type=str, help='statistic', dest='stat', choices=['median', 'mean', 'last'], default='median')
@@ -51,18 +52,29 @@ if args.new:
         if ind == 0:
             if args.verbose:
                 print('Creating ID masks...')
-            id_masks = dict(
-                stars = cmf.analysis.get_all_id_masks(snap),
-                dm = cmf.analysis.get_all_id_masks(snap, family='dm')
-            )
+            if args.isolated:
+                if args.verbose:
+                    print("System contains an isolated galaxy!")
+                id_masks = dict(
+                    stars = {snap.bh["ID"][0]: pygad.IDMask(snap.stars["ID"])},
+                    dm = {snap.bh["ID"][0]: pygad.IDMask(snap.dm["ID"])}
+                )
+            else:
+                id_masks = dict(
+                    stars = cmf.analysis.get_all_id_masks(snap),
+                    dm = cmf.analysis.get_all_id_masks(snap, family='dm')
+                )
             xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=id_masks['stars'], verbose=args.verbose)
             #determine the larger virial radius
             virial_radius, virial_mass = cmf.analysis.get_virial_info_of_each_galaxy(snap, xcom=xcom, masks=[id_masks['stars'], id_masks['dm']])
             virial_keys = list(virial_radius.keys())
-            if virial_radius[virial_keys[0]] > virial_radius[virial_keys[1]]:
+            if args.isolated:
                 args.radii *= virial_radius[virial_keys[0]]
             else:
-                args.radii *= virial_radius[virial_keys[1]]
+                if virial_radius[virial_keys[0]] > virial_radius[virial_keys[1]]:
+                    args.radii *= virial_radius[virial_keys[0]]
+                else:
+                    args.radii *= virial_radius[virial_keys[1]]
             #determine how to iterate over ball or shell
             if args.method == 'ball':
                 radii_to_mask = args.radii
@@ -156,6 +168,5 @@ ax[0].legend()
 ax[0].set_ylabel('b/a')
 ax[1].set_ylabel('c/a')
 ax[2].set_ylabel('Particle Count')
-plt.tight_layout()
-#plt.savefig('{}/{}.png'.format(args.savedir, savefile_name), dpi=300)
+plt.savefig('{}/{}.png'.format(args.savedir, savefile_name), dpi=300)
 plt.show()

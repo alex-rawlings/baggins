@@ -67,7 +67,7 @@ def write_parameters(values, filepath=None, verbose=True, allow_updates=()):
             if var[:2] != '__':
                 value = getattr(values, var)
                 #include any potential comments
-                line = re.search(r'\b{}\b.*'.format(var), contents)
+                line = re.search(r'^\b{}\b.*'.format(var), contents, flags=re.MULTILINE)
                 if line is not None:
                     #the variable exists in the parameter file
                     if var not in allow_updates:
@@ -80,12 +80,12 @@ def write_parameters(values, filepath=None, verbose=True, allow_updates=()):
                     else:
                         comment = ''
                     if isinstance(value, str):
-                        contents = re.sub(r'\b{}\b.*'.format(var), '{} = "{}"{}'.format(var, value, comment), contents)
+                        contents = re.sub(r'^\b{}\b.*'.format(var), '{} = "{}"{}'.format(var, value, comment), contents)
                     elif isinstance(value, np.ndarray):
                         value = np.array2string(value, precision=5, floatmode='maxprec', separator=',', sign='+')
-                        contents = re.sub(r'\b{}\b.*'.format(var), '{} = {}{}'.format(var, value, comment), contents)
+                        contents = re.sub(r'^\b{}\b.*'.format(var), '{} = {}{}'.format(var, value, comment), contents)
                     else:
-                        contents = re.sub(r'\b{}\b.*'.format(var), '{} = {:.5e}{}'.format(var, value, comment), contents)
+                        contents = re.sub(r'^\b{}\b.*'.format(var), '{} = {:.5e}{}'.format(var, value, comment), contents)
                 else:
                     #we are adding a new value to the parameter file
                     new_vars = True

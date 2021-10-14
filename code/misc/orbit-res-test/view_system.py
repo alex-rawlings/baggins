@@ -3,7 +3,7 @@ import matplotlib.patches as mplp
 import pygad
 import cm_functions as cmf
 
-snapfile = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/fiducial/0-001/Af-Cf-3.0-0.001.hdf5"
+snapfile = "/scratch/pjohanss/arawling/collisionless_merger/r0-test/A-C-5.0-0.001/A-C-5.0-0.001-L.hdf5"
 
 snap = pygad.Snapshot(snapfile)
 snap.to_physical_units()
@@ -15,16 +15,15 @@ virial_mass, virial_radius = cmf.analysis.get_virial_info_of_each_galaxy(snap, x
 
 print(virial_radius)
 
-linestyles = ['-', '--', ':']
+linestyles = ['-', '--', ':', '-.', '-', '--']
 fig, ax = plt.subplots(1,1)
 ax.set_facecolor('black')
 ax.set_title('DM Halo')
 _,ax,*_ = pygad.plotting.image(snap.dm, qty='mass', Npx=800, yaxis=2, fontsize=10, cbartitle='', scaleind='labels', ax=ax)
 for key, gal_com in xcom.items():
     #ax.scatter(gal_com[0], gal_com[2], c='tab:red')
-    for i in range(1, 4):
+    for i in range(1, 6):
         circle = mplp.Circle((gal_com[0], gal_com[2]), radius=i*virial_radius[key], fill=False, ec='red', ls=linestyles[i-1])
         ax.add_artist(circle)
-fig.tight_layout()
-plt.savefig("/users/arawling/figures/set_up.png", dpi=300)
+#plt.savefig("/users/arawling/figures/set_up.png", dpi=300)
 plt.show()
