@@ -19,8 +19,8 @@ file1 = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/x05/A05/A05.h
 file2 = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/x05/C05/C05.hdf5"
 saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/regen-test/"      #file will be saved to saveLocation/galaxyName_1-galaxyName_2-initialSeparation-pericentreDistance
 
-fileHigh1 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/NGCa0524/NGCa0524.hdf5"#output/NGCa0524_009.hdf5"            #file to regenerate IC from
-fileHigh2 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/NGCa3348/NGCa3348.hdf5"#output/NGCa3348_009.hdf5"             #file to regenerate IC from
+fileHigh1 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/triaxial/NGCa0524t/output/NGCa0524t_068_aligned.hdf5"       #file to regenerate IC from
+fileHigh2 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/triaxial/NGCa3348t/output/NGCa3348t_068_aligned.hdf5"       #file to regenerate IC from
 
 
 #---- orbital properties

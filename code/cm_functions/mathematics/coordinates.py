@@ -46,10 +46,14 @@ def spherical_components(R, v):
     r_ = R / r[:,np.newaxis]
     theta = np.arccos(r_[:,2])
     phi = np.arctan2(r_[:,1], r_[:,0])
-    theta_ = np.stack([np.cos(theta) * np.cos(phi),
-                        np.cos(theta) * np.sin(phi), 
-                        -np.sin(phi)], axis=-1)
-    phi_ = np.stack([-np.sin(phi), 
-                    np.cos(phi),
-                    np.zeros_like(phi)], axis=-1)
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+    cos_phi = np.cos(phi)
+    sin_phi = np.sin(phi)
+    theta_ = np.stack([cos_theta * cos_phi,
+                       cos_theta * sin_phi, 
+                       -sin_theta], axis=-1)
+    phi_ = np.stack([-sin_phi, 
+                     cos_phi,
+                     np.zeros_like(phi)], axis=-1)
     return np.sum(r_ * v, axis=-1), np.sum(theta_ * v, axis=-1), np.sum(phi_ * v, axis=-1)

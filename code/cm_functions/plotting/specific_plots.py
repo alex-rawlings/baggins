@@ -4,12 +4,13 @@ import matplotlib.pyplot as plt
 import scipy.stats
 import copy
 import pygad
+from ..general import convert_gadget_time
 
 
 __all__ = ["plot_galaxies_with_pygad", "plot_parameter_contours"]
 
 
-def plot_galaxies_with_pygad(snap, orientate=None, tight=False, extent=None, scaleind="labels", **kwargs):
+def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None):
     """
     Convenience routine for plotting a system with pygad, both stars and DM
 
@@ -20,10 +21,9 @@ def plot_galaxies_with_pygad(snap, orientate=None, tight=False, extent=None, sca
                can be either to an arbitrary vector, the angular momentum 
                "L", or the semiminor axis of the reduced intertia tensor
                "red I". If used, a shallow copy of the snapshot is created
-    tight: apply pyplot tight_layout() method
     extent: dict of extent values, with keys "stars" and "dm"
     scaleind: how to label the scale
-    **kwargs: other keyword arguments for the pygad plotting routine
+    kwargs: dict of other keyword arguments for the pygad plotting routine
 
     Returns
     -------
@@ -35,15 +35,27 @@ def plot_galaxies_with_pygad(snap, orientate=None, tight=False, extent=None, sca
         pygad.analysis.orientate_at(snap, orientate)
     if extent is None:
         extent = {"stars":None, "dm":None}
-    fig, ax = plt.subplots(2,2, figsize=(6, 6))
+    if kwargs is None:
+        kwargs = {"scaleind":"labels", "cbartitle":"", "Npx":800, "qty":"mass",
+                    "fontsize":10}
+    if figax is None:
+        fig, ax = plt.subplots(2,2, figsize=(6, 6))
+    else:
+        fig, ax = figax[0], figax[1]
+    ims = []
+    time = convert_gadget_time(snap, new_unit="Myr")
+    fig.suptitle("Time: {:.1f} Myr".format(time))
     ax[0,0].set_title("Stars")
     ax[0,1].set_title("DM Halo")
     for i in range(2):
-        _,ax[i,0],*_ = pygad.plotting.image(snap.stars, qty="mass", Npx=800, xaxis=0, yaxis=2-i, fontsize=10, cbartitle="", scaleind=scaleind, extent=extent["stars"], ax=ax[i,0], **kwargs)
-        _,ax[i,1],*_ = pygad.plotting.image(snap.dm, qty="mass", Npx=800, yaxis=2-i, fontsize=10, cbartitle="", scaleind=scaleind, extent=extent["dm"], ax=ax[i,1], **kwargs)
-    if tight:
-        plt.tight_layout()
-    return fig, ax
+        _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"], ax=ax[i,0], **kwargs)
+        _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"], ax=ax[i,1], **kwargs)
+        ims.append(imstars)
+        ims.append(imdm)
+    if return_ims:
+        return fig, ax, ims
+    else:
+        return fig, ax
 
 
 def plot_parameter_contours(ax, fun, xvals, yvals, init_lims, data_err=None, args=(), numPoints=350, repeats=1, slope=1.2, sigma_level=3):

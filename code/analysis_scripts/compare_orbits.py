@@ -14,7 +14,7 @@ parser.add_argument("-sd", "--subdir", type=str, help="name of subdirectory", de
 parser.add_argument("-ld", "--loopdir", type=str, help="directories to loop over", dest="loopdir", action="extend", nargs="+")
 parser.add_argument("-ldf", "--loopdirfirst", help="loop directory before subdirectory?", dest="loopdirfirst", action="store_true")
 parser.add_argument("-od", "--outputdir", type=str, help="directory containing snapshots", dest="outputdir", default="output")
-parser.add_argument("-fd", "--figdir", type=str, help="directory for figures", dest="figdir", default="/users/arawling/figures/")
+parser.add_argument("-fd", "--figdir", type=str, help="directory for figures", dest="figdir", default=cmf.FIGDIR)
 parser.add_argument("-rc", "--relcomp", help="compare relative difference in orbits?", dest="relcomp", action="store_true")
 parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", help="verbose printing in script")
 args = parser.parse_args()

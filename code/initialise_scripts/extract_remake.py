@@ -21,9 +21,14 @@ assert pfv.regeneration
 #first get a list of all snapshots
 snap_path = os.path.join(pfv.saveLocation, "output/")
 snap_files = cmf.utils.get_snapshots_in_dir(snap_path)
-# TODO need to rename bh file to prevent overwriting
+#rename bh file to prevent overwriting
 bh_file = os.path.join(snap_path, "ketju_bhs.hdf5")
-bh1, bh2 = ketjugw.data_input.load_hdf5(bh_file).values()
+bh_file_L = os.path.join(snap_path, "ketju_bhs_L.hdf5")
+if not os.path.exists(bh_file_L):
+    os.rename(bh_file, bh_file_L)
+else:
+    raise OSError("Target file {} already exists!".format(bh_file_L))
+bh1, bh2 = ketjugw.data_input.load_hdf5(bh_file_L).values()
 #determine which snap to extract
 pericentre_times, peri_idx = cmf.analysis.find_pericentre_time(bh1, bh2)
 snap_to_extract = cmf.analysis.snap_num_for_time(snap_files, pericentre_times[0])
@@ -57,5 +62,6 @@ if args.plot:
     snap = pygad.Snapshot(highres_name)
     snap.to_physical_units()
     cmf.plotting.plot_galaxies_with_pygad(snap, extent={"stars":400, "dm":5000})
-    #plt.savefig('{}.png'.format(save_file_as.split('.')[0]), dpi=300)
+    figname = os.path.join(cmf.FIGDIR, "regen/{}{}H.png".format(pfv.galaxyName1, pfv.galaxyName2))
+    plt.savefig(figname)
     plt.show()

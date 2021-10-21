@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pygad
 import cm_functions as cmf
 
-parser = cmf.utils.argparse_for_initialise(description='View the initial conditions or snapshot.', allow_abbrev=False)
+parser = cmf.utils.argparse_for_initialise(description='View the initial conditions or snapshot.')
 parser.add_argument("-s", "--snap", help="view an arbitrary snapshot",action="store_true", dest="snapview")
 parser.add_argument("-V", "--View", help="view the snapshot", action="store_true", dest="view")
 parser.add_argument("-o", "--orientate", help="orientate the galaxy", dest="orientate", choices=["ri", "L"], default=None)
