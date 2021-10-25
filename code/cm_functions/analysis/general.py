@@ -57,8 +57,6 @@ def beta_profile(r, vr, vtheta, vphi, binwidth, qcut=0.98, logbin=True, eps=1e-1
     return beta, bin_centres, bincounts
 
 
-
-
 def snap_num_for_time(snaplist, time_to_find, units="Myr", verbose=False):
     """
     Determine the last snapshot number before the given time. May result in the

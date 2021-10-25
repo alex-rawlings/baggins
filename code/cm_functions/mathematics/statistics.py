@@ -1,11 +1,46 @@
+from matplotlib.pyplot import axis
 import numpy as np
 import scipy.stats
 
 
-__all__ = ['stat_interval', 'vertical_RMSE']
+__all__ = ["smooth_bootstrap", "stat_interval", "vertical_RMSE"]
 
 
-def stat_interval(x, y, xnew, type='conf', conf_lev=0.68):
+def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std):
+    """
+    Perform a smooth bootstrap resampling to estimate a statistic
+
+    Parameters
+    ----------
+    data: array of data values to bootstrap. Accepts a (m,n) array, in which 
+          case each column is bootstrapped independently
+    number_resamples: number of resamples to perform
+    sigma: spread in the smoothing random variable. Default is SE/sqrt(m), where
+           m is the number of rows and SE is the standard error of the sample
+    statistic: function whose statistic is to be estimated
+
+    Returns
+    -------
+    bootstrap_stat: (number_resamples, n) array of statistic estimate at each
+                    iteration
+    means: mean of each statistic estimate
+    """
+    number_resamples = int(number_resamples)
+    if sigma is None:
+        sigma = 2*np.std(data, axis=0) / np.sqrt(data.shape[0])
+    bootstrap_stat = np.full((number_resamples, data.shape[-1]), np.nan)
+    rng = np.random.default_rng()
+    for i in range(number_resamples):
+        #print("Bootstrapping {:.2f}% complete           ".format(i/(number_resamples-1)*100), end="\r")
+        #resample data columnwise
+        resampled_data = rng.choice(data, data.shape[0], replace=True, axis=0)
+        bootstrap_data = rng.normal(resampled_data, sigma)
+        bootstrap_stat[i, :] = statistic(bootstrap_data, axis=0)
+    print("Bootstrap complete                                ")
+    return bootstrap_stat, np.mean(bootstrap_stat, axis=0)
+
+
+def stat_interval(x, y, xnew, type="conf", conf_lev=0.68):
     """
     Determine either a confidence or prediction interval given some data. The
     approach follows that of "Mathematical Statistics (Wackerly) 7ed pg 595".
@@ -39,9 +74,9 @@ def stat_interval(x, y, xnew, type='conf', conf_lev=0.68):
     #this is the part from the model
     part_1 = intercept + slope * xnew
     #and below this is the part from the error estimate
-    if type == 'conf':
+    if type == "conf":
         part_2 = tstat * np.std(y) * np.sqrt(1/n + (xnew-x_avg)**2/Sxx)
-    elif type == 'pred':
+    elif type == "pred":
         part_2 = tstat * np.std(y) * np.sqrt(1 + 1/n + (xnew-x_avg)**2/Sxx)
     else:
         raise ValueError("type must be conf or pred!")

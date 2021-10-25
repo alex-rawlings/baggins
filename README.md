@@ -1,4 +1,4 @@
-# Collisionless Merger Sample #  
+# Collisionless Merger Sample  
 
 ## What is this repository for?  
 * Initialisation, analysis, and presentation of a large sample of 
@@ -34,7 +34,7 @@ in `./code/analysis_scripts`:
     - `inertia_analysis.py`, and
     - `beta_profile.py`  
 3. Align the galaxy with the reduced inertia tensor semiminor axis using 
-`align_galaxy.py` in `./code/analysis_scripts`
+`align_galaxy.py` in `./code/analysis_scripts`  
 4. Concurrently, obtain the centre of mass motions of the system at 
 large separations using the low mass realisations of the galaxies by 
 running this merger as a standard simulation. Orbital configurations are 
@@ -43,10 +43,10 @@ parameters-mergers/`.
 5. A high mass resolution system can then be generated as a combination 
 of the low mass resolution centre of mass motions, and the stabilised 
 high mass resolution galaxy, by running `extract_remake.py` for the 
-corresponding parameter file in `./parameters/parameters-mergers/`.
+corresponding parameter file in `./parameters/parameters-mergers/`.  
 6. The high mass resolution can then be started as if it were a new 
-simulation. 
-7. When to switch on Ketju???
+simulation.  
+7. When to switch on Ketju???  
 8. Analyse key properties of the remnant system and SMBH dynamics using 
 the provided scripts in `./code/analysis_scripts`.
 
