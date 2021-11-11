@@ -17,10 +17,11 @@ galaxyName2 = "C"                       #galaxy 2 name
 #--- file location
 file1 = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/x05/A05/A05.hdf5"
 file2 = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/x05/C05/C05.hdf5"
-saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/regen-test/"      #file will be saved to saveLocation/galaxyName_1-galaxyName_2-initialSeparation-pericentreDistance
+saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/regen-test/original/"      #file will be saved to saveLocation/galaxyName_1-galaxyName_2-initialSeparation-pericentreDistance
 
-fileHigh1 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/triaxial/NGCa0524t/output/NGCa0524t_068_aligned.hdf5"       #file to regenerate IC from
-fileHigh2 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/triaxial/NGCa3348t/output/NGCa3348t_068_aligned.hdf5"       #file to regenerate IC from
+fileHigh1 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/triaxial/NGCa0524t/output/NGCa0524t_059_aligned.hdf5"       #file to regenerate IC from
+fileHigh2 = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/triaxial/NGCa3348t/output/NGCa3348t_037_aligned.hdf5"       #file to regenerate IC from
+saveLocationHigh = "/scratch/pjohanss/arawling/collisionless_merger/regen-test/recentred-new/high-softening"      #file will be saved to saveLocation/galaxyName_1-galaxyName_2-initialSeparation-pericentreDistance
 
 
 #---- orbital properties

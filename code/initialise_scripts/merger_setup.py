@@ -33,6 +33,7 @@ if "virial" in pfv.initialSeparation:
     pfv.r0 = r0_frac * pfv.virial_radius
 else:
     raise NotImplementedError
+assert pfv.r0 > 0
 
 if "virial" in pfv.pericentreDistance:
     rperi_frac = float(pfv.pericentreDistance[6:])
@@ -45,8 +46,13 @@ pfv.e = cmf.initialise.e_from_rperi(pfv.rperi/pfv.virial_radius)
 
 merger = mg.Merger(galaxy1, galaxy2, pfv.r0, pfv.rperi, e=pfv.e)
 pfv.time_to_pericenter = merger.time_to_pericenter
-if pfv.regeneration:
-    suffix = "-L"
+#this is left in for compatability with resolution-switching
+#which doesn't work, so this is a bit redundant
+if hasattr(pfv, "regeneration"):
+    if pfv.regeneration:
+        suffix = "-L"
+    else:
+        suffix = ""
 else:
     suffix = ""
 save_path = os.path.join(pfv.saveLocation, "{}-{}-{}-{}".format(pfv.galaxyName1, pfv.galaxyName2, r0_frac, rperi_frac))

@@ -2,7 +2,10 @@ import numpy as np
 import scipy.linalg
 import pygad
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy']
+from . import masks as masks
+from . import orbit as orbit
+
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian"]
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars'):
@@ -163,3 +166,77 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
     for key, this_com in xcom.items():
         virial_radius[key], virial_mass[key] = pygad.analysis.virial_info(snap[masks[key]], center=this_com)
     return virial_radius, virial_mass
+
+
+def calculate_Hamiltonian(snap, chunk=1e5):
+    """
+    Determine the total Hamiltonian of a system. Requires that ketju has been
+    compiled with the:
+        OUTPUTPOTENTIAL
+    flag (so that the potential is saved to the snapshots)
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    chunk: perform summation in chunks of this size for efficiency
+
+    Returns
+    -------
+    total energy (the Hamiltonian)
+    """
+    chunk = int(chunk)
+    total_N = snap["pos"].shape[0]
+    KE = 0
+    PE = 0
+    for start in range(0, total_N, chunk):
+        end = min(start+chunk, total_N)
+        vel_mag = orbit.radial_separation(snap["vel"][start:end])
+        vel_mag = pygad.UnitArr(vel_mag, "km/s")
+        KE += np.sum(0.5 * snap["mass"][start:end]*vel_mag**2)
+        PE += np.sum(snap["pot"][start:end]*snap["mass"][start:end])
+    return KE+PE
+
+
+############################################
+########## DISCONTINUED FUNCTIONS ##########
+############################################
+
+def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start":1e-6, "stop":500, "num":20}, family="stars", Gcom_kw={"initial_radius":10, "min_particle_count":10}, verbose=True):
+    """
+    Determine the CoM motions within concentric shells, as opposed 
+    to a global CoM motion value
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    family: particle family to analyse
+
+    Returns
+    -------
+
+    """
+    if separate_galaxies:
+        #mask the particles as belonging to one of two progenitors
+        id_masks = masks.get_all_id_masks(snap, family=family)
+    else:
+        subsnap = getattr(snap, family)
+        id_masks = {snap.bh["ID"][0]: pygad.IDMask(subsnap["ID"])}
+    xcoms = dict()
+    vcoms = dict()
+    for k in id_masks.keys():
+        xcoms[k] = np.full((shell_kw["num"], 3), np.nan)
+        vcoms[k] = np.full((shell_kw["num"], 3), np.nan)
+    global_xcom = get_com_of_each_galaxy(snap, family=family, verbose=verbose, masks=id_masks, **Gcom_kw)
+    shell_radii = np.geomspace(**shell_kw)
+    #iterate over each shell
+    for i, (r_inner, r_outer) in enumerate(zip(
+        shell_radii[:-1], shell_radii[1:]
+    )):
+        #mask particles to this shell
+        radial_mask = masks.get_all_radial_masks(snap, (r_inner, r_outer), centre=global_xcom, id_masks=id_masks, family=family)
+        #compute CoM motions for shell using mass-weighted means
+        for bhid in id_masks.keys():
+            xcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="pos")
+            vcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="vel")
+    #we now have datasets with CoM motion as a function of radius
+    #interpolate the results

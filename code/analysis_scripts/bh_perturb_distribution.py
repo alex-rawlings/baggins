@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 import pygad
 import cm_functions as cmf
 
@@ -28,8 +29,10 @@ if args.new:
         diff_v[ind, :] = list(vcom.values())[0] - snap.bh["vel"]
         snap.delete_blocks()
     data_dict = {"diff_x":diff_x, "diff_v":diff_v}
-    # TODO: make this dynamic
-    cmf.utils.save_data(data_dict, "perturb.pickle")
+    savepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pickle/bh_perturb")
+    os.makedirs(savepath, exist_ok=True)
+    savefile = os.path.join(savepath, "{}_bhperturb.pickle".format(args.path.rstrip("/").split("/")[-2]))
+    cmf.utils.save_data(data_dict, savefile)
 else:
     data_dict = cmf.utils.load_data("perturb.pickle")
 
@@ -43,9 +46,10 @@ labvals = ["x", "y", "z", "vx", "vy", "vz"]
 ax = np.concatenate(ax.T)
 for i in range(6):
     ax[i].hist(samples[:,i], density=True)
-    ax[i].axvline(means[i], c="tab:red")
-    ax[i].axvline(np.std(data_array[:,i]), c="tab:orange")
+    ax[i].axvline(means[i], c="tab:red", label=("BS" if i==0 else ""))
+    ax[i].axvline(np.std(data_array[:,i]), c="tab:orange", label=("Obs." if i==0 else ""))
     ax[i].text(0.1, 0.9, labvals[i], transform=ax[i].transAxes)
+ax[0].legend()
 plt.show()
 """
 diff_x, diff_v = data_dict.values()

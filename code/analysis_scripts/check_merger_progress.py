@@ -12,7 +12,7 @@ args = parser.parse_args()
 
 #copy file so it can be read
 filename, fileext = os.path.splitext(args.file)
-new_filename = "{}_cp.{}".format(filename, fileext)
+new_filename = "{}_cp{}".format(filename, fileext)
 shutil.copyfile(args.file, new_filename)
 
 myr = ketjugw.units.yr * 1e6

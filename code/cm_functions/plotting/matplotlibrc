@@ -608,16 +608,16 @@ savefig.directory   :         # default directory in savefig dialog box,
 # Control location of examples data files
 #examples.directory : ''   # directory to look in for custom installation
 
-###ANIMATION settings
+##ANIMATION settings
 #animation.html : 'none'           # How to display the animation as HTML in
                                    # the IPython notebook. 'html5' uses
                                    # HTML5 video tag.
-#animation.writer : ffmpeg         # MovieWriter 'backend' to use
+animation.writer : ffmpeg         # MovieWriter 'backend' to use
 #animation.codec : h264            # Codec to use for writing movie
 #animation.bitrate: -1             # Controls size/quality tradeoff for movie.
                                    # -1 implies let utility auto-determine
-#animation.frame_format: 'png'     # Controls frame format used by temp files
-#animation.ffmpeg_path: 'ffmpeg'   # Path to ffmpeg binary. Without full path
+animation.frame_format: png     # Controls frame format used by temp files
+animation.ffmpeg_path: /projappl/pjohanss/ffmpeg-git-20211029-amd64-static/ffmpeg   # Path to ffmpeg binary. Without full path
                                    # $PATH is searched
 #animation.ffmpeg_args: ''         # Additional arguments to pass to ffmpeg
 #animation.avconv_path: 'avconv'   # Path to avconv binary. Without full path

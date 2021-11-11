@@ -23,12 +23,17 @@ snap_path = os.path.join(pfv.saveLocation, "output/")
 snap_files = cmf.utils.get_snapshots_in_dir(snap_path)
 #rename bh file to prevent overwriting
 bh_file = os.path.join(snap_path, "ketju_bhs.hdf5")
-bh_file_L = os.path.join(snap_path, "ketju_bhs_L.hdf5")
+#at this stage, let's assume the low res run will be in a different directory
+#to the high res run, so there is no need to rename the low res BH output
+"""bh_file_L = os.path.join(snap_path, "ketju_bhs_L.hdf5")
 if not os.path.exists(bh_file_L):
-    os.rename(bh_file, bh_file_L)
+    try:
+        os.rename(bh_file, bh_file_L)
+    except FileNotFoundError:
+        pass
 else:
-    raise OSError("Target file {} already exists!".format(bh_file_L))
-bh1, bh2 = ketjugw.data_input.load_hdf5(bh_file_L).values()
+    raise OSError("Target file {} already exists!".format(bh_file_L))"""
+bh1, bh2 = ketjugw.data_input.load_hdf5(bh_file).values()
 #determine which snap to extract
 pericentre_times, peri_idx = cmf.analysis.find_pericentre_time(bh1, bh2)
 snap_to_extract = cmf.analysis.snap_num_for_time(snap_files, pericentre_times[0])
@@ -36,11 +41,17 @@ if args.verbose:
     print("Extracting from snap: {}".format(snap_files[snap_to_extract]))
 snap = pygad.Snapshot(snap_files[snap_to_extract])
 snap.to_physical_units()
+#we need to transform the system to its global com
+global_xcom = pygad.analysis.mass_weighted_mean(snap.stars, "pos")
+global_vcom = pygad.analysis.mass_weighted_mean(snap.stars, "vel")
+print(global_xcom, global_vcom)
+snap["pos"] -= global_xcom
+snap["vel"] -= global_vcom
 #get the ID mask
 star_id_masks = cmf.analysis.get_all_id_masks(snap)
 #get the CoM positions and velocities
 xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, verbose=args.verbose)
-vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=star_id_masks, verbose=args.verbose)
+vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=star_id_masks, verbose=args.verbose, min_particle_count=1e5)
 if args.verbose:
     print("CoM positions: \n  {}".format(xcom.values()))
     print("CoM velocities: \n  {}".format(vcom.values()))
@@ -50,7 +61,7 @@ ordered_bh_key.sort()
 system1 = mg.SnapshotSystem(pfv.fileHigh1)
 system2 = mg.SnapshotSystem(pfv.fileHigh2)
 highres_system = mg.TwoBodySystem(system1, system2, xcom[ordered_bh_key[0]].view(np.ndarray), xcom[ordered_bh_key[1]].view(np.ndarray), vcom[ordered_bh_key[0]].view(np.ndarray), vcom[ordered_bh_key[1]].view(np.ndarray))
-highres_name = os.path.join(pfv.saveLocation, "{}{}H.hdf5".format(pfv.galaxyName1, pfv.galaxyName2))
+highres_name = os.path.join(pfv.saveLocationHigh, "{}{}H.hdf5".format(pfv.galaxyName1, pfv.galaxyName2))
 if args.verbose:
     print("Writing new file: {}".format(highres_name))
 mg.write_hdf5_ic_file(highres_name, highres_system)

@@ -10,7 +10,7 @@ from ..general import convert_gadget_time
 __all__ = ["plot_galaxies_with_pygad", "plot_parameter_contours"]
 
 
-def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None):
+def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
     """
     Convenience routine for plotting a system with pygad, both stars and DM
 
@@ -21,7 +21,9 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
                can be either to an arbitrary vector, the angular momentum 
                "L", or the semiminor axis of the reduced intertia tensor
                "red I". If used, a shallow copy of the snapshot is created
-    extent: dict of extent values, with keys "stars" and "dm"
+    extent: dict of dicts with extent values with top-layer keys
+            "stars" and "dm", and second-layer keys "xz" and "xy", 
+            e.g. extent["stars"]["xz"] = 100
     scaleind: how to label the scale
     kwargs: dict of other keyword arguments for the pygad plotting routine
 
@@ -34,10 +36,13 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
         snap = copy.copy(snap)
         pygad.analysis.orientate_at(snap, orientate)
     if extent is None:
-        extent = {"stars":None, "dm":None}
+        extent = {"stars":{"xz":None, "xy":None}, "dm":{"xz":None, "xy":None}}
+    default_kwargs = {"scaleind":"labels", "cbartitle":"", "Npx":800, 
+                      "qty":"mass", "fontsize":10}
     if kwargs is None:
-        kwargs = {"scaleind":"labels", "cbartitle":"", "Npx":800, "qty":"mass",
-                    "fontsize":10}
+        kwargs = default_kwargs
+    elif kwargs is not None and append_kwargs:
+        kwargs = {**default_kwargs, **kwargs} #append some extra kwargs
     if figax is None:
         fig, ax = plt.subplots(2,2, figsize=(6, 6))
     else:
@@ -47,9 +52,9 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
     fig.suptitle("Time: {:.1f} Myr".format(time))
     ax[0,0].set_title("Stars")
     ax[0,1].set_title("DM Halo")
-    for i in range(2):
-        _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"], ax=ax[i,0], **kwargs)
-        _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"], ax=ax[i,1], **kwargs)
+    for i, proj in enumerate(("xz", "xy")):
+        _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"][proj], ax=ax[i,0], **kwargs)
+        _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"][proj], ax=ax[i,1], **kwargs)
         ims.append(imstars)
         ims.append(imdm)
     if return_ims:
