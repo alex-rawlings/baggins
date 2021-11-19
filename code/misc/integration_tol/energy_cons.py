@@ -13,7 +13,7 @@ def calculate_H(s, chunk=1e5):
     PE = 0
     for start in range(0, total_N, chunk):
         end = min(start+chunk, total_N)
-        vel_mag = cmf.analysis.radial_separation(s["vel"][start:end])
+        vel_mag = cmf.mathematics.radial_separation(s["vel"][start:end])
         vel_mag = pygad.UnitArr(vel_mag, "km/s")
         KE += np.sum(0.5 * s["mass"][start:end]*vel_mag**2)
         PE += np.sum(s["pot"][start:end]*s["mass"][start:end])

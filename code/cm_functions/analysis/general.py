@@ -9,15 +9,15 @@ from ..mathematics import get_histogram_bin_centres
 __all__ = ["beta_profile", "snap_num_for_time"]
 
 
-def beta_profile(r, vr, vtheta, vphi, binwidth, qcut=0.98, logbin=True, eps=1e-16):
+def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
     """
     Determine the beta profile as defined in B&T Eq. 4.61
     
     Parameters
     ----------
     r: array of radial positions
-    vr, vtheta, vphi: arrays of length n of the spherical velocity
-                      components
+    vspherical: (n,3) array  the spherical velocity components, with columns
+                corresponding to radius, theta, and phi velocities
     nbins: number of bins to bin radial values into
     qcut: remove those particles which are greater than qcut quantile 
           (e.g. those few particles that are very far away)
@@ -34,16 +34,14 @@ def beta_profile(r, vr, vtheta, vphi, binwidth, qcut=0.98, logbin=True, eps=1e-1
     if qcut < 1:
         mask = r < np.quantile(r, qcut)
         r = r[mask]
-        vr = vr[mask]
-        vtheta = vtheta[mask]
-        vphi = vphi[mask]
+        vspherical[mask, :]
     #determine the bins -> used fixed binwidths
     if logbin:
         bins = 10**np.arange(-3, np.log10(np.max(r))+binwidth, binwidth)
     else:
         bins = np.arange(0, np.max(r)+binwidth, binwidth)
     #bin the statistics
-    standard_devs, bin_edges, binnumbers = scipy.stats.binned_statistic(r, [vr, vtheta, vphi], statistic="std", bins=bins)
+    standard_devs, bin_edges, binnumbers = scipy.stats.binned_statistic(r, [vspherical[:,0], vspherical[:,1], vspherical[:,2]], statistic="std", bins=bins)
     #mask out nan values
     nanmask = ~np.any(np.isnan(standard_devs), axis=0)
     standard_devs = standard_devs[:, nanmask]

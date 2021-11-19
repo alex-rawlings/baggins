@@ -9,6 +9,8 @@ Helsinki Theoretical Astrophyiscs Group
 1. Add the path to `./code/cm_functions` to the `PYTHONPATH` variable in 
 your `~/.bashrc` profile to load the necessary functions as a normal 
 module  
+2. The required python packages are given in the file `./code/requirements.txt`.
+To install the required packages: `python -m pip install -r requirements.txt`
 
 ## Directory Organisation  
 * all code (functions, scripts, classes, etc.) required to perform the 

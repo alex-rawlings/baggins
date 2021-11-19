@@ -3,7 +3,7 @@ import scipy.linalg
 import pygad
 
 from . import masks as masks
-from . import orbit as orbit
+from ..mathematics import radial_separation
 
 __all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian"]
 
@@ -190,7 +190,7 @@ def calculate_Hamiltonian(snap, chunk=1e5):
     PE = 0
     for start in range(0, total_N, chunk):
         end = min(start+chunk, total_N)
-        vel_mag = orbit.radial_separation(snap["vel"][start:end])
+        vel_mag = radial_separation(snap["vel"][start:end])
         vel_mag = pygad.UnitArr(vel_mag, "km/s")
         KE += np.sum(0.5 * snap["mass"][start:end]*vel_mag**2)
         PE += np.sum(snap["pot"][start:end]*snap["mass"][start:end])

@@ -31,7 +31,7 @@ for ind, snapfile in enumerate(snapfiles):
         snap["vel"] -= vcom
         subsnap = snap[id_mask]
         bins = np.arange(0, np.max(subsnap["r"]), bin_width)
-        vel_magnitudes = cmf.analysis.radial_separation(subsnap["vel"])
+        vel_magnitudes = cmf.mathematics.radial_separation(subsnap["vel"])
         particles_per_bin,*_ = np.histogram(subsnap["r"], bins=bins)
         mean_vel_per_bin, bin_edges, *_ = scipy.stats.binned_statistic(subsnap["r"], vel_magnitudes, statistic="mean", bins=bins)
         sd_vel_per_bin, bin_edges, *_ = scipy.stats.binned_statistic(subsnap["r"], vel_magnitudes, statistic="std", bins=bins)

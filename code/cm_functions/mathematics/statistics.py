@@ -1,12 +1,11 @@
-from matplotlib.pyplot import axis
 import numpy as np
 import scipy.stats
 
 
-__all__ = ["smooth_bootstrap", "stat_interval", "vertical_RMSE"]
+__all__ = ["smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
 
 
-def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std):
+def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, rng=None):
     """
     Perform a smooth bootstrap resampling to estimate a statistic
 
@@ -18,6 +17,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std):
     sigma: spread in the smoothing random variable. Default is SE/sqrt(m), where
            m is the number of rows and SE is the standard error of the sample
     statistic: function whose statistic is to be estimated
+    rng: numpy random number generator. If not given, a new RNG is created
 
     Returns
     -------
@@ -29,7 +29,8 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std):
     if sigma is None:
         sigma = 2*np.std(data, axis=0) / np.sqrt(data.shape[0])
     bootstrap_stat = np.full((number_resamples, data.shape[-1]), np.nan)
-    rng = np.random.default_rng()
+    if rng is None:
+        rng = np.random.default_rng()
     for i in range(number_resamples):
         print("Bootstrapping {:.2f}% complete           ".format(i/(number_resamples-1)*100), end="\r")
         #resample data columnwise
@@ -83,6 +84,27 @@ def stat_interval(x, y, xnew, type="conf", conf_lev=0.68):
     upper = part_1 + part_2
     lower = part_1 - part_2
     return upper, lower
+
+
+def uniform_sample_sphere(n, rng=None):
+    """
+    Uniformly sample points on the unit sphere.
+
+    Parameters
+    ----------
+    n: number of points
+    rng: numpy random number generator object. If not given, a new RNG is 
+         created
+    
+    Returns
+    -------
+    theta, phi: angular coordinates of points
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+    theta = np.arccos(2*rng.uniform(size=n)-1)
+    phi = 2 * np.pi * rng.uniform(size=n)
+    return theta, phi
 
 
 def vertical_RMSE(x, y, return_linregress=False):

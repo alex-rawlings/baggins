@@ -1,9 +1,9 @@
 import numpy as np
 import scipy.spatial.distance, scipy.signal
 import ketjugw.units
+from ..mathematics import radial_separation
 
-
-__all__ = ["find_pericentre_time", "radial_separation"]
+__all__ = ["find_pericentre_time"]
 
 #common units
 myr = 1e6 * ketjugw.units.yr
@@ -36,20 +36,3 @@ def find_pericentre_time(bh1, bh2, height=-10, return_sep=False, **kwargs):
         return bh1.t[peak_idxs]/myr, peak_idxs, sep
     else:
         return bh1.t[peak_idxs]/myr, peak_idxs
-
-
-def radial_separation(p1, p2=0):
-    """
-    Determine the radial separation between two particles using scipy.spatial
-    function cdist. Note that no unit conversions are performed.
-
-    Parameters
-    ----------
-    p1: array of particle 1 position coordinates
-    p2: array of particle 2 position coordinates
-
-    Returns
-    -------
-    radial separation between particles
-    """
-    return scipy.spatial.distance.cdist(p1-p2, [[0]*p1.shape[-1]]).ravel()

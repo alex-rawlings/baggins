@@ -15,11 +15,11 @@ module restore py386
 #python ./inertia_analysis.py "/scratch/pjohanss/arawling/collisionless_merger/regen-test/original/output" -v -n -f stars
 
 case $SLURM_ARRAY_TASK_ID in
-	0) oc=("NGCa0524" "NGCa2986") ;;
-	1) oc=("NGCa3348" "NGCa3607" "NGCa4291") ;;
+	0) oc=("NGCa0524" "NGCa3348" "NGCa3607") ;;
+	1) oc=("NGCa4291" "NGCa2986") ;;
 esac
 
 for i in ${oc[@]}
 do
-    python ./inertia_analysis.py "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/starsoft10pc/$i/output" -v -n -i -f stars 
+    python ./bh_perturb_distribution.py "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/starsoft10pc/$i/output" -n 
 done

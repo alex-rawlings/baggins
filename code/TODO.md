@@ -4,3 +4,7 @@
   tailored reading in of data (maybe include a new submodule for this?)  
 * Other separation and pericentre distances for merger_setup.py  
 * Script to set up simulation data directory  
+* Updating legacy numpy.random.seed() functions (in galaxy_gen.py), which will
+  require updating the merger-ic-generator  
+* Package dependencies available via requirements.txt, but not sure how pygad
+  installed with pip will be affected?

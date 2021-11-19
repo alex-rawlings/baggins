@@ -25,8 +25,12 @@ np.random.seed(galaxy.general.seed)
 
 if pfv.BH_spin_from == 'zlochower_dry':
     bh_spin_params = cmf.literature.zlochower_dry_spins
+elif pfv.BH_spin_from == 'zlochower_hot':
+    bh_spin_params = cmf.literature.zlochower_hot_spins
+elif pfv.BH_spin_from == 'zlochower_cold':
+    bh_spin_params = cmf.literature.zlochower_cold_spins
 else:
-    raise NotImplementedError('Dry Spins only implemented currently')
+    raise NotImplementedError('Spins from Zlochower+Lousto only implemented currently')
 
 
 #set SMBH spin

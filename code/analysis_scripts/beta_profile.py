@@ -68,8 +68,8 @@ for i, snapfile in enumerate(snapfiles):
         else:
             subsnap = snap.stars[star_id_masks[idx]]
         #determine spherical velocity and beta
-        vr, vtheta, vphi = cmf.mathematics.spherical_components(subsnap["pos"], subsnap["vel"])
-        beta_r, radbins, bincount = cmf.analysis.beta_profile(subsnap["r"], vr, vtheta, vphi, args.binwidth)
+        vspherical = cmf.mathematics.spherical_components(subsnap["pos"], subsnap["vel"])
+        beta_r, radbins, bincount = cmf.analysis.beta_profile(subsnap["r"], vspherical, args.binwidth)
         this_lower_beta = np.quantile(beta_r, plot_quantile_min)
         if this_lower_beta < lower_beta:
             lower_beta = this_lower_beta

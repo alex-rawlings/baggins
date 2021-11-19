@@ -56,6 +56,7 @@ if hasattr(pfv, "regeneration"):
 else:
     suffix = ""
 save_path = os.path.join(pfv.saveLocation, "{}-{}-{}-{}".format(pfv.galaxyName1, pfv.galaxyName2, r0_frac, rperi_frac))
+pfv.full_save_location = save_path
 os.makedirs(save_path, exist_ok=True)
 save_file_as = "{}/{}-{}-{}-{}{}.hdf5".format(save_path, pfv.galaxyName1, pfv.galaxyName2, r0_frac, rperi_frac, suffix)
 
