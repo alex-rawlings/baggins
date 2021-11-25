@@ -2,7 +2,7 @@ import pickle
 import os
 
 
-__all__ = ['save_data', 'load_data', 'get_snapshots_in_dir']
+__all__ = ['save_data', 'load_data', 'get_snapshots_in_dir', "get_ketjubhs_in_dir"]
 
 
 # TODO: not memory efficient to be using dicts for data
@@ -58,3 +58,25 @@ def get_snapshots_in_dir(path, ext='.hdf5'):
                 snap_files.append(entry.path)
     snap_files.sort()
     return snap_files
+
+
+def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
+    """
+    Get a list of the full-path name of all ketju BH data files within a 
+    directory.
+
+    Parameters
+    ----------
+    path: host directory of ketju bh files
+
+    Returns
+    -------
+    bh_files: alphabetically-sorted list of ketju bh files
+    """
+    bh_files = []
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            if f == file_name:
+                bh_files.append(os.path.join(root, f))
+    bh_files.sort()
+    return bh_files

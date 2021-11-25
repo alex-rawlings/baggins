@@ -1,25 +1,7 @@
 import numpy as np
-import scipy.spatial.distance
+from .geometry import radial_separation
 
 __all__ = ["project_orthogonal", "set_spherical_basis", "spherical_components", "radial_separation", "cartesian_components", "convert_cartesian_to_spherical", "convert_spherical_to_cartesian"]
-
-
-def radial_separation(p1, p2=0):
-    """
-    Determine the radial separation between two particles using scipy.spatial
-    function cdist. Note that no unit conversions are performed.
-
-    Parameters
-    ----------
-    p1: array of particle 1 position coordinates
-    p2: array of particle 2 position coordinates
-
-    Returns
-    -------
-    radial separation between particles
-    """
-    p1 = np.atleast_2d(p1)
-    return scipy.spatial.distance.cdist(p1-p2, [[0]*p1.shape[-1]]).ravel()
 
 
 def project_orthogonal(vec, proj_vec=None):

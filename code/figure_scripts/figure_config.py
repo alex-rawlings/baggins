@@ -7,7 +7,7 @@ this_dir = os.path.dirname(os.path.realpath(__file__))
 raw_data_dir = '/scratch/pjohanss/arawling/collisionless-merger/'
 processed_data_dir = '../../data/'
 figure_dir = os.path.abspath(os.path.join(this_dir, '../figures/'))
-figure_data_dir =  os.path.abspath(os.path.join(data_dir, 'figure_data/'))
+#figure_data_dir =  os.path.abspath(os.path.join(data_dir, 'figure_data/'))
 
 #allow importing common analysis scripts/modules
 #sys.path.append(os.path.abspath(os.path.join(this_dir, '../analysis_scripts')))

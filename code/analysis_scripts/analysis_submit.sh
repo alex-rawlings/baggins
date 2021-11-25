@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH --job-name=inertia
+#SBATCH --job-name=analysis
 #SBATCH --account=pjohanss
 #SBATCH --time=6:00:00
 #SBATCH --partition=interactive

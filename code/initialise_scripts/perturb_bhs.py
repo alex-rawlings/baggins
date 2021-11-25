@@ -52,7 +52,7 @@ for bhid in perturb_dict.keys():
         crd_dict[bhid] = cmf.mathematics.convert_spherical_to_cartesian(rtp) + com_crd[bhid]
 
 #set up children directories and ICs
-perturb_dir = os.path.join(pfv.full_save_location, "perturbations")
+perturb_dir = os.path.join(pfv.full_save_location, "perturbations_eta_0005")
 os.makedirs(perturb_dir, exist_ok=args.exists)
 for i in range(pfv.numberPerturbs):
     print("Setting up child directories: {:.2f}%            ".format(i/(pfv.numberPerturbs-1)*100), end="\r")
@@ -71,8 +71,8 @@ for i in range(pfv.numberPerturbs):
     with open(os.path.join(child_dir, "paramfile"), "r+") as f:
         contents = f.read()
         for param, val in zip(
-            ("InitCondFile", "SnapshotFileBase", "SofteningStars", "ketju_disable_integration"), 
-            (ic_file_name, ic_file_name, 0.0035, 0)):
+            ("InitCondFile", "SnapshotFileBase", "SofteningStars", "ketju_disable_integration", "ErrTolIntAccuracy"), 
+            (ic_file_name, ic_file_name, pfv.newStarSoftening, 0, 0.005)):
             line = re.search(r"^\b{}\b.*".format(param), contents, flags=re.MULTILINE)
             if line is None:
                 warnings.warn("Parameter {} not in file! Skipping...".format(param))

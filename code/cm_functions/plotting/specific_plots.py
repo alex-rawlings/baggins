@@ -1,13 +1,13 @@
-from matplotlib import scale
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import scipy.stats
 import copy
 import pygad
 from ..general import convert_gadget_time
 
 
-__all__ = ["plot_galaxies_with_pygad", "plot_parameter_contours"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours"]
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
@@ -63,6 +63,119 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
         return fig, ax
 
 
+class GradientPlot:
+    """
+    Class to create pyplot plots with a colour gradient. The colour 
+    gradient is consistent between all lines/points in the figure. This is done 
+    by storing the data first, and then only plotting the data when explicitly 
+    called.
+    """
+    def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
+        """
+        Initialise the plot with data.
+
+        Parameters
+        ----------
+        ax: the axis to plot the figure to
+        x: array of x data
+        y: array of y data
+        c: array to be used for gradient colouring (non-normalised values)
+        label: label of plot
+        cmap: pyplot colour map to use
+        marker: end marker type (set to None to avoid)
+        plot_kwargs: dict of other parameters to parse to pyplot.plot()
+        """
+        self.ax = ax
+        self.data_count = 1
+        self.all_x = [x]
+        self.all_y = [y]
+        self.all_c = [c]
+        self.all_label = [label]
+        self.cmap= getattr(plt.cm, cmap)
+        self.all_marker = [marker]
+        self.all_pks = [plot_kwargs]
+    
+    def __len__(self):
+        return self.data_count
+
+    def add_data(self, x, y, c, label=None, marker="o", plot_kwargs={}):
+        """
+        Add a dataset to the plot (note that the data is just stored here for 
+        future use).
+
+        Parameters
+        ----------
+        see comments for __init__
+        """
+        self.all_x.append(x)
+        self.all_y.append(y)
+        self.all_c.append(c)
+        self.all_label.append(label)
+        self.all_marker.append(marker)
+        self.all_pks.append(plot_kwargs)
+        self.data_count += 1
+    
+    def set_colours(self):
+        vmin = min([min(ci) for ci in self.all_c])
+        vmax = max([max(ci) for ci in self.all_c])
+        self.norm = colors.Normalize(vmin, vmax)
+    
+    def add_cbar(self, **kwargs):
+        """
+        Add a colour bar to the plot.
+        """
+        plt.colorbar(plt.cm.ScalarMappable(cmap=self.cmap, norm=self.norm), ax=self.ax, **kwargs)
+
+    def add_legend(self, **kwargs):
+        """
+        Add a legend to the plot.
+        """
+        self.ax.legend(**kwargs)
+
+
+class GradientLinePlot(GradientPlot):
+    """
+    Apply the GradientPlot class for pyplot line plots
+    """
+    def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
+        super().__init__(ax, x, y, c, label=label, cmap=cmap, marker=marker, plot_kwargs=plot_kwargs)
+    
+    def plot(self):
+        """
+        Plot the data, ensuring a consistent colour scheme.
+        """
+        self.set_colours()
+        for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
+            if markeri is not None:
+                self.ax.scatter(xi[-1], yi[-1], color=self.cmap(self.norm(ci[-1])), marker=markeri, label=labeli, zorder=10*self.data_count)
+            for xs, ys, cs in zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1]):
+                self.ax.plot(xs, ys, color=self.cmap(self.norm(cs)), **pki)
+
+
+class GradientScatterPlot(GradientPlot):
+    """
+    Apply the GradientPlot class for pyplot scatter plots
+    """
+    def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
+        super().__init__(ax, x, y, c, label=label, cmap=cmap, marker=marker, plot_kwargs=plot_kwargs)
+    
+    def plot(self):
+        """
+        Plot the data, ensuring a consistent colour scheme.
+        """
+        self.set_colours()
+        for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
+            for i, (xs, ys, cs) in enumerate(zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1])):
+                self.ax.scatter(xs, ys, color=self.cmap(self.norm(cs)), marker=markeri, label=(labeli if i==0 else ""),**pki)
+
+
+
+
+
+
+###############################
+######## NEEDS UPDATING #######
+###############################
 def plot_parameter_contours(ax, fun, xvals, yvals, init_lims, data_err=None, args=(), numPoints=350, repeats=1, slope=1.2, sigma_level=3):
     """
     Plot 2D parameter contours from chi2 test.

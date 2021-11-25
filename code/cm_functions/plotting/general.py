@@ -4,7 +4,7 @@ from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 import itertools
 
 
-__all__ = ["draw_sizebar", "mplColours", "mplLines", "shade_bool_regions"]
+__all__ = ["draw_sizebar", "mplColours", "mplLines", "mplChars", "shade_bool_regions"]
 
 
 def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert=None):
@@ -86,6 +86,13 @@ def mplLines(regular=5, loose=10, dense=1):
             ("loosely dashdotted",       (0, (3,loose,1,loose))),
             ("loosely dashdotdotted",    (0,(3,loose,1,loose,1,loose))),
     ])
+
+
+def mplChars():
+    """
+    Return a list of matplotlib plotting characters
+    """
+    return ["o", "s", "^", "D", "v", "*", "p", "h", "X", "P"]
 
 
 def shade_bool_regions(ax, xdata, mask, **kwargs):
