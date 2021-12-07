@@ -55,9 +55,9 @@ def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
     return beta, bin_centres, bincounts
 
 
-def snap_num_for_time(snaplist, time_to_find, units="Myr", verbose=False):
+def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
     """
-    Determine the last snapshot number before the given time. May result in the
+    Determine the snapshot number for the given time. May result in the
     last snapshot in the list to be returned if the given time is much later
     than the snapshots.
 
@@ -66,25 +66,38 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", verbose=False):
     snaplist: list of snapshot files
     time_to_find: time we want to find
     units: units of the time, default Myr
-    verbose: verbose printing
+    method: one of
+                - 'floor': last snapshot before the given time
+                - 'ceil': first snapshot after the given time
+                - 'nearest': snapshot closest to the given time
 
     Returns
     -------
     idx: index in the list of snapshots which is closest to (but earlier than)
          the sought time 
     """
+    if method not in ["floor", "ceil", "nearest"]: raise ValueError("method must be one of 'floor', 'ceil', or 'nearest'.")
     assert(isinstance(time_to_find, float) or isinstance(time_to_find, int))
     for ind, this_snap in enumerate(snaplist):
-        if ind == 0:
-            continue
-        snap = pygad.Snapshot(this_snap)
-        snap.to_physical_units()
+        snap = pygad.Snapshot(this_snap, physical=True)
         this_time = convert_gadget_time(snap, new_unit=units)
+        del snap
+        if ind == 0:
+            prev_time = this_time
+            continue
         if time_to_find < this_time:
-            idx = ind-1
+            if method == "floor":
+                idx = ind-1
+            elif method == "ceil":
+                idx = ind
+            else:
+                if this_time-time_to_find > time_to_find-prev_time:
+                    idx = ind-1 #closest snap is the one before
+                else:
+                    idx = ind #closest snap is the one after
             break
+        prev_time = this_time
     else:
         idx = -1
-        if verbose:
-            warnings.warn("Returning the final snapshot in the list!")
+        warnings.warn("Returning the final snapshot in the list!")
     return idx

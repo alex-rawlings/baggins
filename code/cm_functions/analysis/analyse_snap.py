@@ -1,14 +1,15 @@
+import warnings
 import numpy as np
 import scipy.linalg
 import pygad
 
 from . import masks as masks
-from ..mathematics import radial_separation
+from ..mathematics import radial_separation, density_sphere
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius"]
 
 
-def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars'):
+def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
     """
     Determine the centre of mass of each galaxy in the simulation, assuming each
     galaxy has a single SMBH near its centre.
@@ -22,6 +23,9 @@ def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, mi
     min_particle_count: stop the shrinking_sphere method when this many
                         particles or less are contained
     family: particle family to analyse
+    initial_guess: (1,3) array specifying the initial CoM guess for all 
+                   galaxies, default (None) uses an initial guess of the
+                   position of the BH that is associated with that galaxy
 
     Returns
     -------
@@ -37,12 +41,15 @@ def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, mi
     coms = dict()
     for ind, idx in enumerate(snap.bh['ID']):
         if verbose:
-            print('Finding CoM by centring on BH {}'.format(ind))
+            print('Finding CoM associated with BH ID {}'.format(idx))
         if masks is not None:
             masked_subsnap = subsnap[masks[idx]]
         else:
             masked_subsnap = subsnap
-        coms[idx] = pygad.analysis.shrinking_sphere(masked_subsnap, snap.bh['pos'][snap.bh['ID']==idx, :], initial_radius, stop_N=min_particle_count)
+        if initial_guess is None:
+            coms[idx] = pygad.analysis.shrinking_sphere(masked_subsnap, snap.bh['pos'][snap.bh['ID']==idx, :], initial_radius, stop_N=min_particle_count)
+        else:
+            coms[idx] = pygad.analysis.shrinking_sphere(masked_subsnap, initial_guess, initial_radius, stop_N=min_particle_count)
     return coms
 
 
@@ -63,8 +70,8 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
 
     Returns
     -------
-    vcoms: dict with n keys, where each key corresponds to the centre of mass
-          velocity of each galaxy
+    vcoms: dict with n keys, where keys correspond to the keys in xcom, and the 
+           values correspond to the centre of mass velocity of each galaxy
     """
     assert(snap.phys_units_requested)
     num_bhs = len(snap.bh['mass'])
@@ -73,7 +80,7 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
     subsnap = getattr(snap, family)
     #prepare the dict that will hold the velocity centre of masses
     vcoms = dict()
-    for ind, idx in enumerate(snap.bh['ID']):
+    for ind, idx in enumerate(xcom.keys()):
         if masks is not None:
             masked_subsnap = subsnap[masks[idx]]
         else:
@@ -94,8 +101,7 @@ def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', re
     Parameters
     ----------
     snap: pygad snapshot to analyse
-    xcom: dict of CoM coordinates for each galaxy, assumes the dict keys are the
-          BH particle IDs
+    xcom: CoM coordinates for the galaxy
     masks: pygad radial masks to apply to the (sub) snapshot
     family: particle family to analyse
     return_eigenvectors: bool, true to return eigenvectors as well as axis 
@@ -195,6 +201,200 @@ def calculate_Hamiltonian(snap, chunk=1e5):
         KE += np.sum(0.5 * snap["mass"][start:end]*vel_mag**2)
         PE += np.sum(snap["pot"][start:end]*snap["mass"][start:end])
     return KE+PE
+
+
+def determine_if_merged(snap):
+    """
+    Determine if a merger has occurred by identifying a BH with 0 mass
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+
+    Returns
+    -------
+    merged (bool): has the bh merged?
+    remnant_id: ID of the remnant BH (the one with non-zero mass)
+    """
+    assert snap.bh["mass"].shape[0] > 1, "The system must be a merger system!"
+    merged = True if np.any(snap.bh["mass"]<1e-15) else False
+    if merged:
+        remnant_id = snap.bh["ID"][snap.bh["mass"]>1e-15][0]
+    else:
+        remnant_id = None
+    return merged, remnant_id
+
+
+def get_massive_bh_ID(bhs):
+    """
+    Determine the ID of the more massive of the two BHs
+
+    Parameters
+    ----------
+    bhs: pygad bh sub-snapshot, usually of the form snap.bh
+
+    Returns
+    -------
+    ID of the more massive of the two BHs
+    """
+    massive_idx = np.argmax(bhs["mass"])
+    return bhs["ID"][massive_idx]
+
+
+def influence_radius(snap, binary=True):
+    """
+    Determine the influence radius for the system, defined as Eq. 2.11 in
+    Merritt 2013. This is denoted as r_m, whereas the alternative definition,
+    Eq. 2.12, is equivalent in the case where stars have the distribution of 
+    the singular isothermal sphere.
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    binary (bool): should the influence radius be calculated for the binary as
+                   a single object (True), or separately for each BH (False)?
+    
+    Returns
+    -------
+    r_inf (dict): keys correspond to BH ID (or the more massive BH ID if 
+                  binary=True), and values to the influence radius
+    """
+    def _find_radius_for_mass(M, m, pos, centre):
+        #determine the radius where the enclosed mass = desired mass M
+        r = pygad.utils.geo.dist(pos, centre)
+        r.sort()
+        #determine how many m are in M -> this will be the index of r we need
+        idx = int(np.ceil(M/m))-1
+        return pygad.UnitScalar(r[idx], r.units)
+    assert(snap.phys_units_requested)
+    r_inf = dict()
+    if binary:
+        #we are dealing with the combined mass
+        mass_bh = np.sum(snap.bh["mass"])
+        centre = pygad.analysis.center_of_mass(snap.bh)
+        massive_ID = get_massive_bh_ID(snap.bh)
+        r = _find_radius_for_mass(2*mass_bh, snap.stars["mass"][0], snap.stars["pos"], centre=centre)
+        r_inf[massive_ID] = r
+    else:
+        #we want the influence radius for each BH. No masking is done to separate the stars to their original galaxy
+        for i in range(2):
+            r = _find_radius_for_mass(2*snap.bh["mass"][i], snap.stars["mass"][0], snap.stars["pos"], snap.bh["pos"][i,:])
+            r_inf[snap.bh["ID"][i]] = r
+    return r_inf
+
+
+def hardening_radius(bhms, rm):
+    """
+    Determine the hardening radius for the system, defined as Eq. 8.71 in 
+    Merritt 2013. This definition uses the influence radius definition of 
+    Eq. 2.11.
+
+    Parameters
+    ----------
+    bhms: list of BH masses
+    rm: influence radius
+
+    Returns
+    -------
+    ah: hard binary radius in the same units as rm
+    """
+    q = bhms[0] / bhms[1]
+    q = 1/q if q>1 else q #ensure q <= 1
+    ah = q / (1 + q)**2 * rm / 4
+    return pygad.UnitScalar(ah, rm.units)
+
+
+def gravitational_radiation_radius(snap, rh, ah, tah, H, e=0):
+    """
+    Determine the gravitational wave radius, where da/dt due to stellar 
+    interactions is equal to da/dt due to GW emission. The equation follows 
+    Eq. 8.26 in Merritt 2013, however the eccentricity term may optionally be 
+    included. Below, "inner" quantities typically refer to the quantity within
+    the gravitational influence radius.
+
+    Parameters
+    ----------
+    snap: pygad snapshot from which to estimate the inner density and velocity
+          dispersion
+    rh: gravitational influence radius of the binary (assumed pc)
+    ah: hard binary radius (assumed pc)
+    tah: time of the hard binary radius (assumed Myr)
+    H: hardening rate parameter
+    e: eccentricity (default 0 for a circular orbit)
+    """
+    assert 0 <= e <= 1
+    #eccentricity function
+    Q = (1-e**2)**(-3.5) * (1 + 73/24*e**2 + 37/96*e**4)
+    assert(snap.phys_units_requested), "Snapshot must be given in physical units!"
+    if not isinstance(rh, pygad.UnitArr):
+        print("Setting rh to default length units {}".format("pc"))
+        rh = pygad.UnitScalar(rh, "pc")
+    rho, sigma = _get_inner_rho_and_sigma(snap, extent=rh)
+    m1_m2_M = np.product(snap.bh["mass"]) * np.sum(snap.bh["mass"])
+    #set the constants
+    const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
+    const_c = pygad.physics.c.in_units_of("km/s")
+    a_5 = 64/5 * const_G**2 * m1_m2_M * sigma / (const_c**5 * rho * H) * Q
+    a = pygad.UnitScalar(a_5.view(np.ndarray)**0.2, "pc")
+    #time_a = pygad.UnitScalar(sigma / (const_G * rho * a), "Myr")/H
+    time_a = pygad.UnitScalar(sigma/(const_G * rho) * (ah-a)/(ah*a), "Myr")/H + tah
+    return a.view(np.ndarray), time_a.view(np.ndarray)
+
+
+def _get_inner_rho_and_sigma(snap, extent=None):
+    """
+    Get the mean (3-dimensional) stellar density and velocity dispersion within 
+    a given radius.
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    extent: radial range within which to calculate quantities. Default of None
+            uses all stars in the snapshot
+    
+    Returns
+    -------
+    inner_density: mean stellar density within a ball of radius extent
+    inner_sigma: mean stellar velocity dispersion with a ball of radius extent
+    """
+    if extent is not None:
+        assert isinstance(extent, pygad.UnitArr), "extent must have units!"
+        extent_mask = pygad.BallMask(extent, center=pygad.analysis.center_of_mass(snap.bh))
+        subsnap = snap.stars[extent_mask]
+    else:
+        warnings.warn("Inner quantities will be calculated for all stars!")
+        subsnap = snap.stars
+    inner_density = density_sphere(np.sum(subsnap["mass"]), extent)
+    inner_sigma = np.nanmean(np.nanstd(subsnap["vel"], axis=0))
+    return inner_density, inner_sigma
+
+
+def _get_G_rho_per_sigma(snap, extent=None):
+    """
+    Wrapper to determine the ratio of G*rho/sigma. 
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    extent: radial range within which to calculate quantities. Default of None
+            uses all stars in the snapshot
+    
+    Returns
+    -------
+    G*rho/sigma within radius 'extent', in units of pc^-1 yr^-1
+    """
+    inner_density, inner_sigma = _get_inner_rho_and_sigma(snap, extent)
+    G_rho_per_sigma = pygad.physics.G * inner_density / inner_sigma
+    return G_rho_per_sigma.in_units_of("pc**-1/yr")
+
+
+
+
+
+
+
+
+
 
 
 ############################################

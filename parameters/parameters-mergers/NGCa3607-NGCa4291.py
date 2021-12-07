@@ -30,7 +30,16 @@ pericentreDistance = "virial1e-3"   #distance at first pericentre
 seed = 235459                       #seed for setting the RNG
 perturbTime = 5.256                 #time when BH positions are perturbed
 numberPerturbs = 10                 #how many perturbations to create
-newStarSoftening = 0.0035           #new value of stellar softening
+positionPerturb = 1.11e-2           #SD of position perturbation
+velocityPerturb = 12.8              #SD of velocity perturbation
+newParameterValues = {
+                "SofteningStars":0.0035,
+                "ketju_disable_integration": 0,
+                "ErrTolIntAccuracy": 0.002
+}                                   #parameter values to update, where keys are 
+                                    #the name in the gadget paramfile 
+                                    #"InitCondFile", "SnapshotFileBase" are 
+                                    #always updated
 
 #----------------------------------returned values
 e = 9.99985e-01

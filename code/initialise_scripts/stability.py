@@ -1,8 +1,6 @@
-import argparse
-import os
+import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py
 import pandas as pd
 
 import cm_functions as cmf
@@ -25,17 +23,11 @@ linewd = 2
 if args.verbose:
     print('Stability checked at radii enclosing mass percentages: {}'.format(args.percentages_to_check))
 
-outpath = pfv.saveLocation + '/' + pfv.galaxyName
-datapath = outpath + '/' + pfv.dataLocation
-figPath = outpath + '/' + pfv.figureLocation
+outpath = os.path.join(pfv.saveLocation, pfv.galaxyName)
+datapath = os.path.join(outpath, pfv.dataLocation)
+figPath = os.path.join(outpath, pfv.figureLocation)
 
-datfiles = []
-#get the data files and strip new line character
-with os.scandir(datapath) as f:
-    for f_ind in f:
-        if f_ind.name.endswith('.hdf5') and f_ind.name != 'ketju_bhs.hdf5':
-            datfiles.append(f_ind.path)
-datfiles.sort()
+datfiles = cmf.utils.get_snapshots_in_dir(datapath)
 
 #create data frame
 stability_data = pd.DataFrame(data={'Time': np.full_like(datfiles, np.nan)})

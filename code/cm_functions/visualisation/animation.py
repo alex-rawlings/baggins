@@ -14,7 +14,7 @@ class SMBHtrajectory:
     """
     Create an animation of the BH motions
     """
-    def __init__(self, bhdata, ax, centre=1, axes=[0,2], axis_offset=1, trails=5000, show_axis_labels=True, stepping={"start":110000, "step":500}):
+    def __init__(self, bhdata, ax, centre=1, axes=[0,2], axis_offset=1, trails=5000, show_axis_labels=True, stepping={"start":110000, "step":500}, only_bound=False):
         """
         Initialisation
 
@@ -28,12 +28,15 @@ class SMBHtrajectory:
         trails: draw a trail of this length behind the BH
         show_axis_labels: show the axis labels 
         stepping: dict, with the frame to start with and the stepping between
-                  frames
+                  frames TODO change to times instead of index?
+        only_bound (bool): animation only for when the BHs are bound?
         """
         kpc = ketjugw.units.pc * 1e3
         myr = ketjugw.units.yr * 1e6
-        bhs = ketjugw.data_input.load_hdf5(bhdata)
-        bh1, bh2 = bhs.values()
+        if only_bound:
+            bh1, bh2, merged = cmf.analysis.get_bound_binary(bhdata)
+        else:
+            bh1, bh2, merged = cmf.analysis.get_bh_particles(bhdata)
         self.length = len(bh1.t)
         self.stepping = stepping
         self.save_count = int((self.length - stepping["start"])/stepping["step"])-1

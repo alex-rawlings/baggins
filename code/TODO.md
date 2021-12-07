@@ -8,3 +8,5 @@
   require updating the merger-ic-generator  
 * Package dependencies available via requirements.txt, but not sure how pygad
   installed with pip will be affected?
+* Create a publishing .mplstyle format, to make plots more appealing for
+  publishing

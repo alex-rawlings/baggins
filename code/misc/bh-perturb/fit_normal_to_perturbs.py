@@ -25,7 +25,7 @@ data_files = [
 
 
 end_points = 0.01
-reps = 50000
+reps = 5000
 nbins = 50
 time_lower = 4
 
@@ -73,8 +73,8 @@ for l, datafile in enumerate(data_files):
         plothist_and_best(means["vel"][:,i], sds["vel"][:,i], ax[i,2], ax[i,3], ax2[i,1], endpoint=end_points)
 ax[0,1].legend()
 ax2[0,0].legend()
-fig.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/random_rots.png"))
-plt.show()
+#fig.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/random_rots.png"))
+#plt.show()
 
 """
 fig, ax = plt.subplots(3,2,sharex="col")
@@ -92,3 +92,4 @@ for i, datafile in enumerate(data_files):
             ax[k,j].plot(x, fit_distr.pdf(x), c=p.lines[-1].get_color())
 plt.show()
 """
+plt.show()

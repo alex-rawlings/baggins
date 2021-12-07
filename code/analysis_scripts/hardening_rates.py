@@ -1,0 +1,100 @@
+import argparse
+import os.path
+import numpy as np
+import matplotlib.pyplot as plt
+import pygad
+import cm_functions as cmf
+import ketjugw
+
+
+parser = argparse.ArgumentParser(description="Compare the analytical hardening rate to ketju outupt", allow_abbrev=False)
+parser.add_argument(type=str, help="path to data", dest="path")
+parser.add_argument("-r", "--radiusgw", type=float, help="Radius [pc] above which GW emission expected to be negligible", dest="rgw", default=15)
+args = parser.parse_args()
+
+
+
+class TimeEstimates:
+    def __init__(self, orbit_params, start_idx, end_idx, Gps, H, K):
+        self.a = {"median":None, "upper":None, "lower":None}
+        self.e = {"median":None, "upper":None, "lower":None}
+        self.t = {"median":None, "upper":None, "lower":None}
+        self.op = orbit_params
+        self.start_idx = start_idx
+        self.end_idx = end_idx
+        self.quantiles = (0.5, 0.95, 0.05)
+
+        for k, q in zip(("median", "upper", "lower"), self.quantiles):
+            a0 = self.op["a_R"][self.start_idx]
+            e0 = np.nanquantile(self.op["e_t"][self.start_idx:self.end_idx], q)
+            self.t[k], self.a[k], self.e[k] = cmf.analysis.analytic_evolve_peters_quinlan(a0, e0, self.op["t"][start_idx], self.op["t"][-1], self.op["m0"][0], self.op["m1"][0], Gps, H, K)
+    
+    def plot(self, ax1, ax2, **kwargs):
+        pc = ketjugw.units.pc
+        myr = ketjugw.units.yr * 1e6
+        for i, (k,q) in enumerate(zip(self.a.keys(), self.quantiles)):
+            if i==0:
+                l = ax1.plot(self.t[k]/myr, self.a[k]/pc, ls="--", label="{} quantile".format(q), **kwargs)
+            else:
+                ax1.plot(self.t[k]/myr, self.a[k]/pc, ls=":", c=l[-1].get_color(), label="{} quantile".format(q), **kwargs)
+            ax2.plot(self.t[k]/myr, self.e[k], ls=("--" if i%3==0 else ":"), c=l[-1].get_color(), **kwargs)
+
+
+
+bhfile = os.path.join(args.path, "ketju_bhs.hdf5")
+snaplist = cmf.utils.get_snapshots_in_dir(args.path)
+
+#determine the influence and hardening radii
+snap = pygad.Snapshot(snaplist[0], physical=True)
+r_infl = list(cmf.analysis.influence_radius(snap).values())[0].in_units_of("pc") #in pc
+r_hard = cmf.analysis.hardening_radius(snap.bh["mass"], r_infl)
+
+#get BH objects
+bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
+orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
+myr = ketjugw.units.yr * 1e6
+
+#determine when the above radii occur
+r_infl_time = cmf.general.xval_of_quantity(r_infl, orbit_params["t"]/myr, orbit_params["a_R"]/ketjugw.units.pc, xsorted=True)
+r_hard_time = cmf.general.xval_of_quantity(r_hard, orbit_params["t"]/myr, orbit_params["a_R"]/ketjugw.units.pc, xsorted=True)
+r_hard_time_idx = np.argmax(r_hard_time < orbit_params["t"]/myr)
+hard_snap_idx = cmf.analysis.snap_num_for_time(snaplist, r_hard_time, method="nearest")
+
+#get the snap from which inner density, sigma is found
+snap = pygad.Snapshot(snaplist[hard_snap_idx], physical=True)
+
+
+a_more_Xpc = np.argmax(orbit_params["a_R"]/ketjugw.units.pc<args.rgw)
+time_a_more_Xpc = orbit_params["t"][a_more_Xpc]/myr
+tspan = time_a_more_Xpc - r_hard_time
+print("H determined over a span of {} Myr".format(tspan))
+
+#determine hardening constants -- times are in years
+H, G_rho_per_sigma = cmf.analysis.linear_fit_get_H(orbit_params["t"]/ketjugw.units.yr, orbit_params["a_R"]/ketjugw.units.pc, r_hard_time*1e6, tspan*1e6, snap, r_infl, return_Gps=True)
+e0 = np.median(orbit_params["e_t"][r_hard_time_idx:a_more_Xpc])
+print("e0: {:.3f}".format(e0))
+print("G*rho/sigma: {:.3e}".format(G_rho_per_sigma))
+print("Hardening rate: {:.4f}".format(H))
+K = cmf.analysis.linear_fit_get_K(orbit_params["t"]/ketjugw.units.yr, orbit_params["e_t"], r_hard_time*1e6, tspan*1e6, H, G_rho_per_sigma, orbit_params["a_R"]/ketjugw.units.pc)
+print("Eccentricity rate K: {:.4f}".format(K))
+
+a_gr, a_gr_time = cmf.analysis.gravitational_radiation_radius(snap, r_infl, r_hard, r_hard_time, H, e=e0)
+pq_estimates = TimeEstimates(orbit_params, r_hard_time_idx, a_more_Xpc, G_rho_per_sigma, H, K)
+
+print("Hardening radius a_h: {:.2e}".format(r_hard))
+print("GR emission radius a_GR: {:.2e}".format(a_gr))
+
+#plotting
+fig, ax = plt.subplots(2,1, sharex=True, gridspec_kw={"height_ratios":[3,1]})
+ax[0].set_ylabel("a/pc")
+ax[1].set_xlabel("t/Myr")
+ax[1].set_ylabel("e")
+ax[0].semilogy(orbit_params["t"]/myr, orbit_params["a_R"]/ketjugw.units.pc)
+ax[0].scatter(r_infl_time, r_infl, zorder=10, label=r"$r_\mathrm{inf}$")
+sc = ax[0].scatter(r_hard_time, r_hard, zorder=10, label=r"$a_\mathrm{h}$")
+ax[0].axvline(r_hard_time+tspan, c="tab:red", label="H calculation")
+ax[1].plot(orbit_params["t"]/myr, orbit_params["e_t"])
+ax[0].scatter(a_gr_time, a_gr, zorder=10, label=r"$a_\mathrm{GR}$")
+pq_estimates.plot(*ax)
+ax[0].legend()
+plt.show()

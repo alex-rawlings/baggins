@@ -38,6 +38,7 @@ for (bhid, perturbfile) in zip(star_id_masks.keys(), (pfv.perturb1, pfv.perturb2
     perturb_pos[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
     perturb_vel[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
 
+#TODO updat perturbation scheme
 for bhid in perturb_dict.keys():
     #get the magnitudes of the radial and velocity motions for KDE
     displacement = cmf.mathematics.radial_separation(perturb_dict[bhid]["diff_x"])
@@ -67,12 +68,13 @@ for i in range(pfv.numberPerturbs):
         snap.bh["pos"][snap.bh["ID"] == bhid] = pygad.UnitArr(np.atleast_2d(perturb_pos[bhid][i,:]), units=snap["pos"].units)
         snap.bh["vel"][snap.bh["ID"] == bhid] = pygad.UnitArr(np.atleast_2d(perturb_vel[bhid][i,:]), units=snap["vel"].units)
     snap.write(os.path.join(child_dir, "{}.hdf5".format(ic_file_name)), overwrite=True, gformat=3)
+    #add file names to update
+    pfv.newParameterValues["InitCondFile"] = ic_file_name
+    pfv.newParameterValues["SnapshotFileBase"] = ic_file_name
     #edit paramfile
     with open(os.path.join(child_dir, "paramfile"), "r+") as f:
         contents = f.read()
-        for param, val in zip(
-            ("InitCondFile", "SnapshotFileBase", "SofteningStars", "ketju_disable_integration", "ErrTolIntAccuracy"), 
-            (ic_file_name, ic_file_name, pfv.newStarSoftening, 0, 0.005)):
+        for param, val in pfv.newParameterValues.items():
             line = re.search(r"^\b{}\b.*".format(param), contents, flags=re.MULTILINE)
             if line is None:
                 warnings.warn("Parameter {} not in file! Skipping...".format(param))
