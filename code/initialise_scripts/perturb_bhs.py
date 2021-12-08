@@ -1,6 +1,5 @@
 import warnings
 import numpy as np
-import scipy.stats
 import os
 import re
 import shutil
@@ -20,7 +19,7 @@ rng = np.random.default_rng(pfv.seed)
 
 #find the snapshot corresponding to the time we want
 snaplist = cmf.utils.get_snapshots_in_dir(os.path.join(pfv.full_save_location, "output"))
-pfv.perturb_snap_idx = cmf.analysis.snap_num_for_time(snaplist, pfv.perturbTime, units="Gyr", verbose=args.verbose)
+pfv.perturb_snap_idx = cmf.analysis.snap_num_for_time(snaplist, pfv.perturbTime, units="Gyr")
 snap = pygad.Snapshot(snaplist[pfv.perturb_snap_idx], physical=True)
 
 #get com motions
@@ -38,22 +37,13 @@ for (bhid, perturbfile) in zip(star_id_masks.keys(), (pfv.perturb1, pfv.perturb2
     perturb_pos[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
     perturb_vel[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
 
-#TODO updat perturbation scheme
 for bhid in perturb_dict.keys():
-    #get the magnitudes of the radial and velocity motions for KDE
-    displacement = cmf.mathematics.radial_separation(perturb_dict[bhid]["diff_x"])
-    vel_mag = cmf.mathematics.radial_separation(perturb_dict[bhid]["diff_v"])
-    for (values, crd_dict, com_crd) in zip((displacement, vel_mag), (perturb_pos, perturb_vel), (xcoms, vcoms)):
-        #perform the kernel density estimate, using a reflective boundary 
-        #to prevent values < 0
-        kernel = scipy.stats.gaussian_kde(values)
-        samples = np.abs(kernel.resample(size=pfv.numberPerturbs, seed=rng))
-        thetas, phis = cmf.mathematics.uniform_sample_sphere(pfv.numberPerturbs, rng)
-        rtp = np.vstack((samples, thetas, phis)).T
-        crd_dict[bhid] = cmf.mathematics.convert_spherical_to_cartesian(rtp) + com_crd[bhid]
+    for (spread, crd_dict, com_crd) in zip((pfv.positionPerturb, pfv.velocityPerturb), (perturb_pos, perturb_vel), (xcoms, vcoms)):
+        #perturb in Cartesian space using spread from parameter file
+        crd_dict[bhid] = rng.normal(com_crd[bhid], spread, size=(pfv.numberPerturbs, 3))
 
 #set up children directories and ICs
-perturb_dir = os.path.join(pfv.full_save_location, "perturbations_eta_0005")
+perturb_dir = os.path.join(pfv.full_save_location, pfv.perturbSubDir)
 os.makedirs(perturb_dir, exist_ok=args.exists)
 for i in range(pfv.numberPerturbs):
     print("Setting up child directories: {:.2f}%            ".format(i/(pfv.numberPerturbs-1)*100), end="\r")

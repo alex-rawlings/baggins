@@ -21,6 +21,8 @@ saveLocation = "/scratch/pjohanss/arawling/collisionless_merger/merger-test/"   
 perturb1 = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/pickle/bh_perturb/NGCa3607_bhperturb.pickle"
 perturb2 = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/pickle/bh_perturb/NGCa4291_bhperturb.pickle"
 
+perturbSubDir = "perturbations_eta_test"
+
 
 #---- orbital properties
 initialSeparation = "virial3"       #'touch', 'overlapXX', 'virialX' or number

@@ -26,31 +26,44 @@ functions and scripts in `./code/`
 ## Simulation Workflow  
 The simulation workflow consists of a number of steps to produce 
 realistic initial conditions for the merger. The steps are:  
-1. Create both low and high mass resolution realisation of the 
-progenitors using `create_select_galaxies.sh` in `./code/
-initialise_scripts`
-2. Evolve the high mass resolution progenitors in isolation until the 
+1. Create the progenitor galaxies using `create_select_galaxies.sh` in 
+`./code/initialise_scripts`. A valid parameter file must be first created.  
+2. Evolve the progenitors in isolation until the 
 system is stable (this is particularly relevant for Osipkov-Merritt 
 models). The stability of the system can be checked with these scripts 
 in `./code/analysis_scripts`:  
-    - `inertia_analysis.py`, and
+    - `inertia_analysis.py`, and  
     - `beta_profile.py`  
 3. Align the galaxy with the reduced inertia tensor semiminor axis using 
-`align_galaxy.py` in `./code/analysis_scripts`  
-4. Concurrently, obtain the centre of mass motions of the system at 
-large separations using the low mass realisations of the galaxies by 
-running this merger as a standard simulation. Orbital configurations are 
-given as inputs in the parameter file in `./parameters/
-parameters-mergers/`.  
-5. A high mass resolution system can then be generated as a combination 
-of the low mass resolution centre of mass motions, and the stabilised 
-high mass resolution galaxy, by running `extract_remake.py` for the 
-corresponding parameter file in `./parameters/parameters-mergers/`.  
-6. The high mass resolution can then be started as if it were a new 
-simulation.  
-7. When to switch on Ketju???  
-8. Analyse key properties of the remnant system and SMBH dynamics using 
-the provided scripts in `./code/analysis_scripts`.
+`align_galaxy.py` in `./code/analysis_scripts`.  
+4. Set up the merger configuration with a separate merger parameter file, using
+the script `merger_setup.py`.  
+5. Run the merger configuration using `Gadget` with reduced integration accuracy
+(for this project, default $\eta=0.02$). Run the system until the BHs are 
+bound.  
+6. The Brownian motion of the BH in the isolated galaxy can be investigated
+using `bh_perturb_distribution.py` and `brownian_rotate_fit_normal.py` in 
+`./code/analysis_scripts`. Ensure that only those times where the galaxy is
+relaxed is included in the latter analysis, by limiting the distribution fits
+to a time `T` after the system is stable with the `-t T`.  
+7. Identify the time when the BHs form a bound binary using 
+`check_merger_progress.py <file> -b` in the directory `./code/analysis_scripts`.
+This will produce a plot showing the radial separation of the binaries, as well
+as the orbital energy of the binary system. Those points where the binary 
+energy transitions from $\mathcal{E}>0$ to $\mathcal{E}<0$ are indicated by
+numbered arrows, and the corresponding times printed to the console. The desired
+time to turn on `Ketju` can thus be found.  
+8. Create the children perturbed runs of the main `Gadget` run using the script
+`perturb_bhs.py` in `./code/initialise_scripts` with the merger parameter file.
+This generates a set of runs with the phase-space coordinates of the BHs 
+randomised using the Brownian motion distributions of step 6. Other `Gadget
+paramfile` options may be changed here too (especially $\eta=0.002$).  
+9. Run each pertured run with `Ketju`. The analytical time to merger can be 
+estimated using `hardening_rates.py` in `./code/analysis_scripts`. If the BHs
+have not merged within the upper limit set by the analytical expectation, the
+run may need to be terminated.  
+10. Perform relevant analysis of the merger remnant and the BH binary
+properties.  
 
 ## A Brief Note on the Scripts  
 A detailed description of each initialisation and analysis script is not 
