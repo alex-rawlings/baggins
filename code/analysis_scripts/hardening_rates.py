@@ -7,8 +7,8 @@ import cm_functions as cmf
 import ketjugw
 
 
-parser = argparse.ArgumentParser(description="Compare the analytical hardening rate to ketju outupt", allow_abbrev=False)
-parser.add_argument(type=str, help="path to data", dest="path")
+parser = argparse.ArgumentParser(description="Compare the analytical hardening rate to ketju output", allow_abbrev=False)
+parser.add_argument(type=str, help="path to data files", dest="path")
 parser.add_argument("-r", "--radiusgw", type=float, help="Radius [pc] above which GW emission expected to be negligible", dest="rgw", default=15)
 args = parser.parse_args()
 
@@ -36,7 +36,7 @@ class TimeEstimates:
             if i==0:
                 l = ax1.plot(self.t[k]/myr, self.a[k]/pc, ls="--", label="{} quantile".format(q), **kwargs)
             else:
-                ax1.plot(self.t[k]/myr, self.a[k]/pc, ls=":", c=l[-1].get_color(), label="{} quantile".format(q), **kwargs)
+                ax1.plot(self.t[k]/myr, self.a[k]/pc, ls=":", c=l[-1].get_color(), label="{:.2f} quantile".format(q), **kwargs)
             ax2.plot(self.t[k]/myr, self.e[k], ls=("--" if i%3==0 else ":"), c=l[-1].get_color(), **kwargs)
 
 
@@ -67,7 +67,7 @@ snap = pygad.Snapshot(snaplist[hard_snap_idx], physical=True)
 a_more_Xpc = np.argmax(orbit_params["a_R"]/ketjugw.units.pc<args.rgw)
 time_a_more_Xpc = orbit_params["t"][a_more_Xpc]/myr
 tspan = time_a_more_Xpc - r_hard_time
-print("H determined over a span of {} Myr".format(tspan))
+print("H determined over a span of {:.3f} Myr".format(tspan))
 
 #determine hardening constants -- times are in years
 H, G_rho_per_sigma = cmf.analysis.linear_fit_get_H(orbit_params["t"]/ketjugw.units.yr, orbit_params["a_R"]/ketjugw.units.pc, r_hard_time*1e6, tspan*1e6, snap, r_infl, return_Gps=True)
@@ -89,11 +89,11 @@ fig, ax = plt.subplots(2,1, sharex=True, gridspec_kw={"height_ratios":[3,1]})
 ax[0].set_ylabel("a/pc")
 ax[1].set_xlabel("t/Myr")
 ax[1].set_ylabel("e")
-ax[0].semilogy(orbit_params["t"]/myr, orbit_params["a_R"]/ketjugw.units.pc)
+ax[0].semilogy(orbit_params["t"]/myr, orbit_params["a_R"]/ketjugw.units.pc, zorder=5)
 ax[0].scatter(r_infl_time, r_infl, zorder=10, label=r"$r_\mathrm{inf}$")
 sc = ax[0].scatter(r_hard_time, r_hard, zorder=10, label=r"$a_\mathrm{h}$")
 ax[0].axvline(r_hard_time+tspan, c="tab:red", label="H calculation")
-ax[1].plot(orbit_params["t"]/myr, orbit_params["e_t"])
+ax[1].plot(orbit_params["t"]/myr, orbit_params["e_t"], zorder=5)
 ax[0].scatter(a_gr_time, a_gr, zorder=10, label=r"$a_\mathrm{GR}$")
 pq_estimates.plot(*ax)
 ax[0].legend()

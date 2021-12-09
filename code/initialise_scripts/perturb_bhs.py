@@ -29,15 +29,16 @@ vcoms = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=star_id_
 
 #determine radial coordinate distribution in brownian motion
 #and set up the perturbation values
-perturb_dict = dict()
+#perturb_dict = dict()
 perturb_pos = dict()
 perturb_vel = dict()
-for (bhid, perturbfile) in zip(star_id_masks.keys(), (pfv.perturb1, pfv.perturb2)):
-    perturb_dict[bhid] = cmf.utils.load_data(perturbfile)
+#for (bhid, perturbfile) in zip(star_id_masks.keys(), (pfv.perturb1, pfv.perturb2)):
+for bhid in star_id_masks:
+    #perturb_dict[bhid] = cmf.utils.load_data(perturbfile)
     perturb_pos[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
     perturb_vel[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
 
-for bhid in perturb_dict.keys():
+for bhid in perturb_pos.keys():
     for (spread, crd_dict, com_crd) in zip((pfv.positionPerturb, pfv.velocityPerturb), (perturb_pos, perturb_vel), (xcoms, vcoms)):
         #perturb in Cartesian space using spread from parameter file
         crd_dict[bhid] = rng.normal(com_crd[bhid], spread, size=(pfv.numberPerturbs, 3))
