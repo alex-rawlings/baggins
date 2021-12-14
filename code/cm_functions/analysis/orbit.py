@@ -6,7 +6,7 @@ from .analyse_snap import _get_G_rho_per_sigma
 from ..mathematics import radial_separation
 from ..general import xval_of_quantity
 
-__all__ = ["find_pericentre_time", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan"]
 
 #common units
 myr = 1e6 * ketjugw.units.yr
@@ -41,41 +41,86 @@ def find_pericentre_time(bh1, bh2, height=-10, return_sep=False, **kwargs):
         return bh1.t[peak_idxs]/myr, peak_idxs
 
 
-def get_bh_particles(ketju_file, verbose=True):
+def interpolate_particle_data(p_old, t):
+    """
+    Interpolate the attributes of particle bhold to the times specifed by t.
+
+    Parameters
+    ----------
+    p_old: ketjugw.Particle object to do the interpolation for
+    t: array of times to interpolate data to
+
+    Retuns
+    ------
+    p_new: ketjugw.Particle object with the interpolated data
+    """
+    #initialise the new particle object
+    p_new = ketjugw.Particle(-99, 0, [0,0,0], [0,0,0])
+    setattr(p_new, "t", t)
+    for a in ("m", "x", "v", "spin"):
+        v = getattr(p_old, a)
+        finterp = scipy.interpolate.interp1d(p_old.t, v, axis=0)
+        setattr(p_new, a, finterp(t))
+    return p_new
+
+
+def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
     """
     Return the bh particles in the (usually-named) ketju_bhs.hdf5 file.
-    This is really just a wrapper that ensures the bhs have the same time 
-    domain.
+    This is really just a wrapper that ensures:
+        - the BHs are still separate particles (if a merger occurs, the time
+          series of one particle will be longer than the other)
+        - the BHs have the same time domain (Gadget-only integration will 
+          generally produce bh1.t[i] != bh2.t[i], causing problems for later
+          calculations). Interpolation is performed to overcome this, if
+          necessary.
 
     Parameters
     ----------
     ketju_file: path to ketju_bhs.hdf5 file to analyse
     verbose: verbose printing?
+    tol: tolerance for equality testing
 
     Returns
     -------
-    bh1, bh2: ketjugw.Particle objects for the BHs
+    bh1, bh2: ketjugw.Particle objects for the BHs (these will be named 
+              bh1interp and bh2interp if interpolation was performed)
     merged: bool, whether or not a merger occurred
     """
     bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
-    len1, len2 = len(bh1.t), len(bh2.t)
-    if len1 > len2:
-        #bh2 has merged into bh1
-        bh1 = bh1[:len2]
-        merged = True
-    elif len1 < len2:
-        #bh1 has merged into bh2
-        bh2 = bh2[:len1]
-        merged = True
-    else:
-        #a merger has not occurred
+    len1, len2 = len(bh1), len(bh2)
+    min_len = min(len1, len2)
+    #first need to determine if time series are consistent between particles
+    if np.any(np.abs(bh1.t[:min_len] - bh2.t[:min_len])>tol):
+        # particle time series are not in sync, need to interpolate
+        # merger only occurs if Ketju is activated, in which case the time
+        # series are in sync by construction, so no merger has occurred here
+        # TODO is there a more robust way to ascertain if a merger has (not)
+        # occurred that doesn't tie us to how Ketju data output occurs
+        if verbose:
+            print("Particle time series are not consistent with each other: linear interpolation will be performed")
         merged = False
-    if verbose and merged:
-        print("A merger has occurred.")
-    return bh1, bh2, merged
+        t_arr = np.linspace(max(bh1.t[0], bh2.t[0]), min(bh1.t[-1], bh2.t[-1]), max(len1, len2))
+        bh1interp = interpolate_particle_data(bh1, t_arr)
+        bh2interp = interpolate_particle_data(bh2, t_arr)
+        return bh1interp, bh2interp, merged
+    else:
+        # particles are in sync, and we can return as normal
+        if len1 > len2:
+            #bh2 has merged into bh1
+            bh1 = bh1[:len2]
+            merged = True
+        elif len1 < len2:
+            #bh1 has merged into bh2
+            bh2 = bh2[:len1]
+            merged = True
+        else:
+            #a merger has not occurred
+            merged = False
+        return bh1, bh2, merged
 
 
-def get_bound_binary(ketju_file, verbose=True):
+def get_bound_binary(ketju_file, verbose=True, tol=1e-15):
     """
     Return the data from the ketju_bhs.hdf5 file corresponding to when the 
     binary becomes (and remains) bound. 
@@ -84,6 +129,7 @@ def get_bound_binary(ketju_file, verbose=True):
     ----------
     ketju_file: path to ketju_bhs.hdf5 file to analyse
     verbose: verbose printing?
+    tol: tolerance for equality testing
 
     Returns
     -------
@@ -91,7 +137,7 @@ def get_bound_binary(ketju_file, verbose=True):
               same time domain
     merged: bool, whether or not a merger occurred
     """
-    bh1, bh2, merged = get_bh_particles(ketju_file, verbose)
+    bh1, bh2, merged = get_bh_particles(ketju_file, verbose, tol)
     bhs = {0:bh1, 1:bh2}
     bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[0]
     return bh1, bh2, merged

@@ -26,14 +26,15 @@ pericentreDistance = "virial1e0"   #distance at first pericentre
 
 #--- perturb properties
 seed = 235459                       #seed for setting the RNG
-perturbTime = 0                 #time when BH positions are perturbed
+perturbTime = 7.548                 #time when BH positions are perturbed
 numberPerturbs = 10                 #how many perturbations to create
 positionPerturb = 1.11e-2           #SD of position perturbation
 velocityPerturb = 12.8              #SD of velocity perturbation
 newParameterValues = {
                 "SofteningStars":0.0035,
                 "ketju_disable_integration": 0,
-                "ErrTolIntAccuracy": 0.002
+                "ErrTolIntAccuracy": 0.002,
+                "TimeMax": 12.0
 }                                   #parameter values to update, where keys are 
                                     #the name in the gadget paramfile 
                                     #"InitCondFile", "SnapshotFileBase" are 
