@@ -1,5 +1,6 @@
 import argparse
 import os.path
+import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
@@ -34,7 +35,7 @@ class TimeEstimates:
         myr = ketjugw.units.yr * 1e6
         for i, (k,q) in enumerate(zip(self.a.keys(), self.quantiles)):
             if i==0:
-                l = ax1.plot(self.t[k]/myr, self.a[k]/pc, ls="--", label="{} quantile".format(q), **kwargs)
+                l = ax1.plot(self.t[k]/myr, self.a[k]/pc, ls="--", label="{:.2f} quantile".format(q), **kwargs)
             else:
                 ax1.plot(self.t[k]/myr, self.a[k]/pc, ls=":", c=l[-1].get_color(), label="{:.2f} quantile".format(q), **kwargs)
             ax2.plot(self.t[k]/myr, self.e[k], ls=("--" if i%3==0 else ":"), c=l[-1].get_color(), **kwargs)
@@ -44,13 +45,18 @@ class TimeEstimates:
 bhfile = os.path.join(args.path, "ketju_bhs.hdf5")
 snaplist = cmf.utils.get_snapshots_in_dir(args.path)
 
+#copy file so it can be read
+filename, fileext = os.path.splitext(bhfile)
+new_bhfile = "{}_cp{}".format(filename, fileext)
+shutil.copyfile(bhfile, new_bhfile)
+
 #determine the influence and hardening radii
 snap = pygad.Snapshot(snaplist[0], physical=True)
 r_infl = list(cmf.analysis.influence_radius(snap).values())[0].in_units_of("pc") #in pc
 r_hard = cmf.analysis.hardening_radius(snap.bh["mass"], r_infl)
 
 #get BH objects
-bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
+bh1, bh2, merged = cmf.analysis.get_bound_binary(new_bhfile)
 orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
 myr = ketjugw.units.yr * 1e6
 
@@ -86,14 +92,10 @@ print("GR emission radius a_GR: {:.2e}".format(a_gr))
 
 #plotting
 fig, ax = plt.subplots(2,1, sharex=True, gridspec_kw={"height_ratios":[3,1]})
-ax[0].set_ylabel("a/pc")
-ax[1].set_xlabel("t/Myr")
-ax[1].set_ylabel("e")
-ax[0].semilogy(orbit_params["t"]/myr, orbit_params["a_R"]/ketjugw.units.pc, zorder=5)
+cmf.plotting.binary_param_plot(orbit_params, ax, zorder=5)
 ax[0].scatter(r_infl_time, r_infl, zorder=10, label=r"$r_\mathrm{inf}$")
 sc = ax[0].scatter(r_hard_time, r_hard, zorder=10, label=r"$a_\mathrm{h}$")
 ax[0].axvline(r_hard_time+tspan, c="tab:red", label="H calculation")
-ax[1].plot(orbit_params["t"]/myr, orbit_params["e_t"], zorder=5)
 ax[0].scatter(a_gr_time, a_gr, zorder=10, label=r"$a_\mathrm{GR}$")
 pq_estimates.plot(*ax)
 ax[0].legend()

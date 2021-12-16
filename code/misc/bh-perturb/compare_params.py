@@ -10,8 +10,13 @@ myr = ketjugw.units.yr * 1e6
 err_level = 0.05
 
 
-main_path = "/scratch/pjohanss/arawling/collisionless_merger/merger-test/D-E-3.0-0.001/perturbations_eta_"
-subdirs = ["0002", "0005", "0020"]
+main_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers"
+subdirs = [
+    "D-E-3.0-0.001/perturbations",
+    "D-E-3.0-0.005/perturbations",
+    "D-E-3.0-0.1/perturbations",
+    "D-E-3.0-1.0/perturbations"
+]
 cols = cmf.plotting.mplColours()
 alpha = 0.6
 bins = np.linspace(0, 1, 50)
@@ -21,7 +26,7 @@ fig, ax = plt.subplots(2,1, sharex="all")
 fig2, ax2 = plt.subplots(1,1)
 
 for i, subdir in enumerate(subdirs):
-    ketju_files = cmf.utils.get_ketjubhs_in_dir("{}{}".format(main_path, subdir), file_name="ketju_bhs_cp.hdf5")
+    ketju_files = cmf.utils.get_ketjubhs_in_dir(os.path.join(main_path, subdir), file_name="ketju_bhs_cp.hdf5")
     peak_e = np.full_like(ketju_files, np.nan, dtype=float)
     label = r"$\eta$={}.{}".format(subdir[0], subdir[1:])
     for j, ketjufile in enumerate(ketju_files):
@@ -33,9 +38,13 @@ for i, subdir in enumerate(subdirs):
         hval, hbins = np.histogram(op["e_t"], bins=bins)
         bincentres = cmf.mathematics.get_histogram_bin_centres(hbins)
         peak_e[j] = bincentres[np.argmax(hval)]
-    ax2.hist(peak_e, bins=bins2, color=cols[i], alpha=alpha, density=True, label=label)
+    pe_vals, pe_bins = np.histogram(peak_e, bins=bins2)
+    ax2.scatter(cmf.mathematics.get_histogram_bin_centres(pe_bins), pe_vals+i*0.1, zorder=10, label=subdir.split("/")[0])
 ax[0].legend()
 ax2.legend()
+ax2.set_ylabel("Number of Runs")
+for i in range(1, 6):
+    ax2.axhline(i, c="k", alpha=0.4)
 ax[0].set_ylabel("a/pc")
 ax[1].set_xlabel("t/Myr")
 ax[1].set_ylabel("e")

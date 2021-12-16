@@ -4,10 +4,11 @@ import matplotlib.colors as colors
 import scipy.stats
 import copy
 import pygad
+import ketjugw
 from ..general import convert_gadget_time
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot"]
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
@@ -169,7 +170,30 @@ class GradientScatterPlot(GradientPlot):
                 self.ax.scatter(xs, ys, color=self.cmap(self.norm(cs)), marker=markeri, label=(labeli if i==0 else ""),**pki)
 
 
+def binary_param_plot(orbit_pars, ax=None, **kwargs):
+    """
+    Standard plot of binary semimajor axis and eccentricity.
 
+    Parameters
+    ----------
+    orbit_pars: orbit parameter dictionary
+    ax: matplotlib axis object to add plot to, None to create a new instance
+    kwargs: arguments to be parsed to pyplot.plot
+
+    Returns
+    -------
+    ax: matplotlib axis object
+    """
+    if ax is None:
+        fig, ax = plt.subplots(2,1,sharex="col")
+    ax[0].set_ylabel("a/pc")
+    ax[1].set_ylabel("e")
+    ax[1].set_xlabel("t/Myr")
+    ax[1].set_ylim(0,1)
+    myr = ketjugw.units.yr * 1e6
+    ax[0].semilogy(orbit_pars["t"]/myr, orbit_pars["a_R"]/ketjugw.units.pc, **kwargs)
+    ax[1].plot(orbit_pars["t"]/myr, orbit_pars["e_t"], **kwargs)
+    return ax
 
 
 

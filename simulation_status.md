@@ -2,11 +2,11 @@
 
 ## Overview  
 Legend:  
-|Key|Description
-|---|-----------
-|C  | set completed
-|c  | children running
-|p  | parent running
+|Key|Description      |
+|---|-----------------|
+|C  | set completed   |
+|c  | children running|
+|p  | parent running  |
 
 
 |    |AB|AC|AD|AE|BC|BD|BE|CD|CE|DE|
@@ -21,12 +21,12 @@ Legend:
 
 ## Inidividual Runs  
 Legend:  
-|Key|Description
-|---|-----------
-|o  | completed
-|.  | running
-|x  | abandoned
-|?  | unsure
+|Key|Description|
+|---|-----------|
+|o  | completed |
+|.  | running   |
+|x  | abandoned |
+|?  | unsure    |
 
 
 |Configuration|000|001|002|003|004|005|006|007|008|009|
