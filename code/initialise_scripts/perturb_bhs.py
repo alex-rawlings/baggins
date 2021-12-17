@@ -29,12 +29,9 @@ vcoms = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=star_id_
 
 #determine radial coordinate distribution in brownian motion
 #and set up the perturbation values
-#perturb_dict = dict()
 perturb_pos = dict()
 perturb_vel = dict()
-#for (bhid, perturbfile) in zip(star_id_masks.keys(), (pfv.perturb1, pfv.perturb2)):
 for bhid in star_id_masks:
-    #perturb_dict[bhid] = cmf.utils.load_data(perturbfile)
     perturb_pos[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
     perturb_vel[bhid] = np.full((pfv.numberPerturbs, 3), np.nan, dtype=float)
 
@@ -79,5 +76,6 @@ for i in range(pfv.numberPerturbs):
         f.write(contents)
         f.truncate()
     
-    
+#add new parameters to file
+cmf.utils.write_parameters(pfv, allow_updates=("perturb_snap_idx"), verbose=args.verbose)
 print("All child directories made.                                  ")

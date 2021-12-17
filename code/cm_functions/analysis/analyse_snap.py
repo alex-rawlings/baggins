@@ -6,7 +6,7 @@ import pygad
 from . import masks as masks
 from ..mathematics import radial_separation, density_sphere
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "shell_com_motions_each_galaxy"]
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
@@ -388,19 +388,6 @@ def _get_G_rho_per_sigma(snap, extent=None):
     return G_rho_per_sigma.in_units_of("pc**-1/yr")
 
 
-
-
-
-
-
-
-
-
-
-############################################
-########## DISCONTINUED FUNCTIONS ##########
-############################################
-
 def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start":1e-6, "stop":500, "num":20}, family="stars", Gcom_kw={"initial_radius":10, "min_particle_count":10}, verbose=True):
     """
     Determine the CoM motions within concentric shells, as opposed 
@@ -438,5 +425,4 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
         for bhid in id_masks.keys():
             xcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="pos")
             vcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="vel")
-    #we now have datasets with CoM motion as a function of radius
-    #interpolate the results
+    return xcoms, vcoms

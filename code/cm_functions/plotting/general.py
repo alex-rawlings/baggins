@@ -114,3 +114,34 @@ def shade_bool_regions(ax, xdata, mask, **kwargs):
     regions = [(group[0], group[-1]) for group in (list(group) for key, group in itertools.groupby(range(len(mask)), key=mask.__getitem__) if key)]
     for region in regions:
         ax.axvspan(xdata[region[0]], xdata[region[1]], **kwargs)
+
+
+def draw_sizebar(ax, length, units, location='lower right', pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert=None, remove_ticks=True):
+    """
+    Draw a horizontal scale bar using the mpl toolkit
+    
+    Parameters
+    ----------
+    ax: pyplot axis to add the bar to
+    length: length of scale bar in data units
+    units: string stating unit name
+    location: where to place bar (standard pyplot location string)
+    pad: padding around label
+    borderpad: padding around border
+    sep: separation between label and scale bar
+    frameon: draw box around scale bar
+    unitconvert: convert units of scalebar
+    remove_ticks: remove tick labels on axis?
+    """
+    if unitconvert is None:
+        label = str(length)+' '+units
+    elif unitconvert == 'kilo2base':
+        label = str(length*1000)+' '+units
+    else:
+        #TODO other unit conversions
+        raise NotImplementedError('Other unit conversions yet to be implemented')
+    asb = AnchoredSizeBar(ax.transData, length, label, loc=location, pad=pad, borderpad=borderpad, sep=sep, frameon=frameon)
+    ax.add_artist(asb)
+    if remove_ticks:
+        ax.axes.xaxis.set_visible(False)
+        ax.axes.yaxis.set_visible(False)

@@ -25,6 +25,10 @@ bins2 = np.linspace(0, 1, 20)
 fig, ax = plt.subplots(2,1, sharex="all")
 fig2, ax2 = plt.subplots(1,1)
 
+pe_vals = []
+labels = []
+#pe_bins = []
+
 for i, subdir in enumerate(subdirs):
     ketju_files = cmf.utils.get_ketjubhs_in_dir(os.path.join(main_path, subdir), file_name="ketju_bhs_cp.hdf5")
     peak_e = np.full_like(ketju_files, np.nan, dtype=float)
@@ -38,8 +42,11 @@ for i, subdir in enumerate(subdirs):
         hval, hbins = np.histogram(op["e_t"], bins=bins)
         bincentres = cmf.mathematics.get_histogram_bin_centres(hbins)
         peak_e[j] = bincentres[np.argmax(hval)]
-    pe_vals, pe_bins = np.histogram(peak_e, bins=bins2)
-    ax2.scatter(cmf.mathematics.get_histogram_bin_centres(pe_bins), pe_vals+i*0.1, zorder=10, label=subdir.split("/")[0])
+    #pe_vals_temp, pe_bins_temp = np.histogram(peak_e, bins=bins2)
+    pe_vals.append(peak_e)
+    labels.append(subdir.split("/")[0])
+    #ax2.scatter(cmf.mathematics.get_histogram_bin_centres(pe_bins), pe_vals+i*0.1, zorder=10, label=subdir.split("/")[0])
+ax2.hist(pe_vals, 20, label=labels)
 ax[0].legend()
 ax2.legend()
 ax2.set_ylabel("Number of Runs")

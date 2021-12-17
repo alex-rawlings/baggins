@@ -1,4 +1,5 @@
 import argparse
+import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
@@ -14,7 +15,7 @@ parser.add_argument("-m", "--method", type=str, help="method of determining iner
 parser.add_argument("-f", "--family", type=str, help="particle family", dest="family", choices=["dm", "stars"], default="dm")
 parser.add_argument("-S", "--statistic", type=str, help="statistic", dest="stat", choices=["median", "mean", "last"], default="median")
 parser.add_argument("-r", "--radii", type=cmf.utils.cl_str_2_space, help="radii to calculate inertia tensor at", dest="radii", default=None)
-parser.add_argument("-s", "--savedir", type=str, help="save directory", dest="savedir", default="{}/inertia".format(cmf.FIGDIR))
+parser.add_argument("-s", "--savedir", type=str, help="save directory", dest="savedir", default=os.path.join(cmf.FIGDIR, "inertia"))
 parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", help="verbose printing in script")
 args = parser.parse_args()
 
@@ -151,7 +152,7 @@ else:
     #read in a new dataset
     if args.verbose:
         print("Loading saved dataset...")
-    savefile_name = args.path.lstrip("./").split(".")[-2]
+    savefile_name = args.path.lstrip("./").split(".")[-2].split("/")[-1]
     save_dict = cmf.utils.load_data(args.path)
     time_of_snap = save_dict["time_of_snap"]
     ratios = save_dict["ratios"]
@@ -176,5 +177,5 @@ ax[0].legend()
 ax[0].set_ylabel("b/a")
 ax[1].set_ylabel("c/a")
 ax[2].set_ylabel("Particle Count")
-plt.savefig("{}/{}.png".format(args.savedir, savefile_name))
+plt.savefig("{}.png".format(os.path.join(args.savedir, savefile_name)))
 #plt.show()

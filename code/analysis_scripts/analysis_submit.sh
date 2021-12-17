@@ -12,14 +12,15 @@
 module purge
 module restore py386
 
-#python ./inertia_analysis.py "/scratch/pjohanss/arawling/collisionless_merger/regen-test/original/output" -v -n -f stars
+#python ./inertia_analysis.py "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/starsoft10pc/NGCa2986/output" -v -n -f stars -i
 
 case $SLURM_ARRAY_TASK_ID in
-	0) oc=("NGCa0524" "NGCa3348" "NGCa3607") ;;
-	1) oc=("NGCa4291" "NGCa2986") ;;
+	0) oc=("NGCa0524") ;;
+	1) oc=("NGCa3348") ;;
 esac
 
 for i in ${oc[@]}
 do
-    python ./bh_perturb_distribution.py "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/starsoft10pc/$i/output" -n 
+	#python ./bh_perturb_distribution.py "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/starsoft10pc/$i/output" -n 
+	python ./inertia_analysis.py "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/starsoft10pc/$i/output" -v -n -f stars -i
 done

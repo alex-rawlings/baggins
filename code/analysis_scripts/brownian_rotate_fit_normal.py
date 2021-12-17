@@ -34,7 +34,7 @@ def plothist_and_best(mu, sigma, ax1, ax2, ax3, nbins=10, label=None, endpoint=1
 
 parser = argparse.ArgumentParser(description="Randomly rotate offset measurements to determine the best fit Gaussian distribution", allow_abbrev=False)
 parser.add_argument(type=str, help="path to .pickle files", dest="path")
-parser.add_argument("-f", "--file", type=str, help=".pickle file of Brownian offsets", dest="data", action="append")
+parser.add_argument("-f", "--file", type=str, help=".pickle file of Brownian offsets, or 'all' for all", dest="data", action="append")
 parser.add_argument("-e", "--endpoints", type=float, help="plotting range of distributions", dest="endpoints", default=0.01)
 parser.add_argument("-r", "--rotations", type=int, dest="rotations", help="number of random rotations to perform", default=5000)
 parser.add_argument("-b", "--bins", type=int, help="number of histogram bins", dest="bins", default=20)
