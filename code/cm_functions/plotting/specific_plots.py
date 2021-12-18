@@ -170,7 +170,7 @@ class GradientScatterPlot(GradientPlot):
                 self.ax.scatter(xs, ys, color=self.cmap(self.norm(cs)), marker=markeri, label=(labeli if i==0 else ""),**pki)
 
 
-def binary_param_plot(orbit_pars, ax=None, **kwargs):
+def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
     """
     Standard plot of binary semimajor axis and eccentricity.
 
@@ -178,6 +178,7 @@ def binary_param_plot(orbit_pars, ax=None, **kwargs):
     ----------
     orbit_pars: orbit parameter dictionary
     ax: matplotlib axis object to add plot to, None to create a new instance
+    toffset: time offset in Myr
     kwargs: arguments to be parsed to pyplot.plot
 
     Returns
@@ -191,8 +192,8 @@ def binary_param_plot(orbit_pars, ax=None, **kwargs):
     ax[1].set_xlabel("t/Myr")
     ax[1].set_ylim(0,1)
     myr = ketjugw.units.yr * 1e6
-    ax[0].semilogy(orbit_pars["t"]/myr, orbit_pars["a_R"]/ketjugw.units.pc, **kwargs)
-    ax[1].plot(orbit_pars["t"]/myr, orbit_pars["e_t"], **kwargs)
+    ax[0].semilogy(orbit_pars["t"]/myr + toffset, orbit_pars["a_R"]/ketjugw.units.pc, **kwargs)
+    ax[1].plot(orbit_pars["t"]/myr + toffset, orbit_pars["e_t"], **kwargs)
     return ax
 
 

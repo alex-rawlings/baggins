@@ -39,7 +39,8 @@ newParameterValues = {
                                     #"InitCondFile", "SnapshotFileBase" are 
                                     #always updated
 
-#----------------------------------returned valuese = 9.91681e-01
+#----------------------------------returned values
+e = 9.91681e-01
 full_save_location = "/scratch/pjohanss/arawling/collisionless_merger/mergers/C-E-3.0-0.05"
 r0 = 1.68594e+03
 rperi = 2.80991e+01

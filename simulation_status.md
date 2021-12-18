@@ -5,19 +5,20 @@ Legend:
 
 |Key|Description      |
 |---|-----------------|
-|C  | set completed   |
-|c  | children running|
+|w  | waiting c --> p |
 |p  | parent running  |
+|c  | children running|
+|C  | set completed   |
 
 
 |     |AB|AC|AD|AE|BC|BD|BE|CD|CE|DE|
 |-----|--|--|--|--|--|--|--|--|--|--|
-|0.001|  |  |  |  |  |  |  |  |p |C |
-|0.005|  |  |  |  |  |  |  |  |p |c |
-|0.010|  |  |  |  |  |  |  |  |  |c |
-|0.050|  |  |  |  |  |  |  |  |  |c |
-|0.100|  |  |  |  |  |  |  |  |  |c |
-|1.000|  |  |  |  |  |  |  |  |  |c |
+|0.001|  |  |  |  |  |  |p |  |p |C |
+|0.005|  |  |  |  |  |  |p |  |p |c |
+|0.010|  |  |  |  |  |  |p |  |p |c |
+|0.050|  |  |  |  |  |  |p |  |p |c |
+|0.100|  |  |  |  |  |  |p |  |p |c |
+|1.000|  |  |  |  |  |  |p |  |p |c |
 
 
 ## Individual Runs  
@@ -25,8 +26,8 @@ Legend:
 
 |Key|Description|
 |---|-----------|
-|o  | completed |
 |.  | running   |
+|o  | completed |
 |x  | abandoned |
 |?  | unsure    |
 
@@ -101,7 +102,7 @@ Legend:
 |DE-3.0-0.010 | x | . | . | . | . | . | . | . | . | x |
 |DE-3.0-0.050 | . | . | x | . | . | . | . | x | . | . |
 |DE-3.0-0.100 | . | o | . | . | . | . | . | . | o | . |
-|DE-3.0-1.000 | x | x | . | . | o | . | o | . | x | x |
+|DE-3.0-1.000 | x | x | . | o | o | . | o | . | x | x |
 
 
 ## SMBH Kick Velocities
