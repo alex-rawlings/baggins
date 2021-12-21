@@ -41,7 +41,7 @@ def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, mi
     coms = dict()
     for ind, idx in enumerate(snap.bh['ID']):
         if verbose:
-            print('Finding CoM associated with BH ID {}'.format(idx))
+            print('Finding CoM associated with BH ID {:.3e}'.format(idx))
         if masks is not None:
             masked_subsnap = subsnap[masks[idx]]
         else:
@@ -88,7 +88,7 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
         #make a ball about the CoM
         ball_radius = np.sort(pygad.utils.dist(masked_subsnap['pos'], xcom[idx]))[int(min_particle_count)]
         if verbose:
-            print('Maximum radius for velocity CoM set to {} kpc'.format(ball_radius))
+            print('Maximum radius for velocity CoM set to {:.3e} kpc'.format(ball_radius))
         ball_mask = pygad.BallMask(pygad.UnitQty(ball_radius, 'kpc'), center=xcom[idx])
         vcoms[idx] = pygad.analysis.mass_weighted_mean(masked_subsnap[ball_mask], qty='vel')
     return vcoms
@@ -414,6 +414,7 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
         xcoms[k] = np.full((shell_kw["num"], 3), np.nan)
         vcoms[k] = np.full((shell_kw["num"], 3), np.nan)
     global_xcom = get_com_of_each_galaxy(snap, family=family, verbose=verbose, masks=id_masks, **Gcom_kw)
+    global_vcom = get_com_velocity_of_each_galaxy(snap, global_xcom, masks=id_masks, family=family, verbose=verbose)
     shell_radii = np.geomspace(**shell_kw)
     #iterate over each shell
     for i, (r_inner, r_outer) in enumerate(zip(
@@ -425,4 +426,4 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
         for bhid in id_masks.keys():
             xcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="pos")
             vcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="vel")
-    return xcoms, vcoms
+    return xcoms, vcoms, global_xcom, global_vcom

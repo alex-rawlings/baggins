@@ -24,7 +24,7 @@ if args.new:
     #get the full pathname of all the snapshots
     snap_files = cmf.utils.get_snapshots_in_dir(args.path)
 
-    #set the default radial scaling
+    #set the default radial scaling in units of Rvir
     if args.radii is None:
         if args.family == "dm":
             args.radii = np.linspace(0.1, 6, 20)
@@ -163,6 +163,9 @@ else:
 
 #plot
 fig, ax = plt.subplots(3, 1, figsize=(6,6), sharex="all")
+ax[0].set_ylim(0,1)
+ax[1].set_ylim(0,1)
+ax[2].set_yscale("log")
 labvals = ["b/a", "c/a"]
 for (key_r, key_x) in zip(ratios.keys(), xcom.keys()):
     #need to transpose ratio errors for pyplot compatability

@@ -1,8 +1,9 @@
 import pickle
 import os
+import shutil
 
 
-__all__ = ['save_data', 'load_data', "get_files_in_dir", 'get_snapshots_in_dir', "get_ketjubhs_in_dir"]
+__all__ = ['save_data', 'load_data', "get_files_in_dir", 'get_snapshots_in_dir', "get_ketjubhs_in_dir", "create_file_copy"]
 
 
 # TODO: not memory efficient to be using dicts for data
@@ -79,7 +80,7 @@ def get_snapshots_in_dir(path, ext='.hdf5'):
     return [f for f in all_files if "ketju_bhs" not in f]
 
 
-def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
+def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5", copy=True):
     """
     Get a list of the full-path name of all ketju BH data files within a 
     directory.
@@ -87,6 +88,8 @@ def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
     Parameters
     ----------
     path: host directory of ketju bh files
+    file_name: name of ketju file
+    copy (bool): should a copy be made (needed for ongoing runs)
 
     Returns
     -------
@@ -96,6 +99,16 @@ def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
     for root, dirs, files in os.walk(path):
         for f in files:
             if f == file_name:
-                bh_files.append(os.path.join(root, f))
+                new_f = create_file_copy(os.path.join(root, f))
+                bh_files.append(new_f)
     bh_files.sort()
     return bh_files
+
+def create_file_copy(f, suffix="_cp"):
+    """
+    Create a copy of a file by appending <suffix> to the file name.
+    """
+    fname, fext = os.path.splitext(f)
+    new_f = "{}{}{}".format(fname, suffix, fext)
+    shutil.copyfile(f, new_f)
+    return new_f

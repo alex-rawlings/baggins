@@ -92,4 +92,4 @@ with open((outpath+'/'+pfv.galaxyName+'_stability.txt'), 'w') as f:
         f.write('{:s},{:s},{:.3f}\n'.format(particle,label_value,((stability_data.iloc[-1,ind] - stability_data.iloc[0,ind])/stability_data.iloc[0,ind]*100)))
 fig.legend(loc='right', ncol=1)
 plt.subplots_adjust(left=0.1, right=0.85, top=0.92, bottom=0.15)
-plt.savefig(figPath+'/'+pfv.galaxyName+'_stability.png', dpi=300)
+plt.savefig(figPath+'/'+pfv.galaxyName+'_stability.png')

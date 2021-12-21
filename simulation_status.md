@@ -3,33 +3,33 @@
 ## Overview  
 Legend:  
 
-|Key|Description      |
-|---|-----------------|
-|w  | waiting c --> p |
-|p  | parent running  |
-|c  | children running|
-|C  | set completed   |
+|Key|Description      |Total|
+|---|-----------------|-----|
+|w  | waiting c --> p |   0 |
+|p  | parent running  |  54 |
+|c  | children running|   5 |
+|C  | set completed   |   1 |
 
 
 |     |AB|AC|AD|AE|BC|BD|BE|CD|CE|DE|
 |-----|--|--|--|--|--|--|--|--|--|--|
-|0.001|  |  |  |  |  |  |p |  |p |C |
-|0.005|  |  |  |  |  |  |p |  |p |c |
-|0.010|  |  |  |  |  |  |p |  |p |c |
-|0.050|  |  |  |  |  |  |p |  |p |c |
-|0.100|  |  |  |  |  |  |p |  |p |c |
-|1.000|  |  |  |  |  |  |p |  |p |c |
+|0.001|p |p |p |p |p |p |p |p |p |C |
+|0.005|p |p |p |p |p |p |p |p |p |c |
+|0.010|p |p |p |p |p |p |p |p |p |c |
+|0.050|p |p |p |p |p |p |p |p |p |c |
+|0.100|p |p |p |p |p |p |p |p |p |c |
+|1.000|p |p |p |p |p |p |p |p |p |c |
 
 
 ## Individual Runs  
 Legend:  
 
-|Key|Description|
-|---|-----------|
-|.  | running   |
-|o  | completed |
-|x  | abandoned |
-|?  | unsure    |
+|Key|Description|Total|
+|---|-----------|-----|
+|.  | running   | 22  |
+|o  | completed | 15  |
+|x  | abandoned | 20  |
+|?  | unsure    |  3  |
 
 
 |Configuration|000|001|002|003|004|005|006|007|008|009|
@@ -98,11 +98,11 @@ Legend:
 |CE-3.0-1.000 |   |   |   |   |   |   |   |   |   |   |
 |             |   |   |   |   |   |   |   |   |   |   |
 |DE-3.0-0.001 | o | o | ? | o | ? | o | x | x | o | x |
-|DE-3.0-0.005 | x | . | x | x | . | o | x | x | . | x |
-|DE-3.0-0.010 | x | . | . | . | . | . | . | . | . | x |
-|DE-3.0-0.050 | . | . | x | . | . | . | . | x | . | . |
-|DE-3.0-0.100 | . | o | . | . | . | . | . | . | o | . |
-|DE-3.0-1.000 | x | x | . | o | o | . | o | . | x | x |
+|DE-3.0-0.005 | x | x | x | x | ? | o | x | x | . | x |
+|DE-3.0-0.010 | x | . | o | o | o | . | . | o | o | x |
+|DE-3.0-0.050 | x | . | x | . | . | . | o | x | o | . |
+|DE-3.0-0.100 | . | o | . | . | . | o | o | . | o | . |
+|DE-3.0-1.000 | x | x | x | o | o | o | o | o | x | x |
 
 
 ## SMBH Kick Velocities
@@ -173,7 +173,7 @@ Legend:
 |CE-3.0-1.000 |    |    |    |    |    |    |    |    |    |    |
 |             |    |    |    |    |    |    |    |    |    |    |
 |DE-3.0-0.001 | 109|2043| x  |2780| x  |1315| x  | x  |1898| x  |
-|DE-3.0-0.005 | x  | .  | x  | x  | .  | .  | x  | .  | .  | .  |
+|DE-3.0-0.005 | x  | x  | x  | x  | .  | .  | x  | .  | .  | .  |
 |DE-3.0-0.010 | .  | .  | .  | .  | .  | .  | .  | .  | .  | .  |
 |DE-3.0-0.050 | .  | .  | .  | .  | .  | .  | .  | .  | .  | .  |
 |DE-3.0-0.100 | .  |1223| .  | .  | .  | .  | .  | .  |1129| .  |

@@ -1,6 +1,4 @@
 import argparse
-import os.path
-import shutil
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
@@ -13,9 +11,7 @@ parser.add_argument("-o", "--orbit", help="Plot orbital parameters", dest="orbpa
 args = parser.parse_args()
 
 #copy file so it can be read
-filename, fileext = os.path.splitext(args.file)
-new_filename = "{}_cp{}".format(filename, fileext)
-shutil.copyfile(args.file, new_filename)
+new_filename = cmf.utils.create_file_copy(args.file)
 
 gyr = ketjugw.units.yr * 1e9
 kpc = ketjugw.units.pc * 1e3

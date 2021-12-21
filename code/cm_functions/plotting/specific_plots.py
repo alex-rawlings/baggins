@@ -8,7 +8,7 @@ import ketjugw
 from ..general import convert_gadget_time
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot"]
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
@@ -95,6 +95,7 @@ class GradientPlot:
         self.cmap= getattr(plt.cm, cmap)
         self.all_marker = [marker]
         self.all_pks = [plot_kwargs]
+        self.norm = [0,1]
     
     def __len__(self):
         return self.data_count
@@ -196,6 +197,30 @@ def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
     ax[1].plot(orbit_pars["t"]/myr + toffset, orbit_pars["e_t"], **kwargs)
     return ax
 
+
+class twin_axes_plot:
+    def __init__(self, ax, convert_func, share="y"):
+        """
+        Set up a shared axis for a plot. An example would be time and redshift
+        on the top and bottom x-axes.
+        """
+        self.ax = ax
+        self.share = share
+        if share == "y":
+            self.twin_ax = ax.twiny()
+        else:
+            self.twin_ax = ax.twinx()
+        self.convert_func = convert_func
+        self.ax.callbacks.connect("ylim_changed", self.converter)
+    
+    def converter(self, ax):
+        if self.share == "x":
+            y1, y2 = ax.get_ylim()
+            self.twin_ax.set_ylim(self.convert_func(y1), self.convert_func(y2))
+        else:
+            x1, x2 = ax.get_xlim()
+            self.twin_ax.set_xlim(self.convert_func(x1), self.convert_func(x2))
+        self.twin_ax.figure.canvas.draw()
 
 
 ###############################
