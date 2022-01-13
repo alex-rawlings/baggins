@@ -113,9 +113,10 @@ class BHBinary:
         binary_param_plot(self.orbit_params, ax=ax, toffset=toffset, zorder=5)
         if self.has_characteristic_radii:
             ax[0].scatter(self.r_infl_time+toffset, self.r_infl, zorder=10, label=r"$r_\mathrm{inf}$")
-            sc = ax[0].scatter(self.r_hard_time+toffset, self.r_hard, zorder=10, label=r"$a_\mathrm{h}$")
+            ax[0].scatter(self.r_hard_time+toffset, self.r_hard, zorder=10, label=r"$a_\mathrm{h}$")
             ax[0].axvspan(self.r_hard_time+toffset, self.r_hard_time+self.tspan+toffset, color="tab:red", alpha=0.4, label="H calculation")
-            ax[0].scatter(self.a_gr_time+toffset, self.a_gr, zorder=10, label=r"$a_\mathrm{GR}$")
+            sc = ax[0].scatter(self.a_gr_time+toffset, self.a_gr, zorder=10, label=r"$a_\mathrm{GR}$")
+            ax[0].axhline(self.a_gr, ls=":", c=sc.get_facecolors())
         if self.has_time_estimates:
             for i, (k,q) in enumerate(
                             zip(self.predict_a.keys(), self.quantiles)):

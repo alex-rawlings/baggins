@@ -2,8 +2,22 @@ import numpy as np
 import scipy.stats
 
 
-__all__ = ["smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
+__all__ = ["iqr", "smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
 
+
+def iqr(x):
+    """
+    Return the interquartile range of an array.
+
+    Parameters
+    ----------
+    x: numpy array
+
+    Returns
+    -------
+    interquartile range
+    """
+    return np.nanquantile(x, 0.75, axis=-1) - np.nanquantile(x, 0.25, axis=-1)
 
 def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, rng=None):
     """

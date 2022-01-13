@@ -26,7 +26,7 @@ pericentreDistance = "virial5e-2"   #distance at first pericentre
 
 #--- perturb properties
 seed = 985541                       #seed for setting the RNG
-perturbTime = 99                 #time when BH positions are perturbed
+perturbTime = 6.031                 #time when BH positions are perturbed
 numberPerturbs = 10                 #how many perturbations to create
 positionPerturb = 1.11e-2           #SD of position perturbation
 velocityPerturb = 12.8              #SD of velocity perturbation
@@ -46,4 +46,6 @@ r0 = 1.65948e+03
 rperi = 2.76580e+01
 time_to_pericenter = 1.96942e+00
 virial_radius = 5.53159e+02
+#----------------------
+perturb_snap_idx = 6.00000e+01
 #----------------------
