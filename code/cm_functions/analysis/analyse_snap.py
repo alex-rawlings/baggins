@@ -6,7 +6,7 @@ import pygad
 from . import masks as masks
 from ..mathematics import radial_separation, density_sphere
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "shell_com_motions_each_galaxy"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "shell_com_motions_each_galaxy", "projected_half_mass_radius"]
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
@@ -427,3 +427,50 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
             xcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="pos")
             vcoms[bhid][i, :] = pygad.analysis.mass_weighted_mean(snap[radial_mask[bhid]], qty="vel")
     return xcoms, vcoms, global_xcom, global_vcom
+
+
+def projected_half_mass_radius(snap, obs=10, family="stars", masks=None):
+    """
+    Determine the projected half mass radius of (potentially two) galaxies
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    obs: number of random rotations to perform
+    family: determine the projected half mass radius for this particle family
+    masks: dict of id masks (from masks.get_all_id_masks) so that the half mass
+           radius can be determined for two galaxies within a merger simulation.
+           If None, the system is treated as a whole and the projected half
+           mass radius is assigned to just one BH ID.
+    
+    Returns
+    -------
+    Re: dict of half mass radii of systems, with keys correspponding to the BH
+        ID associated with the galaxy
+    """
+    assert(snap.phys_units_requested)
+    num_bhs = len(snap.bh['mass'])
+    if masks is not None:
+        assert(len(masks) == num_bhs)
+    Re = dict.fromkeys(snap.bh["ID"], 0)
+    rng = np.random.default_rng()
+    rot_axis = rng.uniform(-1, 1, (obs, 3))
+    rot_angle = rng.uniform(0, np.pi, obs)
+    for j, bhid in enumerate(Re.keys()):
+        if masks is None:
+            centre_guess = pygad.analysis.center_of_mass(snap.bh)
+            subsnap = getattr(snap, family)
+            if j > 0:
+                break
+        else:
+            centre_guess = snap.bh[snap.bh["ID"]==bhid]["pos"]
+            subsnap = snap[masks[bhid]]
+        for i in range(obs):
+            rot = pygad.transformation.rot_from_axis_angle(rot_axis[i], rot_angle[i])
+            rot.apply(subsnap)
+            centre = pygad.analysis.shrinking_sphere(subsnap, centre_guess, 10)
+            for proj in range(3):
+                Re[bhid] += pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
+        Re[bhid] /= (obs*3)
+    return Re
+

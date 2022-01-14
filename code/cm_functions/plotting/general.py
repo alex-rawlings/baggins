@@ -1,6 +1,8 @@
 from collections import OrderedDict
+import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
+from matplotlib import colors
 import itertools
 
 
@@ -145,3 +147,19 @@ def draw_sizebar(ax, length, units, location='lower right', pad=0.1, borderpad=0
     if remove_ticks:
         ax.axes.xaxis.set_visible(False)
         ax.axes.yaxis.set_visible(False)
+
+
+def zero_centre_colour(x):
+    """
+    Ensure that a colormap is symmetric about 0.
+
+    Parameters
+    ----------
+    x: data corresponding that will be represented with colour
+
+    Returns
+    -------
+    matplotlib.colors.Normalize instance
+    """
+    extremum = np.max(np.abs(x))
+    return colors.Normalize(-extremum, extremum)

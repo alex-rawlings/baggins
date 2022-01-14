@@ -93,7 +93,8 @@ class BHBinary:
         self.predict_t = {"median":None, "upper":None, "lower":None}
         if idxs is None:
             idxs = [self.r_hard_time_idx, self.a_more_Xpc_idx]
-        assert isinstance(idxs, list) and idxs[0] < idxs[1]
+        assert isinstance(idxs, list)
+        if idxs[1] != -1: assert idxs[0] < idxs[1]
 
         for k, q in zip(("median", "upper", "lower"), self.quantiles):
             a0 = self.orbit_params["a_R"][idxs[0]]
@@ -132,4 +133,3 @@ class BHBinary:
         ax[0].set_xlim(*xaxis_lims)
         ax[0].legend(loc="upper right")
         return ax
-

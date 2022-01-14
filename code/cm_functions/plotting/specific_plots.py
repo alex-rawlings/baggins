@@ -6,9 +6,10 @@ import copy
 import pygad
 import ketjugw
 from ..general import convert_gadget_time
+from .general import zero_centre_colour
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot", "voronoi_plot"]
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
@@ -221,6 +222,38 @@ class twin_axes_plot:
             x1, x2 = ax.get_xlim()
             self.twin_ax.set_xlim(self.convert_func(x1), self.convert_func(x2))
         self.twin_ax.figure.canvas.draw()
+
+
+def voronoi_plot(vdat):
+    """
+    Plot the voronoi maps for a system.
+
+    Parameters
+    ----------
+    vdat: dict of voronoi values from analysis.voronoi_binned_los_V_statistics()
+    """
+    fig, ax = plt.subplots(2,2, sharex="all", sharey="all", figsize=(7,4.7))
+    ax[0,0].set_ylabel("y/kpc")
+    ax[1,0].set_xlabel("x/kpc")
+    ax[1,0].set_ylabel("y/kpc")
+    ax[1,1].set_xlabel("x/kpc")
+    ax = np.concatenate(ax).flat
+    for i, (stat, cmap, label) in enumerate(zip(
+        (vdat["img_V"], vdat["img_sigma"], vdat["img_h3"], vdat["img_h4"]),
+        ("seismic", "plasma", "seismic", "seismic"),
+        (r"$V$ [km/s]", r"$\sigma$ [km/s]", r"$h_3$ [km/s]", r"$h_4$ [km/s]")
+    )):
+        #plot the statistic
+        if i != 1:
+            norm = zero_centre_colour(stat)
+        else:
+            norm = colors.Normalize(stat.min(), stat.max())
+        ax[i].set_aspect("equal")
+        p1 = ax[i].imshow(stat, interpolation="nearest", origin="lower", extent=vdat["extent"], cmap=cmap, norm=norm)
+        cbar = plt.colorbar(p1, ax=ax[i])
+        cbar.ax.set_ylabel(label)
+
+
 
 
 ###############################
