@@ -3,7 +3,7 @@ import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
 import pygad
-from .analyse_snap import _get_G_rho_per_sigma
+from .analyse_snap import get_G_rho_per_sigma
 from ..mathematics import radial_separation
 from ..general import xval_of_quantity
 
@@ -207,7 +207,7 @@ def linear_fit_get_H(t, a, t0, tspan, snap, rh, return_Gps=False):
     if not isinstance(rh, pygad.UnitArr):
         print("Setting rh to default length units {}".format("pc"))
         rh = pygad.UnitScalar(rh, "pc")
-    G_rho_per_sigma = _get_G_rho_per_sigma(snap, extent=rh)
+    G_rho_per_sigma = get_G_rho_per_sigma(snap, extent=rh)
     H = grad / G_rho_per_sigma
     if return_Gps:
         return H, G_rho_per_sigma

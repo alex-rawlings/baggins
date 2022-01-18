@@ -6,7 +6,7 @@ import pygad
 from . import masks as masks
 from ..mathematics import radial_separation, density_sphere
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "shell_com_motions_each_galaxy", "projected_half_mass_radius"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_half_mass_radius"]
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
@@ -369,7 +369,7 @@ def _get_inner_rho_and_sigma(snap, extent=None):
     return inner_density, inner_sigma
 
 
-def _get_G_rho_per_sigma(snap, extent=None):
+def get_G_rho_per_sigma(snap, extent=None):
     """
     Wrapper to determine the ratio of G*rho/sigma. 
 
