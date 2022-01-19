@@ -1,25 +1,34 @@
+import os.path
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
 import pygad
 
 from .orbit import get_bound_binary, linear_fit_get_H, linear_fit_get_K, analytic_evolve_peters_quinlan
-from .analyse_snap import influence_radius, hardening_radius, gravitational_radiation_radius
+from .analyse_snap import influence_radius, hardening_radius, gravitational_radiation_radius, get_G_rho_per_sigma
 from .general import snap_num_for_time
 from ..general import xval_of_quantity
 from ..plotting import binary_param_plot
+from ..utils import read_parameters, get_ketjubhs_in_dir, get_snapshots_in_dir
 
 __all__ = ["BHBinary"]
 
-class BHBinary:
-    def __init__(self, bhfile, snaplist, gr_safe_radius):
+myr = ketjugw.units.yr * 1e6
 
-        self.bhfile = bhfile
-        self.snaplist = snaplist
+
+class BHBinary:
+    def __init__(self, paramfile, perturbID, gr_safe_radius=15):
+        pfv = read_parameters(paramfile)
+        data_path = os.path.join(pfv.full_save_location, pfv.perturbSubDir, perturbID, "output")
+        self.bhfile = get_ketjubhs_in_dir(data_path)[0]
+        self.snaplist = get_snapshots_in_dir(data_path)
         self.gr_safe_radius = gr_safe_radius
         bh1, bh2, self.merged = get_bound_binary(self.bhfile)
         self.orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
+        self.time_offset = pfv.perturbTime * 1e3
         self.has_characteristic_radii = False
+        self.bh_masses = None
         self.r_infl = None
         self.r_infl_time = None
         self.r_hard = None
@@ -42,27 +51,38 @@ class BHBinary:
         self.predict_t = None
         self.e0_spread = None
 
+        print("Perturbation applied at {:.1f} Myr".format(self.time_offset))
+
     def get_influence_and_hard_radius(self):
         self.has_characteristic_radii = True
         myr = ketjugw.units.yr * 1e6
         snap = pygad.Snapshot(self.snaplist[0], physical=True)
+        self.bh_masses = snap.bh["mass"]
         self.r_infl = list(influence_radius(snap).values())[0].in_units_of("pc") #in pc
         self.r_hard = hardening_radius(snap.bh["mass"], self.r_infl)
         #determine when the above radii occur
-        self.r_infl_time = xval_of_quantity(self.r_infl, self.orbit_params["t"]/myr, self.orbit_params["a_R"]/ketjugw.units.pc, xsorted=True)
-        self.r_hard_time = xval_of_quantity(self.r_hard, self.orbit_params["t"]/myr, self.orbit_params["a_R"]/ketjugw.units.pc, xsorted=True)
         #and the corresponding indices
-        self.r_infl_time_idx = np.argmax(
+        try:
+            self.r_infl_time = xval_of_quantity(self.r_infl, self.orbit_params["t"]/myr, self.orbit_params["a_R"]/ketjugw.units.pc, xsorted=True)
+            self.r_infl_time_idx = np.argmax(
                             self.r_infl_time < self.orbit_params["t"]/myr)
+        except ValueError:
+            #when the influence radius is reached is not covered by the data
+            if self.r_infl > self.orbit_params["a_R"][0] / ketjugw.units.pc:
+                warnings.warn("Time of r_infl cannot be estimated from the data, as it occurs before the binary is bound! This point will be omitted from further analysis and plots.")
+            elif self.r_infl < self.orbit_params["a_R"][-1] / ketjugw.units.pc:
+                warnings.warn("Time of r_infl cannot be estimated from the data, as it occurs after the last available data point! This point will be omitted from further analysis and plots.")
+            else:
+                raise ValueError("r_infl cannot be determined")
+            self.r_infl_time = np.nan
+        self.r_hard_time = xval_of_quantity(self.r_hard, self.orbit_params["t"]/myr, self.orbit_params["a_R"]/ketjugw.units.pc, xsorted=True)
         self.r_hard_time_idx = np.argmax(
                             self.r_hard_time < self.orbit_params["t"]/myr)
-        self.hard_snap_idx = snap_num_for_time(self.snaplist, self.r_hard_time, method="nearest")
     
     def fit_analytic_form(self):
         self.has_analytic_estimate = True
-        myr = ketjugw.units.yr * 1e6
         #get the snap from which inner density, sigma is found
-        snap = pygad.Snapshot(self.snaplist[self.hard_snap_idx], physical=True)
+        #snap = pygad.Snapshot(self.snaplist[self.hard_snap_idx], physical=True)
         self.a_more_Xpc_idx = np.argmax(
             self.orbit_params["a_R"]/ketjugw.units.pc<self.gr_safe_radius)
         if self.a_more_Xpc_idx < 2:
@@ -72,7 +92,8 @@ class BHBinary:
         print("H determined over a span of {:.3f} Myr".format(self.tspan))
 
         #determine hardening constants -- times are in years
-        self.H, self.G_rho_per_sigma = linear_fit_get_H(self.orbit_params["t"]/ketjugw.units.yr, self.orbit_params["a_R"]/ketjugw.units.pc, self.r_hard_time*1e6, self.tspan*1e6, snap, self.r_infl, return_Gps=True)
+        self.G_rho_per_sigma = get_G_rho_per_sigma(self.snaplist, self.r_hard_time, extent=self.r_infl)
+        self.H = linear_fit_get_H(self.orbit_params["t"]/ketjugw.units.yr, self.orbit_params["a_R"]/ketjugw.units.pc, self.r_hard_time*1e6, self.tspan*1e6, self.G_rho_per_sigma)
         e0 = np.median(
             self.orbit_params["e_t"][self.r_hard_time_idx:self.a_more_Xpc_idx])
         print("e0: {:.3f}".format(e0))
@@ -81,8 +102,10 @@ class BHBinary:
         self.K = linear_fit_get_K(self.orbit_params["t"]/ketjugw.units.yr, self.orbit_params["e_t"], self.r_hard_time*1e6, self.tspan*1e6, self.H, self.G_rho_per_sigma, self.orbit_params["a_R"]/ketjugw.units.pc)
         print("Eccentricity rate K: {:.4f}".format(self.K))
 
-        self.a_gr, self.a_gr_time = gravitational_radiation_radius(snap, 
-            self.r_infl, self.r_hard, self.r_hard_time, self.H, e=e0)
+        self.a_gr, self.a_gr_time = gravitational_radiation_radius(
+                                        self.bh_masses, self.r_hard, 
+                                        self.r_hard_time, self.H,
+                                        self.G_rho_per_sigma, e=e0)
     
     def time_estimates(self, idxs=None, quantiles=(0.5, 0.05, 0.95)):
         self.quantiles = quantiles
@@ -107,7 +130,9 @@ class BHBinary:
     def formation_eccentricity_spread(self):
         self.e0_spread = np.nanstd(self.orbit_params["e_t"][:self.r_infl_time_idx])
 
-    def plot(self, ax=None, toffset=0, **kwargs):
+    def plot(self, ax=None, toffset=None, **kwargs):
+        if toffset is None:
+            toffset = self.time_offset
         myr = ketjugw.units.yr * 1e6
         if ax is None:
             fig, ax = plt.subplots(2,1,sharex="all")
@@ -133,3 +158,34 @@ class BHBinary:
         ax[0].set_xlim(*xaxis_lims)
         ax[0].legend(loc="upper right")
         return ax
+
+
+class ChildDataCube(BHBinary):
+    def __init__(self, paramfile, perturbID, gr_safe_radius=15):
+        super().__init__(paramfile, perturbID, gr_safe_radius)
+        self.binary_formation_time = None
+        self.binary_merger_timescale = None
+        self.binary_spin_flip = None
+        self.binary_kick_velocity = None
+        self.relaxed_stellar_velocity_dispersion = None
+        self.relaxed_inner_DM_fraction = None
+        self.relaxed_core_size = None
+        self.relaxed_effective_radius = None
+        self.relaxed_half_mass_radius = None
+        self.relaxed_density_profile = None
+        self.relaxed_density_profile_projected = None
+        self.total_stellar_mass = None
+        self.ifu_map_ah = None
+        self.ifu_map_merger = None
+        self.stellar_shell_velocities = None
+    
+    def find_binary_timescales(self):
+        self.binary_formation_time = self.orbit_params["t"][0] / myr
+        if self.merged:
+            self.binary_merger_timescale = (self.orbit_params["t"][-1] - self.orbit_params["t"][0]) / myr
+        else:
+            self.binary_merger_timescale = np.nan
+    
+    def find_binary_flip_and_kick(self):
+        pass
+

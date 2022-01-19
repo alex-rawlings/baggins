@@ -2,10 +2,7 @@ import warnings
 import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
-import pygad
-from .analyse_snap import get_G_rho_per_sigma
 from ..mathematics import radial_separation
-from ..general import xval_of_quantity
 
 __all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan"]
 
@@ -91,6 +88,7 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
     bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
     len1, len2 = len(bh1), len(bh2)
     min_len = min(len1, len2)
+    merged = MergerInfo()
     #first need to determine if time series are consistent between particles
     if np.any(np.abs(bh1.t[:min_len] - bh2.t[:min_len])>tol):
         # particle time series are not in sync, need to interpolate
@@ -100,7 +98,6 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
         # occurred that doesn't tie us to how Ketju data output occurs
         if verbose:
             print("Particle time series are not consistent with each other: linear interpolation will be performed")
-        merged = False
         t_arr = np.linspace(max(bh1.t[0], bh2.t[0]), min(bh1.t[-1], bh2.t[-1]), max(len1, len2))
         bh1interp = interpolate_particle_data(bh1, t_arr)
         bh2interp = interpolate_particle_data(bh2, t_arr)
@@ -109,10 +106,15 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
         # particles are in sync, and we can return as normal
         if len1 > len2:
             #bh2 has merged into bh1
+            merged.mass = bh1.m[-1]
+            merged.kick = bh1.v[len2,:] / ketjugw.units.km_per_s
+            merged.spin = bh1.spin[len2,:]
             bh1 = bh1[:len2]
-            merged = True
         elif len1 < len2:
             #bh1 has merged into bh2
+            merged.mass = bh2.m[-1]
+            merged.kick = bh2.v[len1,:] / ketjugw.units.km_per_s
+            merged.spin = bh2.spin[len1,:]
             bh2 = bh2[:len1]
             merged = True
         else:
@@ -180,7 +182,7 @@ def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
         return popt
  
 
-def linear_fit_get_H(t, a, t0, tspan, snap, rh, return_Gps=False):
+def linear_fit_get_H(t, a, t0, tspan, Gps):
     """
     Determine the hardening rate H by performing a linear fit to the time 
     derivative of the inverse of the semimajor axis. The equation can be found
@@ -192,27 +194,14 @@ def linear_fit_get_H(t, a, t0, tspan, snap, rh, return_Gps=False):
     a: array of semimajor axis values in PC
     t0: time to start the linear fit
     tspan: "duration" of linear fit
-    snap: pygad snapshot object from which velocity dispersion, density will
-          be estimated
-    rh: gravitational influence radius
-    return_Gps (bool): return the value of G*rho/sigma for future use?
+    Gps: quantity G*rho/sigma in [1 / (pc * yr)]
 
     Returns
     -------
     H: hardening coefficient
-    G_rho_per_sigma: the so-named quantity, if return_Gps is True
     """
-    assert(snap.phys_units_requested), "Snapshot must be given in physical units!"
     grad, c = _do_linear_fitting(t, 1/a, t0, tspan)
-    if not isinstance(rh, pygad.UnitArr):
-        print("Setting rh to default length units {}".format("pc"))
-        rh = pygad.UnitScalar(rh, "pc")
-    G_rho_per_sigma = get_G_rho_per_sigma(snap, extent=rh)
-    H = grad / G_rho_per_sigma
-    if return_Gps:
-        return H, G_rho_per_sigma
-    else:
-        return H
+    return grad / Gps
 
 
 def linear_fit_get_K(t, e, t0, tspan, H, Gps, a):
@@ -253,3 +242,68 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
     propagate_time = 8*(tf-t0) + t0
     ap, ep, _,_, tp = ketjugw.orbit.peters_evolution(a0, e0, m1, m2, (t0, propagate_time, 5), ext_derivs=quinlan_derivatives)
     return tp, ap, ep
+
+
+#### CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT ####
+#### BE IN ANALYSIS_CLASSES.PY, TO PREVENT CIRCULAR IMPORTS            ####
+
+class MergerInfo:
+    def __init__(self):
+        """
+        A simple class to hold some information about the BH merger remnant
+         TODO convert spin to chi?
+        """
+        self.merged = False
+        self.mass = np.nan
+        self.kick = np.full(3, np.nan)
+        self.spin = np.full(3, np.nan)
+    
+    def __call__(self):
+        return self.merged
+    
+    def __str__(self):
+        return "BH Merger Remnant\n  Merged: {}\n  Mass:   {:<7.1e} Msol\n  Kick:   {:<7.1f} km/s\n  Chi:    {:<7.2f}".format(self.merged, self.mass, self.kick_magnitude, self.chi)
+    
+    @property
+    def mass(self):
+        return self._mass
+    
+    @mass.setter
+    def mass(self, m):
+        self._mass = m
+
+    @property
+    def kick(self):
+        return self._kick
+    
+    @kick.setter
+    def kick(self, val):
+        assert len(val)==3, "Velocity must be a 3-vector"
+        self.merged = True
+        self._kick = val
+    
+    @property
+    def kick_magnitude(self):
+        return np.sqrt(np.sum(self.kick**2))
+
+    @property
+    def spin(self):
+        return self._spin
+    
+    @spin.setter
+    def spin(self, val):
+        if ~np.any(np.isnan(val)):
+            pass
+            #print(val)
+            #print(mag)
+            #assert 0 <= mag <= 1, "Dimensionless spin must be in [0,1]"
+        assert len(val)==3, "Spin must be a 3-vector"
+        self._spin = val 
+    
+    @property
+    def spin_magnitude(self):
+        return np.sqrt(np.sum(self.spin**2))
+    
+    @property
+    def chi(self):
+        return self.spin_magnitude/self.mass**2

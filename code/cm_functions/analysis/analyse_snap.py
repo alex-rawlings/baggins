@@ -1,10 +1,13 @@
 import warnings
 import numpy as np
-import scipy.linalg
+import scipy.linalg, scipy.interpolate
 import pygad
 
 from . import masks as masks
 from ..mathematics import radial_separation, density_sphere
+from .general import snap_num_for_time
+from ..general import convert_gadget_time
+
 
 __all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_half_mass_radius"]
 
@@ -304,7 +307,7 @@ def hardening_radius(bhms, rm):
     return pygad.UnitScalar(ah, rm.units)
 
 
-def gravitational_radiation_radius(snap, rh, ah, tah, H, e=0):
+def gravitational_radiation_radius(bh_masses, ah, tah, H, Gps, e=0):
     """
     Determine the gravitational wave radius, where da/dt due to stellar 
     interactions is equal to da/dt due to GW emission. The equation follows 
@@ -325,19 +328,13 @@ def gravitational_radiation_radius(snap, rh, ah, tah, H, e=0):
     assert 0 <= e <= 1
     #eccentricity function
     Q = (1-e**2)**(-3.5) * (1 + 73/24*e**2 + 37/96*e**4)
-    assert(snap.phys_units_requested), "Snapshot must be given in physical units!"
-    if not isinstance(rh, pygad.UnitArr):
-        print("Setting rh to default length units {}".format("pc"))
-        rh = pygad.UnitScalar(rh, "pc")
-    rho, sigma = _get_inner_rho_and_sigma(snap, extent=rh)
-    m1_m2_M = np.product(snap.bh["mass"]) * np.sum(snap.bh["mass"])
+    m1_m2_M = np.product(bh_masses) * np.sum(bh_masses)
     #set the constants
     const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
     const_c = pygad.physics.c.in_units_of("km/s")
-    a_5 = 64/5 * const_G**2 * m1_m2_M * sigma / (const_c**5 * rho * H) * Q
-    a = pygad.UnitScalar(a_5.view(np.ndarray)**0.2, "pc")
-    #time_a = pygad.UnitScalar(sigma / (const_G * rho * a), "Myr")/H
-    time_a = pygad.UnitScalar(sigma/(const_G * rho) * (ah-a)/(ah*a), "Myr")/H + tah
+    a_5 = 64/5 * const_G**3 * m1_m2_M  / (const_c**5 * Gps * H) * Q
+    a = pygad.UnitScalar(a_5.in_units_of("pc**5").view(np.ndarray)**0.2, "pc")
+    time_a = pygad.UnitScalar((ah-a)/(ah*a) / Gps, "Myr")/H + tah
     return a.view(np.ndarray), time_a.view(np.ndarray)
 
 
@@ -369,13 +366,16 @@ def _get_inner_rho_and_sigma(snap, extent=None):
     return inner_density, inner_sigma
 
 
-def get_G_rho_per_sigma(snap, extent=None):
+def get_G_rho_per_sigma(snaplist, t, extent=None):
     """
-    Wrapper to determine the ratio of G*rho/sigma. 
+    Wrapper to determine the ratio of G*rho/sigma. The value G*rho/sigma is
+    calculated for the snapshot before and the snapshot after the desired time
+    t, and linear interpolation performed to get the value at t.
 
     Parameters
     ----------
-    snap: pygad snapshot to analyse
+    snaplist: list of snapshots from which to determine the quantity
+    t: time to determine the quantity for (Myr)
     extent: radial range within which to calculate quantities. Default of None
             uses all stars in the snapshot
     
@@ -383,8 +383,20 @@ def get_G_rho_per_sigma(snap, extent=None):
     -------
     G*rho/sigma within radius 'extent', in units of pc^-1 yr^-1
     """
-    inner_density, inner_sigma = _get_inner_rho_and_sigma(snap, extent)
-    G_rho_per_sigma = pygad.physics.G * inner_density / inner_sigma
+    ts = np.full((2), np.nan)
+    inner_density = np.full_like(ts, np.nan)
+    inner_sigma = np.full_like(ts, np.nan)
+    idx = snap_num_for_time(snaplist, t, method="floor", units="Myr")
+    for i in range(2):
+        snap = pygad.Snapshot(snaplist[idx+i], physical=True)
+        ts[i] = convert_gadget_time(snap, new_unit="Myr")
+        rho_temp, sigma_temp = _get_inner_rho_and_sigma(snap, extent)
+        rho_units = rho_temp.units
+        sigma_units = sigma_temp.units
+        inner_density[i], inner_sigma[i] = rho_temp, sigma_temp
+    f_rho = scipy.interpolate.interp1d(ts, inner_density)
+    f_sigma = scipy.interpolate.interp1d(ts, inner_sigma)
+    G_rho_per_sigma = pygad.physics.G * pygad.UnitScalar(f_rho(t), rho_units) / pygad.UnitScalar(f_sigma(t), sigma_units)
     return G_rho_per_sigma.in_units_of("pc**-1/yr")
 
 

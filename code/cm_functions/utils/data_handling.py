@@ -48,6 +48,7 @@ def get_files_in_dir(path, ext=".hdf5", name_only=False):
     ----------
     path: host directory of files
     ext: file extension
+    name_only: return only the name of the file, not its full path
 
     Returns
     -------
@@ -63,7 +64,7 @@ def get_files_in_dir(path, ext=".hdf5", name_only=False):
     return file_list
 
 
-def get_snapshots_in_dir(path, ext='.hdf5'):
+def get_snapshots_in_dir(path, ext='.hdf5', exclude=[]):
     """
     Get a list of the full-path name of all snapshots within a directory.
 
@@ -71,13 +72,17 @@ def get_snapshots_in_dir(path, ext='.hdf5'):
     ----------
     path: host directory of snapshot files
     ext: file extension
+    exclude: with extension ext to exclude (ketju_bhs* always excluded)
 
     Returns
     -------
     alphabetically-sorted list of snapshot files
     """
     all_files = get_files_in_dir(path, ext=ext)
-    return [f for f in all_files if "ketju_bhs" not in f]
+    exclude.append("ketju_bhs")
+    for e in exclude:
+        all_files = [f for f in all_files if e not in f]
+    return all_files
 
 
 def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5", copy=True):
