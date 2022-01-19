@@ -13,9 +13,7 @@ pfv = cmf.utils.read_parameters(args.path)
 
 # create the bh binary class that will hold all the data
 bh_binary = cmf.analysis.BHBinary(args.path, args.num, args.rgw)
-bh_binary.get_influence_and_hard_radius()
-bh_binary.fit_analytic_form()
-bh_binary.time_estimates()
+bh_binary.print()
 fig, ax = plt.subplots(2,1, sharex=True, gridspec_kw={"height_ratios":[3,1]})
 bh_binary.plot(ax)
 plt.show()

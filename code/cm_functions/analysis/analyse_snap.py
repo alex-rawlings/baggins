@@ -324,6 +324,11 @@ def gravitational_radiation_radius(bh_masses, ah, tah, H, Gps, e=0):
     tah: time of the hard binary radius (assumed Myr)
     H: hardening rate parameter
     e: eccentricity (default 0 for a circular orbit)
+
+    Returns
+    -------
+    a: gravitational wave radius in pc
+    time_a: time in Myr when the binary is expected to have a = a_GR
     """
     assert 0 <= e <= 1
     #eccentricity function
