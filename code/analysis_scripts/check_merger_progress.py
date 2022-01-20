@@ -17,7 +17,7 @@ gyr = ketjugw.units.yr * 1e9
 kpc = ketjugw.units.pc * 1e3
 
 bh1, bh2, merged = cmf.analysis.get_bh_particles(new_filename)
-if not merged:
+if not merged():
     separation = cmf.mathematics.radial_separation(bh1.x/kpc, bh2.x/kpc)
     energy = ketjugw.orbital_energy(bh1, bh2)
 

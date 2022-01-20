@@ -7,9 +7,11 @@ import ketjugw
 import pygad
 
 from .orbit import get_bound_binary, linear_fit_get_H, linear_fit_get_K, analytic_evolve_peters_quinlan
-from .analyse_snap import influence_radius, hardening_radius, gravitational_radiation_radius, get_G_rho_per_sigma
-from .general import snap_num_for_time
+from .analyse_snap import *
+from .general import snap_num_for_time, beta_profile
+from .voronoi import voronoi_binned_los_V_statistics
 from ..general import xval_of_quantity
+from ..mathematics import spherical_components
 from ..plotting import binary_param_plot
 from ..utils import read_parameters, get_ketjubhs_in_dir, get_snapshots_in_dir
 
@@ -193,36 +195,55 @@ class BHBinary:
     def print(self):
         print("BH Binary Quantities:")
         print("  Perturbation applied at {:.1f} Myr".format(self.time_offset))
-        print("  H determined over a span of {:.3f} Myr".format(self.tspan))
+        print("  H determined over a span of {:.1f} Myr".format(self.tspan))
         print("  G*rho/sigma: {:.3e}".format(self.G_rho_per_sigma))
         print("  Hardening rate H: {:.4f}".format(self.H))
         print("  Eccentricity rate K: {:.4f}".format(self.K))
         print("  Eccentricity scatter before r_infl: {:.2e}".format(self.formation_eccentricity_spread))
+        if self.merged():
+            print(self.merged)
 
 
 
 class ChildDataCube(BHBinary):
-    def __init__(self, paramfile, perturbID, gr_safe_radius=15, time_estimate_quantiles=[0.05, 0.5, 0.95]):
+    def __init__(self, paramfile, perturbID, gr_safe_radius=15, time_estimate_quantiles=[0.05, 0.5, 0.95], voronoi_kw={"Npx":300, "part_per_bin":5000}):
         """
         A class to hold information about a ketju child run, inheriting the
         attributes of the BHBinary class. 
         """
         super().__init__(paramfile, perturbID, gr_safe_radius, time_estimate_quantiles)
+        self.voronoi_kw = voronoi_kw
+        # TODO update file locations if necessary
     
+    @cached_property
+    def snap(self):
+        merged_idx = snap_num_for_time(self.snaplist, self.merged.time, method="nearest")
+        snap = pygad.Snapshot(self.snaplist[merged_idx], physical=True)
+        xcom = get_com_of_each_galaxy(snap)
+        vcom = get_com_velocity_of_each_galaxy(snap, xcom)
+        snap["pos"] -= list(xcom.values())[0]
+        snap["vel"] -= list(vcom.values())[0]
+        return snap
+    
+    @cached_property
+    def mass_centre(self):
+        centre_guess = pygad.analysis.center_of_mass(self.snap.bh)
+        return pygad.analysis.shrinking_sphere(self.snap.stars, centre_guess, 20)
+
     @property
     def binary_formation_time(self):
         return self.orbit_params["t"][0] / myr
     
     @property
     def binary_merger_timescale(self):
-        if self.merged:
+        if self.merged():
             return (self.orbit_params["t"][-1] - self.orbit_params["t"][0]) / myr
         else:
             return np.nan
     
     @property
     def binary_kick_velocity(self):
-        if self.merged:
+        if self.merged():
             return self.merged.kick_magnitude
         else:
             return np.nan
@@ -233,31 +254,36 @@ class ChildDataCube(BHBinary):
 
     @property
     def relaxed_stellar_velocity_dispersion(self):
-        return None
+        return np.nanstd(self.snap.stars["vel"], axis=0)
     
     @property
     def relaxed_stellar_velocity_dispersion_projected(self):
-        return None
+        #the property is returned from a function call that is part of another
+        #property: call this other property first
+        if not hasattr(self, "relaxed_effective_radius"):
+            self.relaxed_effective_radius
+        return self._vsig
     
-    @property
+    @cached_property
     def relaxed_inner_DM_fraction(self):
-        return None
+        return inner_DM_fraction(self.snap)
 
     @property
     def relaxed_core_size(self):
         return None
     
-    @property
+    @cached_property
     def relaxed_effective_radius(self):
-        return None
+        Re, self._vsig = projected_quantities(self.snap)
+        return Re
 
-    @property
+    @cached_property
     def relaxed_half_mass_radius(self):
-        return None
+        return pygad.analysis.half_mass_radius(self.snap.stars, center=self.mass_centre)
     
     @property
     def relaxed_density_profile(self):
-        return None
+        return pygad.analysis.profile_dens(self.snap.stars, "mass", center=self.mass_centre)
 
     @property
     def relaxed_density_profile_projected(self):
@@ -269,19 +295,38 @@ class ChildDataCube(BHBinary):
 
     @property
     def total_stellar_mass(self):
-        return None
+        return self.snap.stars["mass"][0] * len(self.snap.stars)
     
     @property
     def ifu_map_ah(self):
-        return None
+        hard_idx = snap_num_for_time(self.snaplist, self.r_hard_time)
+        snap = pygad.Snapshot(self.snaplist[hard_idx], physical=True)
+        mass_centre = pygad.analysis.center_of_mass(snap.bh)
+        # TODO is the best radius to use?
+        ball_mask = pygad.BallMask(self.relaxed_effective_radius, center=mass_centre)
+        subsnap = snap.stars[ball_mask]
+        return voronoi_binned_los_V_statistics(
+                    subsnap["pos"][:,0], subsnap["pos"][:,1], 
+                    subsnap["vel"][:,2], subsnap["mass"], **self.voronoi_kw)
     
-    @property
+    @cached_property
     def ifu_map_merger(self):
-        return None
+        ball_mask = pygad.BallMask(self.relaxed_effective_radius, center=self.mass_centre)
+        subsnap = self.snap.stars[ball_mask]
+        return voronoi_binned_los_V_statistics(
+                    subsnap["pos"][:,0], subsnap["pos"][:,1], 
+                    subsnap["vel"][:,2], subsnap["mass"], **self.voronoi_kw)
     
     @property
     def stellar_shell_velocities(self):
         return None
+    
+    @property
+    def beta_r(self):
+        vspherical = spherical_components(self.snap.stars["pos"], self.snap.star["vel"])
+        beta_r, radbins, bincount = beta_profile(self.snap.stars["r"], vspherical, 0.05)
+        vals = {"beta_r": beta_r, "radbins":radbins, "bincount": bincount}
+        return vals
     
     def make_hdf5(self):
         raise NotImplementedError
@@ -293,5 +338,11 @@ class ChildDataCube(BHBinary):
         super().plot(ax, add_radii, add_time_estimates, **kwargs)
 
     def print(self):
-        raise NotImplementedError
+        #print the currently loaded attributes of the data cube
+        s = "Data Cube has the following properties loaded:\n"
+        keys = self.__dict__.keys()
+        for k in keys:
+            if k[0] != "_":
+                s += " > {}\n".format(k)
+        print(s)
 

@@ -6,10 +6,10 @@ import pygad
 from . import masks as masks
 from ..mathematics import radial_separation, density_sphere
 from .general import snap_num_for_time
-from ..general import convert_gadget_time
+from ..general import convert_gadget_time, set_seed_time
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_half_mass_radius"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction"]
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
@@ -413,11 +413,22 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
     Parameters
     ----------
     snap: pygad snapshot to analyse
-    family: particle family to analyse
+    separate_galaxies: bool, apply a particle ID mask to separate the galaxies
+    shell_kw: dict to pass np.geomspace controlling the shell properties:
+                  start: inner radius of inner shell
+                  stop: outer radius of outer shell
+                  num: number of shells
+    family: pygad particle family to do the analysis for
+    Gcom_kw: dict of optional arguments to pass to get_com_of_each_galaxy, this
+             determines the "global" CoM properties of each galaxy
+    verbose: bool, verbose printing?
 
     Returns
     -------
-
+    xcoms: dict, CoM position of each shell
+    vcoms: dict, CoM velocity of each shell
+    global_xcom: dict, global CoM position of each galaxy
+    global_vcom: dict, global CoM velocity of each galaxy
     """
     if separate_galaxies:
         #mask the particles as belonging to one of two progenitors
@@ -446,9 +457,12 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
     return xcoms, vcoms, global_xcom, global_vcom
 
 
-def projected_half_mass_radius(snap, obs=10, family="stars", masks=None):
+def projected_quantities(snap, obs=10, family="stars", masks=None):
     """
-    Determine the projected half mass radius of (potentially two) galaxies
+    Determine projected quantities of:
+        - half mass radius,
+        - velocity dispersion
+    of (potentially two) galaxies
 
     Parameters
     ----------
@@ -462,15 +476,17 @@ def projected_half_mass_radius(snap, obs=10, family="stars", masks=None):
     
     Returns
     -------
-    Re: dict of half mass radii of systems, with keys correspponding to the BH
-        ID associated with the galaxy
+    Q: dict of dicts, with level 1 keys corresponding to the BH ID associated 
+       with the galaxy, and level 2 keys corresponding to the quantity
     """
     assert(snap.phys_units_requested)
     num_bhs = len(snap.bh['mass'])
     if masks is not None:
         assert(len(masks) == num_bhs)
-    Re = dict.fromkeys(snap.bh["ID"], 0)
-    rng = np.random.default_rng()
+    #Q = dict.fromkeys(snap.bh["ID"], {"Re":0, "vsig":[]})
+    Re = dict.fromkeys(snap.bh["ID"], {"estimate":0, "low":0, "high":0})
+    vsig = dict.fromkeys(snap.bh["ID"], {"estimate":0, "low":0, "high":0})
+    rng = np.random.default_rng(set_seed_time())
     rot_axis = rng.uniform(-1, 1, (obs, 3))
     rot_angle = rng.uniform(0, np.pi, obs)
     for j, bhid in enumerate(Re.keys()):
@@ -482,12 +498,39 @@ def projected_half_mass_radius(snap, obs=10, family="stars", masks=None):
         else:
             centre_guess = snap.bh[snap.bh["ID"]==bhid]["pos"]
             subsnap = snap[masks[bhid]]
+        Re_temp = np.full(obs*3, np.nan)
+        vvar_temp = np.full(obs*3, np.nan)
         for i in range(obs):
             rot = pygad.transformation.rot_from_axis_angle(rot_axis[i], rot_angle[i])
             rot.apply(subsnap)
             centre = pygad.analysis.shrinking_sphere(subsnap, centre_guess, 10)
             for proj in range(3):
-                Re[bhid] += pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
-        Re[bhid] /= (obs*3)
-    return Re
+                Re_temp[i] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
+                vvar_temp[i] = pygad.analysis.los_velocity_dispersion(subsnap, proj=proj)**2
+        # TODO confidence interval estimate for the parameters
+        Re[bhid]["estimate"] = np.nanmean(Re_temp)
+        vsig[bhid]["estimate"] = 0
+        #Q[bhid]["vsig"] = np.sqrt(vvar_temp * (3*obs) / (obs*3-1))
+    return Re, vsig
+
+
+def inner_DM_fraction(snap, Re=None):
+    """
+    Determine the dark matter fraction within 1 Re
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    Re: effective radius. Default (None) calculates the value
+
+    Returns
+    -------
+    fraction of DM within 1 Re
+    """
+    if Re is None:
+        proj_q = projected_quantities(snap)
+        Re = proj_q.values()[0]["Re"]
+    centre_guess = pygad.analysis.center_of_mass(snap.bh)
+    ball_mask = pygad.BallMask(Re.values()[0], center=centre_guess)
+    return snap.dm[ball_mask]["mass"] / (snap.dm[ball_mask]["mass"] + snap.stars[ball_mask]["mass"])
 

@@ -77,20 +77,20 @@ for i in (8,9,):
     bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
     op = ketjugw.orbital_parameters(bh1, bh2)
     gwidx, gwtime = cmf.analysis.find_where_gw_dominate(op, err_level)
-    if merged: gwdix=-1
+    if merged(): gwdix=-1
     """for j in range(3):
         ax[j].plot(bh1.t/myr, op["plane_normal"][:,j], label=label, alpha=(0.9 if merged else 0.3))"""
     """gwidx, gwtime = cmf.analysis.find_where_gw_dominate(op, err_level)
-    if merged: gwdix = -1
-    ax[0].hist(np.log10(op["a_R"][:gwidx]/ketjugw.units.pc), np.linspace(-2.5, 3, 500), alpha=(0.9 if merged else 0.3), label=label, histtype="step")
-    ax[1].hist(op["e_t"][:gwidx], np.linspace(0, 1, 100), alpha=(0.9 if merged else 0.3), histtype="step")"""
+    if merged(): gwdix = -1
+    ax[0].hist(np.log10(op["a_R"][:gwidx]/ketjugw.units.pc), np.linspace(-2.5, 3, 500), alpha=(0.9 if merged() else 0.3), label=label, histtype="step")
+    ax[1].hist(op["e_t"][:gwidx], np.linspace(0, 1, 100), alpha=(0.9 if merged() else 0.3), histtype="step")"""
     ts = op["t"][:gwidx]/myr
     inv_a = 1/(op["a_R"][:gwidx]/ketjugw.units.pc)
     f = lambda x, a, b: a*x+b
     popt, pcov = scipy.optimize.curve_fit(f, ts, inv_a)
-    ax[0].plot(ts, inv_a, label=label, alpha=(0.9 if merged else 0.3))
+    ax[0].plot(ts, inv_a, label=label, alpha=(0.9 if merged() else 0.3))
     ax[0].plot(ts, f(ts, *popt))
     #ax[1].semilogy(ts, np.abs(np.gradient(inv_a)))
-    #x[1].plot(ts, op["e_t"][:gwidx], alpha=(0.9 if merged else 0.3))
+    #x[1].plot(ts, op["e_t"][:gwidx], alpha=(0.9 if merged() else 0.3))
 ax[0].legend(fontsize="x-small")
 plt.show()

@@ -83,7 +83,7 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
     -------
     bh1, bh2: ketjugw.Particle objects for the BHs (these will be named 
               bh1interp and bh2interp if interpolation was performed)
-    merged: bool, whether or not a merger occurred
+    merged: class containing merger remnant info
     """
     bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
     len1, len2 = len(bh1), len(bh2)
@@ -106,20 +106,12 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
         # particles are in sync, and we can return as normal
         if len1 > len2:
             #bh2 has merged into bh1
-            merged.mass = bh1.m[-1]
-            merged.kick = bh1.v[len2,:] / ketjugw.units.km_per_s
-            merged.spin = bh1.spin[len2,:]
+            merged.update(bh1[len2])
             bh1 = bh1[:len2]
         elif len1 < len2:
             #bh1 has merged into bh2
-            merged.mass = bh2.m[-1]
-            merged.kick = bh2.v[len1,:] / ketjugw.units.km_per_s
-            merged.spin = bh2.spin[len1,:]
+            merged.update(bh2[len1])
             bh2 = bh2[:len1]
-            merged = True
-        else:
-            #a merger has not occurred
-            merged = False
         return bh1, bh2, merged
 
 
@@ -138,7 +130,7 @@ def get_bound_binary(ketju_file, verbose=True, tol=1e-15):
     -------
     bh1, bh2: ketjugw.Particle objects for the BHs, where the particles have the
               same time domain
-    merged: bool, whether or not a merger occurred
+    merged: class containing merger remnant info
     """
     bh1, bh2, merged = get_bh_particles(ketju_file, verbose, tol)
     bhs = {0:bh1, 1:bh2}
@@ -251,36 +243,34 @@ class MergerInfo:
     def __init__(self):
         """
         A simple class to hold some information about the BH merger remnant
-         TODO convert spin to chi?
         """
-        self.merged = False
-        self.mass = np.nan
-        self.kick = np.full(3, np.nan)
-        self.spin = np.full(3, np.nan)
+        self._merged = False
+        self._time = np.nan
+        self._mass = np.nan
+        self._kick = np.full(3, np.nan)
+        self._spin = np.full(3, np.nan)
     
     def __call__(self):
         return self.merged
     
     def __str__(self):
-        return "BH Merger Remnant\n  Merged: {}\n  Mass:   {:<7.1e} Msol\n  Kick:   {:<7.1f} km/s\n  Chi:    {:<7.2f}".format(self.merged, self.mass, self.kick_magnitude, self.chi)
+        return "BH Merger Remnant\n  Merged: {}\n  Time:   {:<7.1f} Myr\n  Mass:   {:<7.1e} Msol\n  Kick:   {:<7.1f} km/s\n  Chi:    {:<7.2f}".format(self.merged, self.time, self.mass, self.kick_magnitude, self.chi)
     
+    @property
+    def merged(self):
+        return self._merged
+
     @property
     def mass(self):
         return self._mass
-    
-    @mass.setter
-    def mass(self, m):
-        self._mass = m
+
+    @property
+    def time(self):
+        return self._time
 
     @property
     def kick(self):
         return self._kick
-    
-    @kick.setter
-    def kick(self, val):
-        assert len(val)==3, "Velocity must be a 3-vector"
-        self.merged = True
-        self._kick = val
     
     @property
     def kick_magnitude(self):
@@ -290,16 +280,6 @@ class MergerInfo:
     def spin(self):
         return self._spin
     
-    @spin.setter
-    def spin(self, val):
-        if ~np.any(np.isnan(val)):
-            pass
-            #print(val)
-            #print(mag)
-            #assert 0 <= mag <= 1, "Dimensionless spin must be in [0,1]"
-        assert len(val)==3, "Spin must be a 3-vector"
-        self._spin = val 
-    
     @property
     def spin_magnitude(self):
         return np.sqrt(np.sum(self.spin**2))
@@ -307,3 +287,11 @@ class MergerInfo:
     @property
     def chi(self):
         return self.spin_magnitude/self.mass**2
+    
+    def update(self, bh):
+        self._merged = True
+        self._time = bh.t[0] / myr
+        self._mass = bh.m[0]
+        self._kick = bh.v / ketjugw.units.km_per_s
+        self._spin = bh.spin[0,:]
+

@@ -1,8 +1,9 @@
 import numpy as np
 import scipy.optimize, scipy.special, scipy.interpolate
 import warnings
+from time import time
 
-__all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity"]
+__all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity", "set_seed_time"]
 
 
 def arcsec_to_kpc(dist_mod, angle_in_arcsec):
@@ -75,4 +76,21 @@ def xval_of_quantity(val, xvec, yvec, xsorted=False, initial_guess=None, root_kw
     if not rootresult.converged:
         warnings.warn("The root-finding did not converge after {} iterations! The input <val> may not be in the domain specified by <xvec>.".format(rootresult.iterations))
     return xval
+
+
+def set_seed_time():
+    """
+    Create a random number generator seed that is the inverse of the current
+    time.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    seed (int)
+    """
+    s = "{}".format(int(time()))[::-1]
+    return int(s)
 
