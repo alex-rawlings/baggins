@@ -4,7 +4,7 @@ import cm_functions as cmf
 import ketjugw
 
 
-ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-D-3.0-0.05/perturbations/006/output/ketju_bhs_cp.hdf5"
+ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.005/perturbations/009/output/ketju_bhs_cp.hdf5"
 
 bh1, bh2, merged = cmf.analysis.get_bound_binary(ketju_file)
 myr = ketjugw.units.yr * 1e6

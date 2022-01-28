@@ -1,7 +1,9 @@
+import datetime
 from functools import cached_property
 import os.path
 import warnings
 import numpy as np
+import h5py
 import matplotlib.pyplot as plt
 import ketjugw
 import pygad
@@ -10,14 +12,15 @@ from .orbit import get_bound_binary, linear_fit_get_H, linear_fit_get_K, analyti
 from .analyse_snap import *
 from .general import snap_num_for_time, beta_profile
 from .voronoi import voronoi_binned_los_V_statistics
-from ..general import xval_of_quantity
+from ..general import xval_of_quantity, convert_gadget_time
 from ..mathematics import spherical_components
 from ..plotting import binary_param_plot
 from ..utils import read_parameters, get_ketjubhs_in_dir, get_snapshots_in_dir
 
-__all__ = ["BHBinary"]
+__all__ = ["BHBinary", "ChildDataCube"]
 
 myr = ketjugw.units.yr * 1e6
+date_str = "%Y-%m-%d %H:%M:%S"
 
 
 class BHBinary:
@@ -118,14 +121,18 @@ class BHBinary:
     @cached_property
     def K(self):
         return linear_fit_get_K(self.orbit_params["t"]/ketjugw.units.yr, self.orbit_params["e_t"], self.r_hard_time*1e6, self.tspan*1e6, self.H, self.G_rho_per_sigma, self.orbit_params["a_R"]/ketjugw.units.pc)
-    
-    @cached_property
-    def gw_dominant_semimajoraxis(self):
-        e0 = np.median(self.orbit_params["e_t"][self.r_hard_time_idx:self.a_more_Xpc_idx])
+
+    def predict_gw_dominant_semimajoraxis(self, q):
+        e0 = np.nanquantile(self.orbit_params["e_t"][self.r_hard_time_idx:self.a_more_Xpc_idx], q)
         a_gr, t_agr = gravitational_radiation_radius(
                                         self.bh_masses, self.r_hard, 
                                         self.r_hard_time, self.H,
                                         self.G_rho_per_sigma, e=e0)
+        return a_gr, t_agr
+    
+    @cached_property
+    def gw_dominant_semimajoraxis(self):
+        a_gr, t_agr = self.predict_gw_dominant_semimajoraxis(0.5)
         return {"a": a_gr, "t": t_agr}
     
     @property
@@ -141,9 +148,9 @@ class BHBinary:
     @cached_property
     def predicted_orbital_params(self, idxs=None):
         op = dict(
-            t = {"median":None, "upper":None, "lower":None},
-            a = {"median":None, "upper":None, "lower":None},
-            e = {"median":None, "upper":None, "lower":None}
+            t = {"lower":None, "median":None, "upper":None},
+            a = {"lower":None, "median":None, "upper":None},
+            e = {"lower":None, "median":None, "upper":None}
         )
         if idxs is None:
             idxs = [self.r_hard_time_idx, self.a_more_Xpc_idx]
@@ -175,15 +182,18 @@ class BHBinary:
             ax[0].axvspan(self.r_hard_time+self.time_offset, self.r_hard_time+self.tspan+self.time_offset, color="tab:red", alpha=0.4, label="H calculation")
             sc = ax[0].scatter(self.gw_dominant_semimajoraxis["t"]+self.time_offset, self.gw_dominant_semimajoraxis["a"], zorder=10, label=r"$a_\mathrm{GR}$")
             ax[0].axhline(self.gw_dominant_semimajoraxis["a"], ls=":", c=sc.get_facecolors())
+            agr_low,_ = self.predict_gw_dominant_semimajoraxis(self.time_estimate_quantiles[0])
+            agr_high,_ = self.predict_gw_dominant_semimajoraxis(self.time_estimate_quantiles[-1])
+            ax[0].axhspan(agr_low, agr_high, facecolor=sc.get_facecolors(), alpha=0.4)
         if add_time_estimates:
             for i, (k,q) in enumerate(
                             zip(self.predicted_orbital_params["a"].keys(), 
                             self.time_estimate_quantiles)):
                 if i==0:
-                    l = ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls="--", label="{:.2f} quantile".format(q), **kwargs)
+                    l = ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls=":", label="{:.2f} quantile".format(q), **kwargs)
                 else:
-                    ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls=":", c=l[-1].get_color(), label="{:.2f} quantile".format(q), **kwargs)
-                ax[1].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["e"][k], ls=("--" if i%3==0 else ":"), c=l[-1].get_color(), **kwargs)
+                    ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls=("--" if i==1 else ":"), c=l[-1].get_color(), label="{:.2f} quantile".format(q), **kwargs)
+                ax[1].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["e"][k], ls=("--" if i%3==1 else ":"), c=l[-1].get_color(), **kwargs)
         xaxis_lims = ax[0].get_xlim()
         if xaxis_lims[1] > hubble_time:
             for axi in ax:
@@ -219,8 +229,8 @@ class ChildDataCube(BHBinary):
     def snap(self):
         merged_idx = snap_num_for_time(self.snaplist, self.merged.time, method="nearest")
         snap = pygad.Snapshot(self.snaplist[merged_idx], physical=True)
-        xcom = get_com_of_each_galaxy(snap)
-        vcom = get_com_velocity_of_each_galaxy(snap, xcom)
+        xcom = get_com_of_each_galaxy(snap, verbose=False)
+        vcom = get_com_velocity_of_each_galaxy(snap, xcom, verbose=False)
         snap["pos"] -= list(xcom.values())[0]
         snap["vel"] -= list(vcom.values())[0]
         return snap
@@ -250,7 +260,7 @@ class ChildDataCube(BHBinary):
 
     @property
     def binary_spin_flip(self):
-        return None
+        raise NotImplementedError
 
     @property
     def relaxed_stellar_velocity_dispersion(self):
@@ -270,12 +280,13 @@ class ChildDataCube(BHBinary):
 
     @property
     def relaxed_core_size(self):
-        return None
+        raise NotImplementedError
     
     @cached_property
     def relaxed_effective_radius(self):
-        Re, self._vsig = projected_quantities(self.snap)
-        return Re
+        Re, vsig = projected_quantities(self.snap)
+        self._vsig = list(vsig.values())[0]
+        return list(Re.values())[0]
 
     @cached_property
     def relaxed_half_mass_radius(self):
@@ -287,23 +298,23 @@ class ChildDataCube(BHBinary):
 
     @property
     def relaxed_density_profile_projected(self):
-        return None
+        raise NotImplementedError
     
     @property
     def relaxed_triaxiality_parameters(self):
-        return None
+        raise NotImplementedError
 
     @property
     def total_stellar_mass(self):
         return self.snap.stars["mass"][0] * len(self.snap.stars)
     
-    @property
+    @cached_property
     def ifu_map_ah(self):
         hard_idx = snap_num_for_time(self.snaplist, self.r_hard_time)
         snap = pygad.Snapshot(self.snaplist[hard_idx], physical=True)
         mass_centre = pygad.analysis.center_of_mass(snap.bh)
         # TODO is the best radius to use?
-        ball_mask = pygad.BallMask(self.relaxed_effective_radius, center=mass_centre)
+        ball_mask = pygad.BallMask(self.relaxed_effective_radius["estimate"], center=mass_centre)
         subsnap = snap.stars[ball_mask]
         return voronoi_binned_los_V_statistics(
                     subsnap["pos"][:,0], subsnap["pos"][:,1], 
@@ -311,26 +322,173 @@ class ChildDataCube(BHBinary):
     
     @cached_property
     def ifu_map_merger(self):
-        ball_mask = pygad.BallMask(self.relaxed_effective_radius, center=self.mass_centre)
+        ball_mask = pygad.BallMask(self.relaxed_effective_radius["estimate"], center=self.mass_centre)
         subsnap = self.snap.stars[ball_mask]
         return voronoi_binned_los_V_statistics(
                     subsnap["pos"][:,0], subsnap["pos"][:,1], 
                     subsnap["vel"][:,2], subsnap["mass"], **self.voronoi_kw)
     
     @property
-    def stellar_shell_velocities(self):
-        return None
+    def snapshot_times(self):
+        if not hasattr(self, "_snapshot_times"):
+            raise AttributeError("Must call get_shell_velocity_stats first!")
+        return self._snapshot_times
+
+    @property
+    def stellar_shell_outflow_velocity(self):
+        if not hasattr(self, "_snapshot_times"):
+            raise AttributeError("Must call get_shell_velocity_stats first!")
+        return self._stellar_shell_outflow_velocity
     
     @property
+    def bh_binary_watershed_velocity(self):
+        if not hasattr(self, "_snapshot_times"):
+            raise AttributeError("Must call get_shell_velocity_stats first!")
+        return self._bh_binary_watershed_velocity
+    
+    def get_shell_velocity_stats(self, R=3e-2):
+        bound_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][0]/myr)
+        last_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][-1]/myr)
+        self._snapshot_times = np.full(last_snap_idx-bound_snap_idx+1, np.nan)
+        self._bh_binary_watershed_velocity = np.full(last_snap_idx - bound_snap_idx + 1, np.nan)
+        self._stellar_shell_outflow_velocity = []
+        m_min = min([self.orbit_params["m0"][0], self.orbit_params["m1"][0]])
+        for i, j in enumerate(np.arange(bound_snap_idx, last_snap_idx+1)):
+            snap = pygad.Snapshot(self.snaplist[j], physical=True)
+            #as we are interested in flow rates about binary, set binary as
+            #the centre of mass
+            this_centre = pygad.analysis.center_of_mass(snap.bh)
+            self._snapshot_times[i] = convert_gadget_time(snap, new_unit="Myr")
+            idx = self._get_idx_in_vec(self._snapshot_times[i], self.orbit_params["t"]/myr)
+            self._bh_binary_watershed_velocity[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
+            self._stellar_shell_outflow_velocity.append(
+                shell_flow_velocities(snap.stars, R, centre=this_centre, direction="in")
+            )
+            snap.delete_blocks()
+    
+    @cached_property
     def beta_r(self):
-        vspherical = spherical_components(self.snap.stars["pos"], self.snap.star["vel"])
+        vspherical = spherical_components(self.snap.stars["pos"], self.snap.stars["vel"])
         beta_r, radbins, bincount = beta_profile(self.snap.stars["r"], vspherical, 0.05)
-        vals = {"beta_r": beta_r, "radbins":radbins, "bincount": bincount}
-        return vals
+        return {"beta_r": beta_r, "radbins":radbins, "bincount": bincount}
     
-    def make_hdf5(self):
-        raise NotImplementedError
-    
+    def load_all(self, verbose=True):
+        if verbose: print("Loading BH masses")
+        self.bh_masses
+        if verbose: print("Loading influence radius, hardening radius, GW radius, and their associated time estimates")
+        self.r_infl
+        self.r_hard
+        self.r_infl_time
+        self.r_hard_time
+        self.gw_dominant_semimajoraxis
+        if verbose: print("Loading analytical forms")
+        self.G_rho_per_sigma
+        self.H
+        self.K
+        self.mass_centre
+        if verbose: print("Loading binary timescales")
+        self.binary_formation_time
+        self.binary_merger_timescale
+        if verbose: print("Loading kick velocity")
+        self.binary_kick_velocity
+        if verbose: print("Loading stellar velocity dispersion")
+        self.relaxed_stellar_velocity_dispersion
+        self.relaxed_inner_DM_fraction
+        if verbose: print("Loading half-mass radius")
+        self.relaxed_half_mass_radius
+        if verbose: print("Loading density profile")
+        self.relaxed_density_profile
+        self.total_stellar_mass
+        if verbose: print("Loading IFU maps")
+        self.ifu_map_ah
+        self.ifu_map_merger
+        if verbose: print("Loading shell velocity statistics")
+        #self.get_shell_velocity_stats()
+        if verbose: print("Loading beta profile")
+        self.beta_r
+        if verbose: print("All attributes loaded")
+
+
+    def make_hdf5(self, fname):
+        # TODO: here we are assuming all attributes are either loaded or can
+        # be existed... should we include a test so that only those attributes
+        # which have been explicitly determined be written?
+        with h5py.File(fname, mode="w") as f:
+            #set up some meta data
+            if "/meta" not in f:
+                meta = f.create_group("meta")
+                now = datetime.datetime.now()
+                meta.attrs["created"] = now.strftime(date_str)
+                usr = os.path.expanduser("~")
+                meta.attrs["created_by"] = usr.rstrip("/").split("/")[-1]
+            else:
+                meta = f["/meta"]
+            # TODO move this to the read_hdf5 method
+            now = datetime.datetime.now()
+            meta.attrs["last_accessed"] = now.strftime(date_str)
+            usr = os.path.expanduser("~")
+            meta.attrs["last_user"] = usr.rstrip("/").split("/")[-1]
+            
+            #save the binary info
+            bhb = f.create_group("bh_binary")
+            bhb.create_dataset("binary_formation_time", data=self.binary_formation_time)
+            bhb.create_dataset("binary_merger_timescale", data=self.binary_merger_timescale)
+            bhb_m = bhb.create_group("merger_remnant")
+            bhb_m.create_dataset("merged", data=self.merged.merged)
+            bhb_m.create_dataset("mass", data=self.merged.mass)
+            bhb_m.create_dataset("kick_magnitude", data=self.merged.kick_magnitude)
+            bhb_m.create_dataset("chi", data=self.merged.chi)
+            bhb.create_dataset("r_infl", data=self.r_infl)
+            bhb.create_dataset("r_infl_time", data=self.r_infl_time)
+            bhb.create_dataset("r_hard", data=self.r_hard)
+            bhb.create_dataset("r_hard_time", data=self.r_hard_time)
+            bhb.create_dataset("tspan", data=self.tspan)
+            bhb.create_dataset("H", data=self.H)
+            bhb.create_dataset("K", data=self.K)
+            bhb.create_dataset("gw_dominant_semimajoraxis", data=self.gw_dominant_semimajoraxis["a"])
+            bhb.create_dataset("gw_dominant_semimajoraxis_time", data=self.gw_dominant_semimajoraxis["t"])
+            bhb_op = bhb.create_group("predicted_orbital_params")
+            bhb_op_t = bhb_op.create_group("time")
+            bhb_op_a = bhb_op.create_group("a")
+            bhb_op_e = bhb_op.create_group("e")
+            for k in self.predicted_orbital_params["a"].keys():
+                bhb_op_t.create_dataset(k, data=self.predicted_orbital_params["t"][k])
+                bhb_op_a.create_dataset(k, data=self.predicted_orbital_params["a"][k])
+                bhb_op_e.create_dataset(k, data=self.predicted_orbital_params["e"][k])
+            bhb.create_dataset("formation_eccentricity_spread", data=self.formation_eccentricity_spread)
+
+            #save the galaxy properties
+            gp = f.create_group("galaxy_properties")
+            gp.create_dataset("stellar_velocity_dispersion", data=self.relaxed_stellar_velocity_dispersion)
+            gp_sp = gp.create_group("stellar_velocity_dispersion_projected")
+            for k,v in self.relaxed_stellar_velocity_dispersion_projected.items():
+                gp_sp.create_dataset(k, data=v)
+            gp.create_dataset("inner_DM_fraction", data=self.relaxed_inner_DM_fraction)
+            gp.create_dataset("half_mass_radius", data=self.relaxed_half_mass_radius)
+            gp_er = gp.create_group("effective_radius")
+            for k,v in self.relaxed_effective_radius.items():
+                gp_er.create_dataset(k, data=v)
+            gp_dens = gp.create_group("density_profile")
+            gp_dens.create_dataset("3D", data=self.relaxed_density_profile)
+            #gp_dens.create_dataset("projected", data=self.relaxed_density_profile_projected)
+            gp.create_dataset("total_stellar_mass", data=self.total_stellar_mass)
+            gp_ifu_m = gp.create_group("ifu_map_merger")
+            for k,v in self.ifu_map_merger.items():
+                gp_ifu_m.create_dataset(k, data=v)
+            gp_ifu_a = gp.create_group("ifu_map_ah")
+            for k,v in self.ifu_map_ah.items():
+                gp_ifu_a.create_dataset(k, data=v)
+            gp_shell = gp.create_group("shell_statistics")
+            # TODO shell radius as an attribute?
+            #gp_shell.create_dataset("snapshot_times", data=self.snapshot_times)
+            #gp_shell.create_dataset("stellar_shell_outflow_velocity", data=self.stellar_shell_outflow_velocity)
+            #gp_shell.create_dataset("bh_binary_watershed_velocity", data=self.bh_binary_watershed_velocity)
+            gp_beta = gp.create_group("beta_r")
+            for k,v in self.beta_r.items():
+                gp_beta.create_dataset(k, data=v)
+
+    # TODO: option to save class as pickle so that methods can also be reloaded?
+
     def plot(self):
         warnings.warn("This method is not available for this class. If you wish to plot the BH Binary orbital parameters, use the binary_plot() method.")
     

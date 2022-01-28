@@ -18,7 +18,7 @@ def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
     r: array of radial positions
     vspherical: (n,3) array  the spherical velocity components, with columns
                 corresponding to radius, theta, and phi velocities
-    nbins: number of bins to bin radial values into
+    binwidth: fixed width of bins (dex for logscale)
     qcut: remove those particles which are greater than qcut quantile 
           (e.g. those few particles that are very far away)
     logbin: binning done equally in a logarithmic scale
@@ -34,7 +34,7 @@ def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
     if qcut < 1:
         mask = r < np.quantile(r, qcut)
         r = r[mask]
-        vspherical[mask, :]
+        vspherical = vspherical[mask, :]
     #determine the bins -> used fixed binwidths
     if logbin:
         bins = 10**np.arange(-3, np.log10(np.max(r))+binwidth, binwidth)

@@ -9,7 +9,7 @@ from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities"]
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
@@ -483,7 +483,6 @@ def projected_quantities(snap, obs=10, family="stars", masks=None):
     num_bhs = len(snap.bh['mass'])
     if masks is not None:
         assert(len(masks) == num_bhs)
-    #Q = dict.fromkeys(snap.bh["ID"], {"Re":0, "vsig":[]})
     Re = dict.fromkeys(snap.bh["ID"], {"estimate":0, "low":0, "high":0})
     vsig = dict.fromkeys(snap.bh["ID"], {"estimate":0, "low":0, "high":0})
     rng = np.random.default_rng(set_seed_time())
@@ -508,9 +507,13 @@ def projected_quantities(snap, obs=10, family="stars", masks=None):
                 Re_temp[i] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
                 vvar_temp[i] = pygad.analysis.los_velocity_dispersion(subsnap, proj=proj)**2
         # TODO confidence interval estimate for the parameters
+        # are these drawn from the correct distribution?
         Re[bhid]["estimate"] = np.nanmean(Re_temp)
-        vsig[bhid]["estimate"] = 0
-        #Q[bhid]["vsig"] = np.sqrt(vvar_temp * (3*obs) / (obs*3-1))
+        Re[bhid]["low"] = Re[bhid]["estimate"] - np.nanstd(Re_temp, ddof=1)
+        Re[bhid]["high"] = Re[bhid]["estimate"] + np.nanstd(Re_temp, ddof=1)
+        vsig[bhid]["estimate"] = np.nanmean(vvar_temp)
+        vsig[bhid]["low"] = vsig[bhid]["estimate"] - np.nanstd(vvar_temp, ddof=1)
+        vsig[bhid]["low"] = vsig[bhid]["estimate"] + np.nanstd(vvar_temp, ddof=1)
     return Re, vsig
 
 
@@ -528,9 +531,53 @@ def inner_DM_fraction(snap, Re=None):
     fraction of DM within 1 Re
     """
     if Re is None:
-        proj_q = projected_quantities(snap)
-        Re = proj_q.values()[0]["Re"]
+        Re,_ = projected_quantities(snap)
+        Re = list(Re.values())[0]["estimate"]
     centre_guess = pygad.analysis.center_of_mass(snap.bh)
-    ball_mask = pygad.BallMask(Re.values()[0], center=centre_guess)
-    return snap.dm[ball_mask]["mass"] / (snap.dm[ball_mask]["mass"] + snap.stars[ball_mask]["mass"])
+    ball_mask = pygad.BallMask(Re, center=centre_guess)
+    dm_mass = snap.dm["mass"][0]
+    star_mass = snap.stars["mass"][0]
+    return len(snap.dm[ball_mask])*dm_mass / (len(snap.dm[ball_mask])*dm_mass + len(snap.stars[ball_mask])*star_mass)
+
+
+def shell_flow_velocities(snap, R, centre=None, direction="out", dt="5 Myr"):
+    """
+    Return the velocities of those particles moving either inwards or outwards
+    through a shell of radius R. This function is largely based on the 
+    implementation in pygad.analysis.flow_rates().
+    Note that NO CENTRING IS PERFORMED.
+
+    Parameters
+    ----------
+    snap: pygad snapshot to use
+    R: shell radius, assumed to be in the same units as the position units of 
+       snap
+    direction: either "in" or "out", which direction the particles are moving in
+    dt: time used for the linear extrapolation of current positions (default 
+        units of Myr)
+    
+    Returns
+    -------
+    array of radial velocities corresponding to those particles moving in the 
+    desired direction through a shell with radius R.
+    """
+    assert direction in ["in", "out"], "Flow direction must be either in or out"
+    R = pygad.UnitScalar(R, units=snap["r"].units)
+    dt = pygad.UnitScalar(dt, units="Myr")
+    #this step is to prevent the conversion of an entire array
+    dt.convert_to(snap["r"].units / snap["vel"].units)
+    if centre is None:
+        centre = [0.,0.,0.]
+    centre = pygad.UnitArr(centre, units=snap["r"].units)
+    t = pygad.Translation(-centre)
+    # radial velocity appears to be updated after translation too
+    t.apply(snap)
+    rpred = snap["r"] + snap["vrad"] * dt
+    if direction == "out":
+        #particles are less than R originally, but move outwards
+        mask = (snap["r"] < R) & (rpred >= R)
+    else:
+        #particles are further than R originally, but move inwards
+        mask = (snap["r"] >= R) & (rpred < R)
+    return snap[mask]["vrad"].view(np.ndarray)
 
