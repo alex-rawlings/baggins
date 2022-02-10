@@ -81,6 +81,7 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
     for ind, this_snap in enumerate(snaplist):
         snap = pygad.Snapshot(this_snap, physical=True)
         this_time = convert_gadget_time(snap, new_unit=units)
+        snap.delete_blocks()
         del snap
         if ind == 0:
             prev_time = this_time
@@ -98,6 +99,6 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
             break
         prev_time = this_time
     else:
-        idx = -1
+        idx = len(snaplist)-1
         warnings.warn("Returning the final snapshot in the list!")
     return idx

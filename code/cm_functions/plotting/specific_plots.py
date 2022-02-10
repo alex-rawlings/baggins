@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import scipy.stats
+import seaborn as sns
 import copy
 import pygad
 import ketjugw
@@ -9,7 +10,7 @@ from ..general import convert_gadget_time
 from .general import zero_centre_colour
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot", "voronoi_plot"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot", "voronoi_plot", "seaborn_jointplot_cbar"]
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
@@ -252,6 +253,34 @@ def voronoi_plot(vdat):
         p1 = ax[i].imshow(stat, interpolation="nearest", origin="lower", extent=vdat["extent"], cmap=cmap, norm=norm)
         cbar = plt.colorbar(p1, ax=ax[i])
         cbar.ax.set_ylabel(label)
+
+
+def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "right":0.8}, cbarwidth=0.05, cbargap=0.02, **kwargs):
+    """
+    Wrapper to add a colorbar to a seaborn jointplot() object.
+
+    Parameters
+    ----------
+    adjust_kw: dict to pass to pyplot.subplots_adjust describing how the subplot
+               should be adjusted to accommodate the colorbar
+    cbarwidth: width of colorbar in axis units
+    cbargap: distance between marginal axis and colorbar in axis units
+    **kwargs: keyword arguments to be parsed to sns.jointplot()
+
+    Returns
+    -------
+    j: seaborn.JointGrid object
+    """
+    j = sns.jointplot(**kwargs)
+    plt.subplots_adjust(**adjust_kw)
+    #get current positions of axes
+    pos_joint_ax = j.ax_joint.get_position()
+    pos_margx_ax = j.ax_marg_x.get_position()
+    #reposition the joint ax so it has the same width as margx
+    j.ax_joint.set_position([pos_joint_ax.x0, pos_joint_ax.y0, pos_margx_ax.width, pos_joint_ax.height])
+    #reposition colorbar
+    j.figure.axes[-1].set_position([adjust_kw["right"]+cbargap, pos_joint_ax.y0, cbarwidth, pos_joint_ax.height])
+    return j
 
 
 

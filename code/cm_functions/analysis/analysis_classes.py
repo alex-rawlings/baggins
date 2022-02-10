@@ -216,13 +216,14 @@ class BHBinary:
 
 
 class ChildDataCube(BHBinary):
-    def __init__(self, paramfile, perturbID, gr_safe_radius=15, time_estimate_quantiles=[0.05, 0.5, 0.95], voronoi_kw={"Npx":300, "part_per_bin":5000}):
+    def __init__(self, paramfile, perturbID, gr_safe_radius=15, time_estimate_quantiles=[0.05, 0.5, 0.95], voronoi_kw={"Npx":300, "part_per_bin":5000}, shell_radius=3e-2):
         """
         A class to hold information about a ketju child run, inheriting the
         attributes of the BHBinary class. 
         """
         super().__init__(paramfile, perturbID, gr_safe_radius, time_estimate_quantiles)
         self.voronoi_kw = voronoi_kw
+        self.shell_radius = shell_radius
         # TODO update file locations if necessary
     
     @cached_property
@@ -372,6 +373,11 @@ class ChildDataCube(BHBinary):
         beta_r, radbins, bincount = beta_profile(self.snap.stars["r"], vspherical, 0.05)
         return {"beta_r": beta_r, "radbins":radbins, "bincount": bincount}
     
+    @cached_property
+    def virial_info(self):
+        v_rad, v_mass = pygad.analysis.virial_info(self.snap, center=self.mass_centre)
+        return {"virial_radius":v_rad, "virial_mass":v_mass}
+    
     def load_all(self, verbose=True):
         if verbose: print("Loading BH masses")
         self.bh_masses
@@ -403,9 +409,11 @@ class ChildDataCube(BHBinary):
         self.ifu_map_ah
         self.ifu_map_merger
         if verbose: print("Loading shell velocity statistics")
-        #self.get_shell_velocity_stats()
+        self.get_shell_velocity_stats()
         if verbose: print("Loading beta profile")
         self.beta_r
+        if verbose: print("Loading virial info")
+        self.virial_info
         if verbose: print("All attributes loaded")
 
 
@@ -415,14 +423,11 @@ class ChildDataCube(BHBinary):
         # which have been explicitly determined be written?
         with h5py.File(fname, mode="w") as f:
             #set up some meta data
-            if "/meta" not in f:
-                meta = f.create_group("meta")
-                now = datetime.datetime.now()
-                meta.attrs["created"] = now.strftime(date_str)
-                usr = os.path.expanduser("~")
-                meta.attrs["created_by"] = usr.rstrip("/").split("/")[-1]
-            else:
-                meta = f["/meta"]
+            meta = f.create_group("meta")
+            now = datetime.datetime.now()
+            meta.attrs["created"] = now.strftime(date_str)
+            usr = os.path.expanduser("~")
+            meta.attrs["created_by"] = usr.rstrip("/").split("/")[-1]
             # TODO move this to the read_hdf5 method
             now = datetime.datetime.now()
             meta.attrs["last_accessed"] = now.strftime(date_str)
@@ -479,13 +484,16 @@ class ChildDataCube(BHBinary):
             for k,v in self.ifu_map_ah.items():
                 gp_ifu_a.create_dataset(k, data=v)
             gp_shell = gp.create_group("shell_statistics")
-            # TODO shell radius as an attribute?
-            #gp_shell.create_dataset("snapshot_times", data=self.snapshot_times)
-            #gp_shell.create_dataset("stellar_shell_outflow_velocity", data=self.stellar_shell_outflow_velocity)
-            #gp_shell.create_dataset("bh_binary_watershed_velocity", data=self.bh_binary_watershed_velocity)
+            gp_shell.attrs["shell_radius"] = self.shell_radius
+            gp_shell.create_dataset("snapshot_times", data=self.snapshot_times)
+            gp_shell.create_dataset("stellar_shell_outflow_velocity", data=self.stellar_shell_outflow_velocity)
+            gp_shell.create_dataset("bh_binary_watershed_velocity", data=self.bh_binary_watershed_velocity)
             gp_beta = gp.create_group("beta_r")
             for k,v in self.beta_r.items():
                 gp_beta.create_dataset(k, data=v)
+            gp_vir = gp.create_group("virial_info")
+            for k,v in self.virial_info.items():
+                gp_vir.create_dataset(k, data=v)
 
     # TODO: option to save class as pickle so that methods can also be reloaded?
 
@@ -503,4 +511,3 @@ class ChildDataCube(BHBinary):
             if k[0] != "_":
                 s += " > {}\n".format(k)
         print(s)
-

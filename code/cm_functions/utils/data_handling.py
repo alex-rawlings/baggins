@@ -1,6 +1,7 @@
 import pickle
 import os
 import shutil
+import h5py
 
 
 __all__ = ['save_data', 'load_data', "get_files_in_dir", 'get_snapshots_in_dir', "get_ketjubhs_in_dir", "create_file_copy"]
@@ -108,6 +109,7 @@ def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5", copy=True):
                 bh_files.append(new_f)
     bh_files.sort()
     return bh_files
+
 
 def create_file_copy(f, suffix="_cp"):
     """
