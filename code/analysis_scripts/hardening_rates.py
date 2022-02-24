@@ -9,7 +9,7 @@ parser.add_argument(type=str, help="perturbation number", dest="num")
 parser.add_argument("-r", "--radiusgw", type=float, help="Radius [pc] above which GW emission expected to be negligible", dest="rgw", default=15)
 args = parser.parse_args()
 
-pfv = cmf.utils.read_parameters(args.path)
+pfv = cmf.utils.read_parameters(args.path, verbose=False)
 
 # create the bh binary class that will hold all the data
 bh_binary = cmf.analysis.BHBinary(args.path, args.num, args.rgw)

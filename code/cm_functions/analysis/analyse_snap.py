@@ -9,7 +9,7 @@ from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum"]
 
 
 def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
@@ -244,12 +244,60 @@ def get_massive_bh_ID(bhs):
     return bhs["ID"][massive_idx]
 
 
+def enclosed_mass_radius(snap, binary=True, mass_frac=1):
+    """
+    Determine the radius containining the given mass.
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse
+    binary (bool): should the influence radius be calculated for the binary as
+                   a single object (True), or separately for each BH (False)?
+    mass_frac: fraction of the mass to search for. Influence radius corresponds
+               to mass_frac = 2.
+    
+    Returns
+    -------
+    r (dict): keys correspond to BH ID (or the more massive BH ID if 
+                  binary=True), and values to the influence radius
+    """
+    def _find_radius_for_mass(M, m, pos, centre):
+        #determine the radius where the enclosed mass = desired mass M
+        r = pygad.utils.geo.dist(pos, centre)
+        r.sort()
+        #interpolate in mass-radius plane
+        #determine how many m are in M -> this will be the index of r we need
+        idx = int(np.ceil(M/m))-1
+        ms = np.array([idx, idx+1])*m
+        f = scipy.interpolate.interp1d(ms, [r[idx], r[idx+1]])
+        return pygad.UnitScalar(f(M), r.units)
+    assert(snap.phys_units_requested)
+    r = dict()
+    if binary:
+        #we are dealing with the combined mass
+        mass_bh = np.sum(snap.bh["mass"])
+        centre = pygad.analysis.center_of_mass(snap.bh)
+        massive_ID = get_massive_bh_ID(snap.bh)
+        _r = _find_radius_for_mass(mass_frac*mass_bh, snap.stars["mass"][0], snap.stars["pos"], centre=centre)
+        r[massive_ID] = _r
+    else:
+        #we want the influence radius for each BH. No masking is done to separate the stars to their original galaxy
+        bhids = snap.bh["ID"]
+        bhids.sort()
+        for id in bhids:
+            bh_id_mask = pygad.IDMask(id)
+            _r = _find_radius_for_mass(mass_frac*snap.bh[bh_id_mask]["mass"][0], snap.stars["mass"][0], snap.stars["pos"], centre=snap.bh[bh_id_mask]["pos"][0])
+            r[id] = _r
+    return r
+
+
 def influence_radius(snap, binary=True):
     """
     Determine the influence radius for the system, defined as Eq. 2.11 in
     Merritt 2013. This is denoted as r_m, whereas the alternative definition,
     Eq. 2.12, is equivalent in the case where stars have the distribution of 
     the singular isothermal sphere.
+    This is a wrapper around the more general method enclosed_mass_radius().
 
     Parameters
     ----------
@@ -262,28 +310,7 @@ def influence_radius(snap, binary=True):
     r_inf (dict): keys correspond to BH ID (or the more massive BH ID if 
                   binary=True), and values to the influence radius
     """
-    def _find_radius_for_mass(M, m, pos, centre):
-        #determine the radius where the enclosed mass = desired mass M
-        r = pygad.utils.geo.dist(pos, centre)
-        r.sort()
-        #determine how many m are in M -> this will be the index of r we need
-        idx = int(np.ceil(M/m))-1
-        return pygad.UnitScalar(r[idx], r.units)
-    assert(snap.phys_units_requested)
-    r_inf = dict()
-    if binary:
-        #we are dealing with the combined mass
-        mass_bh = np.sum(snap.bh["mass"])
-        centre = pygad.analysis.center_of_mass(snap.bh)
-        massive_ID = get_massive_bh_ID(snap.bh)
-        r = _find_radius_for_mass(2*mass_bh, snap.stars["mass"][0], snap.stars["pos"], centre=centre)
-        r_inf[massive_ID] = r
-    else:
-        #we want the influence radius for each BH. No masking is done to separate the stars to their original galaxy
-        for i in range(2):
-            r = _find_radius_for_mass(2*snap.bh["mass"][i], snap.stars["mass"][0], snap.stars["pos"], snap.bh["pos"][i,:])
-            r_inf[snap.bh["ID"][i]] = r
-    return r_inf
+    return enclosed_mass_radius(snap, binary, mass_frac=2)
 
 
 def hardening_radius(bhms, rm):
@@ -343,7 +370,7 @@ def gravitational_radiation_radius(bh_masses, ah, tah, H, Gps, e=0):
     return a.view(np.ndarray), time_a.view(np.ndarray)
 
 
-def _get_inner_rho_and_sigma(snap, extent=None):
+def get_inner_rho_and_sigma(snap, extent=None):
     """
     Get the mean (3-dimensional) stellar density and velocity dispersion within 
     a given radius.
@@ -395,7 +422,7 @@ def get_G_rho_per_sigma(snaplist, t, extent=None):
     for i in range(2):
         snap = pygad.Snapshot(snaplist[idx+i], physical=True)
         ts[i] = convert_gadget_time(snap, new_unit="Myr")
-        rho_temp, sigma_temp = _get_inner_rho_and_sigma(snap, extent)
+        rho_temp, sigma_temp = get_inner_rho_and_sigma(snap, extent)
         rho_units = rho_temp.units
         sigma_units = sigma_temp.units
         inner_density[i], inner_sigma[i] = rho_temp, sigma_temp
@@ -581,3 +608,47 @@ def shell_flow_velocities(snap, R, centre=None, direction="out", dt="5 Myr"):
         mask = (snap["r"] >= R) & (rpred < R)
     return snap[mask]["vrad"].view(np.ndarray)
 
+
+def angular_momentum_difference_gal_BH(snap):
+    """
+    Determine the angular difference between the angular momentum of the stellar
+    component of a galaxy and the BHs. Theta is defined as in Nasim et al. 2021
+    https://ui.adsabs.harvard.edu/abs/2021MNRAS.503..498N/abstract 
+
+    Parameters
+    ----------
+    snap: pygad snapshot to use
+
+    Returns
+    -------
+    theta: angle between L_gal and L_bh
+    """
+    assert snap.phys_units_requested
+    L_gal = snap.stars["angmom"].sum(axis=0)
+    L_bh = snap.bh["angmom"].sum(axis=0)
+    theta = np.arccos(np.dot(L_gal, L_bh) / (radial_separation(L_gal) * radial_separation(L_bh)))
+    return theta
+
+
+def loss_cone_angular_momentum(snap, a, kappa=1):
+    """
+    Calculate the approximate angular momentum of the loss cone, as from 
+    Gualandris et al. 2017, but multiplied by the stellar mass 
+    https://ui.adsabs.harvard.edu/abs/2017MNRAS.464.2301G/abstract 
+
+    Parameters
+    ----------
+    snap: pygad snapshot to use
+    kappa: dimensionless constant
+
+    Returns
+    -------
+    Loss cone ang. mom.
+    """
+    assert snap.phys_units_requested
+    J_unit = snap["angmom"].units
+    starmass = pygad.UnitScalar(snap.stars["mass"][0], snap.stars["mass"].units)
+    Mbin = snap.bh["mass"].sum()
+    const_G = const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
+    J = np.sqrt(2 * const_G * Mbin * kappa * a) * starmass
+    return J.in_units_of(J_unit)

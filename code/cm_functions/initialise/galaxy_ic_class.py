@@ -154,7 +154,7 @@ class stellar_cored_ic(stellar_component):
     @cached_property
     def total_mass(self):
         self.to_kpc_units()
-        rhof = lambda r: r**2 * Terzic05(r, self.core_density*1e9, self.core_radius, self.sersic_index, self.core_slope, self.sersic_b_parameter, self.effective_radius, self.transition_index)
+        rhof = lambda r: r**2 * Terzic05(r, rhob=self.core_density*1e9, rb=self.core_radius, n=self.sersic_index, g=self.core_slope, b=self.sersic_b_parameter, Re=self.effective_radius, a=self.transition_index)
         return 4*np.pi * self.mass_light_ratio * scipy.integrate.quad(rhof, 1e-5, self.general_info.maximum_radius, limit=100)[0]
 
 

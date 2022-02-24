@@ -1,11 +1,11 @@
 import cm_functions as cmf
 
-paramfile = "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AC/AC-030-0005.py"
-child = "006"
-dc = cmf.analysis.ChildDataCube(paramfile, child)
-dc.get_shell_velocity_stats()
+paramfile = "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AC/AC-030-0050.py"
+child = "004"
+dc = cmf.analysis.ChildSim(paramfile, child)
+#dc.get_shell_velocity_stats()
 
-if True:
+if False:
     import numpy as np
     import seaborn as sns
     import matplotlib.pyplot as plt
