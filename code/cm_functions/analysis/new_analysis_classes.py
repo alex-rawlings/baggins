@@ -27,8 +27,26 @@ hubble_time = 13800
 
 class BHBinaryData:
     def __init__(self) -> None:
-        pass
+        self._log = ""
     
+    @property
+    def snaplist(self):
+        return self._snaplist
+    
+    @snaplist.setter
+    def snaplist(self, v):
+        bad_snaps = []
+        for i, vi in enumerate(v):
+            try:
+                s = pygad.Snapshot(vi, physical=True)
+                s.delete_blocks()
+            except KeyError:
+                msg = "Snapshot {} potentially corrupt. Removing it from the list of snapshots for further analysis!".format(vi)
+                warnings.warn(msg)
+                self.add_to_log(msg)
+                bad_snaps.append(vi)
+        self._snaplist = [x for x in v if x not in bad_snaps]
+
     @property
     def bh_masses(self):
         return self._bh_masses
@@ -231,16 +249,11 @@ class BHBinaryData:
     def binary_spin_flip(self, v):
         self._binary_spin_flip = v
 
-    
-    @classmethod
-    def load_from_file(cls, fname):
-        raise NotImplementedError
-        C = cls()
-        with h5py.File(fname, mode="a") as f:
-            # TODO set this up the way it will really be
-            C.bh_masses = f["binary"]["masses"]
-            # TODO binary time estimates from attributes?
-        return C
+    def add_to_log(self, msg):
+        #add a message to the log
+        now = datetime.datetime.now()
+        now = now.strftime(date_str)
+        self._log += (now+": "+msg+"\n")
 
 
 
@@ -262,7 +275,6 @@ class BHBinary(BHBinaryData):
         #black hole mass
         snap = pygad.Snapshot(self.snaplist[0], physical=True)
         self.bh_masses = snap.bh["mass"]
-        self.starcount = len(snap.stars) #TODO remove this!
 
         #time when binary is 'formed'
         self.binary_formation_time = self.time_offset + self.orbit_params["t"][0] / myr
@@ -484,6 +496,7 @@ class BHBinary(BHBinaryData):
 class ChildSimData(BHBinaryData):
     def __init__(self) -> None:
         super().__init__()
+        self.allowed_types = (int, float, str, bytes, np.int64, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list)
     
     @property
     def relaxed_stellar_velocity_dispersion(self):
@@ -499,6 +512,7 @@ class ChildSimData(BHBinaryData):
     
     @relaxed_stellar_velocity_dispersion_projected.setter
     def relaxed_stellar_velocity_dispersion_projected(self, v):
+        assert isinstance(v, dict)
         self._relaxed_stellar_velocity_dispersion_projected = v
     
     @property
@@ -523,6 +537,7 @@ class ChildSimData(BHBinaryData):
     
     @relaxed_effective_radius.setter
     def relaxed_effective_radius(self, v):
+        assert isinstance(v, dict)
         self._relaxed_effective_radius = v
     
     @property
@@ -579,6 +594,7 @@ class ChildSimData(BHBinaryData):
     
     @ifu_map_ah.setter
     def ifu_map_ah(self, v):
+        assert isinstance(v, dict)
         self._ifu_map_ah = v
     
     @property
@@ -587,6 +603,7 @@ class ChildSimData(BHBinaryData):
     
     @ifu_map_merger.setter
     def ifu_map_merger(self, v):
+        assert isinstance(v, dict)
         self._ifu_map_merger = v
     
     @property
@@ -619,6 +636,7 @@ class ChildSimData(BHBinaryData):
     
     @beta_r.setter
     def beta_r(self, v):
+        assert isinstance(v, dict)
         self._beta_r = v
 
     @property
@@ -629,6 +647,14 @@ class ChildSimData(BHBinaryData):
     def ang_mom_diff_angle(self, v):
         self._ang_mom_diff_angle = v
     
+    @property
+    def loss_cone(self):
+        return self._loss_cone
+    
+    @loss_cone.setter
+    def loss_cone(self, v):
+        self._loss_cone = v
+
     @property
     def stars_in_loss_cone(self):
         return self._stars_in_loss_cone
@@ -643,13 +669,51 @@ class ChildSimData(BHBinaryData):
     
     @particle_count.setter
     def particle_count(self, v):
+        assert isinstance(v, dict)
         self._particle_count = v
     
     @classmethod
-    def load_from_file(cls, fname):
-        raise NotImplementedError
+    def load_from_file(cls, fname, decode="utf-8"):
+        #first create a new class instance. At this stage, no properties are set
         C = cls()
+        
+        #define some helpers
+        def _recursive_dict_load(g):
+            #recursively load a dictionary. Inspired from 3ML
+            #g is a group object
+            d = {}
+            for key, val in g.items():
+                if isinstance(val, h5py.Dataset):
+                    tmp = val[()]
+                    try:
+                        d[key] = tmp.decode(decode)
+                    except:
+                        d[key] = tmp
+                    if d[key] == "NONE_TYPE":
+                        d[key] = None
+                elif isinstance(val, h5py.Group):
+                    d[key] = _recursive_dict_load(val)
+
+        #now we need to recursively unpack the given hdf5 file
+        with h5py.File(fname, mode="r") as f:
+            for key, val in f.items():
+                if isinstance(val, h5py.Dataset):
+                    #set those class attributes which are datasets
+                    tmp = val[()]
+                    try:
+                        std_val = tmp.decode(decode)
+                    except:
+                        std_val = tmp
+                    if std_val == "NONE_TYPE":
+                        std_val = None
+                    setattr(C, key, std_val)
+                elif isinstance(val, h5py.Group):
+                    dict_val = _recursive_dict_load(val)
+                    setattr(C, key, dict_val)
         return C
+    
+    def add_hdf5_field(self, fname, field):
+        raise NotImplementedError
 
 
 class ChildSim(BHBinary, ChildSimData):
@@ -667,19 +731,19 @@ class ChildSim(BHBinary, ChildSimData):
                     dm = len(self.main_snap.dm["mass"]),
                     bh = len(self.main_snap.bh["mass"])
         )
-
+        
         #get the stellar velocity dispersions
         self.relaxed_stellar_velocity_dispersion = np.nanstd(self.main_snap.stars["vel"], axis=0)
-
+        print("sigma done")
         #projected effective radius and velocity dispersion in 1Re
-        self.relaxed_effective_radius, self.relaxed_stellar_velocity_dispersion = self._get_projected_quantities()
-
+        self.relaxed_effective_radius, self.relaxed_stellar_velocity_dispersion_projected = self._get_projected_quantities()
+        print("projected q done")
         #DM fraction within 1Re
         self.relaxed_inner_DM_fraction = inner_DM_fraction(self.main_snap)
 
         #3D half mass radius
         self.relaxed_half_mass_radius = pygad.analysis.profile_dens(self.main_snap.stars, "mass", center=self.main_snap_mass_centre)
-
+        print("half mass radius done")
         #total stellar mass of the remnant
         self.total_stellar_mass = self.main_snap.stars["mass"][0] * len(self.main_snap.stars)
 
@@ -690,12 +754,8 @@ class ChildSim(BHBinary, ChildSimData):
         try:
             r_fit_range = get_histogram_bin_centres(self.radial_edges)
             self.relaxed_core_parameters = fit_Terzic05_profile(r_fit_range, self.relaxed_density_profile, self.relaxed_effective_radius["estimate"], max_nfev=1000)
-            """print(self.relaxed_core_parameters)
-            plt.scatter(r_fit_range, self.relaxed_density_profile, marker=".")
-            plt.loglog(r_fit_range, Terzic05(r_fit_range, Re=self.relaxed_effective_radius["estimate"], **self.relaxed_core_parameters), c="tab:red", alpha=0.7)
-            plt.show()"""
         except RuntimeError:
-            warnings.warn("Core-fit parameters coudl not be determined! Skipping...")
+            self.add_to_log("Core-fit parameters coudl not be determined! Skipping...")
             self.relaxed_core_parameters = {"rhob": np.nan, "rb": np.nan, "n": np.nan, "g": np.nan, "b": np.nan, "a": np.nan}
 
         # TODO projected density profile
@@ -703,19 +763,19 @@ class ChildSim(BHBinary, ChildSimData):
         # TODO triaxiality parameters of relaxed remnant
 
         #IFU data at time when a = a_h
-        self.ifu_map_ah = self.create_ifu_map(t=self.r_hard_time)
+        #self.ifu_map_ah = self.create_ifu_map(t=self.r_hard_time)
 
         #IFU data at merger
-        self.ifu_map_merger = self.create_ifu_map(idx=self.merged_idx)
-
+        #self.ifu_map_merger = self.create_ifu_map(idx=self.merged_idx)
+        print("ifu done")
         #list of all snapshot times, waterhsed velocity, stellar inflow 
         # velocity, angle between galaxy stellar ang mom and BH ang mom,
         #num stars in loss cone
-        self.snapshot_times, self.bh_binary_watershed_velocity, self.stellar_shell_inflow_velocity, self.ang_mom_diff_angle, self.stars_in_loss_cone = self._get_time_series_data(R=self.shell_radius)
+        self.snapshot_times, self.bh_binary_watershed_velocity, self.stellar_shell_inflow_velocity, self.ang_mom_diff_angle, self.loss_cone, self.stars_in_loss_cone = self._get_time_series_data(R=self.shell_radius)
 
         #velocity anisotropy of remnant as a function of radius
         self.beta_r = self._beta_r_helper()
-
+        print("beta done")
         #virial information of relaxed remnant
         self.virial_info = {"radius":None, "mass":None}
         self.virial_info["radius"], self.virial_info["mass"] = pygad.analysis.virial_info(self.main_snap, center=self.main_snap_mass_centre)
@@ -724,7 +784,7 @@ class ChildSim(BHBinary, ChildSimData):
     #closest to merger, and move it to CoM coordinates
     @cached_property
     def main_snap(self):
-        if self.merged:
+        if self.merged():
             self.merged_idx = snap_num_for_time(self.snaplist, self.merged.time, method="nearest")
         else:
             self.merged_idx = -1
@@ -748,11 +808,14 @@ class ChildSim(BHBinary, ChildSimData):
     def _get_time_series_data(self, R=3e-2):
         #cycle through all snaps extracting key values to create a time series
         bound_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][0]/myr)
+        print("bound snap found")
         last_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][-1]/myr)
+        print("last snap found")
         t = np.full(last_snap_idx-bound_snap_idx+1, np.nan)
         w = np.full_like(t, np.nan)
-        v = []
+        v = {}
         theta = np.full_like(t, np.nan)
+        J_lc = np.full_like(t, np.nan)
         num_J_lc = np.full_like(t, np.nan)
         m_min = min([self.orbit_params["m0"][0], self.orbit_params["m1"][0]])
         for i, j in enumerate(np.arange(bound_snap_idx, last_snap_idx+1)):
@@ -763,18 +826,18 @@ class ChildSim(BHBinary, ChildSimData):
             t[i] = convert_gadget_time(snap, new_unit="Myr")
             idx = self._get_idx_in_vec(t[i], self.orbit_params["t"]/myr)
             w[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
-            v.append(
+            v["{:.1f}".format(t[i]):
                 shell_flow_velocities(snap.stars, R, centre=this_centre, direction="in")
-            )
+            ]
             #determine angle difference in J
             theta[i] = angular_momentum_difference_gal_BH(snap)
             #determine loss cone J, _a is semimajor axis from ketjugw as pygad
             #scalar object
             _a = pygad.UnitScalar(self.orbit_params["a_R"][idx], "pc")
-            J_lc = loss_cone_angular_momentum(snap, _a)
-            num_J_lc[i] = np.sum(snap.stars["angmom"] < J_lc)
+            J_lc[i] = loss_cone_angular_momentum(snap, _a)
+            num_J_lc[i] = np.sum(snap.stars["angmom"] < J_lc[i])
             snap.delete_blocks()
-        return t, w, v, theta, J_lc
+        return t, w, v, theta, J_lc, num_J_lc
     
     def _beta_r_helper(self):
         vspherical = spherical_components(self.main_snap.stars["pos"], self.main_snap.stars["vel"])
@@ -816,14 +879,19 @@ class ChildSim(BHBinary, ChildSimData):
     
     def make_hdf5(self, fname):
         #some helper functions
-        allowed_types = (int, float, str, bytes, np.int64, np.float64, np.ndarray, pygad.UnitArr)
         def _saver(g, l):
             #given a HDF5 group g, save all elements in list l
+            #attributes defined with the @property method are not in __dict__, 
+            #but their _members are. Append an underscore to all things in l
+            l = ["_" + x for x in l]
             for attr in self.__dict__:
                 if attr not in l:
                     continue
+                #now we strip the leading underscore if this should be saved
+                attr = attr.lstrip("_")
                 attr_val = getattr(self, attr)
-                if isinstance(attr_val, allowed_types):
+                print("{}: {}".format(attr, type(attr_val)))
+                if isinstance(attr_val, self.allowed_types):
                     g.create_dataset(attr, data=attr_val)
                 elif attr is None:
                     g.create_dataset(attr, "NONE_TYPE")
@@ -834,9 +902,11 @@ class ChildSim(BHBinary, ChildSimData):
 
         def _recursive_dict_save(g, d, n):
             #recursively save a dictionary. Inspired from 3ML
+            #g is group object, d is the dict, n is the new group name
             gnew = g.create_group(n)
             for key, val in d.items():
-                if isinstance(val, ):
+                print("{}: {}".format(key, type(val)))
+                if isinstance(val, self.allowed_types):
                     gnew.create_dataset(key, data=val)
                 elif val is None:
                     gnew.create_dataset(key, data="NONE_TYPE")
@@ -853,6 +923,7 @@ class ChildSim(BHBinary, ChildSimData):
             meta.attrs["created_by"] = username
             meta.attrs["last_accessed"] = now.strftime(date_str)
             meta.attrs["last_user"] = username
+            meta.create_dataset("logs", data=self._log)
         
             #save the binary info
             bhb = f.create_group("bh_binary")
@@ -862,9 +933,8 @@ class ChildSim(BHBinary, ChildSimData):
 
             #save the galaxy properties
             gp = f.create_group("galaxy_properties")
-            data_list = ["relaxed_stellar_velocity_dispersion", "relaxed_stellar_velocity_dispersion_projected", "relaxed_inner_DM_fraction", "virial_info", "relaxed_effective_radius", "relaxed_half_mass_radius", "relaxed_core_parameters", "relaxed_density_profile", "total_stellar_mass", "ifu_map_ah", "ifu_map_merger", "snapshot_times", "stellar_shell_inflow_velocity", "bh_binary_watershed_velocity", "beta_r", "ang_mom_diff_angle", "stars_in_loss_cone", "particle_count"]
+            data_list = ["relaxed_stellar_velocity_dispersion", "relaxed_stellar_velocity_dispersion_projected", "relaxed_inner_DM_fraction", "virial_info", "relaxed_effective_radius", "relaxed_half_mass_radius", "relaxed_core_parameters", "relaxed_density_profile", "total_stellar_mass", "ifu_map_ah", "ifu_map_merger", "snapshot_times", "stellar_shell_inflow_velocity", "bh_binary_watershed_velocity", "beta_r", "ang_mom_diff_angle", "loss_cone", "stars_in_loss_cone", "particle_count"]
             _saver(gp, data_list)
             f["/galaxy_properties/stellar_shell_inflow_velocity"].attrs["shell_radius"] = self.shell_radius
             f["/galaxy_properties/relaxed_density_profile"].attrs["radial_edges"] = self.radial_edges
-
 

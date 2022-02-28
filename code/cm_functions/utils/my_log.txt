@@ -1,0 +1,7 @@
+WARNING:my_log.txt:yes!
+2022/02/25 09:43:23 PM | WARNING | yes!
+2022/02/25 09:44:05 PM | CRITICAL | yes!
+2022/02/25 09:44:44 PM: CRITICAL: yes!
+2022/02/25 09:48:33 PM: DEBUG: yes!
+2022/02/25 09:52:11 PM: DEBUG: yes!
+2022/02/25 09:52:11 PM: INFO: Something new happened

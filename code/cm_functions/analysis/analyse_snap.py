@@ -484,7 +484,7 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
     return xcoms, vcoms, global_xcom, global_vcom
 
 
-def projected_quantities(snap, obs=10, family="stars", masks=None):
+def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75]):
     """
     Determine projected quantities of:
         - half mass radius,
@@ -500,6 +500,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None):
            radius can be determined for two galaxies within a merger simulation.
            If None, the system is treated as a whole and the projected half
            mass radius is assigned to just one BH ID.
+    q: lower and upper quantiles for error bounds (more robust that std)
     
     Returns
     -------
@@ -507,6 +508,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None):
        with the galaxy, and level 2 keys corresponding to the quantity
     """
     assert(snap.phys_units_requested)
+    q.sort()
     num_bhs = len(snap.bh['mass'])
     if masks is not None:
         assert(len(masks) == num_bhs)
@@ -533,14 +535,12 @@ def projected_quantities(snap, obs=10, family="stars", masks=None):
             for proj in range(3):
                 Re_temp[i] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
                 vvar_temp[i] = pygad.analysis.los_velocity_dispersion(subsnap, proj=proj)**2
-        # TODO confidence interval estimate for the parameters
-        # are these drawn from the correct distribution?
-        Re[bhid]["estimate"] = np.nanmean(Re_temp)
-        Re[bhid]["low"] = Re[bhid]["estimate"] - np.nanstd(Re_temp, ddof=1)
-        Re[bhid]["high"] = Re[bhid]["estimate"] + np.nanstd(Re_temp, ddof=1)
-        vsig[bhid]["estimate"] = np.nanmean(vvar_temp)
-        vsig[bhid]["low"] = vsig[bhid]["estimate"] - np.nanstd(vvar_temp, ddof=1)
-        vsig[bhid]["low"] = vsig[bhid]["estimate"] + np.nanstd(vvar_temp, ddof=1)
+        Re[bhid]["estimate"] = np.nanmedian(Re_temp)
+        Re[bhid]["low"] = np.nanquantile(Re_temp, q[0])
+        Re[bhid]["high"] = np.nanquantile(Re_temp, q[1])
+        vsig[bhid]["estimate"] = np.nanmedian(vvar_temp)
+        vsig[bhid]["low"] = np.nanquantile(vvar_temp, q[0])
+        vsig[bhid]["low"] = np.nanquantile(vvar_temp, q[1])
     return Re, vsig
 
 

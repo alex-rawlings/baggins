@@ -1,5 +1,4 @@
 import argparse
-import os.path
 import matplotlib.pyplot as plt
 import cm_functions as cmf
 
