@@ -131,7 +131,7 @@ def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', re
     eigen_vals, eigen_vecs = scipy.linalg.eig(rit)
     #need to sort the eigenvalues
     sorted_idx = np.argsort(eigen_vals)[::-1]
-    eigen_vals = eigen_vals[sorted_idx]
+    eigen_vals = np.real(eigen_vals[sorted_idx])
     eigen_vecs = eigen_vecs[:, sorted_idx]
     axis_ratios = np.sqrt(eigen_vals[1:]/eigen_vals[0])
     if return_eigenvectors:
@@ -484,7 +484,7 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
     return xcoms, vcoms, global_xcom, global_vcom
 
 
-def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75]):
+def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75], r_edges=np.geomspace(2e-1, 20, 51)):
     """
     Determine projected quantities of:
         - half mass radius,
@@ -501,6 +501,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
            If None, the system is treated as a whole and the projected half
            mass radius is assigned to just one BH ID.
     q: lower and upper quantiles for error bounds (more robust that std)
+    r_edges: edges of radial bins for density profile
     
     Returns
     -------
@@ -512,8 +513,11 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
     num_bhs = len(snap.bh['mass'])
     if masks is not None:
         assert(len(masks) == num_bhs)
+    #pre-allocate dictionaries
     Re = dict.fromkeys(snap.bh["ID"], {"estimate":0, "low":0, "high":0})
     vsig = dict.fromkeys(snap.bh["ID"], {"estimate":0, "low":0, "high":0})
+    rho = dict.fromkeys(snap.bh["ID"], {"estimate":0, "low":0, "high":0})
+    #set up rng and distributions 
     rng = np.random.default_rng(set_seed_time())
     rot_axis = rng.uniform(-1, 1, (obs, 3))
     rot_angle = rng.uniform(0, np.pi, obs)
@@ -526,22 +530,33 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
         else:
             centre_guess = snap.bh[snap.bh["ID"]==bhid]["pos"]
             subsnap = snap[masks[bhid]]
+        #temporary arrays to store data
         Re_temp = np.full(obs*3, np.nan)
         vvar_temp = np.full(obs*3, np.nan)
+        rho_temp =  np.full((obs*3, len(r_edges)-1), np.nan)
         for i in range(obs):
             rot = pygad.transformation.rot_from_axis_angle(rot_axis[i], rot_angle[i])
             rot.apply(subsnap)
             centre = pygad.analysis.shrinking_sphere(subsnap, centre_guess, 10)
             for proj in range(3):
-                Re_temp[i] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
-                vvar_temp[i] = pygad.analysis.los_velocity_dispersion(subsnap, proj=proj)**2
+                Re_temp[3*i+proj] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
+                #we want vel dispersion within Re
+                ball_mask = pygad.BallMask(Re_temp[3*i+proj], center=centre)
+                vvar_temp[3*i+proj] = pygad.analysis.los_velocity_dispersion(subsnap[ball_mask], proj=proj)**2
+                rho_temp[3*i+proj, :] = pygad.analysis.profile_dens(subsnap, qty="mass", r_edges=r_edges, center=centre)
+        subsnap.delete_blocks()
         Re[bhid]["estimate"] = np.nanmedian(Re_temp)
         Re[bhid]["low"] = np.nanquantile(Re_temp, q[0])
         Re[bhid]["high"] = np.nanquantile(Re_temp, q[1])
-        vsig[bhid]["estimate"] = np.nanmedian(vvar_temp)
-        vsig[bhid]["low"] = np.nanquantile(vvar_temp, q[0])
-        vsig[bhid]["low"] = np.nanquantile(vvar_temp, q[1])
-    return Re, vsig
+        vsig[bhid]["estimate"] = np.sqrt(np.nanmedian(vvar_temp))
+        vsig[bhid]["low"] = np.sqrt(np.nanquantile(vvar_temp, q[0]))
+        vsig[bhid]["high"] = np.sqrt(np.nanquantile(vvar_temp, q[1]))
+        rho[bhid]["estimate"] = np.nanmedian(rho_temp, axis=0)
+        rho[bhid]["low"] = np.nanquantile(rho_temp, q[0], axis=0)
+        rho[bhid]["high"] = np.nanquantile(rho_temp, q[1], axis=0)
+        if masks is None:
+            break
+    return Re, vsig, rho
 
 
 def inner_DM_fraction(snap, Re=None):
@@ -558,7 +573,7 @@ def inner_DM_fraction(snap, Re=None):
     fraction of DM within 1 Re
     """
     if Re is None:
-        Re,_ = projected_quantities(snap)
+        Re,*_ = projected_quantities(snap)
         Re = list(Re.values())[0]["estimate"]
     centre_guess = pygad.analysis.center_of_mass(snap.bh)
     ball_mask = pygad.BallMask(Re, center=centre_guess)

@@ -11,6 +11,7 @@ import pygad
 from .orbit import get_bound_binary, linear_fit_get_H, linear_fit_get_K, analytic_evolve_peters_quinlan
 from .analyse_snap import *
 from .general import snap_num_for_time, beta_profile
+from .masks import get_radial_mask
 from .voronoi import voronoi_binned_los_V_statistics
 from ..general import xval_of_quantity, convert_gadget_time
 from ..mathematics import spherical_components, iqr, get_histogram_bin_centres
@@ -158,6 +159,14 @@ class BHBinaryData:
     @r_hard_time_idx.setter
     def r_hard_time_idx(self, v):
         self._r_hard_time_idx = v
+    
+    @property
+    def r_hard_ecc(self):
+        return self._r_hard_ecc
+    
+    @r_hard_ecc.setter
+    def r_hard_ecc(self, v):
+        self._r_hard_ecc = v
     
     @property
     def a_more_Xpc_idx(self):
@@ -348,6 +357,9 @@ class BHBinary(BHBinaryData):
         try:
             #hardening radius time index
             self.r_hard_time_idx = self._get_idx_in_vec(self.r_hard_time, self.orbit_params["t"]/myr)
+
+            #eccentricity at time of bound radius
+            self.r_hard_ecc = self._get_ecc_for_idx(self.r_hard_time_idx)
         except ValueError("r_hard_time_idx not valid -> setting to 0"):
             self.r_hard_time_idx = 0
 
@@ -496,7 +508,8 @@ class BHBinary(BHBinaryData):
 class ChildSimData(BHBinaryData):
     def __init__(self) -> None:
         super().__init__()
-        self.allowed_types = (int, float, str, bytes, np.int64, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list)
+        self.allowed_types = (int, float, str, bytes, np.int64, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list, tuple)
+        self.hdf5_file_name = None
     
     @property
     def relaxed_stellar_velocity_dispersion(self):
@@ -676,7 +689,8 @@ class ChildSimData(BHBinaryData):
     def load_from_file(cls, fname, decode="utf-8"):
         #first create a new class instance. At this stage, no properties are set
         C = cls()
-        
+        C.hdf5_file_name = fname
+
         #define some helpers
         def _recursive_dict_load(g):
             #recursively load a dictionary. Inspired from 3ML
@@ -693,31 +707,106 @@ class ChildSimData(BHBinaryData):
                         d[key] = None
                 elif isinstance(val, h5py.Group):
                     d[key] = _recursive_dict_load(val)
+            return d
+        
+        def _main_setter(k, v):
+            #set those class attributes which are datasets
+            tmp = v[()]
+            try:
+                std_val = tmp.decode(decode)
+            except:
+                std_val = tmp
+            if std_val == "NONE_TYPE":
+                std_val = None
+            if k == "logs":
+                k = "_log"
+            setattr(C, k, std_val)
 
         #now we need to recursively unpack the given hdf5 file
         with h5py.File(fname, mode="r") as f:
             for key, val in f.items():
                 if isinstance(val, h5py.Dataset):
-                    #set those class attributes which are datasets
-                    tmp = val[()]
-                    try:
-                        std_val = tmp.decode(decode)
-                    except:
-                        std_val = tmp
-                    if std_val == "NONE_TYPE":
-                        std_val = None
-                    setattr(C, key, std_val)
+                    #these are top level datasets, and we don't expect there
+                    #to be any
+                    _main_setter(key, val)
                 elif isinstance(val, h5py.Group):
-                    dict_val = _recursive_dict_load(val)
-                    setattr(C, key, dict_val)
+                    #designed that datasets are grouped into two top-level 
+                    #groups, so these need care unpacking
+                    for kk, vv in val.items():
+                        if isinstance(vv, h5py.Dataset):
+                            _main_setter(kk, vv)
+                        elif isinstance(vv, h5py.Group):
+                            dict_val = _recursive_dict_load(vv)
+                            setattr(C, kk, dict_val)
+                        else:
+                            ValueError("{}: Unkown type for unpacking!".format(kk))
         return C
     
-    def add_hdf5_field(self, fname, field):
-        raise NotImplementedError
+    def _saver(self, g, l):
+        #given a HDF5 group g, save all elements in list l
+        #attributes defined with the @property method are not in __dict__, 
+        #but their _members are. Append an underscore to all things in l
+        l = ["_" + x for x in l]
+        for attr in self.__dict__:
+            if attr not in l:
+                continue
+            #now we strip the leading underscore if this should be saved
+            attr = attr.lstrip("_")
+            attr_val = getattr(self, attr)
+            if isinstance(attr_val, self.allowed_types):
+                g.create_dataset(attr, data=attr_val)
+            elif attr is None:
+                g.create_dataset(attr, "NONE_TYPE")
+            elif isinstance(attr_val, dict):
+                self._recursive_dict_save(g, attr_val, attr)
+            else:
+                raise ValueError("Error saving {}: cannot save {} type!".format(attr, type(attr_val)))
+
+    def _recursive_dict_save(self, g, d, n):
+        #recursively save a dictionary. Inspired from 3ML
+        #g is group object, d is the dict, n is the new group name
+        gnew = g.create_group(n)
+        for key, val in d.items():
+            if isinstance(val, self.allowed_types):
+                gnew.create_dataset(key, data=val)
+            elif val is None:
+                gnew.create_dataset(key, data="NONE_TYPE")
+            elif isinstance(val, dict):
+                self._recursive_dict_save(gnew, val, key)
+            else:
+                raise ValueError("Error saving {}: cannot save {} type!".format(key, type(val)))
+    
+    #public functions
+    def add_hdf5_field(self, n, val, field, fname=None):
+        #add a new field to an existing HDF5 structure
+        #n is attribute name, val is its value, field is where to save to, 
+        #fname is the file name
+        if fname is None:
+            fname = self.hdf5_file_name
+        field = field.rstrip("/")
+        with h5py.File(fname, mode="a") as f:
+            if isinstance(val, self.allowed_types):
+                f.create_dataset(field+"/"+n, data=val)
+            elif val is None:
+                f.create_dataset(field+"/"+n, data="NONE_TYPE")
+            elif isinstance(val, dict):
+                # TODO this may not work...
+                self._recursive_dict_save(f[field], val, n)
+            else:
+                raise ValueError("Error saving {}: cannot save {} type!".format(n, type(val)))
+            self.add_to_log("Attribute {} has been added".format(n))
+            f["/meta/logs"][...] = self._log
+    
+    def print_logs(self):
+        print(self._log)
+
 
 
 class ChildSim(BHBinary, ChildSimData):
-    def __init__(self, paramfile, perturbID, gr_safe_radius=15, param_estimate_e_quantiles=[0.05, 0.5, 0.95], voronoi_kw={"Npx":300, "part_per_bin":5000}, shell_radius=3e-2, radial_edges=np.linspace(0,20,501)) -> None:
+    def __init__(self, paramfile, perturbID, gr_safe_radius=15, param_estimate_e_quantiles=[0.05, 0.5, 0.95], voronoi_kw={"Npx":300, "part_per_bin":5000}, shell_radius=3e-2, radial_edges=np.geomspace(2e-1,20,51), verbose=False) -> None:
+        self.verbose = verbose
+        if self.verbose:
+            print("> Determining binary quantities")
         super().__init__(paramfile, perturbID, gr_safe_radius, param_estimate_e_quantiles)
         self.voronoi_kw = voronoi_kw
         self.shell_radius = shell_radius
@@ -726,6 +815,8 @@ class ChildSim(BHBinary, ChildSimData):
 
         #set the properties
         #set the particle counts
+        if self.verbose:
+            print("> Determining particle counts")
         self.particle_count = dict(
                     stars = len(self.main_snap.stars["mass"]),
                     dm = len(self.main_snap.dm["mass"]),
@@ -733,24 +824,35 @@ class ChildSim(BHBinary, ChildSimData):
         )
         
         #get the stellar velocity dispersions
+        if self.verbose:
+            print("> Determining stellar velocity dispersion")
         self.relaxed_stellar_velocity_dispersion = np.nanstd(self.main_snap.stars["vel"], axis=0)
-        print("sigma done")
-        #projected effective radius and velocity dispersion in 1Re
-        self.relaxed_effective_radius, self.relaxed_stellar_velocity_dispersion_projected = self._get_projected_quantities()
-        print("projected q done")
+
+        #projected effective radius, velocity dispersion in 1Re, and density 
+        if self.verbose:
+            print("> Determining projected quantities")
+        self.relaxed_effective_radius, self.relaxed_stellar_velocity_dispersion_projected, self.relaxed_density_profile_projected = self._get_projected_quantities()
         #DM fraction within 1Re
-        self.relaxed_inner_DM_fraction = inner_DM_fraction(self.main_snap)
+        self.relaxed_inner_DM_fraction = inner_DM_fraction(self.main_snap, Re=self.relaxed_effective_radius["estimate"])
 
         #3D half mass radius
+        if self.verbose:
+            print("> Determining half mass radius")
         self.relaxed_half_mass_radius = pygad.analysis.profile_dens(self.main_snap.stars, "mass", center=self.main_snap_mass_centre)
-        print("half mass radius done")
+
         #total stellar mass of the remnant
+        if self.verbose:
+            print("> Determining total stellar mass")
         self.total_stellar_mass = self.main_snap.stars["mass"][0] * len(self.main_snap.stars)
 
         #3D density profile of relaxed remnant
+        if self.verbose:
+            print("> Determining 3D density profile")
         self.relaxed_density_profile = pygad.analysis.profile_dens(self.main_snap.stars, "mass", r_edges=self.radial_edges, center=self.main_snap_mass_centre)
 
-        # TODO relaxed core parameters
+        #relaxed core parameters
+        if self.verbose:
+            print("> Determining core fit parameters")
         try:
             r_fit_range = get_histogram_bin_centres(self.radial_edges)
             self.relaxed_core_parameters = fit_Terzic05_profile(r_fit_range, self.relaxed_density_profile, self.relaxed_effective_radius["estimate"], max_nfev=1000)
@@ -758,25 +860,36 @@ class ChildSim(BHBinary, ChildSimData):
             self.add_to_log("Core-fit parameters coudl not be determined! Skipping...")
             self.relaxed_core_parameters = {"rhob": np.nan, "rb": np.nan, "n": np.nan, "g": np.nan, "b": np.nan, "a": np.nan}
 
-        # TODO projected density profile
-
-        # TODO triaxiality parameters of relaxed remnant
+        #triaxiality parameters of relaxed remnant
+        if self.verbose:
+            print("> Determining triaxiality parameters at merger")
+        self.relaxed_triaxiality_parameters = self._triaxial_helper()
 
         #IFU data at time when a = a_h
-        #self.ifu_map_ah = self.create_ifu_map(t=self.r_hard_time)
+        if self.verbose:
+            print("> Determining IFU data at time of a=a_h")
+        self.ifu_map_ah = self.create_ifu_map(t=self.r_hard_time)
 
         #IFU data at merger
-        #self.ifu_map_merger = self.create_ifu_map(idx=self.merged_idx)
-        print("ifu done")
+        if self.verbose:
+            print("> Determining IFU data at time of merger / last snap")
+        self.ifu_map_merger = self.create_ifu_map(idx=self.merged_idx)
+
         #list of all snapshot times, waterhsed velocity, stellar inflow 
         # velocity, angle between galaxy stellar ang mom and BH ang mom,
         #num stars in loss cone
+        if self.verbose:
+            print("> Determining time series data")
         self.snapshot_times, self.bh_binary_watershed_velocity, self.stellar_shell_inflow_velocity, self.ang_mom_diff_angle, self.loss_cone, self.stars_in_loss_cone = self._get_time_series_data(R=self.shell_radius)
 
         #velocity anisotropy of remnant as a function of radius
+        if self.verbose:
+            print("> Determining beta profile")
         self.beta_r = self._beta_r_helper()
-        print("beta done")
+        
         #virial information of relaxed remnant
+        if self.verbose:
+            print("> Determining virial information")
         self.virial_info = {"radius":None, "mass":None}
         self.virial_info["radius"], self.virial_info["mass"] = pygad.analysis.virial_info(self.main_snap, center=self.main_snap_mass_centre)
     
@@ -802,15 +915,24 @@ class ChildSim(BHBinary, ChildSimData):
     
     #helper functions
     def _get_projected_quantities(self):
-        Re, vsig = projected_quantities(self.main_snap)
-        return list(Re.values())[0], list(vsig.values())[0]
+        Re, vsig, rho = projected_quantities(self.main_snap, r_edges=self.radial_edges)
+        return list(Re.values())[0], list(vsig.values())[0], list(rho.values())[0]
+    
+    def _triaxial_helper(self):
+        ratios = dict(
+            ba = np.full(len(self.radial_edges)-1, np.nan),
+            ca = np.full(len(self.radial_edges)-1, np.nan)
+        )
+        radii_to_mask = list(zip(self.radial_edges[:-1], self.radial_edges[1:]))
+        for i, r in enumerate(radii_to_mask):
+            radial_mask = get_radial_mask(self.main_snap, r, self.main_snap_mass_centre)
+            ratios["ba"][i], ratios["ca"][i] = get_galaxy_axis_ratios(self.main_snap, self.main_snap_mass_centre, radial_mask=radial_mask)
+        return ratios
     
     def _get_time_series_data(self, R=3e-2):
         #cycle through all snaps extracting key values to create a time series
         bound_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][0]/myr)
-        print("bound snap found")
         last_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][-1]/myr)
-        print("last snap found")
         t = np.full(last_snap_idx-bound_snap_idx+1, np.nan)
         w = np.full_like(t, np.nan)
         v = {}
@@ -826,9 +948,7 @@ class ChildSim(BHBinary, ChildSimData):
             t[i] = convert_gadget_time(snap, new_unit="Myr")
             idx = self._get_idx_in_vec(t[i], self.orbit_params["t"]/myr)
             w[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
-            v["{:.1f}".format(t[i]):
-                shell_flow_velocities(snap.stars, R, centre=this_centre, direction="in")
-            ]
+            v["{:.1f}".format(t[i])] = shell_flow_velocities(snap.stars, R, centre=this_centre, direction="in")
             #determine angle difference in J
             theta[i] = angular_momentum_difference_gal_BH(snap)
             #determine loss cone J, _a is semimajor axis from ketjugw as pygad
@@ -878,43 +998,6 @@ class ChildSim(BHBinary, ChildSimData):
         print(s)
     
     def make_hdf5(self, fname):
-        #some helper functions
-        def _saver(g, l):
-            #given a HDF5 group g, save all elements in list l
-            #attributes defined with the @property method are not in __dict__, 
-            #but their _members are. Append an underscore to all things in l
-            l = ["_" + x for x in l]
-            for attr in self.__dict__:
-                if attr not in l:
-                    continue
-                #now we strip the leading underscore if this should be saved
-                attr = attr.lstrip("_")
-                attr_val = getattr(self, attr)
-                print("{}: {}".format(attr, type(attr_val)))
-                if isinstance(attr_val, self.allowed_types):
-                    g.create_dataset(attr, data=attr_val)
-                elif attr is None:
-                    g.create_dataset(attr, "NONE_TYPE")
-                elif isinstance(attr_val, dict):
-                    _recursive_dict_save(g, attr_val, attr)
-                else:
-                    raise ValueError("Error saving {}: cannot save {} type!".format(attr, type(attr_val)))
-
-        def _recursive_dict_save(g, d, n):
-            #recursively save a dictionary. Inspired from 3ML
-            #g is group object, d is the dict, n is the new group name
-            gnew = g.create_group(n)
-            for key, val in d.items():
-                print("{}: {}".format(key, type(val)))
-                if isinstance(val, self.allowed_types):
-                    gnew.create_dataset(key, data=val)
-                elif val is None:
-                    gnew.create_dataset(key, data="NONE_TYPE")
-                elif isinstance(val, dict):
-                    _recursive_dict_save(gnew, val, key)
-                else:
-                    raise ValueError("Cannot save {} type!".format(type(val)))
-
         with h5py.File(fname, mode="w") as f:
             #set up some meta data
             meta = f.create_group("meta")
@@ -928,13 +1011,13 @@ class ChildSim(BHBinary, ChildSimData):
             #save the binary info
             bhb = f.create_group("bh_binary")
             data_list = ["bh_masses", "bh_formation_time", "binary_merger_timescale", "r_infl", "r_infl_time", "r_infl_ecc", "r_bound", "r_bound_time", "r_bound_ecc", "r_hard", "r_hard_time", "analytical_tspan", "G_rho_per_sigma", "H", "K", "gw_dominant_semimajoraxis", "predicted_orbital_params", "formation_ecc_spread", "binary_merger_remnant", "binary_spin_flip"]
-            _saver(bhb, data_list)
+            self._saver(bhb, data_list)
             f["/bh_binary/predicted_orbital_params"].attrs["quantiles"] = self.param_estimate_e_quantiles
 
             #save the galaxy properties
             gp = f.create_group("galaxy_properties")
-            data_list = ["relaxed_stellar_velocity_dispersion", "relaxed_stellar_velocity_dispersion_projected", "relaxed_inner_DM_fraction", "virial_info", "relaxed_effective_radius", "relaxed_half_mass_radius", "relaxed_core_parameters", "relaxed_density_profile", "total_stellar_mass", "ifu_map_ah", "ifu_map_merger", "snapshot_times", "stellar_shell_inflow_velocity", "bh_binary_watershed_velocity", "beta_r", "ang_mom_diff_angle", "loss_cone", "stars_in_loss_cone", "particle_count"]
-            _saver(gp, data_list)
+            data_list = ["relaxed_stellar_velocity_dispersion", "relaxed_stellar_velocity_dispersion_projected", "relaxed_inner_DM_fraction", "virial_info", "relaxed_effective_radius", "relaxed_half_mass_radius", "relaxed_core_parameters", "relaxed_triaxiality_parameters", "relaxed_density_profile", "total_stellar_mass", "ifu_map_ah", "ifu_map_merger", "snapshot_times", "stellar_shell_inflow_velocity", "bh_binary_watershed_velocity", "beta_r", "ang_mom_diff_angle", "loss_cone", "stars_in_loss_cone", "particle_count"]
+            self._saver(gp, data_list)
             f["/galaxy_properties/stellar_shell_inflow_velocity"].attrs["shell_radius"] = self.shell_radius
             f["/galaxy_properties/relaxed_density_profile"].attrs["radial_edges"] = self.radial_edges
 
