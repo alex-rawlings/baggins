@@ -1,7 +1,6 @@
 import pickle
 import os
 import shutil
-import h5py
 
 
 __all__ = ['save_data', 'load_data', "get_files_in_dir", 'get_snapshots_in_dir', "get_ketjubhs_in_dir", "create_file_copy"]
@@ -41,7 +40,7 @@ def load_data(filename):
         return pickle.load(f)
 
 
-def get_files_in_dir(path, ext=".hdf5", name_only=False):
+def get_files_in_dir(path, ext=".hdf5", name_only=False, recursive=False):
     """
     Get a list of the full-path name of all files within a directory.
 
@@ -50,6 +49,8 @@ def get_files_in_dir(path, ext=".hdf5", name_only=False):
     path: host directory of files
     ext: file extension
     name_only: return only the name of the file, not its full path
+    recursive: bool, perform a recursive search? (Uses slower os.walk() 
+               function)
 
     Returns
     -------
@@ -57,10 +58,16 @@ def get_files_in_dir(path, ext=".hdf5", name_only=False):
     """
     returntype = "name" if name_only else "path"
     file_list = []
-    with os.scandir(path) as s:
-        for entry in s:
-            if entry.name.endswith(ext):
-                file_list.append(getattr(entry, returntype))
+    if recursive:
+        for root, dirs, files in os.walk(path):
+            for f in files:
+                if f.split(".")[-1] == ext.lstrip("."):
+                    file_list.append(os.path.join(root, f))
+    else:
+        with os.scandir(path) as s:
+            for entry in s:
+                if entry.name.endswith(ext):
+                    file_list.append(getattr(entry, returntype))
     file_list.sort()
     return file_list
 
@@ -86,16 +93,15 @@ def get_snapshots_in_dir(path, ext='.hdf5', exclude=[]):
     return all_files
 
 
-def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5", copy=True):
+def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
     """
     Get a list of the full-path name of all ketju BH data files within a 
-    directory.
+    directory. This is a recursive method.
 
     Parameters
     ----------
     path: host directory of ketju bh files
     file_name: name of ketju file
-    copy (bool): should a copy be made (needed for ongoing runs)
 
     Returns
     -------

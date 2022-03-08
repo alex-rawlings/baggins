@@ -505,8 +505,12 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
     
     Returns
     -------
-    Q: dict of dicts, with level 1 keys corresponding to the BH ID associated 
-       with the galaxy, and level 2 keys corresponding to the quantity
+    Each return variable is a dict with level 1 keys corresponding to the BH
+    particle IDs, and level 2 keys corresponding to the lower, estimate, and upper estimates of the value. If no ID masks are given, then only the first
+    level 1 key will have data stored with it.
+    Re: dict of effective radius estimates
+    vsig: dict of inner velocity dispersion estimates
+    rho: dict of density profile estimates
     """
     assert(snap.phys_units_requested)
     q.sort()
@@ -539,11 +543,12 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
             rot.apply(subsnap)
             centre = pygad.analysis.shrinking_sphere(subsnap, centre_guess, 10)
             for proj in range(3):
-                Re_temp[3*i+proj] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
+                linear_idx = 3*i+proj
+                Re_temp[linear_idx] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
                 #we want vel dispersion within Re
-                ball_mask = pygad.BallMask(Re_temp[3*i+proj], center=centre)
-                vvar_temp[3*i+proj] = pygad.analysis.los_velocity_dispersion(subsnap[ball_mask], proj=proj)**2
-                rho_temp[3*i+proj, :] = pygad.analysis.profile_dens(subsnap, qty="mass", r_edges=r_edges, center=centre)
+                ball_mask = pygad.BallMask(Re_temp[linear_idx], center=centre)
+                vvar_temp[linear_idx] = pygad.analysis.los_velocity_dispersion(subsnap[ball_mask], proj=proj)**2
+                rho_temp[linear_idx, :] = pygad.analysis.profile_dens(subsnap, qty="mass", r_edges=r_edges, center=centre)
         subsnap.delete_blocks()
         Re[bhid]["estimate"] = np.nanmedian(Re_temp)
         Re[bhid]["low"] = np.nanquantile(Re_temp, q[0])
@@ -559,7 +564,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
     return Re, vsig, rho
 
 
-def inner_DM_fraction(snap, Re=None):
+def inner_DM_fraction(snap, Re=None, centre=None):
     """
     Determine the dark matter fraction within 1 Re
 
@@ -567,6 +572,7 @@ def inner_DM_fraction(snap, Re=None):
     ----------
     snap: pygad snapshot to analyse
     Re: effective radius. Default (None) calculates the value
+    centre: where the centre is. Default None uses the CoM of the BH binary
 
     Returns
     -------
@@ -575,8 +581,9 @@ def inner_DM_fraction(snap, Re=None):
     if Re is None:
         Re,*_ = projected_quantities(snap)
         Re = list(Re.values())[0]["estimate"]
-    centre_guess = pygad.analysis.center_of_mass(snap.bh)
-    ball_mask = pygad.BallMask(Re, center=centre_guess)
+    if centre is None:
+        centre = pygad.analysis.center_of_mass(snap.bh)
+    ball_mask = pygad.BallMask(Re, center=centre)
     dm_mass = snap.dm["mass"][0]
     star_mass = snap.stars["mass"][0]
     return len(snap.dm[ball_mask])*dm_mass / (len(snap.dm[ball_mask])*dm_mass + len(snap.stars[ball_mask])*star_mass)

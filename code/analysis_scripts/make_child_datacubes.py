@@ -1,5 +1,7 @@
 import argparse
-import os.path
+import multiprocessing as mp
+import os
+import time
 import cm_functions as cmf
 
 #set up command line arguments
@@ -12,13 +14,30 @@ parser.add_argument("-v", "--verbose", help="verbose printing", dest="verbose", 
 args = parser.parse_args()
 
 
-if args.pnum == "all":
-    # TODO make this more general, what if there aren't 10 perturbations?
-    perturb_id = [str(i) for i in range(10)]
-else:
-    perturb_id = [args.pnum]
+#helper function to run
+def run_maker(c_dir):
+    #make the child sim cube for this subdir in the perturbation directory
+    cdc = cmf.analysis.ChildSim(args.pf, c_dir, gr_safe_radius=args.rgw, verbose=args.verbose)
+    file_save_name = os.path.join(file_save_dir, "cube-{}.hdf5".format(cdc.merger_name))
+    cdc.make_hdf5(file_save_name)
 
-for pid in perturb_id:
-    dc = cmf.analysis.ChildSim(args.pf, pid, verbose=args.verbose)
-    file_save_name = os.path.join(args.saveloc, "cube-{}.hdf5".format(dc.merger_name))
-    dc.make_hdf5(file_save_name)
+
+if __name__ == "__main__":
+    #determine which perturbation directories to run
+    if args.pnum == "all":
+        pfv = cmf.utils.read_parameters(args.pf)
+        perturb_dir = os.path.join(pfv.full_save_location, pfv.perturbSubDir)
+        perturb_ids = next(os.walk(perturb_dir))[1]
+    else:
+        perturb_ids = [args.pnum]
+    
+    #save the cubes to arg.saveloc/Gal1-Gal2-R0-Rperi/
+    file_save_dir = os.path.join(args.saveloc, pfv.full_save_location.rstrip("/").split("/")[-1])
+    #os.makedirs(file_save_dir)
+
+    #match the number of processes to the number of child runs to process
+    num_processes = len(perturb_ids)
+    start_time = time.time()
+    with mp.Pool(processes=num_processes) as pool:
+        pool.map(run_maker, perturb_ids)
+    print("\n\nElapsed Time: {:.3f}".format(time.time() - start_time))

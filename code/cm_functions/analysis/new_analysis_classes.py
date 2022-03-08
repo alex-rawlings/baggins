@@ -28,6 +28,12 @@ hubble_time = 13800
 
 class BHBinaryData:
     def __init__(self) -> None:
+        """
+        A class that defines the fields which constitute the variables of 
+        interest for the BH Binary. These properties are accessible to all 
+        child classes, and also correspond to the fields which are loadable 
+        from a hdf5 file. 
+        """
         self._log = ""
     
     @property
@@ -268,9 +274,25 @@ class BHBinaryData:
 
 class BHBinary(BHBinaryData):
     def __init__(self, paramfile, perturbID, gr_safe_radius=15, param_estimate_e_quantiles=[0.05, 0.5, 0.95]) -> None:
+        """
+        A class which determines and sets the key BH binary properties from the
+        raw simulation output data. 
+
+        Parameters
+        ----------
+        paramfile: path to parameter file corresponding to the merger run
+        perturbID: name of the perturbation directory, e.g. 000
+        gr_safe_radius: semimajor axis above which hardening due to GR emission
+                        should be negligible [pc]
+        param_estimate_e_quantiles: estimate binary orbital parameters assuming
+                                    an initial eccentricity of these quantiles
+                                    from a_h to gr_safe_radius
+        """
         super().__init__()
         pfv = read_parameters(paramfile)
         data_path = os.path.join(pfv.full_save_location, pfv.perturbSubDir, perturbID, "output")
+        if not os.path.isdir(data_path):
+            raise ValueError("The data path does not exist!")
         self.merger_name = "{}-{}".format(pfv.full_save_location.rstrip("/").split("/")[-1], perturbID)
         self.bhfile = get_ketjubhs_in_dir(data_path)[0]
         self.snaplist = get_snapshots_in_dir(data_path)
@@ -387,6 +409,7 @@ class BHBinary(BHBinaryData):
 
     #helper functions
     def _get_time_for_r(self, r, desc="r"):
+        #find the time corresponding to a particular radial value [pc]
         try:
             return xval_of_quantity(r, self.orbit_params["t"]/myr, self.orbit_params["a_R"]/ketjugw.units.pc, xsorted=True)
         except ValueError:
@@ -400,6 +423,7 @@ class BHBinary(BHBinaryData):
             return np.nan
 
     def _get_idx_in_vec(self, t, tarr):
+        #get the index of a value t within an array tarr
         #note tarr must have values in ascending order
         if not np.isnan(t):
             if t > tarr.max():
@@ -414,12 +438,14 @@ class BHBinary(BHBinaryData):
             raise ValueError("t must not be nan")
     
     def _get_a_more_Xpc_idx(self):
+        #determine where the semimajor axis decreases below gr_safe_radius
         idx = np.argmax(self.orbit_params["a_R"]/ketjugw.units.pc<self.gr_safe_radius)
         if idx < 2:
             idx = -1
         return idx
     
     def _predicted_orbital_params_helper(self):
+        #compute the orbital parameters given different quantiles of ecc
         op = dict(
             t = {"lower":None, "median":None, "upper":None},
             a = {"lower":None, "median":None, "upper":None},
@@ -433,14 +459,18 @@ class BHBinary(BHBinaryData):
         return op
     
     def _get_ecc_for_idx(self, idx, avg=3):
+        #determine the ecc at a given index, averaged over avg indices before
+        #and after the desired index
         if idx is None:
             return np.nan
         start_idx = max(0, idx-avg)
         end_idx = min(len(self.orbit_params["e_t"])-1,idx+avg+1)
-        return self.orbit_params["e_t"][start_idx:end_idx]
+        return np.nanmedian(self.orbit_params["e_t"][start_idx:end_idx])
     
     #public functions
     def predict_gw_dominant_semimajoraxis(self, q):
+        #predict where GW emission dominates, given the eccentricity quantile q,
+        #starting from where a=a_h
         e0 = np.nanquantile(self.orbit_params["e_t"][self.r_hard_time_idx:self.a_more_Xpc_idx], q)
         a_gr, t_agr = gravitational_radiation_radius(
                                         self.bh_masses, self.r_hard, 
@@ -462,6 +492,9 @@ class BHBinary(BHBinaryData):
         return t, a, e
 
     def plot(self, ax=None, add_radii=True, add_op_estimates=True, **kwargs):
+        #plot the binary evolution, with points showing [r_infl, r_hard, 
+        # analytical_tspan, gw radius] if add_radii==True, and estimates for 
+        # the orbital parameters if add_op_estimates==True
         if ax is None:
             fig, ax = plt.subplots(2,1,sharex="all")
         binary_param_plot(self.orbit_params, ax=ax, toffset=self.time_offset, zorder=5)
@@ -493,6 +526,7 @@ class BHBinary(BHBinaryData):
         return ax
     
     def print(self):
+        #Print some of the key binary quantities
         print("BH Binary Quantities:")
         print("  Perturbation applied at {:.1f} Myr".format(self.time_offset))
         print("  H determined over a span of {:.1f} Myr".format(self.analytical_tspan))
@@ -507,10 +541,26 @@ class BHBinary(BHBinaryData):
 
 class ChildSimData(BHBinaryData):
     def __init__(self) -> None:
+        """
+        A class that defines the fields which constitute the variables of 
+        interest for the merger remannt. These properties are accessible to all 
+        child classes, and also correspond to the fields which are loadable 
+        from a hdf5 file. Those fields which are part of the inherited class
+        are also part of this hdf5 file.
+        """
         super().__init__()
         self.allowed_types = (int, float, str, bytes, np.int64, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list, tuple)
         self.hdf5_file_name = None
     
+    @property
+    def parent_quantities(self):
+        return self._parent_quantities
+    
+    @parent_quantities.setter
+    def parent_quantities(self, v):
+        assert isinstance(v, dict)
+        self._parent_quantities = v
+
     @property
     def relaxed_stellar_velocity_dispersion(self):
         return self._relaxed_stellar_velocity_dispersion
@@ -703,7 +753,8 @@ class ChildSimData(BHBinaryData):
                         d[key] = tmp.decode(decode)
                     except:
                         d[key] = tmp
-                    if d[key] == "NONE_TYPE":
+                    #courtesy Elisa
+                    if np.array_equal(d[key], "NONE_TYPE"):
                         d[key] = None
                 elif isinstance(val, h5py.Group):
                     d[key] = _recursive_dict_load(val)
@@ -716,7 +767,7 @@ class ChildSimData(BHBinaryData):
                 std_val = tmp.decode(decode)
             except:
                 std_val = tmp
-            if std_val == "NONE_TYPE":
+            if np.array_equal(std_val, "NONE_TYPE"):
                 std_val = None
             if k == "logs":
                 k = "_log"
@@ -804,6 +855,24 @@ class ChildSimData(BHBinaryData):
 
 class ChildSim(BHBinary, ChildSimData):
     def __init__(self, paramfile, perturbID, gr_safe_radius=15, param_estimate_e_quantiles=[0.05, 0.5, 0.95], voronoi_kw={"Npx":300, "part_per_bin":5000}, shell_radius=3e-2, radial_edges=np.geomspace(2e-1,20,51), verbose=False) -> None:
+        """
+        A class which determines and sets the key merger remnant properties 
+        from the raw simulation output data. 
+
+        Parameters
+        ----------
+        paramfile: see BHBinary 
+        perturbID: see BHBinary
+        gr_safe_radius: see BHBinary
+        param_estimate_e_quantiles: see BHBinary
+        voronoi_kw: dict of values used for Voronoi tesselation, which is 
+                    passed to voronoi_binned_los_V_statistics()
+        shell_radius: radius [in kpc] of a shell through which crossing
+                      statistics are computed
+        radial_edges: sequence of values specifying the edge of the radial bins
+                      used for density profiles, beta profile [in kpc]
+        verbose: bool, verbose printing?
+        """
         self.verbose = verbose
         if self.verbose:
             print("> Determining binary quantities")
@@ -814,6 +883,17 @@ class ChildSim(BHBinary, ChildSimData):
         self.merged_idx = -1
 
         #set the properties
+        #set some key propertie from the parent run
+        pfv = read_parameters(paramfile, verbose=False)
+        self.parent_quantities = dict(
+            perturb_time = pfv.perturbTime,
+            initial_e = pfv.e,
+            r0 = pfv.r0,
+            rperi = pfv.rperi,
+            time_to_peri = pfv.time_to_pericenter,
+            rvir = pfv.virial_radius
+        )
+
         #set the particle counts
         if self.verbose:
             print("> Determining particle counts")
@@ -831,8 +911,12 @@ class ChildSim(BHBinary, ChildSimData):
         #projected effective radius, velocity dispersion in 1Re, and density 
         if self.verbose:
             print("> Determining projected quantities")
+        # TODO check Re! Is very large
         self.relaxed_effective_radius, self.relaxed_stellar_velocity_dispersion_projected, self.relaxed_density_profile_projected = self._get_projected_quantities()
+
         #DM fraction within 1Re
+        if self.verbose:
+            print("> Determining inner DM fraction")
         self.relaxed_inner_DM_fraction = inner_DM_fraction(self.main_snap, Re=self.relaxed_effective_radius["estimate"])
 
         #3D half mass radius
@@ -997,7 +1081,9 @@ class ChildSim(BHBinary, ChildSimData):
                 s += " > {}\n".format(k)
         print(s)
     
-    def make_hdf5(self, fname):
+    def make_hdf5(self, fname, exist_ok=False):
+        if os.path.isfile(fname) and not exist_ok:
+            raise ValueError("HDF5 file already exists!")
         with h5py.File(fname, mode="w") as f:
             #set up some meta data
             meta = f.create_group("meta")
@@ -1010,7 +1096,7 @@ class ChildSim(BHBinary, ChildSimData):
         
             #save the binary info
             bhb = f.create_group("bh_binary")
-            data_list = ["bh_masses", "bh_formation_time", "binary_merger_timescale", "r_infl", "r_infl_time", "r_infl_ecc", "r_bound", "r_bound_time", "r_bound_ecc", "r_hard", "r_hard_time", "analytical_tspan", "G_rho_per_sigma", "H", "K", "gw_dominant_semimajoraxis", "predicted_orbital_params", "formation_ecc_spread", "binary_merger_remnant", "binary_spin_flip"]
+            data_list = ["bh_masses", "bh_formation_time", "binary_merger_timescale", "r_infl", "r_infl_time", "r_infl_ecc", "r_bound", "r_bound_time", "r_bound_ecc", "r_hard", "r_hard_time", "r_hard_ecc", "analytical_tspan", "G_rho_per_sigma", "H", "K", "gw_dominant_semimajoraxis", "predicted_orbital_params", "formation_ecc_spread", "binary_merger_remnant", "binary_spin_flip"]
             self._saver(bhb, data_list)
             f["/bh_binary/predicted_orbital_params"].attrs["quantiles"] = self.param_estimate_e_quantiles
 
@@ -1020,4 +1106,8 @@ class ChildSim(BHBinary, ChildSimData):
             self._saver(gp, data_list)
             f["/galaxy_properties/stellar_shell_inflow_velocity"].attrs["shell_radius"] = self.shell_radius
             f["/galaxy_properties/relaxed_density_profile"].attrs["radial_edges"] = self.radial_edges
+
+            #save the parent properties
+            gP = f.create_group("parent_properties")
+            self._saver(gP, ["parent_quantities"])
 
