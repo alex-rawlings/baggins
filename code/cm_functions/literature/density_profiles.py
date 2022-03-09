@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.optimize
+import pygad
 from ..general import sersic_b_param
 
 
@@ -97,7 +98,8 @@ def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
         else:
             #use an approximation when fitting
             b = 2*n - 0.33 + 0.009876/n
-
+    if isinstance(Re, pygad.UnitArr):
+        Re = Re.view(np.ndarray)
     p = 1.0 - 0.6097/n + 0.05563/n**2
     rho_prime = rhob * 2**((p-g)/a) * (rb/Re)**p * np.exp(b*(2**(1/a) *rb/Re)**(1/n))
     Re_term = (r**a + rb**a)**(1/a) / Re

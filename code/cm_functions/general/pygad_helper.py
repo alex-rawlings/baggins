@@ -1,7 +1,7 @@
 import pygad.units
 
 
-__all__ = ['convert_gadget_time']
+__all__ = ["convert_gadget_time", "unit_as_str"]
 
 def convert_gadget_time(snap, new_unit='Gyr'):
     """
@@ -19,3 +19,18 @@ def convert_gadget_time(snap, new_unit='Gyr'):
     """
     t = pygad.UnitQty(snap.time, f"({snap.gadget_units['LENGTH']})/({snap.gadget_units['VELOCITY']})").in_units_of(new_unit, subs=snap)
     return float(t)
+
+
+def unit_as_str(u):
+    """
+    Return the units of a pygad UnitArr as a string
+
+    Parameters
+    ----------
+    u: pygad unit object
+
+    Returns
+    -------
+    string representation
+    """
+    return str(u).strip("[]")

@@ -37,7 +37,8 @@ def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
         vspherical = vspherical[mask, :]
     #determine the bins -> used fixed binwidths
     if logbin:
-        bins = 10**np.arange(-3, np.log10(np.max(r))+binwidth, binwidth)
+        rmin = pygad.UnitScalar(1.0, "pc")
+        bins = 10**np.arange(rmin.in_units_of(r.units), np.log10(np.max(r))+binwidth, binwidth)
     else:
         bins = np.arange(0, np.max(r)+binwidth, binwidth)
     #bin the statistics
@@ -52,7 +53,7 @@ def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
     bin_centres = get_histogram_bin_centres(bin_edges)
     bin_centres = bin_centres[nanmask]
     bincounts = bincounts[nanmask]
-    return beta, bin_centres, bincounts
+    return beta, pygad.UnitArr(bin_centres, units=r.units), bincounts
 
 
 def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
@@ -77,7 +78,7 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
          the sought time 
     """
     if method not in ["floor", "ceil", "nearest"]: raise ValueError("method must be one of 'floor', 'ceil', or 'nearest'.")
-    assert(isinstance(time_to_find, float) or isinstance(time_to_find, int))
+    assert(isinstance(time_to_find, (float, int, pygad.UnitArr)))
     for ind, this_snap in enumerate(snaplist):
         snap = pygad.Snapshot(this_snap, physical=True)
         this_time = convert_gadget_time(snap, new_unit=units)

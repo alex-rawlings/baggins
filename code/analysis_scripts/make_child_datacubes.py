@@ -23,9 +23,9 @@ def run_maker(c_dir):
 
 
 if __name__ == "__main__":
+    pfv = cmf.utils.read_parameters(args.pf, verbose=False)
     #determine which perturbation directories to run
     if args.pnum == "all":
-        pfv = cmf.utils.read_parameters(args.pf)
         perturb_dir = os.path.join(pfv.full_save_location, pfv.perturbSubDir)
         perturb_ids = next(os.walk(perturb_dir))[1]
     else:
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     
     #save the cubes to arg.saveloc/Gal1-Gal2-R0-Rperi/
     file_save_dir = os.path.join(args.saveloc, pfv.full_save_location.rstrip("/").split("/")[-1])
-    #os.makedirs(file_save_dir)
+    os.makedirs(file_save_dir)
 
     #match the number of processes to the number of child runs to process
     num_processes = len(perturb_ids)
