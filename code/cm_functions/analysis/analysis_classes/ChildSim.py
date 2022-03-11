@@ -1,0 +1,309 @@
+import datetime
+from functools import cached_property
+import os.path
+import warnings
+import h5py
+import numpy as np
+import pygad
+import ketjugw
+
+from . import BHBinary, ChildSimData, myr, date_str
+from ..analyse_snap import *
+from ..general import beta_profile, snap_num_for_time
+from ..masks import get_radial_mask
+from ..voronoi import voronoi_binned_los_V_statistics
+from ...general import convert_gadget_time
+from ...literature import fit_Terzic05_profile
+from ...mathematics import get_histogram_bin_centres, spherical_components
+from ...utils import read_parameters
+from ...env_config import username
+
+__all__ = ["ChildSim"]
+
+class ChildSim(BHBinary, ChildSimData):
+    def __init__(self, paramfile, perturbID, gr_safe_radius=15, param_estimate_e_quantiles=[0.05, 0.5, 0.95], com_consistency=[0.1, 1], voronoi_kw={"Npx":300, "part_per_bin":5000}, shell_radius=30, radial_edges=np.geomspace(20,2e4,51), verbose=False) -> None:
+        """
+        A class which determines and sets the key merger remnant properties 
+        from the raw simulation output data. 
+
+        Parameters
+        ----------
+        paramfile: see BHBinary 
+        perturbID: see BHBinary
+        gr_safe_radius: see BHBinary
+        param_estimate_e_quantiles: see BHBinary
+        com_consistency: list of position separation and velocity separation of 
+                         the two BHs below which the CoM estimate is considered 
+                         "converged", i.e. the remnant has settled. Distance in 
+                         kpc, velocity in km/s
+        voronoi_kw: dict of values used for Voronoi tesselation, which is 
+                    passed to voronoi_binned_los_V_statistics()
+        shell_radius: radius [in kpc] of a shell through which crossing
+                      statistics are computed
+        radial_edges: sequence of values specifying the edge of the radial bins
+                      used for density profiles, beta profile [in kpc]
+        verbose: bool, verbose printing?
+        """
+        self.verbose = verbose
+        if self.verbose:
+            print("> Determining binary quantities")
+        super().__init__(paramfile, perturbID, gr_safe_radius, param_estimate_e_quantiles)
+        self.com_consistency = com_consistency
+        self.voronoi_kw = voronoi_kw
+        self.shell_radius = pygad.UnitScalar(float(shell_radius), units="pc")
+        self.radial_edges = pygad.UnitArr(radial_edges, units="pc")
+        self.merged_idx = -1
+
+        #set the properties
+        #set some key properties from the parent run
+        pfv = read_parameters(paramfile, verbose=False)
+        self.parent_quantities = dict(
+            perturb_time = pfv.perturbTime * 1e3,
+            initial_e = pfv.e,
+            r0 = pfv.r0 * 1e3,
+            rperi = pfv.rperi * 1e3,
+            time_to_peri = pfv.time_to_pericenter * 1e3,
+            rvir = pfv.virial_radius * 1e3
+        )
+
+        #set the particle counts
+        if self.verbose:
+            print("> Determining particle counts")
+        self.particle_count = dict(
+                    stars = len(self.main_snap.stars["mass"]),
+                    dm = len(self.main_snap.dm["mass"]),
+                    bh = len(self.main_snap.bh["mass"])
+        )
+        
+        #get the stellar velocity dispersions
+        # TODO inside some radius?
+        if self.verbose:
+            print("> Determining stellar velocity dispersion")
+        self.relaxed_stellar_velocity_dispersion = np.nanstd(self.main_snap.stars["vel"], axis=0)
+
+        #projected effective radius, velocity dispersion in 1Re, and density 
+        if self.verbose:
+            print("> Determining projected quantities")
+        self.relaxed_effective_radius, self.relaxed_stellar_velocity_dispersion_projected, self.relaxed_density_profile_projected = self._get_projected_quantities()
+
+        #DM fraction within 1Re
+        if self.verbose:
+            print("> Determining inner DM fraction")
+        self.relaxed_inner_DM_fraction = inner_DM_fraction(self.main_snap, Re=self.relaxed_effective_radius["estimate"])
+
+        #3D half mass radius
+        if self.verbose:
+            print("> Determining half mass radius")
+        self.relaxed_half_mass_radius = pygad.analysis.half_mass_radius(self.main_snap.stars, center=self.main_snap_mass_centre)
+
+        #total stellar mass of the remnant
+        if self.verbose:
+            print("> Determining total stellar mass")
+        self.total_stellar_mass = pygad.UnitScalar(self.main_snap.stars["mass"][0] * len(self.main_snap.stars), units=self.main_snap["mass"].units)
+
+        #3D density profile of relaxed remnant
+        if self.verbose:
+            print("> Determining 3D density profile")
+        self.relaxed_density_profile = pygad.analysis.profile_dens(self.main_snap.stars, "mass", r_edges=self.radial_edges, center=self.main_snap_mass_centre)
+
+        #relaxed core parameters
+        if self.verbose:
+            print("> Determining core fit parameters")
+        try:
+            r_fit_range = get_histogram_bin_centres(self.radial_edges)
+            self.relaxed_core_parameters = fit_Terzic05_profile(r_fit_range, self.relaxed_density_profile, self.relaxed_effective_radius["estimate"], max_nfev=1000)
+        except RuntimeError:
+            self.add_to_log("Core-fit parameters could not be determined! Skipping...")
+            self.relaxed_core_parameters = {"rhob": np.nan, "rb": np.nan, "n": np.nan, "g": np.nan, "b": np.nan, "a": np.nan}
+
+        #triaxiality parameters of relaxed remnant
+        if self.verbose:
+            print("> Determining triaxiality parameters at merger")
+        self.relaxed_triaxiality_parameters = self._triaxial_helper()
+
+        #IFU data at time when a = a_h
+        if self.verbose:
+            print("> Determining IFU data at time of a=a_h")
+        self.ifu_map_ah = self.create_ifu_map(t=self.r_hard_time)
+
+        #IFU data at merger
+        if self.verbose:
+            print("> Determining IFU data at time of merger / last snap")
+        self.ifu_map_merger = self.create_ifu_map(idx=self.merged_idx)
+
+        #list of all snapshot times, waterhsed velocity, stellar inflow 
+        # velocity, angle between galaxy stellar ang mom and BH ang mom,
+        #num stars in loss cone
+        if self.verbose:
+            print("> Determining time series data")
+        self.snapshot_times, self.bh_binary_watershed_velocity, self.stellar_shell_inflow_velocity, self.ang_mom_diff_angle, self.loss_cone, self.stars_in_loss_cone = self._get_time_series_data(R=self.shell_radius)
+
+        #velocity anisotropy of remnant as a function of radius
+        if self.verbose:
+            print("> Determining beta profile")
+        self.beta_r = self._beta_r_helper()
+        
+        #virial information of relaxed remnant
+        if self.verbose:
+            print("> Determining virial information")
+        self.virial_info = {"radius":None, "mass":None}
+        self.virial_info["radius"], self.virial_info["mass"] = pygad.analysis.virial_info(self.main_snap, center=self.main_snap_mass_centre)
+    
+    #define the "main" snapshot we will be working with, i.e. the one
+    #closest to merger, and move it to CoM coordinates
+    @cached_property
+    def main_snap(self):
+        if self.merged():
+            self.merged_idx = snap_num_for_time(self.snaplist, self.merged.time, method="floor")
+        else:
+            self.merged_idx = -1
+        if self.verbose:
+            print("Merger remnant snapshot is number {}".format(self.merged_idx))
+        snap = pygad.Snapshot(self.snaplist[self.merged_idx], physical=True)
+        xcom = get_com_of_each_galaxy(snap, verbose=False)
+        vcom = get_com_velocity_of_each_galaxy(snap, xcom, verbose=False)
+        # ensure the difference in com position and velocity using different BH
+        # values as an initial guess are consistent -> may not be relaxed 
+        # otherwise
+        xcom_None_bool = [v is None for v in xcom.values()]
+        vcom_None_bool = [v is None for v in vcom.values()]
+        self.relaxed_remnant_flag = True
+        if not np.any(xcom_None_bool) and not np.any(vcom_None_bool):
+            # No Nones in CoM dictionaries. Check consistency
+            msg = "Total CoM estimate for {} differs when using the individual BHs as an initial guess. The merger remnant may not be relaxed, leading to incorrect estimates that rely on centring."
+            if np.any(np.abs(np.diff(list(xcom.values()), axis=0)) > self.com_consistency[0]):
+                warnings.warn(msg.format("position"))
+                self.add_to_log(msg.format("position"))
+                self.relaxed_remnant_flag = False
+            if np.any(np.abs(np.diff(list(vcom.values()), axis=0)) > self.com_consistency[1]):
+                warnings.warn(msg.format("velocity"))
+                self.add_to_log(msg.format("velocity"))
+                self.relaxed_remnant_flag = False
+        massive_BH_id = get_massive_bh_ID(snap.bh)
+        snap["pos"] -= xcom[massive_BH_id]
+        snap["vel"] -= vcom[massive_BH_id]
+        return snap
+    
+    @cached_property
+    def main_snap_mass_centre(self):
+        centre_guess = pygad.analysis.center_of_mass(self.main_snap.bh)
+        return pygad.analysis.shrinking_sphere(self.main_snap.stars, centre_guess, 20)
+    
+    #helper functions
+    def _get_projected_quantities(self):
+        Re, vsig, rho = projected_quantities(self.main_snap, r_edges=self.radial_edges)
+        return list(Re.values())[0], list(vsig.values())[0], list(rho.values())[0]
+    
+    def _triaxial_helper(self):
+        ratios = dict(
+            ba = np.full(len(self.radial_edges)-1, np.nan),
+            ca = np.full(len(self.radial_edges)-1, np.nan)
+        )
+        radii_to_mask = list(zip(self.radial_edges[:-1], self.radial_edges[1:]))
+        for i, r in enumerate(radii_to_mask):
+            radial_mask = get_radial_mask(self.main_snap, r, self.main_snap_mass_centre)
+            ratios["ba"][i], ratios["ca"][i] = get_galaxy_axis_ratios(self.main_snap, self.main_snap_mass_centre, radial_mask=radial_mask)
+        return ratios
+    
+    def _get_time_series_data(self, R=30):
+        R = pygad.UnitScalar(R, units="pc")
+        #cycle through all snaps extracting key values to create a time series
+        bound_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][0]/myr)
+        last_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][-1]/myr)
+        t = np.full(last_snap_idx-bound_snap_idx+1, np.nan)
+        w = np.full_like(t, np.nan)
+        v = {}
+        theta = np.full_like(t, np.nan)
+        J_lc = np.full_like(t, np.nan)
+        num_J_lc = np.full_like(t, np.nan)
+        m_min = min([self.orbit_params["m0"][0], self.orbit_params["m1"][0]])
+        J_unit = self.main_snap["angmom"].units
+        for i, j in enumerate(np.arange(bound_snap_idx, last_snap_idx+1)):
+            snap = pygad.Snapshot(self.snaplist[j], physical=True)
+            #as we are interested in flow rates about binary, set binary as
+            #the centre of mass
+            this_centre = pygad.analysis.center_of_mass(snap.bh)
+            t[i] = convert_gadget_time(snap, new_unit="Myr")
+            idx = self._get_idx_in_vec(t[i], self.orbit_params["t"]/myr)
+            w[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
+            v["{:.1f}".format(t[i])] = shell_flow_velocities(snap.stars, R, centre=this_centre, direction="in")
+            #determine angle difference in J
+            theta[i] = angular_momentum_difference_gal_BH(snap)
+            #determine loss cone J, _a is semimajor axis from ketjugw as pygad
+            #scalar object
+            _a = pygad.UnitScalar(self.orbit_params["a_R"][idx], "pc")
+            J_lc[i] = loss_cone_angular_momentum(snap, _a)
+            num_J_lc[i] = np.sum(snap.stars["angmom"] < J_lc[i])
+            snap.delete_blocks()
+        return pygad.UnitArr(t, units="Myr"), pygad.UnitArr(w, units="km/s"), v, theta, pygad.UnitArr(J_lc, units=J_unit), num_J_lc
+    
+    def _beta_r_helper(self):
+        vspherical = spherical_components(self.main_snap.stars["pos"], self.main_snap.stars["vel"])
+        beta_r, radbins, bincount = beta_profile(self.main_snap.stars["r"], vspherical, 0.05)
+        return {"beta_r": beta_r, "radbins":radbins, "bincount": bincount}
+
+    #public functions
+    def plot(self):
+        warnings.warn("This method is not available for this class. If you wish to plot the BH Binary orbital parameters, use the binary_plot() method.")
+    
+    def binary_plot(self, ax=None, add_radii=True, add_op_estimates=True, **kwargs):
+        super().plot(ax, add_radii, add_op_estimates, **kwargs)
+    
+    def create_ifu_map(self, t=None, r=None, idx=None):
+        if idx is None and t is not None:
+            idx = snap_num_for_time(self.snaplist, t)
+        elif idx is None and t is None:
+            raise RuntimeError("One of t (time) or idx (snapshot number) must be specified!")
+
+        snap = pygad.Snapshot(self.snaplist[idx], physical=True)
+        mass_centre = pygad.analysis.center_of_mass(snap.bh)
+        # TODO is the best radius to use?
+        if r is None:
+            r = self.relaxed_effective_radius["estimate"]
+        ball_mask = pygad.BallMask(r, center=mass_centre)
+        subsnap = snap.stars[ball_mask]
+        return voronoi_binned_los_V_statistics(
+                    subsnap["pos"][:,0], subsnap["pos"][:,1], 
+                    subsnap["vel"][:,2], subsnap["mass"], **self.voronoi_kw)
+    
+    def print(self):
+        #print the currently loaded attributes of the data cube
+        s = "Data Cube has the following properties loaded:\n"
+        keys = self.__dict__.keys()
+        for k in keys:
+            if k[0] != "_":
+                s += " > {}\n".format(k)
+        print(s)
+    
+    def make_hdf5(self, fname, exist_ok=False):
+        if os.path.isfile(fname) and not exist_ok:
+            raise ValueError("HDF5 file already exists!")
+        with h5py.File(fname, mode="w") as f:
+            #set up some meta data
+            meta = f.create_group("meta")
+            now = datetime.datetime.now()
+            meta.attrs["merger_name"] = self.merger_name
+            meta.attrs["created"] = now.strftime(date_str)
+            meta.attrs["created_by"] = username
+            meta.attrs["last_accessed"] = now.strftime(date_str)
+            meta.attrs["last_user"] = username
+            meta.create_dataset("logs", data=self._log)
+        
+            #save the binary info
+            bhb = f.create_group("bh_binary")
+            data_list = ["bh_masses", "bh_formation_time", "binary_merger_timescale", "r_infl", "r_infl_time", "r_infl_ecc", "r_bound", "r_bound_time", "r_bound_ecc", "r_hard", "r_hard_time", "r_hard_ecc", "analytical_tspan", "G_rho_per_sigma", "H", "K", "gw_dominant_semimajoraxis", "predicted_orbital_params", "formation_ecc_spread", "binary_merger_remnant", "binary_spin_flip"]
+            self._saver(bhb, data_list)
+            f["/bh_binary/predicted_orbital_params"].attrs["quantiles"] = self.param_estimate_e_quantiles
+
+            #save the galaxy properties
+            gp = f.create_group("galaxy_properties")
+            data_list = ["relaxed_remnant_flag", "relaxed_stellar_velocity_dispersion", "relaxed_stellar_velocity_dispersion_projected", "relaxed_inner_DM_fraction", "virial_info", "relaxed_effective_radius", "relaxed_half_mass_radius", "relaxed_core_parameters", "relaxed_density_profile", "relaxed_density_profile_projected", "relaxed_triaxiality_parameters", "total_stellar_mass", "ifu_map_ah", "ifu_map_merger", "snapshot_times", "stellar_shell_inflow_velocity", "bh_binary_watershed_velocity", "beta_r", "ang_mom_diff_angle", "loss_cone", "stars_in_loss_cone", "particle_count"]
+            self._saver(gp, data_list)
+            f["/galaxy_properties/stellar_shell_inflow_velocity"].attrs["shell_radius"] = self.shell_radius
+            # TODO should this be its own property?
+            f["/galaxy_properties/relaxed_density_profile"].attrs["radial_edges"] = self.radial_edges
+
+            #save the parent properties
+            gP = f.create_group("parent_properties")
+            self._saver(gP, ["parent_quantities"])
+

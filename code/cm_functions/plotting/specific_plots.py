@@ -10,7 +10,7 @@ from ..general import convert_gadget_time
 from .general import zero_centre_colour
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot", "voronoi_plot", "seaborn_jointplot_cbar"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere"]
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
@@ -283,6 +283,20 @@ def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "righ
     return j
 
 
+def draw_unit_sphere(ax, points=100):
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
+    ax.set_zlabel('z')
+    ax.set_box_aspect((2,2,2))
+    theta = np.linspace(0, np.pi, int(points/2))[:-1]
+    phi = np.linspace(0, 2*np.pi, points)[:-1]
+    u, v = np.meshgrid(theta, phi)
+    x = np.sin(u) * np.cos(v)
+    y = np.sin(u) * np.sin(v)
+    z = np.cos(u)
+    ax.plot_wireframe(x, y, z, alpha=0.2, color='k')
+    #plot origin
+    ax.scatter(0,0,0, color='k')
 
 
 ###############################

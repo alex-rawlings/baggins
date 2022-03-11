@@ -4,6 +4,10 @@ import seaborn as sns
 import pandas as pd
 import cm_functions as cmf
 
+
+def pygad_for_seaborn(a):
+    return a.view(np.ndarray).flatten()[0]
+
 if __name__ == "__main__":
     #sns.set_theme(style="dark")
     cubes = cmf.utils.get_files_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/cubes", recursive=True)
@@ -15,8 +19,8 @@ if __name__ == "__main__":
         cdc = cmf.analysis.ChildSimData.load_from_file(c)
         rawdat.append([
                         c.split("/")[-1],
-                        cdc.relaxed_effective_radius["estimate"],
-                        cdc.r_hard,
+                        cdc.binary_merger_timescale,
+                        cdc.relaxed_inner_DM_fraction,
                         cdc.binary_merger_remnant["merged"],
                         cdc.relaxed_remnant_flag
 
@@ -24,7 +28,7 @@ if __name__ == "__main__":
     print("\nComplete")
 
     df = pd.DataFrame(rawdat, columns=["names", "x", "y", "merged", "relaxed"])
-    pd.set_option("display.max_rows", 500)
+    #pd.set_option("display.max_rows", 500)
     print(df)
     sns.jointplot(data=df, x="x", y="y", hue="merged")
     plt.show()

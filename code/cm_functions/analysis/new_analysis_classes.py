@@ -747,7 +747,7 @@ class ChildSimData(BHBinaryData):
         self._particle_count = v
     
     @classmethod
-    def load_from_file(cls, fname, decode="utf-8"):
+    def load_from_file(cls, fname, decode="utf-8", verbose=False):
         #first create a new class instance. At this stage, no properties are set
         C = cls()
         C.hdf5_file_name = fname
@@ -786,7 +786,7 @@ class ChildSimData(BHBinaryData):
             #reload units if the data is a pygad.UnitArr
             for a in v.attrs.values():
                 if np.array_equal(a, "pygad_UnitArr"):
-                    std_val = pygad.UnitArr(std_val, units=val.attrs["units"])
+                    std_val = pygad.UnitArr(std_val, units=v.attrs["units"])
                     break
             if np.array_equal(std_val, "NONE_TYPE"):
                 std_val = None
@@ -812,6 +812,8 @@ class ChildSimData(BHBinaryData):
                             setattr(C, kk, dict_val)
                         else:
                             ValueError("{}: Unkown type for unpacking!".format(kk))
+                        if verbose:
+                            print(" > Successfully loaded group {}".format(kk))
         return C
     
     def _saver(self, g, l):

@@ -11,4 +11,4 @@
 module purge
 module restore py386
 source "/users/arawling/py386venv/bin/activate"
-python ./make_child_datacubes.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AC/AC-030-0050.py" "all"
+python ./make_child_datacubes.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/CD/CD-030-0001.py" "all"
