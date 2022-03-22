@@ -69,6 +69,7 @@ class ChildSimData(BHBinaryData):
     
     @virial_info.setter
     def virial_info(self, v):
+        assert len(v) == 2
         self._virial_info = v
     
     @property
@@ -95,6 +96,14 @@ class ChildSimData(BHBinaryData):
     @relaxed_core_parameters.setter
     def relaxed_core_parameters(self, v):
         self._relaxed_core_parameters = v
+    
+    @property
+    def radial_bin_centres(self):
+        return self._radial_bin_centres
+    
+    @radial_bin_centres.setter
+    def radial_bin_centres(self, v):
+        self._radial_bin_centres = v
 
     @property
     def relaxed_density_profile(self):
@@ -102,6 +111,7 @@ class ChildSimData(BHBinaryData):
     
     @relaxed_density_profile.setter
     def relaxed_density_profile(self, v):
+        assert isinstance(v, dict)
         self._relaxed_density_profile = v
 
     @property

@@ -21,7 +21,7 @@ from ...env_config import username
 __all__ = ["ChildSim"]
 
 class ChildSim(BHBinary, ChildSimData):
-    def __init__(self, paramfile, perturbID, gr_safe_radius=15, param_estimate_e_quantiles=[0.05, 0.5, 0.95], com_consistency=[0.1, 1], voronoi_kw={"Npx":300, "part_per_bin":5000}, shell_radius=30, radial_edges=np.geomspace(20,2e4,51), verbose=False) -> None:
+    def __init__(self, paramfile, perturbID, apfile, verbose=False) -> None:
         """
         A class which determines and sets the key merger remnant properties 
         from the raw simulation output data. 
@@ -30,31 +30,28 @@ class ChildSim(BHBinary, ChildSimData):
         ----------
         paramfile: see BHBinary 
         perturbID: see BHBinary
-        gr_safe_radius: see BHBinary
-        param_estimate_e_quantiles: see BHBinary
-        com_consistency: list of position separation and velocity separation of 
-                         the two BHs below which the CoM estimate is considered 
-                         "converged", i.e. the remnant has settled. Distance in 
-                         kpc, velocity in km/s
-        voronoi_kw: dict of values used for Voronoi tesselation, which is 
-                    passed to voronoi_binned_los_V_statistics()
-        shell_radius: radius [in kpc] of a shell through which crossing
-                      statistics are computed
-        radial_edges: sequence of values specifying the edge of the radial bins
-                      used for density profiles, beta profile [in kpc]
+        apfile: see BHBinary
         verbose: bool, verbose printing?
         """
         self.verbose = verbose
         if self.verbose:
             print("> Determining binary quantities")
-        super().__init__(paramfile, perturbID, gr_safe_radius, param_estimate_e_quantiles)
-        self.com_consistency = com_consistency
-        self.voronoi_kw = voronoi_kw
-        self.shell_radius = pygad.UnitScalar(float(shell_radius), units="pc")
-        self.radial_edges = pygad.UnitArr(radial_edges, units="pc")
+        super().__init__(paramfile, perturbID, apfile)
+        afv = read_parameters(apfile)
+        #set the analysis parameters from the separate file
+        self.galaxy_radius = afv.galaxy_radius
+        self.com_consistency = afv.com_consistency
+        self.voronoi_kw = afv.voronoi_kw
+        self.shell_radius = pygad.UnitScalar(float(afv.shell_radius), units="pc")
+        self.radial_edges = {}
+        self.radial_bin_centres = {}
+        for k, v in afv.radial_edges.items():
+            self.radial_edges[k] = pygad.UnitArr(v, units="pc")
+            self.radial_bin_centres[k] = pygad.UnitArr(get_histogram_bin_centres(v), units=self.radial_edges[k].units)
         self.merged_idx = -1
+        self.galaxy_radius_mask = self.galaxy_radius
 
-        #set the properties
+        #set the main properties
         #set some key properties from the parent run
         pfv = read_parameters(paramfile, verbose=False)
         self.parent_quantities = dict(
@@ -79,7 +76,7 @@ class ChildSim(BHBinary, ChildSimData):
         # TODO inside some radius?
         if self.verbose:
             print("> Determining stellar velocity dispersion")
-        self.relaxed_stellar_velocity_dispersion = np.nanstd(self.main_snap.stars["vel"], axis=0)
+        self.relaxed_stellar_velocity_dispersion = np.nanstd(self.main_snap.stars[self.galaxy_radius_mask]["vel"], axis=0)
 
         #projected effective radius, velocity dispersion in 1Re, and density 
         if self.verbose:
@@ -94,29 +91,29 @@ class ChildSim(BHBinary, ChildSimData):
         #3D half mass radius
         if self.verbose:
             print("> Determining half mass radius")
-        self.relaxed_half_mass_radius = pygad.analysis.half_mass_radius(self.main_snap.stars, center=self.main_snap_mass_centre)
+        self.relaxed_half_mass_radius = pygad.analysis.half_mass_radius(self.main_snap.stars[self.galaxy_radius_mask], center=self.main_snap_mass_centre)
 
         #total stellar mass of the remnant
         if self.verbose:
             print("> Determining total stellar mass")
-        self.total_stellar_mass = pygad.UnitScalar(self.main_snap.stars["mass"][0] * len(self.main_snap.stars), units=self.main_snap["mass"].units)
+        self.total_stellar_mass = pygad.UnitScalar(self.main_snap.stars["mass"][0] * len(self.main_snap.stars[self.galaxy_radius_mask]), units=self.main_snap["mass"].units)
 
         #3D density profile of relaxed remnant
         if self.verbose:
             print("> Determining 3D density profile")
-        self.relaxed_density_profile = pygad.analysis.profile_dens(self.main_snap.stars, "mass", r_edges=self.radial_edges, center=self.main_snap_mass_centre)
+        self.relaxed_density_profile = self._dens_prof_helper()
 
         #relaxed core parameters
         if self.verbose:
             print("> Determining core fit parameters")
         try:
-            r_fit_range = get_histogram_bin_centres(self.radial_edges)
-            self.relaxed_core_parameters = fit_Terzic05_profile(r_fit_range, self.relaxed_density_profile, self.relaxed_effective_radius["estimate"], max_nfev=1000)
+            self.relaxed_core_parameters = fit_Terzic05_profile(self.radial_bin_centres["stars"], self.relaxed_density_profile["stars"], self.relaxed_effective_radius["estimate"], max_nfev=1000)
         except RuntimeError:
             self.add_to_log("Core-fit parameters could not be determined! Skipping...")
             self.relaxed_core_parameters = {"rhob": np.nan, "rb": np.nan, "n": np.nan, "g": np.nan, "b": np.nan, "a": np.nan}
 
         #triaxiality parameters of relaxed remnant
+        #TODO group by binding energy and not radius
         if self.verbose:
             print("> Determining triaxiality parameters at merger")
         self.relaxed_triaxiality_parameters = self._triaxial_helper()
@@ -149,6 +146,8 @@ class ChildSim(BHBinary, ChildSimData):
         self.virial_info = {"radius":None, "mass":None}
         self.virial_info["radius"], self.virial_info["mass"] = pygad.analysis.virial_info(self.main_snap, center=self.main_snap_mass_centre)
     
+    #set auxillary properties that we just need for this class, but don't
+    #want to save to the hdf5 file
     #define the "main" snapshot we will be working with, i.e. the one
     #closest to merger, and move it to CoM coordinates
     @cached_property
@@ -171,7 +170,7 @@ class ChildSim(BHBinary, ChildSimData):
         if not np.any(xcom_None_bool) and not np.any(vcom_None_bool):
             # No Nones in CoM dictionaries. Check consistency
             msg = "Total CoM estimate for {} differs when using the individual BHs as an initial guess. The merger remnant may not be relaxed, leading to incorrect estimates that rely on centring."
-            if np.any(np.abs(np.diff(list(xcom.values()), axis=0)) > self.com_consistency[0]):
+            if np.any(np.abs(np.diff(list(xcom.values()), axis=0)) > self.com_consistency[0] / 1e3):
                 warnings.warn(msg.format("position"))
                 self.add_to_log(msg.format("position"))
                 self.relaxed_remnant_flag = False
@@ -188,21 +187,41 @@ class ChildSim(BHBinary, ChildSimData):
     def main_snap_mass_centre(self):
         centre_guess = pygad.analysis.center_of_mass(self.main_snap.bh)
         return pygad.analysis.shrinking_sphere(self.main_snap.stars, centre_guess, 20)
+
+    @property
+    def galaxy_radius_mask(self):
+        return self._galaxy_radius_mask
+    
+    @galaxy_radius_mask.setter
+    def galaxy_radius_mask(self, v):
+        v = pygad.UnitScalar(v, units="pc")
+        self._galaxy_radius_mask = pygad.BallMask(v, center=self.main_snap_mass_centre)
     
     #helper functions
+    def _dens_prof_helper(self):
+        rhos = dict.fromkeys(self.radial_bin_centres, np.nan)
+        # 3D density profile for stars
+        rhos["stars"] = pygad.analysis.profile_dens(self.main_snap.stars[self.galaxy_radius_mask], "mass", r_edges=self.radial_edges["stars"], center=self.main_snap_mass_centre)
+        # 3D density profile for DM
+        rhos["dm"] = pygad.analysis.profile_dens(self.main_snap.dm, "mass", r_edges=self.radial_edges["dm"], center=self.main_snap_mass_centre)
+        # 3D density profile for ALL
+        rhos["all"] = pygad.analysis.profile_dens(self.main_snap, "mass", r_edges=self.radial_edges["all"], center=self.main_snap_mass_centre)
+        return rhos
+
+
     def _get_projected_quantities(self):
-        Re, vsig, rho = projected_quantities(self.main_snap, r_edges=self.radial_edges)
+        Re, vsig, rho = projected_quantities(self.main_snap[self.galaxy_radius_mask], r_edges=self.radial_edges["stars"])
         return list(Re.values())[0], list(vsig.values())[0], list(rho.values())[0]
     
     def _triaxial_helper(self):
         ratios = dict(
-            ba = np.full(len(self.radial_edges)-1, np.nan),
-            ca = np.full(len(self.radial_edges)-1, np.nan)
+            ba = np.full(len(self.radial_edges["stars"])-1, np.nan),
+            ca = np.full(len(self.radial_edges["stars"])-1, np.nan)
         )
-        radii_to_mask = list(zip(self.radial_edges[:-1], self.radial_edges[1:]))
+        radii_to_mask = list(zip(self.radial_edges["stars"][:-1], self.radial_edges["stars"][1:]))
         for i, r in enumerate(radii_to_mask):
-            radial_mask = get_radial_mask(self.main_snap, r, self.main_snap_mass_centre)
-            ratios["ba"][i], ratios["ca"][i] = get_galaxy_axis_ratios(self.main_snap, self.main_snap_mass_centre, radial_mask=radial_mask)
+            radial_mask = get_radial_mask(self.main_snap[self.galaxy_radius_mask], r, self.main_snap_mass_centre)
+            ratios["ba"][i], ratios["ca"][i] = get_galaxy_axis_ratios(self.main_snap[self.galaxy_radius_mask], self.main_snap_mass_centre, radial_mask=radial_mask)
         return ratios
     
     def _get_time_series_data(self, R=30):
@@ -238,8 +257,8 @@ class ChildSim(BHBinary, ChildSimData):
         return pygad.UnitArr(t, units="Myr"), pygad.UnitArr(w, units="km/s"), v, theta, pygad.UnitArr(J_lc, units=J_unit), num_J_lc
     
     def _beta_r_helper(self):
-        vspherical = spherical_components(self.main_snap.stars["pos"], self.main_snap.stars["vel"])
-        beta_r, radbins, bincount = beta_profile(self.main_snap.stars["r"], vspherical, 0.05)
+        vspherical = spherical_components(self.main_snap.stars[self.galaxy_radius_mask]["pos"], self.main_snap.stars[self.galaxy_radius_mask]["vel"])
+        beta_r, radbins, bincount = beta_profile(self.main_snap.stars[self.galaxy_radius_mask]["r"], vspherical, 0.05)
         return {"beta_r": beta_r, "radbins":radbins, "bincount": bincount}
 
     #public functions
@@ -297,11 +316,9 @@ class ChildSim(BHBinary, ChildSimData):
 
             #save the galaxy properties
             gp = f.create_group("galaxy_properties")
-            data_list = ["relaxed_remnant_flag", "relaxed_stellar_velocity_dispersion", "relaxed_stellar_velocity_dispersion_projected", "relaxed_inner_DM_fraction", "virial_info", "relaxed_effective_radius", "relaxed_half_mass_radius", "relaxed_core_parameters", "relaxed_density_profile", "relaxed_density_profile_projected", "relaxed_triaxiality_parameters", "total_stellar_mass", "ifu_map_ah", "ifu_map_merger", "snapshot_times", "stellar_shell_inflow_velocity", "bh_binary_watershed_velocity", "beta_r", "ang_mom_diff_angle", "loss_cone", "stars_in_loss_cone", "particle_count"]
+            data_list = ["relaxed_remnant_flag", "relaxed_stellar_velocity_dispersion", "relaxed_stellar_velocity_dispersion_projected", "relaxed_inner_DM_fraction", "virial_info", "relaxed_effective_radius", "relaxed_half_mass_radius", "radial_bin_centres", "relaxed_core_parameters", "relaxed_density_profile", "relaxed_density_profile_projected", "relaxed_triaxiality_parameters", "total_stellar_mass", "ifu_map_ah", "ifu_map_merger", "snapshot_times", "stellar_shell_inflow_velocity", "bh_binary_watershed_velocity", "beta_r", "ang_mom_diff_angle", "loss_cone", "stars_in_loss_cone", "particle_count"]
             self._saver(gp, data_list)
             f["/galaxy_properties/stellar_shell_inflow_velocity"].attrs["shell_radius"] = self.shell_radius
-            # TODO should this be its own property?
-            f["/galaxy_properties/relaxed_density_profile"].attrs["radial_edges"] = self.radial_edges
 
             #save the parent properties
             gP = f.create_group("parent_properties")

@@ -1,6 +1,6 @@
 import os
 import sys
-import matplotlib
+from matplotlib import rc_file, rcdefaults
 
 __all__ = ["this_dir", "home_dir", "figure_dir", "username"]
 
@@ -14,8 +14,8 @@ username = home_dir.rstrip("/").split("/")[-1]
 os.makedirs(figure_dir, exist_ok=True)
 
 #set the matplotlib settings
-matplotlib.rcdefaults()
-matplotlib.rc_file(os.path.join(this_dir, "plotting/matplotlibrc"))
+rcdefaults()
+rc_file(os.path.join(this_dir, "plotting/matplotlibrc"))
 
 
 #make sure we are using a high enough version of python

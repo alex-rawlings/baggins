@@ -9,7 +9,8 @@ __all__ = ['read_parameters', 'write_parameters']
 
 def read_parameters(filepath, verbose=True):
     """
-    Read parameters from a python file as if it were a module. If the invocation is:
+    Read parameters from a python file as if it were a module. If the 
+    invocation is:
         param_vals = read_parameters(file)
     then the parameter file values can be accessed as param_vals.value
     Strings have trailing '/' characters removed, and all lists are converted

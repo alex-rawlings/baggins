@@ -19,7 +19,7 @@ myr = ketjugw.units.yr * 1e6
 hubble_time = 13800
 
 class BHBinary(BHBinaryData):
-    def __init__(self, paramfile, perturbID, gr_safe_radius=15, param_estimate_e_quantiles=[0.05, 0.5, 0.95]) -> None:
+    def __init__(self, paramfile, perturbID, apfile) -> None:
         """
         A class which determines and sets the key BH binary properties from the
         raw simulation output data. 
@@ -28,25 +28,22 @@ class BHBinary(BHBinaryData):
         ----------
         paramfile: path to parameter file corresponding to the merger run
         perturbID: name of the perturbation directory, e.g. 000
-        gr_safe_radius: semimajor axis above which hardening due to GR emission
-                        should be negligible [pc]
-        param_estimate_e_quantiles: estimate binary orbital parameters assuming
-                                    an initial eccentricity of these quantiles
-                                    from a_h to gr_safe_radius. Must be a list of length 3.
+        apfile: path to parameter file for analysis
         """
         super().__init__()
         pfv = read_parameters(paramfile)
+        afv = read_parameters(apfile)
         data_path = os.path.join(pfv.full_save_location, pfv.perturbSubDir, perturbID, "output")
         if not os.path.isdir(data_path):
             raise ValueError("The data path does not exist!")
         self.merger_name = "{}-{}".format(pfv.full_save_location.rstrip("/").split("/")[-1], perturbID)
         self.bhfile = get_ketjubhs_in_dir(data_path)[0]
         self.snaplist = get_snapshots_in_dir(data_path)
-        self.gr_safe_radius = gr_safe_radius
+        self.gr_safe_radius = afv.gr_safe_radius
         bh1, bh2, self.merged = get_bound_binary(self.bhfile)
         self.orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
         self.time_offset = pfv.perturbTime * 1e3
-        self.param_estimate_e_quantiles = param_estimate_e_quantiles
+        self.param_estimate_e_quantiles = afv.param_estimate_e_quantiles
 
         #set the properties
         #black hole mass
