@@ -49,7 +49,7 @@ for ind1, ld in enumerate(args.loopdir):
             for bhid in snap.bh["ID"]:
                 xcom_dict[ld][bhid] = np.full((len(snap_files), 3), np.nan)
         time_dict[ld][ind2] = cmf.general.convert_gadget_time(snap)
-        this_xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=id_masks["stars"], verbose=args.verbose)
+        this_xcom = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", masks=id_masks["stars"], verbose=args.verbose)
         for k in this_xcom.keys():
             xcom_dict[ld][k][ind2, :] = this_xcom[k]
 

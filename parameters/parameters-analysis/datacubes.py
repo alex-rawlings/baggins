@@ -27,10 +27,11 @@ param_estimate_e_quantiles = [0.05, 0.50, 0.95]
 
 # stellar radius of galaxy, analagous to cosmo runs [pc]
 galaxy_radius = 3e4
-# list of position separation and velocity separation of the two BHs below 
-# which the CoM estimate is considered "converged", i.e. the remnant has 
-# settled. [pc, km/s]
-com_consistency = [1e2, 1]
+# dict of position separation and velocity separation of the two BHs below 
+# which the CoM estimate is considered "converged"
+com_consistency = {"pos":1e2, "vel":1.0}
+# dict of tolerances below which the remnant is considered relaxed
+relaxed_criteria = {"sep":0.01, "vrat":1.0}
 # dict of values used for Voronoi tesselation, which is passed to 
 # voronoi_binned_los_V_statistics()
 voronoi_kw = {"Npx":300, "part_per_bin":5000}

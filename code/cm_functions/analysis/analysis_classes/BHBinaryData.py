@@ -52,12 +52,12 @@ class BHBinaryData:
         self._binary_formation_time = v
     
     @property
-    def binary_merger_timescale(self):
-        return self._binary_merger_timescale
+    def binary_lifetime_timescale(self):
+        return self._binary_lifetime_timescale
     
-    @binary_merger_timescale.setter
-    def binary_merger_timescale(self, v):
-        self._binary_merger_timescale = v
+    @binary_lifetime_timescale.setter
+    def binary_lifetime_timescale(self, v):
+        self._binary_lifetime_timescale = v
     
     @property
     def r_infl(self):

@@ -123,6 +123,14 @@ class ChildSimData(BHBinaryData):
         self._relaxed_density_profile_projected = v
     
     @property
+    def binding_energy_bins(self):
+        return self._binding_energy_bins
+    
+    @binding_energy_bins.setter
+    def binding_energy_bins(self, v):
+        self._binding_energy_bins = v
+
+    @property
     def relaxed_triaxiality_parameters(self):
         return self._relaxed_triaxiality_parameters
     
@@ -297,10 +305,12 @@ class ChildSimData(BHBinaryData):
         #attributes defined with the @property method are not in __dict__, 
         #but their _members are. Append an underscore to all things in l
         l = ["_" + x for x in l]
+        saved_list = []
         for attr in self.__dict__:
             if attr not in l:
                 continue
             #now we strip the leading underscore if this should be saved
+            saved_list.append(attr)
             attr = attr.lstrip("_")
             attr_val = getattr(self, attr)
             if isinstance(attr_val, self.allowed_types):
@@ -314,6 +324,11 @@ class ChildSimData(BHBinaryData):
                 self._recursive_dict_save(g, attr_val, attr)
             else:
                 raise ValueError("Error saving {}: cannot save {} type!".format(attr, type(attr_val)))
+        # check that everything was saved
+        not_saved = list(set(l)-set(saved_list))
+        if not not_saved:
+            for i in not_saved:
+                self.add_to_log("Property {} was not saved!".format(i.lstrip("_")))
 
     def _recursive_dict_save(self, g, d, n):
         #recursively save a dictionary. Inspired from 3ML

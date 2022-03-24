@@ -24,7 +24,7 @@ snap = pygad.Snapshot(snaplist[pfv.perturb_snap_idx], physical=True)
 
 #get com motions
 star_id_masks = cmf.analysis.get_all_id_masks(snap)
-xcoms = cmf.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, verbose=args.verbose)
+xcoms = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", masks=star_id_masks, verbose=args.verbose, family="stars")
 vcoms = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=star_id_masks, verbose=args.verbose)
 
 #determine radial coordinate distribution in brownian motion

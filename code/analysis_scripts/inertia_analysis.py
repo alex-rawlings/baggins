@@ -113,7 +113,7 @@ if args.new:
                     #filter out low bin counts
                     continue
                 temp_ratio[key_r][ind2, :] = cmf.analysis.get_galaxy_axis_ratios(
-                    snap, xcom[key_x], family=args.family, radial_mask=radial_masks[key_x]
+                    snap, xcom[key_x], family=args.family, bin_mask=radial_masks[key_x]
                     )
                 temp_partcount[key_r][ind2] = len(snap[radial_masks[key_x]])
         #we have now iterated over all radii

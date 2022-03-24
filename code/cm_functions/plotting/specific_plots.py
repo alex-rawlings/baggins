@@ -7,7 +7,6 @@ import copy
 import pygad
 import ketjugw
 from ..general import convert_gadget_time
-from .general import zero_centre_colour
 
 
 __all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere"]
@@ -246,7 +245,7 @@ def voronoi_plot(vdat):
     )):
         #plot the statistic
         if i != 1:
-            norm = zero_centre_colour(stat)
+            norm = colors.CenteredNorm()
         else:
             norm = colors.Normalize(stat.min(), stat.max())
         ax[i].set_aspect("equal")

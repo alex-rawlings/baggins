@@ -10,7 +10,7 @@ snap.to_physical_units()
 
 star_id_masks = cmf.analysis.get_all_id_masks(snap, family='stars')
 dm_id_masks = cmf.analysis.get_all_id_masks(snap, family='dm')
-xcom = cmf.analysis.get_com_of_each_galaxy(snap, initial_radius=10, masks=dm_id_masks, verbose=True)
+xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=dm_id_masks, verbose=True)
 virial_mass, virial_radius = cmf.analysis.get_virial_info_of_each_galaxy(snap, xcom=xcom, masks=[star_id_masks, dm_id_masks])
 
 print(virial_radius)

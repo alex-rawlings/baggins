@@ -9,10 +9,10 @@ from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time, unit_as_str
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum"]
 
 
-def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, min_particle_count=10, family='stars', initial_guess=None):
+def get_com_of_each_galaxy(snap, method="pot", masks=None, verbose=True, family="all", initial_radius=20):
     """
     Determine the centre of mass of each galaxy in the simulation, assuming each
     galaxy has a single SMBH near its centre.
@@ -20,45 +20,57 @@ def get_com_of_each_galaxy(snap, initial_radius=10, masks=None, verbose=True, mi
     Parameters
     ----------
     snap: pygad snapshot to analyse
-    initial_radius: initial radius for shrinking sphere method
+    method: use minimum potential method (pot) or shrinking sphere method (ss)
     masks: pygad masks to apply to the (sub) snapshot
     verbose: print verbose output
-    min_particle_count: stop the shrinking_sphere method when this many
-                        particles or less are contained
     family: particle family to analyse
-    initial_guess: (1,3) array specifying the initial CoM guess for all 
-                   galaxies, default (None) uses an initial guess of the
-                   position of the BH that is associated with that galaxy
+    initial_radius: initial radius guess for shrinking sphere [kpc]
 
     Returns
     -------
-    coms: dict with n keys, where each key corresponds to the centre of mass
-          of each galaxy
+    coms: dict with keys of bh ids, where each key corresponds to the centre of 
+          mass of each galaxy
     """
     assert(snap.phys_units_requested)
-    num_bhs = len(snap.bh['mass'])
-    if masks is not None:
-        assert(len(masks) == num_bhs)
-    subsnap = getattr(snap, family)
-    #prepare dict that will hold the centre of masses
-    coms = dict()
-    for ind, idx in enumerate(snap.bh["ID"]):
-        bh_id_mask = pygad.IDMask(idx)
-        if snap.bh[bh_id_mask]["mass"] < 1e-15:
-            #the BH has 0 mass, most likley due to a merger -> skip this
-            if verbose:
-                print("Zero-mas BH ({}) detected! Skipping CoM estimate with this BH position as an initial guess".format(idx))
-            coms[idx] = None
-            continue
-        if verbose:
-            print('Finding CoM associated with BH ID {:.3e}'.format(idx))
-        if masks is not None:
-            masked_subsnap = subsnap[masks[idx]]
+    assert(method in ["pot", "ss"])
+    num_bhs = len(snap.bh)
+    def _yield_masked_subsnap(s=snap, masks=masks, family=family):
+        # helper function to get the maybe masked-, maybe sub-, snapshot
+        if masks is None:
+            if family=="all":
+                for i in range(num_bhs): yield (s, snap.bh["ID"][i])
+            else:
+                for i in range(num_bhs): yield (getattr(s, family), snap.bh["ID"][i])
         else:
-            masked_subsnap = subsnap
-        if initial_guess is None:
-            initial_guess = snap.bh[bh_id_mask]["pos"]
-        coms[idx] = pygad.analysis.shrinking_sphere(masked_subsnap, initial_guess, initial_radius, stop_N=min_particle_count)
+            assert(len(masks) == num_bhs)
+            for id, m in masks.items():
+                if family=="all":
+                    yield (s[m], id)
+                else:
+                    ss = getattr(s, family)
+                    yield (ss[m], id)
+    
+    coms = dict.fromkeys(snap.bh["ID"], None)
+    masked_subsnap_gen = _yield_masked_subsnap()
+    if method == "pot":
+        for i in range(num_bhs):
+            masked_subsnap, bhid = next(masked_subsnap_gen)
+            if masks is None:
+                if i==0:
+                    min_pot_idx = np.argmin(masked_subsnap["pot"])
+                    coms[bhid] = masked_subsnap["pos"][min_pot_idx, :]
+                else:
+                    coms[bhid] = list(coms.values())[0]
+    else:
+        for i in range(num_bhs):
+            masked_subsnap, bhid = next(masked_subsnap_gen)
+            bh_id_mask = pygad.IDMask(bhid)
+            if snap.bh[bh_id_mask]["mass"] < 1e-15:
+                #the BH has 0 mass, most likley due to a merger -> skip this
+                if verbose: print("Zero-mass BH ({}) detected! Skipping CoM estimate with this BH position as an initial guess".format(bhid))
+                continue
+            if verbose: print('Finding CoM associated with BH ID {}'.format(bhid))
+            coms[bhid] = pygad.analysis.shrinking_sphere(masked_subsnap, center=snap.bh[bh_id_mask]["pos"], R=initial_radius)
     return coms
 
 
@@ -108,7 +120,7 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
     return vcoms
 
 
-def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', return_eigenvectors=False):
+def get_galaxy_axis_ratios(snap, xcom=None, bin_mask=None, family='stars', return_eigenvectors=False):
     """
     Determine the axis ratios b/a and c/a of a galaxy
 
@@ -116,7 +128,7 @@ def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', re
     ----------
     snap: pygad snapshot to analyse
     xcom: CoM coordinates for the galaxy
-    masks: pygad radial masks to apply to the (sub) snapshot
+    bin_mask: pygad radial or energy masks to apply to the (sub) snapshot
     family: particle family to analyse
     return_eigenvectors: bool, true to return eigenvectors as well as axis 
                          ratios
@@ -135,9 +147,9 @@ def get_galaxy_axis_ratios(snap, xcom=None, radial_mask=None, family='stars', re
     #just doing this for a masked section results in the radial distance 'r'
     #block not being rederived...
     pygad.Translation(-xcom).apply(subsnap)
-    if radial_mask is not None:
+    if bin_mask is not None:
         #apply either a ball or shell mask
-        subsnap = subsnap[radial_mask]
+        subsnap = subsnap[bin_mask]
     rit = pygad.analysis.reduced_inertia_tensor(subsnap)
     eigen_vals, eigen_vecs = scipy.linalg.eig(rit)
     #need to sort the eigenvalues
@@ -186,6 +198,24 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
     for key, this_com in xcom.items():
         virial_radius[key], virial_mass[key] = pygad.analysis.virial_info(snap[masks[key]], center=this_com)
     return virial_radius, virial_mass
+
+
+def virial_ratio(snap):
+    """
+    Determine the virial ratio 2K/|W|. Note no centering is done!
+
+    Parameters
+    ----------
+    snap: pygad snapshot to analyse, must have pot block
+
+    Returns
+    -------
+    virial ratio
+    """
+    v2 = pygad.UnitArr(pygad.utils.geo.dist(snap["vel"]))**2
+    KK = np.sum(snap["mass"] * v2, axis=-1)
+    W = np.sum(snap["mass"] * snap["pot"])
+    return np.abs(KK / W)
 
 
 def calculate_Hamiltonian(snap, chunk=1e5):

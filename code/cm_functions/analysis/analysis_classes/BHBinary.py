@@ -55,9 +55,9 @@ class BHBinary(BHBinaryData):
 
         #merger timescale
         if self.merged:
-            self.binary_merger_timescale = (self.orbit_params["t"][-1] - self.orbit_params["t"][0]) / myr
+            self.binary_lifetime_timescale = (self.orbit_params["t"][-1] - self.orbit_params["t"][0]) / myr
         else:
-            self.binary_merger_timescale = np.nan
+            self.binary_lifetime_timescale = np.nan
         
         #get the main properties of the binary remnant
         if self.merged():

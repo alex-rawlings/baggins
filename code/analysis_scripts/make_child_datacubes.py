@@ -10,6 +10,7 @@ parser.add_argument(type=str, help="path to parameter files", dest="pf")
 parser.add_argument(type=str, help="perturbation number", dest="pnum")
 parser.add_argument("-a", "--aparams", type=str, help="path to analysis parameter file", dest="apf", default=os.path.join(cmf.HOME, "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.py"))
 parser.add_argument("-v", "--verbose", help="verbose printing", dest="verbose", action="store_true")
+parser.add_argument("-o", "--over", help="allow overwriting", dest="overwrite", action="store_true")
 args = parser.parse_args()
 
 
@@ -33,7 +34,7 @@ if __name__ == "__main__":
     
     #save the cubes to arg.saveloc/Gal1-Gal2-R0-Rperi/
     file_save_dir = os.path.join(afv.cube_dir, pfv.full_save_location.rstrip("/").split("/")[-1])
-    os.makedirs(file_save_dir)
+    os.makedirs(file_save_dir, exist_ok=args.overwrite)
 
     #match the number of processes to the number of child runs to process
     num_processes = len(perturb_ids)

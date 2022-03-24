@@ -1,7 +1,7 @@
 import numpy as np
 import pygad
 
-__all__ = ['get_id_mask', 'get_all_id_masks', 'get_radial_mask', 'get_all_radial_masks']
+__all__ = ["get_id_mask", "get_all_id_masks", "get_radial_mask", "get_all_radial_masks", "get_binding_energy_mask"]
 
 def get_id_mask(snap, bhid, family='stars'):
     """
@@ -164,3 +164,59 @@ def get_all_radial_masks(snap, radius, centre=None, id_masks=None, family='stars
         masks[idx] = get_radial_mask(subsnap, radius=radius, centre=centre[idx], id_mask=id_masks[idx])
     snap.delete_blocks()
     return masks
+
+
+def get_binding_energy_mask(snap, energy=None, id_mask=None, family=None):
+    """
+    Mask particles into bins of binding energy. Assumes that we are in centre of mass coordinates (including velocity): no centring is done.
+
+    Parameters
+    ----------
+    snap: pygad <Snapshot> object to create the mask for
+    energy: energy bins to mask particles into -  can either be a regular 
+            array, in which a "ball" mask is created, or a list of tuples, in 
+            which a "shell" mask is created. The default None creates a "shell" 
+            type mask from the 5% to 95% quantile of binding energy in 20 bins 
+            evenly spaced in logscale
+    id_mask: ID masks to constrain particles to a given galaxy
+    family: apply the masking to only this family (default None uses all types)
+
+    Returns
+    -------
+    generator which returns the mask for that energy interval, the energy 
+    sequence, and the energy units
+    """
+    assert(snap.phys_units_requested)
+    if family is not None:
+        assert(family in ["stars", "dm", "bh"])
+        snap = getattr(snap, family)
+    # determine binding energy of each particle
+    binding_energy = -snap["mass"] * snap["pot"] - snap["mass"] * pygad.utils.geo.dist(snap["vel"])**2
+    #binding_energy = binding_energy.view(np.ndarray)
+    #set up default energy binning
+    if energy is None:
+        lowerq = np.nanquantile(binding_energy, 0.05)
+        upperq = np.nanquantile(binding_energy, 0.95)
+        temp_e = np.geomspace(lowerq, upperq, 21)
+        energy = list(zip(temp_e[:-1], temp_e[1:]))
+    # now determine if we use a ball or a shell
+    if isinstance(energy[0], (int, float)):
+        # option 1: ball
+        for e in energy:
+            bool_mask = binding_energy < e
+            mask = pygad.IDMask(snap["ID"][bool_mask])
+            if id_mask is not None:
+                mask = mask & id_mask
+            yield (mask, energy, str(binding_energy.units).strip("[]"))
+    elif isinstance(energy[0], (list, tuple)):
+        # option 2: shell
+        for e1e2 in energy:
+            assert e1e2[0] < e1e2[1]
+            bool_mask = np.logical_and(binding_energy>=e1e2[0], binding_energy<e1e2[1])
+            mask = pygad.IDMask(snap["ID"][bool_mask])
+            if id_mask is not None:
+                mask = mask & id_mask
+            yield (mask, energy, str(binding_energy.units).strip("[]"))
+    else:
+        raise ValueError("energy must either be an array, or a list of tuple-like objects")
+
