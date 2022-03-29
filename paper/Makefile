@@ -1,10 +1,15 @@
+TARGET = paper
+DIRS = sections figures
+
 # needed for latexmk to handle the dependencies
-.PHONY: paper.pdf
+.PHONY: $(TARGET).pdf
 
-all: paper.pdf
+SRC = $(foreach dir, $(DIRS), $(wildcard $(dir)/*))
 
-paper.pdf : paper.tex
-	latexmk -pdf -pdflatex="pdflatex -interaction=nonstopmode -file-line-error" paper.tex
+all: $(TARGET).pdf
+
+$(TARGET).pdf : $(TARGET).tex
+	latexmk -pdf -pdflatex="pdflatex -interaction=errorstopmode -file-line-error" $(TARGET).tex
 
 #delete all temporary files and the output .pdf file
 clean :

@@ -6,9 +6,11 @@
 \usepackage[T1]{fontenc}
 
 
-\newcommand{\ketju}{{KETJU}}
-\newcommand{\mstar}{MSTAR}
-\newcommand{\gadget}{GADGET-3}
+\newcommand{\ketju}{\textsc{Ketju} }
+\newcommand{\mstar}{\textsc{Mstar} }
+\newcommand{\gadget}{\textsc{Gadget-3} }
+\newcommand{\parent}{\textit{parent }}
+\newcommand{\child}{\textit{child }}
 
 \newcommand{\dd}[1]{\mathop{}\!\mathrm{d}#1}
 \newcommand{\dv}[2]{\frac{\dd#1}{\dd{#2}}} %derivative
@@ -16,7 +18,7 @@
 \newcommand{\Msunph}{\ensuremath{h^{-1} M_\sun}}
 \newcommand{\pn}[1]{#1PN}
 
-\newcommand{\drafting}[1]{{\color{red}#1}}
+\newcommand{\drafting}[1]{{\color{red}(#1)}}
 
 \graphicspath{{figures/}}
 
@@ -29,7 +31,7 @@
 \begin{document}
 \title{
 \drafting{
-Nice title here
+A Statistical Sample of Collisionless Mergers - I
 }
 }
 
@@ -39,36 +41,7 @@ Department of Physics,
 Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
 }
 
-\author[0000-0001-5721-9335]{Matias Mannerkoski}
-\affiliation{
-Department of Physics,
-Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
-}
-
-\author[0000-0001-8741-8263]{Peter H. Johansson}
-\affiliation{
-Department of Physics,
-Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
-}
-
-
-%\author[0000-0001-8789-2571]{Antti Rantala}
-%\affiliation{
-%Max-Planck-Institut f\"ur Astrophysik, Karl-Schwarzchild-Str 1,
-%D-85748 Garching, Germany
-%}
-
-%\author[0000-0002-7314-2558]{Thorsten Naab}
-%\affiliation{
-%Max-Planck-Institut f\"ur Astrophysik, Karl-Schwarzchild-Str 1,
-%D-85748 Garching, Germany
-%}
-
-\author[0000-0001-7075-6098]{Shihong Liao}
-\affiliation{
-Department of Physics,
-Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
-}
+\author{et al.}
 
 
 \correspondingauthor{Alexander Rawlings}
@@ -93,7 +66,6 @@ We run a whopping BIG sample of collisionless mergers
 \input{./sections/results}
 
 
-
 \section{Conclusions}
 \input{./sections/conclusions}
 
@@ -101,11 +73,8 @@ We run a whopping BIG sample of collisionless mergers
 \begin{acknowledgments}
 %\modulolinenumbers[100] % hack to hide linenumbers since they're enabled here always for some reason
 
-A.R., M.M., P.H.J. and S.L. acknowledge the support
+A.R. acknowledge the support
 by the European Research Council via ERC Consolidator Grant KETJU (no. 818930).
-
-%T.N. acknowledges support from the Deutsche Forschungsgemeinschaft
-%(DFG, German Research Foundation) under Germany's Excellence Strategy - EXC-2094 - 390783311 from the DFG Cluster of Excellence ``ORIGINS''.
 
 
 The numerical simulations used computational resources provided by
@@ -119,12 +88,11 @@ NumPy \citep{numpy},
 SciPy \citep{scipy},
 Matplotlib \citep{matplotlib},
 pygad \citep{2020MNRAS.496..152R},
-MUSIC \citep{2011MNRAS.415.2101H,2013ascl.soft11011H}
 }
 
 
 \bibliographystyle{aasjournal}
-\bibliography{refs}
+\bibliography{ref}
 
 
 \end{document}
