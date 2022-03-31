@@ -59,9 +59,14 @@ def extract_and_plot_point(attrs, xdkey="estimate", ydkey="estimate", zdkey="mer
         except TypeError:
             p = sns.jointplot(data=df, x=xlabel, y=ylabel, hue=zlabel)
     else:
-        for zi in np.unique(df.loc[:,zlabel]):
+        alpha = [1, 0.4]
+        cols = cmf.plotting.mplColours()
+        for i, zi in enumerate(np.unique(df.loc[:,zlabel])):
             mask = df.loc[:,zlabel] == zi
-            p = plt.scatter(df.loc[mask,xlabel], df.loc[mask,ylabel], label=zi, linewidths=sclw, edgecolors="k")
+            for j, b in enumerate((True, False)):
+                #mask = mask & (df.loc[:,"relaxed"]==b)
+                mask = np.logical_and(mask, df.loc[:,"relaxed"]==b)
+                p = plt.scatter(df.loc[mask,xlabel], df.loc[mask,ylabel], label=(zi if j<1 else ""), linewidths=sclw, edgecolors="k", alpha=alpha[j], c=cols[i])
         plt.legend(title=zlabel)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
@@ -120,7 +125,7 @@ if __name__ == "__main__":
         jp.ax_joint.plot(rvir, cmf.literature.Kratsov13(rvir))
         plt.show()
     
-    if True:
+    if False:
        # misgeld = pd.read_table("../../initialise_scripts/literature_data/misgeld_11.dat", sep="|", header=0, skiprows=[1,3], skipinitialspace=True, comment="#")
         print("Call {}".format(call))
         call += 1
@@ -140,13 +145,13 @@ if __name__ == "__main__":
     if False:
         print("Call {}".format(call))
         call += 1
-        attrs = ["binary_merger_timescale", "merger_name", "binary_merger_remnant"]
+        attrs = ["binary_lifetime_timescale", "merger_name", "binary_merger_remnant"]
         extract_and_plot_point(attrs, categorical_y=True)
     
     if False:
         print("Call {}".format(call))
         call += 1
-        attrs = ["binary_merger_timescale", "binary_spin_flip", "binary_merger_remnant"]
+        attrs = ["binary_lifetime_timescale", "binary_spin_flip", "binary_merger_remnant"]
         _,df = extract_and_plot_point(attrs=attrs, categorical_y=True)
         mask = df.loc[:,"binary_merger_remnant_merged"] & df.loc[:,"binary_spin_flip"]
         num_flips = len(df.loc[df.loc[:,"binary_spin_flip"], "binary_spin_flip"])
@@ -179,7 +184,7 @@ if __name__ == "__main__":
     if False:
         print("Call {}".format(call))
         call += 1
-        attrs = ["binary_merger_timescale", "parent_quantities", "binary_spin_flip"]
+        attrs = ["binary_lifetime_timescale", "parent_quantities", "binary_spin_flip"]
         extract_and_plot_point(attrs, ydkey="initial_e", zdkey=None)
 
     if False:
@@ -193,7 +198,43 @@ if __name__ == "__main__":
         for i, c in enumerate(cubes):
             print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
             cdc = cmf.analysis.ChildSimData.load_from_file(c)
-            age = cdc.parent_quantities["perturb_time"] + cdc.binary_merger_timescale
+            age = cdc.parent_quantities["perturb_time"] + cdc.binary_lifetime_timescale
             ax.loglog(cdc.radial_bin_centres["stars"], cdc.relaxed_density_profile["stars"], c=cmapper(age))
         plt.colorbar(sm)
+        plt.show()
+    
+    if False:
+        for c in cubes:
+            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            myname = c.split("/")[-1]
+            if cdc.relaxed_remnant_flag: break
+        eb = [np.mean(e) for e in cdc.binding_energy_bins]
+        plt.plot(eb, cdc.relaxed_triaxiality_parameters["ba"], label="b/a")
+        plt.plot(eb, cdc.relaxed_triaxiality_parameters["ca"], label="c/a")
+        plt.xlabel(r"Binding Energy [M$_\odot$km$^2$s$^{-2}$]")
+        plt.ylim(0, 1)
+        plt.legend()
+        plt.title(myname)
+        plt.savefig(os.path.join(cmf.FIGDIR, f"analysis-explore/{myname}-triaxial.png"))
+    
+    if True:
+        print("Call {}".format(call))
+        call += 1
+
+        fig, ax = plt.subplots(1,1)
+        #colour lines by merger
+        cols = cmf.plotting.mplColours()
+        alpha = lambda x: 0.9 if x else 0.3
+        gradplot = cmf.plotting.GradientLinePlot(ax)
+
+        for i, c in enumerate(cubes):
+            print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
+            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            N_in_30pc = [len(v)/cdc.particle_count["stars"] for v in cdc.stellar_shell_inflow_velocity.values()]
+            gradplot.add_data(cdc.loss_cone, cdc.stars_in_loss_cone, cdc.snapshot_times+cdc.parent_quantities["perturb_time"], marker=("o" if cdc.binary_merger_remnant["merged"] else ""))
+            #ax.semilogy(N_in_30pc, cdc.loss_cone, c=cols[int(cdc.binary_merger_remnant["merged"])], alpha=alpha(cdc.binary_spin_flip))
+        gradplot.plot()
+        gradplot.add_cbar(label="Age/Myr")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
         plt.show()

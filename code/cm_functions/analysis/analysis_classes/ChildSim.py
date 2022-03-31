@@ -231,15 +231,22 @@ class ChildSim(BHBinary, ChildSimData):
             ba = np.full(20, np.nan),
             ca = np.full(20, np.nan)
         )
-        energy_mask_gen = get_binding_energy_mask(self.main_snap[self.galaxy_radius_mask], family="stars")
-        i = 0
-        while True:
-            try:
-                this_energy_mask, energy_bins, self._energy_units = next(energy_mask_gen)
-            except StopIteration:
-                break
-            ratios["ba"][i], ratios["ca"][i] = get_galaxy_axis_ratios(self.main_snap[self.galaxy_radius_mask], bin_mask=this_energy_mask)
-            i += 1
+        try:
+            energy_mask_gen = get_binding_energy_mask(self.main_snap[self.galaxy_radius_mask], family="stars")
+            i = 0
+            while True:
+                try:
+                    this_energy_mask, energy_bins, self._energy_units = next(energy_mask_gen)
+                except StopIteration:
+                    break
+                ratios["ba"][i], ratios["ca"][i] = get_galaxy_axis_ratios(self.main_snap[self.galaxy_radius_mask], bin_mask=this_energy_mask)
+                i += 1
+        except AssertionError:
+            energy_bins = np.nan
+            for i in range(len(ratios["ba"])):
+                ratios["ba"] = np.nan
+                ratios["ca"] = np.nan
+            self._energy_units = None
         return ratios, energy_bins
     
     def _get_time_series_data(self, R=30):
@@ -257,20 +264,33 @@ class ChildSim(BHBinary, ChildSimData):
         J_unit = self.main_snap["angmom"].units
         for i, j in enumerate(np.arange(bound_snap_idx, last_snap_idx+1)):
             snap = pygad.Snapshot(self.snaplist[j], physical=True)
-            #as we are interested in flow rates about binary, set binary as
-            #the centre of mass
-            this_centre = pygad.analysis.center_of_mass(snap.bh)
+            # as we are interested in flow rates about binary, set binary as
+            # the centre of mass
+            this_centre_pos = pygad.analysis.center_of_mass(snap.bh)
+            this_centre_vel = pygad.analysis.mass_weighted_mean(snap.bh, "vel")
+            snap["pos"] -= this_centre_pos
+            snap["vel"] -= this_centre_vel
             t[i] = convert_gadget_time(snap, new_unit="Myr")
-            idx = self._get_idx_in_vec(t[i], self.orbit_params["t"]/myr)
-            w[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
-            v["{:07.1f}".format(t[i])] = shell_flow_velocities(snap.stars, R, centre=this_centre, direction="in")
+            try:
+                idx = self._get_idx_in_vec(t[i], self.orbit_params["t"]/myr)
+                # set the watershed velocity
+                w[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
+                # determine loss cone J, _a is semimajor axis from ketjugw as 
+                # pygad scalar object
+                _a = pygad.UnitScalar(self.orbit_params["a_R"][idx], "pc")
+                J_lc[i] = loss_cone_angular_momentum(snap, _a)
+                # determine the magnitude of the angular momentum
+                star_J_mag = pygad.utils.geo.dist(snap.stars["angmom"])
+                num_J_lc[i] = np.sum(star_J_mag < J_lc[i])
+            except ValueError:
+                w[i] = np.nan
+                J_lc[i] = np.nan
+                num_J_lc[i] = np.nan
+            # determine the inflow velocities of stars through the shell
+            v["{:07.1f}".format(t[i])] = shell_flow_velocities(snap.stars, R, direction="in")
             #determine angle difference in J
             theta[i] = angular_momentum_difference_gal_BH(snap)
-            #determine loss cone J, _a is semimajor axis from ketjugw as pygad
-            #scalar object
-            _a = pygad.UnitScalar(self.orbit_params["a_R"][idx], "pc")
-            J_lc[i] = loss_cone_angular_momentum(snap, _a)
-            num_J_lc[i] = np.sum(snap.stars["angmom"] < J_lc[i])
+            # save memory
             snap.delete_blocks()
         return pygad.UnitArr(t, units="Myr"), pygad.UnitArr(w, units="km/s"), v, theta, pygad.UnitArr(J_lc, units=J_unit), num_J_lc
     

@@ -192,7 +192,6 @@ def get_binding_energy_mask(snap, energy=None, id_mask=None, family=None):
         snap = getattr(snap, family)
     # determine binding energy of each particle
     binding_energy = -snap["mass"] * snap["pot"] - snap["mass"] * pygad.utils.geo.dist(snap["vel"])**2
-    #binding_energy = binding_energy.view(np.ndarray)
     #set up default energy binning
     if energy is None:
         lowerq = np.nanquantile(binding_energy, 0.05)
@@ -211,7 +210,7 @@ def get_binding_energy_mask(snap, energy=None, id_mask=None, family=None):
     elif isinstance(energy[0], (list, tuple)):
         # option 2: shell
         for e1e2 in energy:
-            assert e1e2[0] < e1e2[1]
+            assert e1e2[0] < e1e2[1], f"Lower energy bound ({e1e2[0]:.3e}) must be less than upper energy bound{e1e2[1]:.3e}!"
             bool_mask = np.logical_and(binding_energy>=e1e2[0], binding_energy<e1e2[1])
             mask = pygad.IDMask(snap["ID"][bool_mask])
             if id_mask is not None:

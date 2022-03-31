@@ -72,7 +72,7 @@ class GradientPlot:
     by storing the data first, and then only plotting the data when explicitly 
     called.
     """
-    def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
+    def __init__(self, ax, cmap="viridis", plot_kwargs={}):
         """
         Initialise the plot with data.
 
@@ -88,13 +88,13 @@ class GradientPlot:
         plot_kwargs: dict of other parameters to parse to pyplot.plot()
         """
         self.ax = ax
-        self.data_count = 1
-        self.all_x = [x]
-        self.all_y = [y]
-        self.all_c = [c]
-        self.all_label = [label]
+        self.data_count = 0
+        self.all_x = []
+        self.all_y = []
+        self.all_c = []
+        self.all_label = []
         self.cmap= getattr(plt.cm, cmap)
-        self.all_marker = [marker]
+        self.all_marker = []
         self.all_pks = [plot_kwargs]
         self.norm = [0,1]
     
@@ -140,13 +140,15 @@ class GradientLinePlot(GradientPlot):
     """
     Apply the GradientPlot class for pyplot line plots
     """
-    def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
-        super().__init__(ax, x, y, c, label=label, cmap=cmap, marker=marker, plot_kwargs=plot_kwargs)
+    def __init__(self, ax, cmap="viridis", plot_kwargs={}):
+        super().__init__(ax, cmap=cmap, plot_kwargs=plot_kwargs)
     
     def plot(self):
         """
         Plot the data, ensuring a consistent colour scheme.
         """
+        if self.data_count < 1:
+            raise ValueError("No data to plot!")
         self.set_colours()
         for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
             if markeri is not None:

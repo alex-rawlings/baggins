@@ -171,11 +171,9 @@ class BHBinary(BHBinaryData):
         #note tarr must have values in ascending order
         if not np.isnan(t):
             if t > tarr.max():
-                warnings.warn("Value is larger than the largest array value. Returning index -1")
-                return -1
+                raise ValueError("Value is larger than the largest array value. Returning index -1")
             elif t < tarr.min():
-                warnings.warn("Value is smaller than the smallest array value. Returning index 0")
-                return 0
+                raise ValueError("Value is smaller than the smallest array value. Returning index 0")
             else:
                 return np.argmax(t < tarr)
         else:
