@@ -1,5 +1,6 @@
 import os.path
 import numpy as np
+import scipy.stats, scipy.interpolate
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import seaborn as sns
@@ -217,24 +218,125 @@ if __name__ == "__main__":
         plt.title(myname)
         plt.savefig(os.path.join(cmf.FIGDIR, f"analysis-explore/{myname}-triaxial.png"))
     
-    if True:
+    if False:
         print("Call {}".format(call))
         call += 1
 
-        fig, ax = plt.subplots(1,1)
-        #colour lines by merger
-        cols = cmf.plotting.mplColours()
-        alpha = lambda x: 0.9 if x else 0.3
-        gradplot = cmf.plotting.GradientLinePlot(ax)
+        fig, ax = plt.subplots(2,1, sharex="all", sharey="all")
+        gradplotM = cmf.plotting.GradientLinePlot(ax[0], cmap="plasma")
+        gradplotNM = cmf.plotting.GradientLinePlot(ax[1], cmap="plasma")
 
         for i, c in enumerate(cubes):
             print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
+            #if i>9:break
             cdc = cmf.analysis.ChildSimData.load_from_file(c)
-            N_in_30pc = [len(v)/cdc.particle_count["stars"] for v in cdc.stellar_shell_inflow_velocity.values()]
-            gradplot.add_data(cdc.loss_cone, cdc.stars_in_loss_cone, cdc.snapshot_times+cdc.parent_quantities["perturb_time"], marker=("o" if cdc.binary_merger_remnant["merged"] else ""))
-            #ax.semilogy(N_in_30pc, cdc.loss_cone, c=cols[int(cdc.binary_merger_remnant["merged"])], alpha=alpha(cdc.binary_spin_flip))
-        gradplot.plot()
-        gradplot.add_cbar(label="Age/Myr")
-        ax.set_xscale("log")
-        ax.set_yscale("log")
+            #N_in_30pc = [len(v)/cdc.particle_count["stars"] for v in cdc.stellar_shell_inflow_velocity.values()]
+            try:
+                if cdc.binary_merger_remnant["merged"]:
+                    gradplotM.add_data(cdc.snapshot_times+cdc.parent_quantities["perturb_time"], cdc.stars_in_loss_cone, cdc.loss_cone)
+                    nanarr = np.full_like(cdc.loss_cone, np.nan)
+                    #gradplotNM.add_data(nanarr, nanarr, cdc.snapshot_times+cdc.parent_quantities["perturb_time"])
+                    gradplotNM.add_data(nanarr, nanarr, cdc.loss_cone)
+                else:
+                    gradplotNM.add_data(cdc.snapshot_times+cdc.parent_quantities["perturb_time"], cdc.stars_in_loss_cone, cdc.loss_cone)
+                    nanarr = np.full_like(cdc.loss_cone, np.nan)
+                    gradplotM.add_data(nanarr, nanarr, cdc.loss_cone)
+                    #gradplotM.add_data(nanarr, nanarr, cdc.snapshot_times+cdc.parent_quantities["perturb_time"])
+                #gradplot.add_data(cdc.snapshot_times+cdc.parent_quantities["perturb_time"], cdc.loss_cone, cdc.stars_in_loss_cone, marker=("o" if cdc.binary_merger_remnant["merged"] else "s"))
+            except AttributeError:
+                print(f"\nskipping {c}")
+                continue
+        gradplotM.plot(logcolour=True)
+        gradplotNM.plot(logcolour=True)
+        gradplotM.add_cbar(label="Age/Myr")
+        gradplotNM.add_cbar(label="Age/Myr")
+        ax[0].set_title("Merged")
+        ax[1].set_title("Not Merged")
+        ax[1].set_xlabel("Loss Cone J")
+        ax[0].set_ylabel("Stars in Loss Cone")
+        ax[1].set_ylabel("Stars in Loss Cone")
+        #ax[0].set_ylabel("Diff. J of BHB and Stars")
+        #ax[1].set_ylabel("Diff. J of BHB and Stars")
+        #ax[0].set_xscale("log")
+        ax[0].set_yscale("log")
+        plt.show()
+    
+    if False:
+        print("Call {}".format(call))
+        call += 1
+
+        #fig, ax = plt.subplots(1,2)
+        rawdat = []
+        counter=0
+
+        for i, c in enumerate(cubes):
+            #print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
+            #if i>19:break
+            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            try:
+                if not cdc.relaxed_remnant_flag:
+                    print(f"\nWarning! \n{c} not relaxed")
+                    continue
+                theta_shifted = cdc.ang_mom_diff_angle-np.pi/2
+                rawdat.append([
+                            cdc.snapshot_times[-1]+cdc.parent_quantities["perturb_time"],
+                            np.sum(np.abs(np.diff(np.sign(theta_shifted)))>1),
+                            c.split("/")[-1].replace("cube-", "").replace(".hdf5", "")[:-4]
+                            #cdc.binary_merger_remnant["merged"]
+                ])
+                #print(f"{c} -> {rawdat[counter][2]}")
+                counter += 1
+            except AttributeError:
+                print(f"\nskipping {c}")
+                continue
+        
+        data = pd.DataFrame(data=rawdat, columns=["Final Time", "Number of Flips", "Merged"])
+        j = sns.jointplot(data=data, x="Final Time", y="Number of Flips", hue="Merged")
+        j.ax_joint.set_ylim(-1, data["Number of Flips"].max()+1)
+
+        #ax[0].scatter(endtime[merged], flips[merged], label="merged")
+        #ax[0].scatter(endtime[~merged], flips[~merged], label="not merged")
+        #for m in (True, False):
+        #    mask = np.logical_and(m==merged, flips>-1)
+        #    kde = scipy.stats.gaussian_kde(flips[mask])
+        #    xpts = np.linspace(0, 20, 1000)
+        #    ax[1].plot(xpts, kde.evaluate(xpts))
+
+        #ax[1].hist(flips[merged], bins=np.arange(flips.max()+1), alpha=0.6, density=True)
+        #ax[1].hist(flips[~merged], bins=np.arange(flips.max()+1), alpha=0.6, density=True)
+        #ax[0].legend()
+        plt.show()
+
+
+    if True:
+        radcut = 60
+        snaplist = cmf.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/C-D-3.0-0.005/perturbations/006/output")
+        escapers = np.full_like(snaplist, np.nan, dtype=float)
+        for i, snapfile in enumerate(snaplist):
+            if i > 8: break
+            snap = pygad.Snapshot(snapfile, physical=True)
+            snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
+            snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
+            ballmask = pygad.BallMask(pygad.UnitScalar(radcut, "kpc"))
+            vmag = pygad.utils.geo.dist(snap.stars[ballmask]["vel"])
+            r = snap.stars[ballmask]["r"]
+
+            vesc_fun = cmf.analysis.escape_velocity(snap, ballmask)
+            vesc = vesc_fun(r)
+            escapers[i] = np.sum(vmag>vesc)
+            
+            '''plt.hist2d(r, vmag, bins=(np.arange(0, radcut, 0.2), np.arange(0, 4000, 40)), norm=colors.LogNorm(vmin=0.1, clip=True))
+            plt.xlabel("r/kpc")
+            plt.ylabel("|v|/km/s")
+
+            # escape velocity
+            vesc = cmf.analysis.escape_velocity(snap, mask=ballmask)
+            r_ = np.linspace(1e-1, radcut*0.99, 300)
+            plt.plot(r_, vesc(r_), c="tab:red")
+            #plt.hist(vmag, bins=np.arange(0, 3500, 100), histtype="step")
+            #plt.yscale("log")
+            plt.show()
+            quit()'''
+        
+        plt.plot(escapers, "-o")
         plt.show()

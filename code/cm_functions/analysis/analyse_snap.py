@@ -9,7 +9,7 @@ from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time, unit_as_str
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity"]
 
 
 def get_com_of_each_galaxy(snap, method="pot", masks=None, verbose=True, family="all", initial_radius=20):
@@ -671,7 +671,7 @@ def shell_flow_velocities(snap, R, centre=None, direction="out", dt="5 Myr"):
     return snap[mask]["vrad"].view(np.ndarray)
 
 
-def angular_momentum_difference_gal_BH(snap):
+def angular_momentum_difference_gal_BH(snap, mask=None):
     """
     Determine the angular difference between the angular momentum of the stellar
     component of a galaxy and the BHs. Theta is defined as in Nasim et al. 2021
@@ -680,16 +680,22 @@ def angular_momentum_difference_gal_BH(snap):
     Parameters
     ----------
     snap: pygad snapshot to use
+    mask: a mask to apply to stellar particles
 
     Returns
     -------
     theta: angle between L_gal and L_bh
+    L_bh: angular momentum of BHs
+    L_gal: angular momentum of stars (within mask, if specified)
     """
     assert snap.phys_units_requested
-    L_gal = snap.stars["angmom"].sum(axis=0)
+    if mask is None:
+        L_gal = snap.stars["angmom"].sum(axis=0)
+    else:
+        L_gal = snap.stars[mask]["angmom"].sum(axis=0)
     L_bh = snap.bh["angmom"].sum(axis=0)
-    theta = np.arccos(np.dot(L_gal, L_bh) / (radial_separation(L_gal) * radial_separation(L_bh)))
-    return theta
+    theta = np.arccos(np.sum(L_gal*L_bh, axis=-1) / (pygad.utils.geo.dist(L_gal) * pygad.utils.geo.dist(L_bh)))
+    return theta, L_bh, L_gal
 
 
 def loss_cone_angular_momentum(snap, a, kappa=1):
@@ -714,3 +720,22 @@ def loss_cone_angular_momentum(snap, a, kappa=1):
     const_G = const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
     J = np.sqrt(2 * const_G * Mbin * kappa * a) * starmass
     return J.in_units_of(J_unit)
+
+
+def escape_velocity(snap):
+    """
+    Generate a function that gives the escape velocity as a function of radius
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to construct the fit for
+
+    Returns
+    -------
+    function
+        interpolation function vesc(r)
+    """
+    r_pot_interp = scipy.interpolate.interp1d(snap["r"], snap["pot"])
+    return lambda r: np.sqrt(2*np.abs(r_pot_interp(r)))
+

@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
@@ -118,10 +119,17 @@ class GradientPlot:
         self.all_pks.append(plot_kwargs)
         self.data_count += 1
     
-    def set_colours(self):
-        vmin = min([min(ci) for ci in self.all_c])
-        vmax = max([max(ci) for ci in self.all_c])
-        self.norm = colors.Normalize(vmin, vmax)
+    def set_colours(self, log=False):
+        vmin = min([np.nanmin(ci) for ci in self.all_c])
+        vmax = max([np.nanmax(ci) for ci in self.all_c])
+        if log:
+            if vmin < 0:
+                warnings.warn("Log scale normalisation cannot handle negative values! Using a linear scale")
+                self.norm = colors.Normalize(vmin, vmax)
+            else:
+                self.norm = colors.LogNorm(vmin, vmax)
+        else:
+            self.norm = colors.Normalize(vmin, vmax)
     
     def add_cbar(self, **kwargs):
         """
@@ -143,13 +151,13 @@ class GradientLinePlot(GradientPlot):
     def __init__(self, ax, cmap="viridis", plot_kwargs={}):
         super().__init__(ax, cmap=cmap, plot_kwargs=plot_kwargs)
     
-    def plot(self):
+    def plot(self, logcolour=False):
         """
         Plot the data, ensuring a consistent colour scheme.
         """
         if self.data_count < 1:
             raise ValueError("No data to plot!")
-        self.set_colours()
+        self.set_colours(log=logcolour)
         for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
             if markeri is not None:
                 self.ax.scatter(xi[-1], yi[-1], color=self.cmap(self.norm(ci[-1])), marker=markeri, label=labeli, zorder=10*self.data_count)
@@ -164,11 +172,11 @@ class GradientScatterPlot(GradientPlot):
     def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
         super().__init__(ax, x, y, c, label=label, cmap=cmap, marker=marker, plot_kwargs=plot_kwargs)
     
-    def plot(self):
+    def plot(self, logcolour=False):
         """
         Plot the data, ensuring a consistent colour scheme.
         """
-        self.set_colours()
+        self.set_colours(log=logcolour)
         for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
             for i, (xs, ys, cs) in enumerate(zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1])):
                 self.ax.scatter(xs, ys, color=self.cmap(self.norm(cs)), marker=markeri, label=(labeli if i==0 else ""),**pki)

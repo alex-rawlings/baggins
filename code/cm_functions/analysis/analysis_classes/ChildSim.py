@@ -129,12 +129,12 @@ class ChildSim(BHBinary, ChildSimData):
             print("> Determining IFU data at time of merger / last snap")
         self.ifu_map_merger = self.create_ifu_map(idx=self.merged_or_last_idx)
 
-        #list of all snapshot times, waterhsed velocity, stellar inflow 
+        # list of all snapshot times, waterhsed velocity, stellar inflow 
         # velocity, angle between galaxy stellar ang mom and BH ang mom,
-        #num stars in loss cone
+        # num stars in loss cone, ang mom vectors, num escaping stars
         if self.verbose:
             print("> Determining time series data")
-        self.snapshot_times, self.bh_binary_watershed_velocity, self.stellar_shell_inflow_velocity, self.ang_mom_diff_angle, self.loss_cone, self.stars_in_loss_cone = self._get_time_series_data(R=self.shell_radius)
+        self.snapshot_times, self.bh_binary_watershed_velocity, self.stellar_shell_inflow_velocity, self.ang_mom_diff_angle, self.loss_cone, self.stars_in_loss_cone, self.ang_mom, self.num_escaping_stars = self._get_time_series_data(R=self.shell_radius)
 
         #velocity anisotropy of remnant as a function of radius
         if self.verbose:
@@ -244,8 +244,8 @@ class ChildSim(BHBinary, ChildSimData):
         except AssertionError:
             energy_bins = np.nan
             for i in range(len(ratios["ba"])):
-                ratios["ba"] = np.nan
-                ratios["ca"] = np.nan
+                ratios["ba"][i] = np.nan
+                ratios["ca"][i] = np.nan
             self._energy_units = None
         return ratios, energy_bins
     
@@ -260,16 +260,16 @@ class ChildSim(BHBinary, ChildSimData):
         theta = np.full_like(t, np.nan)
         J_lc = np.full_like(t, np.nan)
         num_J_lc = np.full_like(t, np.nan)
+        bh_stars_J = {"bh":np.full((len(t),3), np.nan), "stars":np.full((len(t),3), np.nan)}
+        num_vescs = np.full_like(t, np.nan)
         m_min = min([self.orbit_params["m0"][0], self.orbit_params["m1"][0]])
         J_unit = self.main_snap["angmom"].units
         for i, j in enumerate(np.arange(bound_snap_idx, last_snap_idx+1)):
             snap = pygad.Snapshot(self.snaplist[j], physical=True)
             # as we are interested in flow rates about binary, set binary as
             # the centre of mass
-            this_centre_pos = pygad.analysis.center_of_mass(snap.bh)
-            this_centre_vel = pygad.analysis.mass_weighted_mean(snap.bh, "vel")
-            snap["pos"] -= this_centre_pos
-            snap["vel"] -= this_centre_vel
+            snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
+            snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
             t[i] = convert_gadget_time(snap, new_unit="Myr")
             try:
                 idx = self._get_idx_in_vec(t[i], self.orbit_params["t"]/myr)
@@ -277,10 +277,10 @@ class ChildSim(BHBinary, ChildSimData):
                 w[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
                 # determine loss cone J, _a is semimajor axis from ketjugw as 
                 # pygad scalar object
-                _a = pygad.UnitScalar(self.orbit_params["a_R"][idx], "pc")
+                _a = pygad.UnitScalar(self.orbit_params["a_R"][idx]/ketjugw.units.pc, "pc")
                 J_lc[i] = loss_cone_angular_momentum(snap, _a)
                 # determine the magnitude of the angular momentum
-                star_J_mag = pygad.utils.geo.dist(snap.stars["angmom"])
+                star_J_mag = pygad.utils.geo.dist(snap.stars[self.galaxy_radius_mask]["angmom"])
                 num_J_lc[i] = np.sum(star_J_mag < J_lc[i])
             except ValueError:
                 w[i] = np.nan
@@ -289,10 +289,14 @@ class ChildSim(BHBinary, ChildSimData):
             # determine the inflow velocities of stars through the shell
             v["{:07.1f}".format(t[i])] = shell_flow_velocities(snap.stars, R, direction="in")
             #determine angle difference in J
-            theta[i] = angular_momentum_difference_gal_BH(snap)
+            theta[i], bh_stars_J["bh"][i,:], bh_stars_J["stars"][i,:] = angular_momentum_difference_gal_BH(snap, mask=self.galaxy_radius_mask)
+            # determine the number of hypervelocity stars
+            vesc_func = escape_velocity(snap[self.galaxy_radius_mask])
+            vmag = pygad.utils.geo.dist(snap.stars[self.galaxy_radius_mask])
+            num_vescs[i] = np.sum(vmag>vesc_func(snap.stars[self.galaxy_radius_mask]["r"]))
             # save memory
             snap.delete_blocks()
-        return pygad.UnitArr(t, units="Myr"), pygad.UnitArr(w, units="km/s"), v, theta, pygad.UnitArr(J_lc, units=J_unit), num_J_lc
+        return pygad.UnitArr(t, units="Myr"), pygad.UnitArr(w, units="km/s"), v, theta, pygad.UnitArr(J_lc, units=J_unit), num_J_lc, bh_stars_J, num_vescs
     
     def _beta_r_helper(self):
         vspherical = spherical_components(self.main_snap.stars[self.galaxy_radius_mask]["pos"], self.main_snap.stars[self.galaxy_radius_mask]["vel"])
@@ -360,7 +364,7 @@ class ChildSim(BHBinary, ChildSimData):
                 "binary_merger_remnant",
                 "binary_spin_flip"]
             self._saver(bhb, data_list)
-            f["/bh_binary/predicted_orbital_params"].attrs["quantiles"] = self.param_estimate_e_quantiles
+            self._add_attr(f["/bh_binary/predicted_orbital_params"], "quantiles", self.param_estimate_e_quantiles)
 
             #save the galaxy properties
             gp = f.create_group("galaxy_properties")
@@ -385,12 +389,13 @@ class ChildSim(BHBinary, ChildSimData):
                 "bh_binary_watershed_velocity",
                 "beta_r",
                 "ang_mom_diff_angle",
+                "ang_mom",
                 "loss_cone",
                 "stars_in_loss_cone",
                 "particle_count"]
             self._saver(gp, data_list)
-            f["/galaxy_properties/stellar_shell_inflow_velocity"].attrs["shell_radius"] = self.shell_radius
-            f["/galaxy_properties/binding_energy_bins"].attrs["units"] = self._energy_units
+            self._add_attr(f["/galaxy_properties/stellar_shell_inflow_velocity"], "shell_radius", self.shell_radius)
+            self._add_attr(f["/galaxy_properties/binding_energy_bins"], "units", self._energy_units)
 
             #save the parent properties
             gP = f.create_group("parent_properties")
@@ -399,10 +404,10 @@ class ChildSim(BHBinary, ChildSimData):
             #set up some meta data
             meta = f.create_group("meta")
             now = datetime.datetime.now()
-            meta.attrs["merger_name"] = self.merger_name
-            meta.attrs["created"] = now.strftime(date_str)
-            meta.attrs["created_by"] = username
-            meta.attrs["last_accessed"] = now.strftime(date_str)
-            meta.attrs["last_user"] = username
+            self._add_attr(meta, "merger_name", self.merger_name)
+            self._add_attr(meta, "created", now.strftime(date_str))
+            self._add_attr(meta, "created_by", username)
+            self._add_attr(meta, "last_accessed", now.strftime(date_str))
+            self._add_attr(meta, "last_user", username)
             meta.create_dataset("logs", data=self._log)
 

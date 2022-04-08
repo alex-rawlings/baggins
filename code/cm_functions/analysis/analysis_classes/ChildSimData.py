@@ -198,6 +198,15 @@ class ChildSimData(BHBinaryData):
         self._beta_r = v
 
     @property
+    def ang_mom(self):
+        return self._ang_mom
+    
+    @ang_mom.setter
+    def ang_mom(self, v):
+        assert isinstance(v, dict)
+        self._ang_mom = v
+
+    @property
     def ang_mom_diff_angle(self):
         return self._ang_mom_diff_angle
     
@@ -229,6 +238,15 @@ class ChildSimData(BHBinaryData):
     def particle_count(self, v):
         assert isinstance(v, dict)
         self._particle_count = v
+    
+    @property
+    def num_escaping_stars(self):
+        return self._num_escaping_stars
+    
+    @num_escaping_stars.setter
+    def num_escaping_stars(self, v):
+        assert isinstance(v, dict)
+        self._num_escaping_stars = v
     
     @classmethod
     def load_from_file(cls, fname, decode="utf-8", verbose=False):
@@ -329,6 +347,12 @@ class ChildSimData(BHBinaryData):
         if not not_saved:
             for i in not_saved:
                 self.add_to_log("Property {} was not saved!".format(i.lstrip("_")))
+    
+    def _add_attr(self, dg, aname, aval):
+        # add an attribute to a HDF5 group or dataset. This is essentially a
+        # wrapper that handles None types
+        if aval is None: aval="NONE_TYPE"
+        dg.attrs[aname] = aval
 
     def _recursive_dict_save(self, g, d, n):
         #recursively save a dictionary. Inspired from 3ML
