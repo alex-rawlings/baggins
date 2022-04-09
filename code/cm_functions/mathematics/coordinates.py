@@ -12,12 +12,15 @@ def project_orthogonal(vec, proj_vec=None):
 
     Parameters
     ----------
-    vec: array of vectors to project
-    proj_vec: a single vector or array of vectors which we project orthogonal to
+    vec : np.ndarray
+        vectors to project
+    proj_vec : np.ndarray, optional
+        single vector or array of vectors which we project orthogonal to, by default None (projects to x-z plane)
 
     Returns
     -------
-    the orthognal projection
+    : np.ndarray
+        orthognal projection
     """
     if proj_vec is None:
         #set the default to the x-z plane
@@ -35,15 +38,21 @@ def set_spherical_basis(R):
 
     Parameters
     ----------
-    R: array to use to set the spherical coordinate basis. Typically will be
-       particle position vector
-    
+    R : np.ndarray
+        array to use to set the spherical coordinate basis, yypically will be
+        particle position vector
+
     Returns
     -------
-    r_: radial component. This will be aligned with the Cartesian direction of
+    r_: np.ndarray
+        radial component. This will be aligned with the Cartesian direction of
         input R
-    theta_, _phi: angular components orthogonal to r_. Definition as per the 
-                  "physicist's" definition
+    theta_: np.ndarray
+        angular inclination components orthogonal to r_. Definition as per the 
+        "physicist's" (ISO) definition
+    phi_: np.ndarray
+        angular azimuth components orthogonal to r_. Definition as per the 
+        "physicist's" (ISO) definition
     """
     r = radial_separation(R) # radial distance
     r_ = R / r[:,np.newaxis] #determine basis vectors
@@ -68,13 +77,16 @@ def spherical_components(R, v):
 
     Parameters
     ----------
-    R: array of Cartesian position coordinates to set spherical basis
-    v: array of values to convert to spherical coordinates
+    R : np.ndarray
+        Cartesian position coordinates to set spherical basis
+    v : np.ndarray
+        values to convert to spherical coordinates
 
     Returns
     -------
-    (n,3) array of spherical components, with columns corresponding to radius,
-    theta, and phi
+    : (n,3) np.ndarray 
+        spherical components, with columns corresponding to radius, theta, and 
+        phi
     """
     r_, theta_, phi_ = set_spherical_basis(R)
     return np.stack((np.sum(r_ * v, axis=-1), np.sum(theta_ * v, axis=-1), np.sum(phi_ * v, axis=-1)), axis=-1)
@@ -88,13 +100,15 @@ def cartesian_components(R, v):
 
     Parameters
     ----------
-    R: array of Cartesian position coordinates to set spherical basis
-    v: array of spherical values to convert to Cartesian coordinates
+    R : np.ndarray
+        Cartesian position coordinates to set spherical basis
+    v : np.ndarray
+        spherical values to convert to Cartesian coordinates
 
     Returns
     -------
-    (n,3) array of Cartesian components, with columns corresponding to x, y, 
-    and z
+    : (n,3) np.ndarray
+        Cartesian components, with columns corresponding to x, y, and z
     """
     r_, theta_, phi_ = set_spherical_basis(R)
     xyz = [r_[:,i]*v[:,0] + theta_[:,i]*v[:,1] + phi_[:,i]*v[:,2] for i in range(3)]
@@ -109,11 +123,13 @@ def convert_cartesian_to_spherical(R):
 
     Parameters
     ----------
-    R: (n,3) array of Cartesian values
-    
+    R : np.ndarray
+        Cartesian values
+
     Returns
     -------
-    S: (n,3) array of spherical values
+    S : (n,3) np.ndarray
+        spherical values
     """
     R = np.atleast_2d(R)
     S = np.full_like(R, np.nan)
@@ -131,11 +147,13 @@ def convert_spherical_to_cartesian(S):
 
     Parameters
     ----------
-    S: (n,3) array of Cartesian values
-    
+    S : np.ndarray
+        spherical values
+
     Returns
     -------
-    R: (n,3) array of spherical values
+    R : np.ndarray
+        Cartesian values
     """
     S = np.atleast_2d(S)
     R = np.full_like(S, np.nan)

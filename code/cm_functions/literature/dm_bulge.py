@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.optimize
 
-__all__ = ['Behroozi19', 'Girelli20', 'Moster10']
+__all__ = ["Behroozi19", "Girelli20", "Moster10"]
 
 
 
@@ -20,21 +20,36 @@ def _moster_helper(h, s, M1, mM0, b, g):
 
 def Behroozi19(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     """
-    define the Behroozi+19 relation for stellar-halo mass.
+    define the Behroozi+19 relation for stellar-halo mass
+    https://ui.adsabs.harvard.edu/abs/2019MNRAS.488.3143B/abstract
 
     Parameters
     ----------
-    sm: stellar mass in Msol
-    hm: list of estimated bounds halo mass falls within
-    z: assumed redshift, for redshift dependent scaling relation
-    plotting: recover the halo mass, or return an array of values for plotting?
-    numPoints: number of points used in bisection method (and plotting) to
-               determine halo mass from stellar mass
+    sm : float
+        stellar mass [Msol]
+    hm : list, optional
+        estimated bounds of halo mass, by default [1e10, 1e15]
+    z : float, optional
+        redshift, for redshift dependent scaling relation, by default 0
+    plotting : bool, optional
+        recover the halo mass (False), or return an array of values for 
+        plotting (True)?, by default False
+    numPoints : int, optional
+        number of points used in bisection method (and plotting) to determine 
+        halo mass from stellar mass, by default 1000
 
     Returns
     -------
-    log10(h_mass): logarithm of halo mass
-    logMstar: logarithm of corresponding stellar masses (if plotting = True)
+    : float
+        logarithm of halo mass [log(M/Msol)]
+    : np.ndarray, optional
+        logarithm of corresponding stellar masses [log(M/Msol)] if plotting is 
+        True
+    
+    Raises
+    ------
+    AssertionError
+        invalid input for hm
     """
     assert(len(hm)==2 and hm[0]<hm[1])
     M0 = 12.069
@@ -80,20 +95,30 @@ def Girelli20(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     """
     Define the halo-stellar mass relation from Girelli+20. Uses the same form
     as the Moster+10 relation, so the helper function _moster10 is called.
+    https://ui.adsabs.harvard.edu/abs/2020A%26A...634A.135G/abstract
 
     Parameters
     ----------
-    sm: stellar mass in Msol
-    hm: list of estimated bounds halo mass falls within
-    z: assumed redshift, for redshift dependent scaling relation
-    plotting: recover the halo mass, or return an array of values for plotting?
-    numPoints: number of points used in bisection method (and plotting) to
-               determine halo mass from stellar mass
+    sm : float
+        stellar mass [Msol]
+    hm : list, optional
+        estimated bounds of halo mass, by default [1e10, 1e15]
+    z : float, optional
+        redshift, for redshift dependent scaling relation, by default 0
+    plotting : bool, optional
+        recover the halo mass (False), or return an array of values for 
+        plotting (True)?, by default False
+    numPoints : int, optional
+        number of points used in bisection method (and plotting) to determine 
+        halo mass from stellar mass, by default 1000
 
     Returns
     -------
-    h_mass: log halo mass [Msol] corresponding to input stellar mass
-    log stellar mass from Girelli20 relation if plotting = True
+    : float
+        logarithm of halo mass [log(M/Msol)]
+    : np.ndarray, optional
+        logarithm of corresponding stellar masses [log(M/Msol)] if plotting is 
+        True
     """
     assert(len(hm)==2 and hm[0]<hm[1])
     M1 = 10**(11.83 + z * 0.18)
@@ -114,20 +139,30 @@ def Moster10(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     """
     Define the halo-stellar mass relation from Girelli+20. Uses the same form
     as the Moster+10 relation, so the helper function _moster10 is called.
+    https://ui.adsabs.harvard.edu/abs/2010ApJ...710..903M/abstract
 
     Parameters
     ----------
-    sm: stellar mass in Msol
-    hm: list of estimated bounds halo mass falls within
-    z: assumed redshift, for redshift dependent scaling relation
-    plotting: recover the halo mass, or return an array of values for plotting?
-    numPoints: number of points used in bisection method (and plotting) to
-               determine halo mass from stellar mass
+    sm : float
+        stellar mass [Msol]
+    hm : list, optional
+        estimated bounds of halo mass, by default [1e10, 1e15]
+    z : float, optional
+        redshift, for redshift dependent scaling relation, by default 0
+    plotting : bool, optional
+        recover the halo mass (False), or return an array of values for 
+        plotting (True)?, by default False
+    numPoints : int, optional
+        number of points used in bisection method (and plotting) to determine 
+        halo mass from stellar mass, by default 1000
 
     Returns
     -------
-    h_mass: log halo mass [Msol] corresponding to input stellar mass
-    log stellar mass from Moster10 relation if plotting = True
+    : float
+        logarithm of halo mass [log(M/Msol)]
+    : np.ndarray, optional
+        logarithm of corresponding stellar masses [log(M/Msol)] if plotting is 
+        True
     """
     assert(len(hm)==2 and hm[0]<hm[1])
     M1 = 10**(11.88 * (z+1)**0.019)

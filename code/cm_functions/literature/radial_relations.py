@@ -14,12 +14,15 @@ def OsipkovMerritt(r, ra):
 
     Parameters
     ----------
-    r: array of radial values
-    ra: the anisotropy radius
+    r : np.ndarray
+        radial values
+    ra : float
+        anisotropy radius
 
     Returns
     -------
-    anisotropy profile beta
+    : np.ndarray
+        anisotropy profile beta
     """
     return 1 / (1 + (ra/r)**2)
 
@@ -27,12 +30,16 @@ def OsipkovMerritt(r, ra):
 def Sahu20(logRe):
     """
     Define the Sahu+20 spheroidal mass - Re relation
+    https://ui.adsabs.harvard.edu/abs/2020ApJ...903...97S/abstract
+
     Parameters
     ----------
-    logRe: log of effective radius in kpc
+    logRe : np.ndarray
+        logarithm of effective radius [log(R/kpc)]
 
     Returns
     -------
-    expected log spheroidal mass
+    : np.ndarray
+        expected logarithm of spheroidal mass [log(M/Msol)]
     """
     return 1.08 * logRe + 10.32

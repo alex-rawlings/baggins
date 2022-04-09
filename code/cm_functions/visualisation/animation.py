@@ -11,25 +11,32 @@ __all__ = ["OverviewAnimation", "SMBHtrajectory"]
 
 
 class SMBHtrajectory:
-    """
-    Create an animation of the BH motions
-    """
     def __init__(self, bhdata, ax, centre=1, axes=[0,2], axis_offset=1, trails=5000, show_axis_labels=True, stepping={"start":110000, "step":500}, only_bound=False):
         """
-        Initialisation
+        Create an animation of the BH motions
 
         Parameters
         ----------
-        bhdata: path to the ketju_bhs.hdf5 to read in
-        ax: pyplot axis to plot the figure on (must be created externally)
-        centre: [1,2] which BH to centre on
-        axes: list, the axes to plot (0:x, 1:y, 2:z)
-        axis_offset: figure will have centre +/- this value in the window
-        trails: draw a trail of this length behind the BH
-        show_axis_labels: show the axis labels 
-        stepping: dict, with the frame to start with and the stepping between
-                  frames TODO change to times instead of index?
-        only_bound (bool): animation only for when the BHs are bound?
+        bhdata : str
+            path to the ketju_bhs.hdf5 to read in
+        ax : matplotlib.axes._subplots.AxesSubplot
+            axis to plot to
+        centre : int, optional
+            which BH to centre on, by default 1
+        axes : list, optional
+            axes to plot (0:x, 1:y, 2:z), by default [0,2]
+        axis_offset : float, optional
+            figure will have centre +/- this value in the window, by default 1
+        trails : int, optional
+            draw a trail of this length behind the BH, by default 5000
+        show_axis_labels : bool, optional
+            show the axis labels , by default True
+        stepping : dict, optional
+            TODO change to times instead of index
+            frame to start with and the stepping between frames
+            by default {"start":110000, "step":500}
+        only_bound : bool, optional
+            animation only for when the BHs are bound?, by default False
         """
         kpc = ketjugw.units.pc * 1e3
         myr = ketjugw.units.yr * 1e6
@@ -69,7 +76,7 @@ class SMBHtrajectory:
             centre[1] - self.axis_offset, 
             centre[1] + self.axis_offset
         )
-        self.ax.set_title("{:.3f} Myr".format(self.time[i]))
+        self.ax.set_title(f"{self.time[i]:.3f} Myr")
         self.ax.figure.canvas.draw() #update the changes to the canvas
         if i == 0:
             #initialise the plot
@@ -90,30 +97,33 @@ class SMBHtrajectory:
     def step_gen(self):
         """generate the stepping between frames"""
         for cnt in itertools.count(start=self.stepping["start"], step=self.stepping["step"]):
-            print("Creating image sequence: {:.3f}%                         ".format(cnt/(self.length-1)*100), end="\r")
+            print(f"Creating image sequence: {cnt/(self.length-1)*100:.3f}%                         ", end="\r")
             yield cnt
 
 
 class OverviewAnimation:
-    """
-    Create an animation of pygad snapshots
-    """
     def __init__(self, snaplist, fig, ax, centre=None, axis_offsets={"stars":500, "dm":1000}):
         """
-        Initialisation
+        Create an animation of pygad snapshots
 
         Parameters
         ----------
-        snaplist: list of ordered snapshots to plot (note no reordering
-                  is done)
-        fig: pyplot figure object
-        ax: pyplot axis object, must be an ndarray of shape=(2,2)
-        centre: centring of animation, options are:
+        snaplist : list
+            list of ordered snapshots to plot (note no reordering is done)
+        fig : matplotlib.figure.Figure
+            figure object
+        ax : matplotlib.axes._subplots.AxesSubplot
+            axis to plot to
+        centre : str, optional
+            centring of animation, options are:
                 - None: centre at [0,0,0] origin
                 - big: centre at more massive BH position (for isolated runs
                        this will be just the BH position)
-                -small: centre at less massive BH position
-        
+                -small: centre at less massive BH position,
+            by default None
+        axis_offsets : dict, optional
+            window extent about centre for each particle family, by default 
+            {"stars":500, "dm":1000}
         """
         self.snaplist = snaplist
         self.fig = fig
@@ -130,7 +140,7 @@ class OverviewAnimation:
     def step_gen(self, start=0):
         """generate the stepping between frames"""
         for cnt in itertools.count(start=start):
-            print("Creating image sequence: {:.3f}%                         ".format(cnt/(self.length-1)*100), end="\r")
+            print(f"Creating image sequence: {cnt/(self.length-1)*100:.3f}%                         ", end="\r")
             yield cnt
     
     def get_extent(self):
@@ -159,7 +169,7 @@ class OverviewAnimation:
         #set up a temporary axis, as we don't want to save any plots here
         tempfig, tempax = plt.subplots(2,2)
         for i in range(self.length):
-            print("Getting vlims: {:.3f}%                         ".format(i/(self.length-1)*100), end="\r")
+            print(f"Getting vlims: {i/(self.length-1)*100:.3f}%                         ", end="\r")
             self.snap = pygad.Snapshot(self.snaplist[i], physical=True)
             #determine the extents of the axis
             self.get_extent()

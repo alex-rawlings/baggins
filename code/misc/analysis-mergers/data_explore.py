@@ -308,20 +308,22 @@ if __name__ == "__main__":
         plt.show()
 
 
-    if True:
-        radcut = 60
+    if False:
+        radcut = 30
         snaplist = cmf.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/C-D-3.0-0.005/perturbations/006/output")
         escapers = np.full_like(snaplist, np.nan, dtype=float)
         for i, snapfile in enumerate(snaplist):
             if i > 8: break
             snap = pygad.Snapshot(snapfile, physical=True)
+            print(snap.stars["ID"])
+            quit()
             snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
             snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
             ballmask = pygad.BallMask(pygad.UnitScalar(radcut, "kpc"))
             vmag = pygad.utils.geo.dist(snap.stars[ballmask]["vel"])
             r = snap.stars[ballmask]["r"]
 
-            vesc_fun = cmf.analysis.escape_velocity(snap, ballmask)
+            vesc_fun = cmf.analysis.escape_velocity(snap[ballmask])
             vesc = vesc_fun(r)
             escapers[i] = np.sum(vmag>vesc)
             
@@ -339,4 +341,24 @@ if __name__ == "__main__":
             quit()'''
         
         plt.plot(escapers, "-o")
+        plt.show()
+    
+    if False:
+        print("Call {}".format(call))
+        call += 1
+
+        fig, ax = plt.subplots(1,1)
+
+        for i, c in enumerate(cubes):
+            print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
+            #if i>19:break
+            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            if not cdc.relaxed_remnant_flag:
+                    print(f"\nWarning! \n{c} not relaxed")
+                    continue
+            try:
+                ax.plot(cdc.snapshot_times+cdc.parent_quantities["perturb_time"], cdc.num_escaping_stars)
+            except:
+                print(f"\nskipping {c}")
+                continue
         plt.show()

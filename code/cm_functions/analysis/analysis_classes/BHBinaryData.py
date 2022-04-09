@@ -29,7 +29,7 @@ class BHBinaryData:
                 s = pygad.Snapshot(vi, physical=True)
                 s.delete_blocks()
             except KeyError:
-                msg = "Snapshot {} potentially corrupt. Removing it from the list of snapshots for further analysis!".format(vi)
+                msg = f"Snapshot {vi} potentially corrupt. Removing it from the list of snapshots for further analysis!"
                 warnings.warn(msg)
                 self.add_to_log(msg)
                 bad_snaps.append(vi)

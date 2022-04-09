@@ -13,19 +13,29 @@ def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
 
     Parameters
     ----------
-    x: x coordinates of particles
-    y: y coordinates of particles
-    Npx: number of bins
-    extent: image extent (default None allows for full image to be plotted)
-    part_per_bin: target number of particles per bin
+    x : np.ndarray
+        x coordinates of particles
+    y : np.ndarray
+        y coordinates of particles
+    Npx : int, optional
+        number of bins, by default 100
+    extent : float, optional
+        image extent, by default None (allows for full image to be plotted)
+    part_per_bin : int, optional
+        target number of particles per bin, by default 500
 
     Returns
     -------
-    particle_vor_bin_num: voronoi bin number of particles
-    pixel_vor_bin_num: voronoi bin number of pixels
-    extent: range to bin dimensions over
-    x_bin: x coordinate of bin centres
-    y_bin: y coordinate of bin centres
+    particle_vor_bin_num : np.ndarray
+        voronoi bin number of particles
+    pixel_vor_bin_num : np.ndarray
+        voronoi bin number of pixels
+    extent : tuple
+        range to bin dimensions over
+    x_bin : np.ndarray
+        x coordinate of bin centres
+    y_bin : np.ndarray
+        y coordinate of bin centres
     """
     #bin in the x-y plane
     nimg, xedges, yedges, grid_bin_num = binned_statistic_2d(x, y, values=None, statistic='count', bins=Npx, range=extent, expand_binnumbers=True)
@@ -58,19 +68,26 @@ def gauss_hermite_function(x, mu, sigma, h3, h4):
     """
     The normalised (when non-negative) function corresponding to the first
     three terms in the expansion used by van der Marel & Franx 
-    (1993ApJ...407..525V) and others following their methods.
+    (1993ApJ...407..525V) and others following their methods. 
+    Original form by Matias Mannerkoski.
 
     Parameters
     ----------
-    x: data values
-    mu: mean of x
-    sigma: standard deviation of x
-    h3: higher moments
-    h4: higher moments
+    x : np.ndarray
+        data values
+    mu : float
+        mean of x
+    sigma : float
+        standard deviation of x
+    h3 : float
+        3rd moment
+    h4 : float
+        4th moment
 
     Returns
     -------
-    array corresponding to the function value of x
+    : np.ndarray
+        function value of x
     """
     w = (x-mu)/sigma
     a = np.exp(-.5*w**2)/np.sqrt(2*np.pi)
@@ -80,20 +97,27 @@ def gauss_hermite_function(x, mu, sigma, h3, h4):
     #TODO for fitting the function should be always normalized
     return np.clip(a * (1 + h3*H3 + h4*H4)/N, 1e-300, None)
 
+
 def fit_gauss_hermite_distribution(data):
     """
     Fit a Gauss-Hermite distribution to the data.
+    Original form by Matias Mannerkoski.
 
     Parameters
     ----------
-    data: numpy array of data to fit function for
+    data : np.ndarray
+         data to fit function for
 
     Returns
     -------
-    mu0: fit mean
-    sigma0: fit standard deviation
-    h3: higher moments 
-    h4: higher moments
+    mu0 : float
+        fit mean
+    sigma0 : float
+        fit standard deviation
+    h3 : float
+        3rd moment 
+    h4 : float
+        4th moment
     """
     if len(data) == 0:
         return 0.,0.,0.,0.
@@ -118,15 +142,21 @@ def voronoi_binned_los_V_statistics(x,y,V,m, Npx, **kwargs):
 
     Parameters
     ----------
-    x: x coordinates of bins as numpy array
-    y: y coordinates of bins as numpy array
-    V: LOS velocity as numpy array
-    m: masses as numpy arrays
-    Npx: number of pixels per voronoi bin
-    
+    x : np.ndarray
+        x coordinates of bins
+    y : np.ndarray
+        y coordinates of bins
+    V : np.ndarray
+        LOS velocity
+    m : np.ndarray
+        masses
+    Npx : int
+        number of pixels per voronoi bin
+
     Returns
     -------
-    dict of binned quantitites convereted to CoM frame
+    : dict
+        binned quantitites convereted to CoM frame
     """
     M = np.sum(m)
     xcom = np.sum(m * x)/M
@@ -136,7 +166,7 @@ def voronoi_binned_los_V_statistics(x,y,V,m, Npx, **kwargs):
     y = y-ycom
     vz = V-Vcom
 
-    print("Binning {} particles...".format(len(x)))
+    print(f"Binning {len(x)} particles...")
     particle_vor_bin_num, pixel_vor_bin_num, extent, xBar, yBar = voronoi_grid(x,y, Npx=Npx, **kwargs)
     bin_index = list(range(int(np.max(particle_vor_bin_num)+1)))
     
@@ -169,13 +199,17 @@ def lambda_R(vorbin_stats, re):
 
     Parameters
     ----------
-    vorbin_stats = dictionary from voronoi_binned_los_V_statistics() method
-    re = projected half mass (or half light) radius
+    vorbin_stats : dict
+        output of voronoi_binned_los_V_statistics() method
+    re : float
+        projected half mass (or half light) radius
 
     Returns
     -------
-    R/re = radial values in units of Re
-    lambda value
+    : np.ndarray
+        radial values in units of Re
+    : np.ndarray
+        lambda(R) value
     """
     R = np.sqrt(vorbin_stats['xBar']**2 + vorbin_stats['yBar']**2)
     inds = np.argsort(R)
@@ -184,3 +218,4 @@ def lambda_R(vorbin_stats, re):
     V = vorbin_stats['bin_V'][inds]
     s = vorbin_stats['bin_sigma'][inds]
     return R/re, np.cumsum(F*R*np.abs(V))/np.cumsum(F*R*np.sqrt(V**2 + s**2))
+

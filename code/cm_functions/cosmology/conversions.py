@@ -4,6 +4,7 @@ from .cosmology import *
 
 __all__ = ['time2z']
 
+
 def time2z(t, H0=100*cosmology['h'], pres=False):
     """
     Estimate the redshift for a corresponding cosmic time
@@ -11,18 +12,22 @@ def time2z(t, H0=100*cosmology['h'], pres=False):
 
     Parameters
     ----------
-    t: cosmic time since big bang (Gyr) -> pres = False
-    t: time before present (Gyr) -> pres = True
-    H0: Hubble constant in km/s/Mpc
-    pres: bool, t is given from today not Big Bang
+    t : float
+        cosmic time since big bang [Gyr] -> pres = False
+        time before present [Gyr] -> pres = True
+    H0 : float, optional
+        Hubble constant in km/s/Mpc, by default 100*cosmology['h']
+    pres : bool, optional
+        t is given from today not Big Bang?, by default False
 
     Returns
     -------
-    redshift
+    : float
+        redshift
     """
     if pres:
         #determine cosmic time
-        ## TODO: make this better dependent on cosmology
+        # TODO: make this better dependent on cosmology
         t = 13.8 - t
     #convert t [Gyr] to s
     t = t * scipy.constants.year * 1e9

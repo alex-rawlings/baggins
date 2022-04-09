@@ -3,6 +3,7 @@ import pygad
 
 __all__ = ["get_id_mask", "get_all_id_masks", "get_radial_mask", "get_all_radial_masks", "get_binding_energy_mask"]
 
+
 def get_id_mask(snap, bhid, family='stars'):
     """
     Obtain a mask that allows filtering of particular particles. Particles are
@@ -16,16 +17,24 @@ def get_id_mask(snap, bhid, family='stars'):
 
     Parameters
     ----------
-    snap: pygad <Snapshot> object
-    bhid: SMBH id number we want to find particles around
-    radius: radius within which particles are assumed to belong to the host
-            galaxy of the SMBH; int/float for all particles in a ball, or
-            [lower, upper] for all particles in a shell
-    family: particle type we want to mask, usually 'stars'
+    snap : pygad.Snapshot
+        snapshot to mask
+    bhid : int
+        SMBH id number we want to find particles around
+    family : str, optional
+        particle type we want to mask, by default 'stars'
 
     Returns
     -------
-    pygad <IDMask> object to mask future snapshots of the same simulation
+    : pygad.snapshot.masks.IDMask
+        object to mask future snapshots of the same simulation
+
+    Raises
+    ------
+    RuntimeError
+        ID ordering is not divided by galaxy
+    RuntimeError
+        only galaxy in the system
     """
     assert(snap._phys_units_requested)
     assert(family in ['stars', 'dm', 'bh'])
@@ -54,13 +63,16 @@ def get_all_id_masks(snap, family='stars'):
 
     Parameters
     ----------
-    snap: pygad <Snapshot> object
-    family: particle type we want to mask, usually 'stars'
+    snap : pygad.Snapshot
+        snapshot to mask
+    family : str, optional
+        particle type we want to mask, by default 'stars'
 
     Returns
     -------
-    masks: dict of pygad <IDMask> objects, with keys corresponding to the host
-           galaxy SMBH particle ID
+    masks: dict 
+    keys corresponding to the host galaxy SMBH particle ID, values to pygad.
+    snapshot.masks.IDMask objects
     """
     masks = dict()
     for i, idx in enumerate(snap.bh['ID']):
@@ -75,17 +87,30 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
 
     Parameters
     ----------
-    snap: pygad <Snapshot> object to create the mask for
-    radius: the radius to constrain the particles to - can be either a number
-            to construct a ball mask, or a tuple of (inner_radius, outer_radius)
-            to construct a shell mask
-    centre: the centre from which the radial measurements should be made
-    id_masks: dict of ID masks to constrain particles to a given galaxy
-    family: particle type to construct the mask for
+    snap : pygad.Snapshot
+        snapshot to mask
+    radius : float, tuple
+        radius to constrain the particles to - can be either a number to 
+        construct a ball mask, or a tuple of (inner_radius, outer_radius) 
+        to construct a shell mask
+    centre : pygad.UnitArr, optional
+        centre from which the radial measurements should be made, by default 
+        None
+    id_mask : pygad.snapshot.masks.IDMask, optional
+        ID mask to constrain particles to a given galaxy, by default None
+    family : str, optional
+        particle type to construct the mask for, by default None (all particle 
+        used)
 
     Returns
     -------
-    mask: pygad mask object
+    mask : pygad.snapshot.masks.BallMask
+        radial mask of particles
+
+    Raises
+    ------
+    ValueError
+        radius input is invalid
     """
     assert(snap.phys_units_requested)
     if family is not None:
@@ -119,20 +144,31 @@ def get_all_radial_masks(snap, radius, centre=None, id_masks=None, family='stars
 
     Parameters
     ----------
-    snap: pygad <Snapshot> object to create the mask for
-    radius: the radius to constrain the particles to - can be either a number
-            to construct a ball mask, or a tuple of (inner_radius, outer_radius)
-            to construct a shell mask
-    centre: the centre from which the radial measurements should be made
-            may be None (corresponds to [0,0,0]), a dict of coordinate arrays (e.g. the CoM) with keys corresponding to the BH ids, or "bh" to  
-            centre on a BH
-    id_masks: dict of ID masks to constrain particles to a given galaxy
-    family: particle type to construct the mask for
+    snap : pygad.Snapshot
+        snapshot to mask
+    radius : float, tuple
+        radius to constrain the particles to - can be either a number to 
+        construct a ball mask, or a tuple of (inner_radius, outer_radius) 
+        to construct a shell mask
+    centre : pygad.UnitArr, optional
+        centre from which the radial measurements should be made, by default 
+        None
+    id_mask : dict, optional
+        ID masks to constrain particles to a given galaxy, by default None
+    family : str, optional
+        particle type to construct the mask for, by default None (all particle 
+        used)
 
     Returns
     -------
-    masks: dict of pygad mask objects, with keys corresponding to the host 
-           galaxy SMBH particle ID number
+    masks : dict
+        pygad mask objects, with keys corresponding to the host galaxy SMBH 
+        particle ID number
+
+    Raises
+    ------
+    ValueError
+        centre method is invalid
     """
     assert(snap._phys_units_requested)
     assert(isinstance(family, str) and family in ['stars', 'dm', 'bh'])
@@ -172,19 +208,32 @@ def get_binding_energy_mask(snap, energy=None, id_mask=None, family=None):
 
     Parameters
     ----------
-    snap: pygad <Snapshot> object to create the mask for
-    energy: energy bins to mask particles into -  can either be a regular 
-            array, in which a "ball" mask is created, or a list of tuples, in 
-            which a "shell" mask is created. The default None creates a "shell" 
-            type mask from the 5% to 95% quantile of binding energy in 20 bins 
-            evenly spaced in logscale
-    id_mask: ID masks to constrain particles to a given galaxy
-    family: apply the masking to only this family (default None uses all types)
+    snap : pygad.Snapshot
+        snapshot to mask
+    energy : array-like, list of tuples, optional
+        energy bins to mask particles into -  can either be a regular array, in 
+        which a "ball" mask is created, or a list of tuples, in which a "shell" 
+        mask is created. By default (None) creates a "shell" type mask from the 
+        5% to 95% quantile of binding energy in 20 bins evenly spaced in 
+        logscale
+    id_mask : pygad.snapshot.masks.IDMask, optional
+        ID mask to constrain particles to a given galaxy, by default None
+    family : _type_, optional
+        particle type we want to mask, by default None (all)
 
-    Returns
-    -------
-    generator which returns the mask for that energy interval, the energy 
-    sequence, and the energy units
+    Yields
+    ------
+    mask : pygad.snapshots.mask.IDMask
+        mask for that energy interval
+    energy : array-like, list of tuples
+        energy sequence
+    : str
+        energy units
+
+    Raises
+    ------
+    ValueError
+        invalid energy input
     """
     assert(snap.phys_units_requested)
     if family is not None:

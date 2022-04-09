@@ -245,7 +245,6 @@ class ChildSimData(BHBinaryData):
     
     @num_escaping_stars.setter
     def num_escaping_stars(self, v):
-        assert isinstance(v, dict)
         self._num_escaping_stars = v
     
     @classmethod
@@ -313,9 +312,9 @@ class ChildSimData(BHBinaryData):
                             dict_val = _recursive_dict_load(vv)
                             setattr(C, kk, dict_val)
                         else:
-                            ValueError("{}: Unkown type for unpacking!".format(kk))
+                            ValueError(f"{kk}: Unkown type for unpacking!")
                         if verbose:
-                            print(" > Successfully loaded group {}".format(kk))
+                            print(f" > Successfully loaded dataset {kk}")
         return C
     
     def _saver(self, g, l):
@@ -341,12 +340,12 @@ class ChildSimData(BHBinaryData):
             elif isinstance(attr_val, dict):
                 self._recursive_dict_save(g, attr_val, attr)
             else:
-                raise ValueError("Error saving {}: cannot save {} type!".format(attr, type(attr_val)))
+                raise ValueError(f"Error saving {attr}: cannot save {type(attr_val)} type!")
         # check that everything was saved
         not_saved = list(set(l)-set(saved_list))
         if not not_saved:
             for i in not_saved:
-                self.add_to_log("Property {} was not saved!".format(i.lstrip("_")))
+                self.add_to_log(f"Property {i.lstrip('_')} was not saved!")
     
     def _add_attr(self, dg, aname, aval):
         # add an attribute to a HDF5 group or dataset. This is essentially a
@@ -369,7 +368,7 @@ class ChildSimData(BHBinaryData):
             elif isinstance(val, dict):
                 self._recursive_dict_save(gnew, val, key)
             else:
-                raise ValueError("Error saving {}: cannot save {} type!".format(key, type(val)))
+                raise ValueError(f"Error saving {key}: cannot save {type(val)} type!")
     
     #public functions
     def add_hdf5_field(self, n, val, field, fname=None):
@@ -388,8 +387,21 @@ class ChildSimData(BHBinaryData):
                 # TODO this may not work...
                 self._recursive_dict_save(f[field], val, n)
             else:
-                raise ValueError("Error saving {}: cannot save {} type!".format(n, type(val)))
-            self.add_to_log("Attribute {} has been added".format(n))
+                raise ValueError(f"Error saving {n}: cannot save {type(val)} type!")
+            self.add_to_log(f"Attribute {n} has been added")
+            f["/meta/logs"][...] = self._log
+    
+    def update_hdf5_field(self, d, val):
+        with h5py.File(self.hdf5_file_name, mode="r+") as f:
+            if isinstance(val, self.allowed_types):
+                f[d] = val
+            elif isinstance(val, None):
+                f[d] = "NONE_TYPE"
+            elif isinstance(val, dict):
+                raise NotImplementedError
+            else:
+                raise ValueError(f"Error saving {d}: cannot save {type(val)} type!")
+            self.add_to_log(f"Data {d} has been updated")
             f["/meta/logs"][...] = self._log
     
     def print_logs(self):

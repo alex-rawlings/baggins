@@ -1,7 +1,7 @@
 import numpy as np
 
 
-__all__ = ['get_histogram_bin_centres']
+__all__ = ["get_histogram_bin_centres"]
 
 
 def get_histogram_bin_centres(bins):
@@ -10,10 +10,12 @@ def get_histogram_bin_centres(bins):
 
     Parameters
     ----------
-    bins: array of bin edges
+    bins : np.ndarray
+        bin edges
 
     Returns
     -------
-    the bin centres
+    : np.ndarray
+        bin centres, has len = len(bins)-1
     """
     return (bins[:-1] + bins[1:]) / 2

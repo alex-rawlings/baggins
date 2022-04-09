@@ -11,12 +11,15 @@ def radial_separation(p1, p2=0):
 
     Parameters
     ----------
-    p1: array of particle 1 position coordinates
-    p2: array of particle 2 position coordinates
+    p1 : np.ndarray
+        particle 1 position coordinates
+    p2 : np.ndarray, float, optional
+        particle 2 position coordinates, or a float that specifies the same position along each axis, by default 0 (the origin)
 
     Returns
     -------
-    radial separation between particles
+    : np.ndarray
+        radial separation (or alternatively, magnitude) between particles
     """
     p1 = np.atleast_2d(p1)
     return scipy.spatial.distance.cdist(p1-p2, [[0]*p1.shape[-1]]).ravel()
@@ -28,11 +31,13 @@ def volume_sphere(r):
 
     Parameters
     ----------
-    r: radius
+    r : np.ndarray
+        radius
 
     Returns
     -------
-    volume, in units of r[units]^3
+    : np.ndarray
+        volume, in units of r[units]^3
     """
     return 4*np.pi/3 * r**3
 
@@ -44,12 +49,15 @@ def density_sphere(M, r):
 
     Parameters
     ----------
-    M: mass
-    r: radius of sphere
+    M : np.ndarray
+        mass
+    r : np.ndarray
+        radius of sphere
 
     Returns
     -------
-    density in units of M[units]/r[units]^3
+    : np.ndarray
+        density in units of M[units]/r[units]^3
     """
     V = volume_sphere(r)
     return M/V

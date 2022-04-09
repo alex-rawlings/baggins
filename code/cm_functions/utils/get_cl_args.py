@@ -11,13 +11,16 @@ def argparse_for_initialise(description="", update_help=None):
 
     Parameters
     ----------
-    description: main description of program invoked with help flag
-    update_help: description of which parameters can be updated. A value
-                 of None excludes the argument
+    description : str, optional
+        main description of program invoked with help flag, by default ""
+    update_help : str, optional
+        description of which parameters can be updated. A value of None 
+        excludes the argument, by default None
 
     Returns
     -------
-    parser object that can have other options added to it
+    _type_
+        _description_
     """
     parser = argparse.ArgumentParser(description=description, allow_abbrev=False)
     parser.add_argument(type=str, help="path to parameter file", dest="paramFile")
@@ -29,21 +32,29 @@ def argparse_for_initialise(description="", update_help=None):
 
 def cl_str_2_space(s, space_type="lin"):
     """
-    Convert a string representation of a list to a numpy.linspace or numpy.
-    logspace instance. The string must be of the form "[a,b,c]", where a is the 
-    lower value, b is the upper value, and c is the number of elements in the 
-    space. For compatability with command line arguments (which is where this
-    function is primarily designed to be used) there should be no spaces between
-    the elements.
+    Convert a string representation of a list to a numpy.linspace, numpy.
+    logspace, or numpy.geomspace instance. The string must be of the form "[a,b,
+    c]", where a is the lower value, b is the upper value, and c is the number 
+    of elements in the space. For compatability with command line arguments 
+    (which is where this function is primarily designed to be used) there 
+    should be no spaces between the elements.
 
     Parameters
     ----------
-    s: string to convert
-    space_type: lin or log, spacing type
+    s : str
+        string to convert
+    space_type : str, optional
+        lin, log, or geom, spacing type, by default "lin"
 
     Returns
     -------
-    numpy.linspace or numpy.logspace with the specified parameters
+    : np.ndarray
+        array with specified spacing
+
+    Raises
+    ------
+    ValueError
+        invalid space_type input
     """
     char_arr = list(s)
     #make sure the input "looks" like a list
@@ -55,5 +66,7 @@ def cl_str_2_space(s, space_type="lin"):
         return np.linspace(float(num_arr[0]), float(num_arr[1]), int(num_arr[2]))
     elif space_type == "log":
         return np.logspace(float(num_arr[0]), float(num_arr[1]), int(num_arr[2]))
+    elif space_type == "geom":
+        return np.geomspace(float(num_arr[0]), float(num_arr[1]), int(num_arr[2]))
     else:
-        raise ValueError("The spacing type must be either lin or log !")
+        raise ValueError("The spacing type must be either lin, log, or geom!")

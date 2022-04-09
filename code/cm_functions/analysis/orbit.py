@@ -10,6 +10,7 @@ __all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particle
 myr = 1e6 * ketjugw.units.yr
 kpc = 1e3 * ketjugw.units.pc
 
+
 def find_pericentre_time(bh1, bh2, height=-10, return_sep=False, **kwargs):
     """
     Determine the time (in Myr) of pericentre passages of the BHs with the 
@@ -17,17 +18,24 @@ def find_pericentre_time(bh1, bh2, height=-10, return_sep=False, **kwargs):
 
     Parameters
     ----------
-    bh1, bh2: ketjugw Particle object
-    height: peaks required to have a height greater than this
-    return_sep: return the positional-separation array
+    bh1 : ketjugw.Particle
+        ketju bh
+    bh2 : ketjugw.Particle
+        ketju bh
+    height : float, optional
+        peaks required to have a height greater than this, by default -10
+    return_sep : bool, optional
+        return the positional-separation array, by default False
     kwargs: other keyword arguments for scipy.signal.find_peaks()
 
     Returns
     -------
-    pericentre time: time in Myr of pericentre passages
-    peak_idxs: index position of pericentre passage in BH Particle attribute
-               arrays
-    sep: (optional) the separation between the BHs as a function of time
+    : float
+        time of pericentre passages [Myr]
+    peak_idxs : np.ndarray
+        index position of pericentre passage in BH Particle attribute arrays
+    sep : np.ndarray, optional
+        separation between the BHs as a function of time
     """
     sep = radial_separation(bh1.x/kpc, bh2.x/kpc)
     #pericentre is found by negating the separation, and identifying those 
@@ -45,12 +53,15 @@ def interpolate_particle_data(p_old, t):
 
     Parameters
     ----------
-    p_old: ketjugw.Particle object to do the interpolation for
-    t: array of times to interpolate data to
+    p_old : ketjugw.Particle
+        object to do the interpolation for
+    t : np.ndarray
+        times to interpolate data to
 
-    Retuns
-    ------
-    p_new: ketjugw.Particle object with the interpolated data
+    Returns
+    -------
+    p_new : ketjugw.Particle
+        object with interpolated data
     """
     #initialise the new particle object
     p_new = ketjugw.Particle(-99, 0, [0,0,0], [0,0,0])
@@ -75,15 +86,22 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
 
     Parameters
     ----------
-    ketju_file: path to ketju_bhs.hdf5 file to analyse
-    verbose: verbose printing?
-    tol: tolerance for equality testing
+    ketju_file : str
+        path to ketju_bhs.hdf5 file to analyse
+    verbose : bool, optional
+        verbose printing?, by default True
+    tol : float, optional
+        tolerance for equality testing, by default 1e-15
 
     Returns
     -------
-    bh1, bh2: ketjugw.Particle objects for the BHs (these will be named 
-              bh1interp and bh2interp if interpolation was performed)
-    merged: class containing merger remnant info
+    bh1 : ketjugw.Particle
+        object for the BH (will be named bh1interp if interpolation was 
+        performed)
+    bh2 : ketjugw.Particle
+        same as bh1, but for bh2
+    merged : MergerInfo
+        class containing merger remnant info
     """
     bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
     len1, len2 = len(bh1), len(bh2)
@@ -122,15 +140,21 @@ def get_bound_binary(ketju_file, verbose=True, tol=1e-15):
 
     Parameters
     ----------
-    ketju_file: path to ketju_bhs.hdf5 file to analyse
-    verbose: verbose printing?
-    tol: tolerance for equality testing
+    ketju_file : str
+        path to ketju_bhs.hdf5 file to analyse
+    verbose : bool, optional
+        verbose printing?, by default True
+    tol : float, optional
+        tolerance for equality testing, by default 1e-15
 
     Returns
     -------
-    bh1, bh2: ketjugw.Particle objects for the BHs, where the particles have the
-              same time domain
-    merged: class containing merger remnant info
+    bh1 : ketjugw.Particle
+        object for bh1, where the particle has the same time domain as bh2
+    bh2 : ketjugw.Particle
+        same as bh1, but for bh2
+    merged: MergerInfo
+        class containing merger remnant info
     """
     bh1, bh2, merged = get_bh_particles(ketju_file, verbose, tol)
     bhs = {0:bh1, 1:bh2}
@@ -145,18 +169,24 @@ def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
 
     Parameters
     ----------
-    t: array of times, a subset of which the linear fit will be performed over
-    y: corresponding y data, such that y = f(t)
-    t0: time to begin the fit (must be same units as t)
-    tspan: the duration over which the fit should be performed
-    return_idxs (bool): return the array indices corresponding to t0 and
-                        t0+tspan
+    t : np.ndarray
+        times, a subset of which the linear fit will be performed over
+    y : np.ndarray
+        corresponding y data, such that y = f(t)
+    t0 : float
+        time to begin the fit (must be same units as t)
+    tspan : float
+        uration over which the fit should be performed
+    return_idxs : bool, optional
+        return the array indices corresponding to t0 and t0+tspan, by default 
+        False
 
     Returns
     -------
-    popt: array of optimal parameter values [a,b], such that y = a*t+b
-    idxs: list of indices corresponding to [t0, t0+tspan] if return_idxs is 
-          True
+    popt : np.ndarray
+        optimal parameter values [a,b], such that y = a*t+b
+    idxs : list, optional
+        indices corresponding to [t0, t0+tspan] if return_idxs is True
     """
     #determine index of t0 in t
     t0idx = np.argmax(t0 < t)
@@ -182,15 +212,21 @@ def linear_fit_get_H(t, a, t0, tspan, Gps):
 
     Parameters
     ----------
-    t: array of times corresponding to the orbital parameters in YEARS
-    a: array of semimajor axis values in PC
-    t0: time to start the linear fit
-    tspan: "duration" of linear fit
-    Gps: quantity G*rho/sigma in [1 / (pc * yr)]
+    t : np.ndarray
+        times corresponding to the orbital parameters [yr]
+    a : np.ndarray
+        semimajor axis values [pc]
+    t0 : float
+        time to start the linear fit
+    tspan : float
+        "duration" of linear fit
+    Gps : float
+        quantity G*rho/sigma in [1 / (pc * yr)]
 
     Returns
     -------
-    H: hardening coefficient
+    : float
+        hardening coefficient H
     """
     grad, c = _do_linear_fitting(t, 1/a, t0, tspan)
     return grad / Gps
@@ -204,17 +240,25 @@ def linear_fit_get_K(t, e, t0, tspan, H, Gps, a):
 
     Parameters
     ----------
-    t: array of times corresponding to the orbital parameters in YEARS
-    e: array of eccentricity values 
-    t0: time to start the linear fit
-    tspan: "duration" of linear fit
-    H: hardening coefficient
-    Gps: constant G * density / sigma in (pc * yr)^-1
-    a: array of semimajor axis values
+    t : np.ndarray
+        times corresponding to the orbital parameters [yr]
+    e : np.ndarray
+        eccentricity values
+    t0 : float
+        time to start the linear fit
+    tspan : float
+        "duration" of linear fit
+    H : float
+        hardening coefficient
+    Gps : float
+        constant G * density / sigma  [(pc * yr)^-1]
+    a : np.ndarray
+        semimajor axis values
 
     Returns
     -------
-    eccentricity evolution constant K
+    : float
+        eccentricity evolution constant K
     """
     popt, idxs = _do_linear_fitting(t, e, t0, tspan, return_idxs=True)
     delta_e = popt[0] * tspan # A * t1 + B - (A * t0 + B)
@@ -223,6 +267,40 @@ def linear_fit_get_K(t, e, t0, tspan, H, Gps, a):
 
 
 def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
+    """
+    Analytically evolve a BH binary assuming hardening due to both stellar 
+    scattering and GW emission
+
+    Parameters
+    ----------
+    a0 : float
+        initial semimajor axis
+    e0 : float
+        initial eccentricty
+    t0 : float
+        initial time of integration
+    tf : float
+        final time of integration
+    m1 : float
+        mass of particle 1
+    m2 : float
+        mass of particle 2
+    Gps : float
+        constant G * density / sigma  [(pc * yr)^-1]
+    H : float
+        hardening constant
+    K : float
+        eccentricity constant
+
+    Returns
+    -------
+    tp : np.ndarray
+        sampled integration times
+    ap : np.ndarray
+        integrated semimajor axis
+    ep : np.ndarray
+        integrated semimajor axis
+    """
     #convert Gps to units used by ketjugw
     Gps = Gps / (ketjugw.units.pc * ketjugw.units.yr)
 
@@ -254,7 +332,7 @@ class MergerInfo:
         return self.merged
     
     def __str__(self):
-        return "BH Merger Remnant\n  Merged: {}\n  Time:   {:<7.1f} Myr\n  Mass:   {:<7.1e} Msol\n  Kick:   {:<7.1f} km/s\n  Chi:    {:<7.2f}".format(self.merged, self.time, self.mass, self.kick_magnitude, self.chi)
+        return f"BH Merger Remnant\n  Merged: {self.merged}\n  Time:   {self.time:<7.1f} Myr\n  Mass:   {self.mass:<7.1e} Msol\n  Kick:   {self.kick_magnitude:<7.1f} km/s\n  Chi:    {self.chi:<7.2f}"
     
     @property
     def merged(self):

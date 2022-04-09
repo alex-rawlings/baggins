@@ -11,13 +11,16 @@ def iqr(x):
 
     Parameters
     ----------
-    x: numpy array
+    x : np.ndarray
+        observations
 
     Returns
     -------
-    interquartile range
+    : float
+        interquartile range
     """
     return np.nanquantile(x, 0.75, axis=-1) - np.nanquantile(x, 0.25, axis=-1)
+
 
 def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, rng=None):
     """
@@ -25,19 +28,27 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
 
     Parameters
     ----------
-    data: array of data values to bootstrap. Accepts a (m,n) array, in which 
-          case each column is bootstrapped independently
-    number_resamples: number of resamples to perform
-    sigma: spread in the smoothing random variable. Default is SE/sqrt(m), where
-           m is the number of rows and SE is the standard error of the sample
-    statistic: function whose statistic is to be estimated
-    rng: numpy random number generator. If not given, a new RNG is created
+    data : np.ndarray
+        data values to bootstrap. Accepts a (m,n) array, in which 
+        case each column is bootstrapped independently
+    number_resamples : int, float, optional
+        number of resamples to perform, by default 1e4
+    sigma : float, optional
+        spread in the smoothing random variable, by default None (SE/sqrt(m), 
+        where m is the number of rows and SE is the standard error of the 
+        sample)
+    statistic : function, optional
+        np function statistic to be estimated, by default np.std
+    rng : np.random._generator.Generator, optional
+        random number generator, by default None (creates a new instance)
 
     Returns
     -------
-    bootstrap_stat: (number_resamples, n) array of statistic estimate at each
-                    iteration
-    means: mean of each statistic estimate
+    bootstrap_stat : np.ndarray
+        array of statistic estimate at each iteration, shape (number_resamples, 
+        n)
+    : np.ndarray
+        mean of each statistic estimate
     """
     number_resamples = int(number_resamples)
     if sigma is None:
@@ -46,7 +57,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     if rng is None:
         rng = np.random.default_rng()
     for i in range(number_resamples):
-        print("Bootstrapping {:.2f}% complete           ".format(i/(number_resamples-1)*100), end="\r")
+        print(f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ", end="\r")
         #resample data columnwise
         resampled_data = rng.choice(data, data.shape[0], replace=True, axis=0)
         bootstrap_data = rng.normal(resampled_data, sigma)
@@ -62,17 +73,31 @@ def stat_interval(x, y, xnew, type="conf", conf_lev=0.68):
 
     Parameters
     ----------
-    x: array of observed x data
-    y: array of observed y data
-    xnew: the values we wish to compute for
-    type: [conf pred] either a confidence or prediction interval
-    conf_lev: the confidence level, where the value (1-conf_lev) is the 
-              the integral area for the t-distribution
-    
+    x : np.ndarray
+        observed x data
+    y : np.ndarray
+        observed y data
+    xnew : np.ndaray
+        values we wish to compute for
+    type : str, optional
+        either a confidence or prediction interval, by default "conf"
+    conf_lev : float, optional
+        confidence level, where the value (1-conf_lev) is the the integral area 
+        for the t-distribution, by default 0.68
+
     Returns
     -------
-    upper: the upper interval bound
-    lower: the lower interval bound
+    upper : np.ndarray
+        upper interval bound
+    lower : np.ndarray
+        lower interval bound
+
+    Raises
+    ------
+    AssertionError
+        conf_level must be in range (0,1)
+    ValueError
+        type must be one of [conf, pred]
     """
     assert(conf_lev<1 and conf_lev>0)
     #clean data
@@ -106,13 +131,17 @@ def uniform_sample_sphere(n, rng=None):
 
     Parameters
     ----------
-    n: number of points
-    rng: numpy random number generator object. If not given, a new RNG is 
-         created
-    
+    n : int
+        number of points
+    rng : np.random._generator.Generator, optional
+        random number generator, by default None (creates a new instance)
+
     Returns
     -------
-    theta, phi: angular coordinates of points
+    theta : np.ndarray
+        angular coordinates of points
+    phi : np.ndarray
+        angular coordinates of points
     """
     if rng is None:
         rng = np.random.default_rng()
@@ -127,16 +156,22 @@ def vertical_RMSE(x, y, return_linregress=False):
 
     Parameters
     ----------
-    x: array of observed x data
-    y: array of observed y data
-    return_linregress: bool, return the slope and intercept from the linear
-                       regeression model
+    x : np.ndarray
+        observed x data
+    y : np.ndarray
+        observed y data
+    return_linregress : bool, optional
+        return the slope and intercept from the linear regeression model?, by 
+        default False
 
     Returns
     -------
-    root mean square error
-    slope: linear regression gradient (only if return_linregress is True)
-    intercept: linear regression intercept (only if return_linregress is True)
+    : np.ndarray
+        root mean square error
+    slope : float, optional
+         linear regression gradient
+    intercept : float, optional
+        inear regression intercept
     """
     #clean data
     x = x[~np.isnan(x) & ~np.isnan(y)]

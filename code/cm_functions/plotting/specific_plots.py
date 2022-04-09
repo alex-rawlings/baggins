@@ -19,21 +19,34 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
 
     Parameters
     ----------
-    snap: pygad snapshot to plot
-    orientate: orientate the snapshot using pygad orientate_at method
-               can be either to an arbitrary vector, the angular momentum 
-               "L", or the semiminor axis of the reduced intertia tensor
-               "red I". If used, a shallow copy of the snapshot is created
-    extent: dict of dicts with extent values with top-layer keys
-            "stars" and "dm", and second-layer keys "xz" and "xy", 
-            e.g. extent["stars"]["xz"] = 100
-    scaleind: how to label the scale
-    kwargs: dict of other keyword arguments for the pygad plotting routine
+    snap : pygad.Snapshot
+        snapshot to plot
+    return_ims : bool, optional
+        return list of images, by default False
+    orientate : str, optional
+        orientate the snapshot using pygad orientate_at method can be either to 
+        an arbitrary vector, the angular momentum "L", or the semiminor axis of 
+        the reduced intertia tensor "red I". If used, a shallow copy of the 
+        snapshot is created, by default None
+    figax : list, optional
+        list of [fig, ax] from plt.subplots(), by default None
+    extent : dict, optional
+        dict of dicts with extent values with top-layer keys "stars" and "dm", 
+        and second-layer keys "xz" and "xy",  e.g. extent["stars"]["xz"] = 100, 
+        by default None
+    kwargs : dict, optional
+        other keyword arguments for the pygad plotting routine, by default None
+    append_kwargs : bool, optional
+        append given kwargs to default kwargs, by default False
 
     Returns
     -------
-    fig: pyplot figure object
-    ax: subplot axes object as np.array
+    fig : matplotlib.figure.Figure
+        pyplot figure object
+    ax : np.ndarray
+        array of matplotlib.axes._subplots.AxesSubplot instances
+    ims : list, optional
+        list of images from pygad plotting routine
     """
     if orientate is not None:
         snap = copy.copy(snap)
@@ -68,25 +81,24 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
 
 class GradientPlot:
     """
-    Class to create pyplot plots with a colour gradient. The colour 
-    gradient is consistent between all lines/points in the figure. This is done 
-    by storing the data first, and then only plotting the data when explicitly 
-    called.
+    
     """
     def __init__(self, ax, cmap="viridis", plot_kwargs={}):
         """
-        Initialise the plot with data.
+        Class to create pyplot plots with a colour gradient. The colour 
+        gradient is consistent between all lines/points in the figure. This is 
+        done by storing the data first, and then only plotting the data when 
+        explicitly called.
 
         Parameters
         ----------
-        ax: the axis to plot the figure to
-        x: array of x data
-        y: array of y data
-        c: array to be used for gradient colouring (non-normalised values)
-        label: label of plot
-        cmap: pyplot colour map to use
-        marker: end marker type (set to None to avoid)
-        plot_kwargs: dict of other parameters to parse to pyplot.plot()
+        ax : matplotlib.axes._subplots.AxesSubplot
+            axis to plot to
+        cmap : str, optional
+            pyplot colour map name, by default "viridis"
+        plot_kwargs : dict, optional
+            arguments to be parsed to either plt.plot() or plt.scatter(), by 
+            default {}
         """
         self.ax = ax
         self.data_count = 0
@@ -109,7 +121,19 @@ class GradientPlot:
 
         Parameters
         ----------
-        see comments for __init__
+        x : np.ndarray
+            x data
+        y : np.ndarray
+            y data
+        c : np.ndarray
+            data to map colours to
+        label : _type_, optional
+            label of plot, by default None
+        marker : str, optional
+            end marker, by default "o"
+        plot_kwargs : dict, optional
+            dict of other parameters to parse to pyplot.plot() or pyplot.scatter
+            (), by default {}
         """
         self.all_x.append(x)
         self.all_y.append(y)
@@ -119,7 +143,15 @@ class GradientPlot:
         self.all_pks.append(plot_kwargs)
         self.data_count += 1
     
-    def set_colours(self, log=False):
+    def _set_colours(self, log=False):
+        """
+        Set the colours of the plot, should not be called directly
+
+        Parameters
+        ----------
+        log : bool, optional
+            colours in logscale?, by default False
+        """
         vmin = min([np.nanmin(ci) for ci in self.all_c])
         vmax = max([np.nanmax(ci) for ci in self.all_c])
         if log:
@@ -154,10 +186,20 @@ class GradientLinePlot(GradientPlot):
     def plot(self, logcolour=False):
         """
         Plot the data, ensuring a consistent colour scheme.
+
+        Parameters
+        ----------
+        logcolour : bool, optional
+            colours in log scale?, by default False
+
+        Raises
+        ------
+        ValueError
+            no data to plot
         """
         if self.data_count < 1:
             raise ValueError("No data to plot!")
-        self.set_colours(log=logcolour)
+        self._set_colours(log=logcolour)
         for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
             if markeri is not None:
                 self.ax.scatter(xi[-1], yi[-1], color=self.cmap(self.norm(ci[-1])), marker=markeri, label=labeli, zorder=10*self.data_count)
@@ -175,8 +217,20 @@ class GradientScatterPlot(GradientPlot):
     def plot(self, logcolour=False):
         """
         Plot the data, ensuring a consistent colour scheme.
+
+        Parameters
+        ----------
+        logcolour : bool, optional
+            colours in log scale?, by default False
+
+        Raises
+        ------
+        ValueError
+            no data to plot
         """
-        self.set_colours(log=logcolour)
+        if self.data_count < 1:
+            raise ValueError("No data to plot!")
+        self._set_colours(log=logcolour)
         for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
             for i, (xs, ys, cs) in enumerate(zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1])):
                 self.ax.scatter(xs, ys, color=self.cmap(self.norm(cs)), marker=markeri, label=(labeli if i==0 else ""),**pki)
@@ -188,14 +242,17 @@ def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
 
     Parameters
     ----------
-    orbit_pars: orbit parameter dictionary
-    ax: matplotlib axis object to add plot to, None to create a new instance
-    toffset: time offset in Myr
-    kwargs: arguments to be parsed to pyplot.plot
+    orbit_pars : dict
+        orbit parameters from ketjugw.orbital_parameters()
+    ax : matplotlib.axes._subplots.AxesSubplot, optional
+        axis to plot to, by default None (creates new instance)
+    toffset : float, optional
+        time offset, by default 0
 
     Returns
     -------
-    ax: matplotlib axis object
+    ax : matplotlib.axes._subplots.AxesSubplot
+        plotting axis
     """
     if ax is None:
         fig, ax = plt.subplots(2,1,sharex="col")
@@ -214,6 +271,7 @@ class twin_axes_plot:
         """
         Set up a shared axis for a plot. An example would be time and redshift
         on the top and bottom x-axes.
+        TODO still under development
         """
         self.ax = ax
         self.share = share
@@ -240,7 +298,8 @@ def voronoi_plot(vdat):
 
     Parameters
     ----------
-    vdat: dict of voronoi values from analysis.voronoi_binned_los_V_statistics()
+    vdat : dict
+        voronoi values from analysis.voronoi_binned_los_V_statistics()
     """
     fig, ax = plt.subplots(2,2, sharex="all", sharey="all", figsize=(7,4.7))
     ax[0,0].set_ylabel("y/kpc")
@@ -270,15 +329,22 @@ def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "righ
 
     Parameters
     ----------
-    adjust_kw: dict to pass to pyplot.subplots_adjust describing how the subplot
-               should be adjusted to accommodate the colorbar
-    cbarwidth: width of colorbar in axis units
-    cbargap: distance between marginal axis and colorbar in axis units
-    **kwargs: keyword arguments to be parsed to sns.jointplot()
+    adjust_kw : dict, optional
+        dict to pass to pyplot.subplots_adjust describing how the subplot
+        should be adjusted to accommodate the colorbar, by default {"top":0.9, 
+        "bottom":0.1, "left":0.1, "right":0.8}
+    cbarwidth : float, optional
+        width of colorbar in axis units, by default 0.05
+    cbargap : float, optional
+        distance between marginal axis and colorbar in axis units, by default 
+        0.02
+    **kwargs : 
+        keyword arguments to be parsed to sns.jointplot()
 
     Returns
     -------
-    j: seaborn.JointGrid object
+    j : seaborn.JointGrid
+        allow access to underlying axis
     """
     j = sns.jointplot(**kwargs)
     plt.subplots_adjust(**adjust_kw)
@@ -293,6 +359,16 @@ def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "righ
 
 
 def draw_unit_sphere(ax, points=100):
+    """
+    Draw a unit sphere
+
+    Parameters
+    ----------
+    ax : matplotlib.axes._subplots.AxesSubplot
+        plotting axis
+    points : int, optional
+        number of points, by default 100
+    """
     ax.set_xlabel('x')
     ax.set_ylabel('y')
     ax.set_zlabel('z')

@@ -10,17 +10,21 @@ def run(i):
         snaplist = cmf.utils.get_snapshots_in_dir(perturbdirs[i])
         ballmask = pygad.BallMask(pygad.UnitScalar(30, "kpc"))
         num_vescs = np.full_like(snaplist, np.nan, dtype=float)
+        jj = 0
+        prev_hypers = []
         for j, snapfile in enumerate(snaplist):
-            snap = pygad.Snapshot(snapfile, physical=True)
+            try:
+                snap = pygad.Snapshot(snapfile, physical=True)
+            except KeyError:
+                continue
             snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
             snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
-            vesc_func = cmf.analysis.escape_velocity(snap[ballmask])
-            vmag = pygad.utils.geo.dist(snap.stars[ballmask])
-            num_vescs[j] = np.sum(vmag>vesc_func(snap.stars[ballmask]["r"]))
+            num_vescs[jj], prev_hypers = cmf.analysis.count_new_hypervelocity_particles(snap[ballmask], prev=prev_hypers)
             # save memory
             snap.delete_blocks()
+            jj += 1
         # add to file
-        cdc.add_hdf5_field("num_escaping_stars", num_vescs, "/galaxy_properties")
+        cdc.update_hdf5_field("num_escaping_stars", num_vescs, "/galaxy_properties")
         print(f"Thread {i} updated file {cubefiles[i]} successfully!")
 
 
@@ -42,6 +46,6 @@ if __name__ == "__main__":
         root, _pdirs,_ = next(os.walk(datadir))
         perturbdirs = [os.path.join(root, p, "output") for p in _pdirs]
         perturbdirs.sort()
-        with mp.Pool(processes=10) as pool:
+        with mp.Pool(processes=len(pids)) as pool:
             pool.map(run, pids)
     print("Done")

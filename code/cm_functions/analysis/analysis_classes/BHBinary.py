@@ -22,13 +22,22 @@ class BHBinary(BHBinaryData):
     def __init__(self, paramfile, perturbID, apfile) -> None:
         """
         A class which determines and sets the key BH binary properties from the
-        raw simulation output data. 
+        raw simulation output data.
 
         Parameters
         ----------
-        paramfile: path to parameter file corresponding to the merger run
-        perturbID: name of the perturbation directory, e.g. 000
-        apfile: path to parameter file for analysis
+        paramfile : str
+            path to parameter file corresponding to the merger run
+        perturbID : str
+            name of the perturbation directory, e.g. 000
+        apfile : str
+            path to parameter file for analysis
+
+        Raises
+        ------
+        ValueError
+            when a radius (rinfl, rbound, rhard) cannot be determined, or when
+            the data path does not exist
         """
         super().__init__()
         pfv = read_parameters(paramfile)
@@ -36,7 +45,7 @@ class BHBinary(BHBinaryData):
         data_path = os.path.join(pfv.full_save_location, pfv.perturbSubDir, perturbID, "output")
         if not os.path.isdir(data_path):
             raise ValueError("The data path does not exist!")
-        self.merger_name = "{}-{}".format(pfv.full_save_location.rstrip("/").split("/")[-1], perturbID)
+        self.merger_name = f"{pfv.full_save_location.rstrip('/').split('/')[-1]}-{perturbID}"
         self.bhfile = get_ketjubhs_in_dir(data_path)[0]
         self.snaplist = get_snapshots_in_dir(data_path)
         self.gr_safe_radius = afv.gr_safe_radius
@@ -159,11 +168,11 @@ class BHBinary(BHBinaryData):
         except ValueError:
             #when the radius is reached is not covered by the data
             if r > self.orbit_params["a_R"][0] / ketjugw.units.pc:
-                warnings.warn("Time of {} cannot be estimated from the data, as it occurs before the binary is bound! This point will be omitted from further analysis and plots.".format(desc))
+                warnings.warn(f"Time of {desc} cannot be estimated from the data, as it occurs before the binary is bound! This point will be omitted from further analysis and plots.")
             elif r < self.orbit_params["a_R"][-1] / ketjugw.units.pc:
-                warnings.warn("Time of {} cannot be estimated from the data, as it occurs after the last available data point! This point will be omitted from further analysis and plots.".format(desc))
+                warnings.warn(f"Time of {desc} cannot be estimated from the data, as it occurs after the last available data point! This point will be omitted from further analysis and plots.")
             else:
-                raise ValueError("{} cannot be determined".format(desc))
+                raise ValueError(f"{desc} cannot be determined")
             return np.nan
 
     def _get_idx_in_vec(self, t, tarr):
@@ -256,9 +265,9 @@ class BHBinary(BHBinaryData):
                             zip(self.predicted_orbital_params["a"].keys(), 
                             self.param_estimate_e_quantiles)):
                 if i==0:
-                    l = ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls=":", label="{:.2f} quantile".format(q), **kwargs)
+                    l = ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls=":", label=f"{q:.2f} quantile", **kwargs)
                 else:
-                    ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls=("--" if i==1 else ":"), c=l[-1].get_color(), label="{:.2f} quantile".format(q), **kwargs)
+                    ax[0].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["a"][k], ls=("--" if i==1 else ":"), c=l[-1].get_color(), label=f"{q:.2f} quantile", **kwargs)
                 ax[1].plot(self.predicted_orbital_params["t"][k]+self.time_offset, self.predicted_orbital_params["e"][k], ls=("--" if i%3==1 else ":"), c=l[-1].get_color(), **kwargs)
         xaxis_lims = ax[0].get_xlim()
         if xaxis_lims[1] > hubble_time:
@@ -271,11 +280,11 @@ class BHBinary(BHBinaryData):
     def print(self):
         #Print some of the key binary quantities
         print("BH Binary Quantities:")
-        print("  Perturbation applied at {:.1f} Myr".format(self.time_offset))
-        print("  H determined over a span of {:.1f} Myr".format(self.analytical_tspan))
-        print("  G*rho/sigma: {:.3e}".format(self.G_rho_per_sigma))
-        print("  Hardening rate H: {:.4f}".format(self.H))
-        print("  Eccentricity rate K: {:.4f}".format(self.K))
-        print("  Spin flip: {}".format(self.binary_spin_flip))
+        print(f"  Perturbation applied at {self.time_offset:.1f} Myr")
+        print(f"  H determined over a span of {self.analytical_tspan:.1f} Myr")
+        print(f"  G*rho/sigma: {self.G_rho_per_sigma:.3e}")
+        print(f"  Hardening rate H: {self.H:.4f}")
+        print(f"  Eccentricity rate K: {self.K:.4f}")
+        print(f"  Spin flip: {self.binary_spin_flip}")
         if self.merged():
             print(self.merged)

@@ -28,12 +28,15 @@ def angular_diameter_distance(z, cosmology=cosmology):
 
     Parameters
     ----------
-    z: redshift of object
-    cosmology: dict of cosmological parameters
+    z : float
+        redshift
+    cosmology : dict, optional
+        cosmological parameters, by default cosmology
 
     Returns
     -------
-    angular diameter distance in kpc
+    : float
+        angular diameter distance [kpc]
     """
     return get_a0r(z, cosmology) / (1 + z)
 
@@ -45,12 +48,20 @@ def get_a0r(z, cosmology=cosmology):
 
     Parameters
     ----------
-    z: redshift of object
-    cosmology: dict of cosmological parameters
+    z : float
+        redshift
+    cosmology : dict, optional
+        cosmological parameters, by default cosmology
 
     Returns
     -------
-    value of a0*r in kpc
+    : float
+        a0*r [kpc]
+    
+    Raises
+    ------
+    AssertionError
+        redshift larger than redshift of matter radiation equality
     """
     assert(z < cosmology['zeq'])
     Ez = lambda z1: np.sqrt(
@@ -65,11 +76,14 @@ def luminosity_distance(z, cosmology=cosmology):
 
     Parameters
     ----------
-    z: redshift of object
-    cosmology: dict of cosmological parameters
+    z : float
+        redshift
+    cosmology : dict, optional
+        cosmological parameters, by default cosmology
 
     Returns
     -------
-    luminosity distance in kpc
+    : float
+        luminosity distance [kpc]
     """
     return get_a0r(z, cosmology) * (1 + z)

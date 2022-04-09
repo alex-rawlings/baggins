@@ -12,23 +12,31 @@ __all__ = ["beta_profile", "snap_num_for_time"]
 def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
     """
     Determine the beta profile as defined in B&T Eq. 4.61
-    
+
     Parameters
     ----------
-    r: array of radial positions
-    vspherical: (n,3) array  the spherical velocity components, with columns
-                corresponding to radius, theta, and phi velocities
-    binwidth: fixed width of bins (dex for logscale)
-    qcut: remove those particles which are greater than qcut quantile 
-          (e.g. those few particles that are very far away)
-    logbin: binning done equally in a logarithmic scale
-    eps: small number to prevent division by 0
-    
+    r : array-like
+        radial positions
+    vspherical : (n,3) np.ndarray
+        spherical velocity components, with columns corresponding to radius, 
+        theta, and phi velocities
+    binwidth : float
+        fixed width of bins (dex for logscale)
+    qcut : float, optional
+        remove those particles which have r > qcut quantile (e.g. those few particles that are very far away), by default 0.98
+    logbin : bool, optional
+        binning done equally in a logarithmic scale, by default True
+    eps : float, optional
+        small number to prevent division by 0, by default 1e-16
+
     Returns
     -------
-    beta: beta profile binned into nbin radial bins
-    bin_centres: central value of each radial bin 
-    bincounts: number of particles within each radial bin
+    beta : np.ndarray
+        beta profile binned into nbin radial bins
+    bin_centres : np.ndarray
+        central value of each radial bin 
+    bincounts: np.ndarray
+        number of particles within each radial bin
     """
     #create the radial mask if required
     if qcut < 1:
@@ -64,18 +72,29 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
 
     Parameters
     ----------
-    snaplist: list of snapshot files
-    time_to_find: time we want to find
-    units: units of the time, default Myr
-    method: one of
-                - 'floor': last snapshot before the given time
-                - 'ceil': first snapshot after the given time
-                - 'nearest': snapshot closest to the given time
+    snaplist : list
+        snapshot files
+    time_to_find : float, int, pygad.UnitArr
+        time we want to find
+    units : str, optional
+        units of the time, by default "Myr"
+    method : str, optional
+        one of
+        - 'floor': last snapshot before the given time
+        - 'ceil': first snapshot after the given time
+        - 'nearest': snapshot closest to the given time, 
+        by default "floor"
 
     Returns
     -------
-    idx: index in the list of snapshots which is closest to (but earlier than)
-         the sought time 
+    idx: int
+        index in the list of snapshots corresponding to the desired time by the
+        desired method
+
+    Raises
+    ------
+    ValueError
+        if given method is invalid
     """
     if method not in ["floor", "ceil", "nearest"]: raise ValueError("method must be one of 'floor', 'ceil', or 'nearest'.")
     assert(isinstance(time_to_find, (float, int, pygad.UnitArr)))

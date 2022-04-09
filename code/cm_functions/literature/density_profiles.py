@@ -4,28 +4,33 @@ import pygad
 from ..general import sersic_b_param
 
 
-__all__ = ['Dehnen', 'fit_Dehnen_profile', 'halfMassDehnen', 'Terzic05', "fit_Terzic05_profile"]
+__all__ = ["Dehnen", "fit_Dehnen_profile", "halfMassDehnen", "Terzic05", "fit_Terzic05_profile"]
 
 
 def Dehnen(r, a, g, M):
-    '''
+    """
     Calculate the Dehnen density profile
 
     Parameters
     ----------
-    r: radius [kpc]
-    a: scale radius [kpc]
-    g: shape profile
-    M: total Mass [Msol]
+    r : np.ndarray
+        radial values [kpc]
+    a : float
+        scale radius [kpc]
+    g : float
+        shape profile
+    M : float
+        total mass
 
     Returns
     -------
-    rho: density
-    '''
-    rho = (3 - g) * M / (4 * np.pi) * a / (r**g * (r + a)**(4 - g))
-    return rho
+    : np.ndarray
+        3D mass density profile
+    """
+    return (3 - g) * M / (4 * np.pi) * a / (r**g * (r + a)**(4 - g))
 
 
+# TODO should fitting routines be incorporated into a more general method?
 def fit_Dehnen_profile(radii, density, total_mass, bounds=([1, 0], [1000,3])):
     """
     Fit a Dehnen profile to some data using the scipy.optimize library.
@@ -51,17 +56,21 @@ def fit_Dehnen_profile(radii, density, total_mass, bounds=([1, 0], [1000,3])):
 def halfMassDehnen(a, g):
     """
     Determine analytical half mass radius from Dehnen sphere
-    taken from Rantala+18
+    https://ui.adsabs.harvard.edu/abs/2018ApJ...864..113R/abstract
 
     Parameters
     ----------
-    a: scale radius (generally in kpc)
-    g: Dehnen gamma
+    a : float
+        scale radius [kpc]
+    g : float
+        shape parameter
 
     Returns
     -------
-    rhm: half mass radius [kpc]
-    re: effective radius approximate [kpc]
+    rhm : float
+        3D half mass radius [kpc]
+    re : float
+        (crudely) estimated effective radius ]kpc
     """
     rhm = a * (2**(1/(3-g)) - 1)**(-1)
     re = 0.75 * rhm
@@ -72,24 +81,34 @@ def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
     """
     Define a density function for a cored system, with overall sersic profile
     as taken from Terzic+05
-    # TODO: change mass at break radius to mass deficit?
+    https://ui.adsabs.harvard.edu/abs/2005MNRAS.362..197T/abstract
 
     Parameters
     ----------
-    r: radius to evaluate at [kpc]
-    rhob: density at break radius
-    rb: break radius [kpc]
-    n: sersic index
-    g: inner core density slope gamma
-    Re: effective radius [kpc]
-    b: sersic b parameter (set to None to determine within this method)
-    a: steepness of transition between regions
-    mode: how the function is called ('own' for general use, 'fit for fitting
-          methods)
+    r : np.ndarray
+        radial values
+    rhob : float
+        density at break radius
+    rb : float
+        break radius [kpc]
+    n : float
+        sersic index
+    g : float
+        inner core density slope gamma parameter
+    Re : float, pygad.UnitArr
+        effective radius [kpc]
+    b : float, optional
+        sersic b parameter, by default None (determined internally)
+    a : float, optional
+        steepness of transition between regions, by default 100
+    mode : str, optional
+        how the function is called ("own" for general use, "fit for fitting 
+        methods), by default "own"
 
     Returns
     -------
-    mass density
+    : np.ndarray
+        3D mass density profile
     """
     assert mode in ["own", "fit"]
     if b is None:

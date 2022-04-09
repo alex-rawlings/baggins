@@ -8,12 +8,19 @@ def e_from_rperi(x, a=0.320, b=1.629, c=0.176):
 
     Parameters
     ----------
-    x: normalised rperi values (normalised to the virial radius of the larger
+    x : np.ndarray
+        normalised rperi values (normalised to the virial radius of the larger
         progenitor)
-    a, b, c = shape parameters
+    a : float, optional
+        shape parameter, by default 0.320
+    b : float, optional
+        shape parameter, by default 1.629
+    c : float, optional
+        shape parameter, by default 0.176
 
     Returns
     -------
-    eccentricity of approach
+    : np.ndarray
+        eccentricity of approach
     """
     return (1 + (x/a)**b)**(-c)

@@ -24,14 +24,18 @@ class ChildSim(BHBinary, ChildSimData):
     def __init__(self, paramfile, perturbID, apfile, verbose=False) -> None:
         """
         A class which determines and sets the key merger remnant properties 
-        from the raw simulation output data. 
+        from the raw simulation output data.
 
         Parameters
         ----------
-        paramfile: see BHBinary 
-        perturbID: see BHBinary
-        apfile: see BHBinary
-        verbose: bool, verbose printing?
+        paramfile : str
+            see BHBinary 
+        perturbID : str
+            see BHBinary 
+        apfile : str
+            see BHBinary 
+        verbose : bool, optional
+            verbose printing?, by default False
         """
         self.verbose = verbose
         if self.verbose:
@@ -153,7 +157,7 @@ class ChildSim(BHBinary, ChildSimData):
         else:
             self.merged_or_last_idx = -1
         if self.verbose:
-            print("Merger remnant snapshot is number {}".format(self.merged_or_last_idx))
+            print(f"Merger remnant snapshot is number {self.merged_or_last_idx}")
         snap = pygad.Snapshot(self.snaplist[self.merged_or_last_idx], physical=True)
         xcom = get_com_of_each_galaxy(snap, method="ss", family="stars", verbose=False)
         vcom = get_com_velocity_of_each_galaxy(snap, xcom, verbose=False)
@@ -287,7 +291,7 @@ class ChildSim(BHBinary, ChildSimData):
                 J_lc[i] = np.nan
                 num_J_lc[i] = np.nan
             # determine the inflow velocities of stars through the shell
-            v["{:07.1f}".format(t[i])] = shell_flow_velocities(snap.stars, R, direction="in")
+            v[f"{t[i]:07.1f}"] = shell_flow_velocities(snap.stars, R, direction="in")
             #determine angle difference in J
             theta[i], bh_stars_J["bh"][i,:], bh_stars_J["stars"][i,:] = angular_momentum_difference_gal_BH(snap, mask=self.galaxy_radius_mask)
             # determine the number of hypervelocity stars
@@ -333,7 +337,7 @@ class ChildSim(BHBinary, ChildSimData):
         keys = self.__dict__.keys()
         for k in keys:
             if k[0] != "_":
-                s += " > {}\n".format(k)
+                s += f" > {k}\n"
         print(s)
     
     def make_hdf5(self, fname, exist_ok=False):
@@ -392,7 +396,8 @@ class ChildSim(BHBinary, ChildSimData):
                 "ang_mom",
                 "loss_cone",
                 "stars_in_loss_cone",
-                "particle_count"]
+                "particle_count",
+                "num_escaping_stars"]
             self._saver(gp, data_list)
             self._add_attr(f["/galaxy_properties/stellar_shell_inflow_velocity"], "shell_radius", self.shell_radius)
             self._add_attr(f["/galaxy_properties/binding_energy_bins"], "units", self._energy_units)
