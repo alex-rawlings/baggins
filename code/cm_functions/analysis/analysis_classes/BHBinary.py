@@ -179,10 +179,10 @@ class BHBinary(BHBinaryData):
         #get the index of a value t within an array tarr
         #note tarr must have values in ascending order
         if not np.isnan(t):
-            if t > tarr.max():
-                raise ValueError("Value is larger than the largest array value. Returning index -1")
-            elif t < tarr.min():
-                raise ValueError("Value is smaller than the smallest array value. Returning index 0")
+            if t > tarr[-1]:
+                raise ValueError("Value is larger than the largest array value.")
+            elif t < tarr[0]:
+                raise ValueError("Value is smaller than the smallest array value")
             else:
                 return np.argmax(t < tarr)
         else:

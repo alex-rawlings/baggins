@@ -36,7 +36,7 @@ def get_id_mask(snap, bhid, family='stars'):
     RuntimeError
         only galaxy in the system
     """
-    assert(snap._phys_units_requested)
+    assert(snap.phys_units_requested)
     assert(family in ['stars', 'dm', 'bh'])
     #get all the particles in the family -> less sorting to do
     subsnap = getattr(snap, family)

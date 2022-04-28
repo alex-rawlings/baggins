@@ -9,16 +9,18 @@ if False:
     data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/D-E-3.0-0.05"
     perturbtime = 4836
 else:
-    data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.005"
+    data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05"
     perturbtime = 5071
 idx = 800
 idx2 = 500
 alpha = 0.4
+t0 = 5071
 #parentdir = os.path.join(data_path, "output")
 #parentfile = cmf.utils.get_ketjubhs_in_dir(parentdir)[0]
-all_list = cmf.utils.get_ketjubhs_in_dir(os.path.join(data_path, "perturbations"))
+all_list = cmf.utils.get_ketjubhs_in_dir(data_path)
+#all_list = cmf.utils.get_ketjubhs_in_dir(os.path.join(data_path, "perturbations"))
 #all_list.insert(0, parentfile)
-all_list.insert(0, "testing")
+#all_list.insert(0, "testing")
 myr = ketjugw.units.yr * 1e6
 pc = ketjugw.units.pc
 kms = ketjugw.units.km_per_s
@@ -26,28 +28,28 @@ kms = ketjugw.units.km_per_s
 fig, ax = plt.subplots(2,2)
 for i, bhfile in enumerate(all_list):
     print(bhfile)
-    if i==0: continue
+    #if i==0: continue
     bh1, bh2, merged = cmf.analysis.get_bh_particles(bhfile)
     ls = "--" if i==0 else "-"
     if i==0:
-        continue
-        snaplist = cmf.utils.get_snapshots_in_dir(parentdir)
+        #continue
+        '''snaplist = cmf.utils.get_snapshots_in_dir(parentdir)
         snap_idx = cmf.analysis.snap_num_for_time(snaplist, perturbtime)
         snap = pygad.Snapshot(snaplist[snap_idx], physical=True)
-        t0 = cmf.general.convert_gadget_time(snap, new_unit="Myr")
+        t0 = cmf.general.convert_gadget_time(snap, new_unit="Myr")'''
         idx0 = np.argmax(bh1.t/myr > t0)+1
-        for j, (x,y) in enumerate(zip((0,2), (0,1))):
-            ax[j,0].scatter(snap.bh["pos"][0,x]*1e3, snap.bh["pos"][0,y]*1e3, marker="s", s=50, c="k", alpha=alpha, label=("Perturbation Applied" if j==0 else ""))
-            ax[j,0].scatter(snap.bh["pos"][1,x]*1e3, snap.bh["pos"][1,y]*1e3, marker="s", c="k", s=50, alpha=alpha)
+        for j, (x,y) in enumerate(zip((0,0), (1,2))):
+            #ax[j,0].scatter(snap.bh["pos"][0,x]*1e3, snap.bh["pos"][0,y]*1e3, marker="s", s=50, c="k", alpha=alpha, label=("Perturbation Applied" if j==0 else ""))
+            #ax[j,0].scatter(snap.bh["pos"][1,x]*1e3, snap.bh["pos"][1,y]*1e3, marker="s", c="k", s=50, alpha=alpha)
             ax[j,0].plot(bh1.x[idx0-idx:idx0+idx2,x]/pc, bh1.x[idx0-idx:idx0+idx2,y]/pc, ls=ls, c="k", label=("Parent" if j==0 else ""))
             ax[j,0].plot(bh2.x[idx0-idx:idx0+idx2,x]/pc, bh2.x[idx0-idx:idx0+idx2,y]/pc, ls=ls, c="k")
 
-            ax[j,1].scatter(snap.bh["vel"][0,x]*1e3, snap.bh["vel"][0,y]*1e3, marker="s", s=50, c="k", alpha=alpha)
-            ax[j,1].scatter(snap.bh["vel"][1,x]*1e3, snap.bh["vel"][1,y]*1e3, marker="s", c="k", s=50, alpha=alpha)
+            #ax[j,1].scatter(snap.bh["vel"][0,x]*1e3, snap.bh["vel"][0,y]*1e3, marker="s", s=50, c="k", alpha=alpha)
+            #ax[j,1].scatter(snap.bh["vel"][1,x]*1e3, snap.bh["vel"][1,y]*1e3, marker="s", c="k", s=50, alpha=alpha)
             ax[j,1].plot(bh1.v[idx0-idx:idx0+idx2,x]/kms, bh1.v[idx0-idx:idx0+idx2,y]/kms, ls=ls, c="k")
             ax[j,1].plot(bh2.v[idx0-idx:idx0+idx2,x]/kms, bh2.v[idx0-idx:idx0+idx2,y]/kms, ls=ls, c="k")
     else:
-        for j, (x,y) in enumerate(zip((0,2), (0,1))):
+        for j, (x,y) in enumerate(zip((0,0), (1,2))):
             l = ax[j,0].plot(bh1.x[:idx,x]/pc, bh1.x[:idx,y]/pc, ls=ls, markevery=[-1], marker="o", label=("Child" if j==0 and i==1 else ""))
             ax[j,0].plot(bh2.x[:idx,x]/pc, bh2.x[:idx,y]/pc, ls=ls, markevery=[-1], c=l[0].get_color(), marker="o")
 

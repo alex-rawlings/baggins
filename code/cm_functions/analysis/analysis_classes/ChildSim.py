@@ -79,7 +79,6 @@ class ChildSim(BHBinary, ChildSimData):
         )
         
         #get the stellar velocity dispersions
-        # TODO inside some radius?
         if self.verbose:
             print("> Determining stellar velocity dispersion")
         self.relaxed_stellar_velocity_dispersion = np.nanstd(self.main_snap.stars[self.galaxy_radius_mask]["vel"], axis=0)
@@ -253,8 +252,10 @@ class ChildSim(BHBinary, ChildSimData):
             self._energy_units = None
         return ratios, energy_bins
     
-    def _get_time_series_data(self, R=30):
+    def _get_time_series_data(self, R=30, tspan=0.1):
         R = pygad.UnitScalar(R, units="pc")
+        # average ketjugw quantities over a small interval
+        delta_idx = int(np.floor(0.5 * tspan/(self.orbit_params["t"][1] - self.orbit_params["t"][0])/myr))
         #cycle through all snaps extracting key values to create a time series
         bound_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][0]/myr)
         last_snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][-1]/myr)
@@ -266,6 +267,7 @@ class ChildSim(BHBinary, ChildSimData):
         num_J_lc = np.full_like(t, np.nan)
         bh_stars_J = {"bh":np.full((len(t),3), np.nan), "stars":np.full((len(t),3), np.nan)}
         num_vescs = np.full_like(t, np.nan)
+        prev_vescs = []
         m_min = min([self.orbit_params["m0"][0], self.orbit_params["m1"][0]])
         J_unit = self.main_snap["angmom"].units
         for i, j in enumerate(np.arange(bound_snap_idx, last_snap_idx+1)):
@@ -277,12 +279,14 @@ class ChildSim(BHBinary, ChildSimData):
             t[i] = convert_gadget_time(snap, new_unit="Myr")
             try:
                 idx = self._get_idx_in_vec(t[i], self.orbit_params["t"]/myr)
+                _a = np.nanmedian(self.orbit_params["a_R"][idx-delta_idx:idx+delta_idx])
+                _e = np.nanmedian(self.orbit_params["e_t"][idx-delta_idx:idx+delta_idx])
                 # set the watershed velocity
-                w[i] = 0.85 * np.sqrt(m_min / self.orbit_params["a_R"][idx]) / ketjugw.units.km_per_s
-                # determine loss cone J, _a is semimajor axis from ketjugw as 
-                # pygad scalar object
-                _a = pygad.UnitScalar(self.orbit_params["a_R"][idx]/ketjugw.units.pc, "pc")
-                J_lc[i] = loss_cone_angular_momentum(snap, _a)
+                w[i] = 0.85 * np.sqrt(m_min / _a) / ketjugw.units.km_per_s
+                # determine loss cone J, _a_pyagd is semimajor axis from 
+                # ketjugw as pygad scalar object
+                _a_pygad = pygad.UnitScalar(_a/ketjugw.units.pc, "pc")
+                J_lc[i] = loss_cone_angular_momentum(snap, _a_pygad, e=_e)
                 # determine the magnitude of the angular momentum
                 star_J_mag = pygad.utils.geo.dist(snap.stars[self.galaxy_radius_mask]["angmom"])
                 num_J_lc[i] = np.sum(star_J_mag < J_lc[i])
@@ -295,11 +299,13 @@ class ChildSim(BHBinary, ChildSimData):
             #determine angle difference in J
             theta[i], bh_stars_J["bh"][i,:], bh_stars_J["stars"][i,:] = angular_momentum_difference_gal_BH(snap, mask=self.galaxy_radius_mask)
             # determine the number of hypervelocity stars
-            vesc_func = escape_velocity(snap[self.galaxy_radius_mask])
-            vmag = pygad.utils.geo.dist(snap.stars[self.galaxy_radius_mask])
-            num_vescs[i] = np.sum(vmag>vesc_func(snap.stars[self.galaxy_radius_mask]["r"]))
+            num_vescs[i], prev_vescs = count_new_hypervelocity_particles(snap, prev=prev_vescs)
             # save memory
             snap.delete_blocks()
+        # ensure smoothing og ketjugw quantities is over an interval smaller 
+        # than the snapshot interval
+        if t[1]-t[0] > tspan:
+            warnings.warn(f"ketjugw quantities averaged over an interval {tspan:.2f} Myr that is larger than the snapshot interval {t[1]-t[0]:.2f}!")
         return pygad.UnitArr(t, units="Myr"), pygad.UnitArr(w, units="km/s"), v, theta, pygad.UnitArr(J_lc, units=J_unit), num_J_lc, bh_stars_J, num_vescs
     
     def _beta_r_helper(self):

@@ -252,7 +252,7 @@ def virial_ratio(snap):
     return np.abs(KK / W)
 
 
-def calculate_Hamiltonian(snap, chunk=1e5):
+def calculate_Hamiltonian(snap, chunk=1e5, return_parts=False):
     """
     Determine the total Hamiltonian of a system. Requires that ketju has been
     compiled with the:
@@ -265,11 +265,17 @@ def calculate_Hamiltonian(snap, chunk=1e5):
         snapshot to analyse
     chunk : float,int, optional
         perform summation in chunks of this size for efficiency, by default 1e5
+    return_parts : bool
+        return KE and PE individually, by default False
 
     Returns
     -------
     : float
         total energy (the Hamiltonian)
+    KE : float, optional
+        kinetic energy
+    PE : flot, optional
+        potential energy
     """
     chunk = int(chunk)
     total_N = snap["pos"].shape[0]
@@ -281,7 +287,10 @@ def calculate_Hamiltonian(snap, chunk=1e5):
         vel_mag = pygad.UnitArr(vel_mag, "km/s")
         KE += np.sum(0.5 * snap["mass"][start:end]*vel_mag**2)
         PE += np.sum(snap["pot"][start:end]*snap["mass"][start:end])
-    return KE+PE
+    if return_parts:
+        return KE+PE, KE, PE
+    else:
+        return KE+PE
 
 
 def determine_if_merged(snap):
@@ -828,11 +837,13 @@ def angular_momentum_difference_gal_BH(snap, mask=None):
     return theta, L_bh, L_gal
 
 
-def loss_cone_angular_momentum(snap, a, kappa=1):
+def loss_cone_angular_momentum(snap, a, e=0):
     """
-    Calculate the approximate angular momentum of the loss cone, as from 
+    Calculate the approximate angular momentum of the loss cone, inspired from 
     Gualandris et al. 2017, but multiplied by the stellar mass 
     https://ui.adsabs.harvard.edu/abs/2017MNRAS.464.2301G/abstract 
+    Note this has been derived from Kepler orbit so eccentricity is accounted 
+    for
 
     Parameters
     ----------
@@ -840,8 +851,8 @@ def loss_cone_angular_momentum(snap, a, kappa=1):
         snapshot to analyse
     a : pygad.UnitArr
         BH Binary semimajor axis [pc]
-    kappa : float, optional
-        dimensionless constant, by default 1
+    e : float, optional
+        BH Binary eccentricity
 
     Returns
     -------
@@ -853,7 +864,7 @@ def loss_cone_angular_momentum(snap, a, kappa=1):
     starmass = pygad.UnitScalar(snap.stars["mass"][0], snap.stars["mass"].units)
     Mbin = snap.bh["mass"].sum()
     const_G = const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
-    J = np.sqrt(2 * const_G * Mbin * kappa * a) * starmass
+    J = np.sqrt(const_G * Mbin * a * ((1-e)**2 + 2*(1-e))) * starmass
     return J.in_units_of(J_unit)
 
 

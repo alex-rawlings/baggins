@@ -248,11 +248,11 @@ if __name__ == "__main__":
                 continue
         gradplotM.plot(logcolour=True)
         gradplotNM.plot(logcolour=True)
-        gradplotM.add_cbar(label="Age/Myr")
-        gradplotNM.add_cbar(label="Age/Myr")
-        ax[0].set_title("Merged")
-        ax[1].set_title("Not Merged")
-        ax[1].set_xlabel("Loss Cone J")
+        gradplotM.add_cbar(label="Loss Cone J")
+        gradplotNM.add_cbar(label="Loss Cone J")
+        ax[0].text(0.85, 0.9, "Merged", transform=ax[0].transAxes, horizontalalignment="right")
+        ax[1].text(0.85, 0.9, "Not Merged", transform=ax[1].transAxes, horizontalalignment="right")
+        ax[1].set_xlabel("Age/Myr")
         ax[0].set_ylabel("Stars in Loss Cone")
         ax[1].set_ylabel("Stars in Loss Cone")
         #ax[0].set_ylabel("Diff. J of BHB and Stars")
@@ -308,37 +308,39 @@ if __name__ == "__main__":
         plt.show()
 
 
-    if False:
-        radcut = 30
-        snaplist = cmf.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/C-D-3.0-0.005/perturbations/006/output")
+    if True:
+        radcut = 600
+        snaplist = cmf.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/C-D-3.0-0.005/perturbations/001/output")
         escapers = np.full_like(snaplist, np.nan, dtype=float)
         for i, snapfile in enumerate(snaplist):
-            if i > 8: break
+            if i < 50: continue
+            fig, ax = plt.subplots(1,1)
             snap = pygad.Snapshot(snapfile, physical=True)
-            print(snap.stars["ID"])
-            quit()
             snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
             snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
             ballmask = pygad.BallMask(pygad.UnitScalar(radcut, "kpc"))
             vmag = pygad.utils.geo.dist(snap.stars[ballmask]["vel"])
             r = snap.stars[ballmask]["r"]
 
-            vesc_fun = cmf.analysis.escape_velocity(snap[ballmask])
+            '''vesc_fun = cmf.analysis.escape_velocity(snap[ballmask])
             vesc = vesc_fun(r)
-            escapers[i] = np.sum(vmag>vesc)
+            escapers[i] = np.sum(vmag>vesc)'''
             
-            '''plt.hist2d(r, vmag, bins=(np.arange(0, radcut, 0.2), np.arange(0, 4000, 40)), norm=colors.LogNorm(vmin=0.1, clip=True))
-            plt.xlabel("r/kpc")
-            plt.ylabel("|v|/km/s")
+            p = ax.hist2d(r, vmag, bins=(np.arange(0, radcut, 2), np.arange(0, 4000, 40)), norm=colors.LogNorm(vmin=0.1, clip=True))
+            ax.set_xlabel("r/kpc")
+            ax.set_ylabel("|v|/km/s")
 
             # escape velocity
-            vesc = cmf.analysis.escape_velocity(snap, mask=ballmask)
+            vesc = cmf.analysis.escape_velocity(snap)
             r_ = np.linspace(1e-1, radcut*0.99, 300)
-            plt.plot(r_, vesc(r_), c="tab:red")
+            ax.plot(r_, vesc(r_), c="tab:red", label=r"$v_\mathrm{esc}$")
             #plt.hist(vmag, bins=np.arange(0, 3500, 100), histtype="step")
             #plt.yscale("log")
+            plt.colorbar(p[3], label="Count")
+            ax.text(0.02, 0.955, f"{cmf.general.convert_gadget_time(snap):.2f} Gyr", ha="left", bbox={"ec":"k", "fc":"w"}, transform=ax.transAxes)
+            ax.legend()
             plt.show()
-            quit()'''
+            quit()
         
         plt.plot(escapers, "-o")
         plt.show()

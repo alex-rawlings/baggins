@@ -21,6 +21,10 @@ rng = np.random.default_rng(pfv.seed)
 snaplist = cmf.utils.get_snapshots_in_dir(os.path.join(pfv.full_save_location, "output"))
 pfv.perturb_snap_idx = cmf.analysis.snap_num_for_time(snaplist, pfv.perturbTime, units="Gyr")
 snap = pygad.Snapshot(snaplist[pfv.perturb_snap_idx], physical=True)
+bhsep = pygad.utils.geo.dist(snap.bh["pos"][0,:], snap.bh["pos"][1,:])
+print(f"BH separation when perturbed: {bhsep[0]:.2f} {bhsep.units}")
+if bhsep < pfv.positionPerturb:
+    raise ValueError(f"BH separation {bhsep[0]:.2f} is less than the perturbation scale {pfv.positionPerturb:.2f}!")
 
 #get com motions
 star_id_masks = cmf.analysis.get_all_id_masks(snap)
