@@ -83,8 +83,8 @@ class StaticPotential:
     
     def set_up_kepler(self, m1, m2, a0, e0, l0=np.pi):
         p1, p2 = ketjugw.keplerian_orbit(m1, m2, a0, e0, l0, 0)
-        self.add_particle(m1, p1.x.flatten(), p1.v.flatten())
-        self.add_particle(m2, p2.x.flatten(), p2.v.flatten())
+        self.add_particle(m1, p1.x.flatten()/pc, p1.v.flatten()/km_per_s)
+        self.add_particle(m2, p2.x.flatten()/pc, p2.v.flatten()/km_per_s)
         for p in self.particles: p.print()
     
     def accel_from_gal(self, pos):
@@ -100,16 +100,16 @@ class StaticPotential:
         #return -v / (5e8*yr) * 1/(1+np.exp(-sep/(1200*pc)))
         return -v / (5e7*yr) * 1/(1+np.exp(-sep/(400*pc)))
     
-    def accel(self, pos, vel, df=True, gf=True):
+    def accel(self, pos, vel, df=False, gf=False):
         assert self.particle_count == 2
         rv = pos[:3] - pos[3:]
         r = np.linalg.norm(rv)
         accel0 = -self.particles[0].mass * rv/r**3
-        accel1 = self.particles[0].mass * rv/r**3
+        accel1 = self.particles[1].mass * rv/r**3
         if df:
             # use dynamical friction
-            accel0 += self.dyn_fric(vel[:3], r)
-            accel1 += self.dyn_fric(vel[3:], r)
+            accel0 += self.dyn_fric(vel[:3], np.linalg.norm(pos[:3]))
+            accel1 += self.dyn_fric(vel[3:], np.linalg.norm(pos[3:]))
         if gf:
             # use background acceleration from stars
             accel0 += self.accel_from_gal(pos[:3])
@@ -118,7 +118,7 @@ class StaticPotential:
     
     def motion_derivative(self, t, posvel):
         idx = self.particle_count * 3
-        return np.append(posvel[idx:], self.accel(posvel[:idx], posvel[idx:]))
+        return np.append(posvel[idx:], self.accel(pos=posvel[:idx], vel=posvel[idx:]))
     
     def integrate_orbit(self):
         print("Integrating orbits...")
@@ -146,7 +146,7 @@ class StaticPotential:
                                 xs, vs
                                 )
     
-    def plot(self, figax1=None, figax2=None, label=None):
+    def plot(self, figax1=None, figax2=None, figax3=None, label=None, pn=0):
         times, vals = self.integrate_orbit()
         bh1 = self._make_ketju_particle(0, times, vals)
         bh2 = self._make_ketju_particle(1, times, vals)
@@ -175,12 +175,27 @@ class StaticPotential:
         else:
             bind_figax2 = False
             ax2 = figax2[1]
-        bbh = ketjugw.find_binaries([bh1,bh2], remove_unbound_gaps=True)
+        if figax3 is None:
+            bind_figax3 = True
+            fig3, ax3 = plt.subplots(1,1)
+            ax3.set_xlabel("t/yr")
+            ax3.set_ylabel("E")
+            ax3.axhline(0, c="k", ls=":", alpha=0.7)
+        else:
+            bind_figax3 = False
+            ax3 = figax3[1]
+        bbh = ketjugw.find_binaries([bh1,bh2], remove_unbound_gaps=False)
         try:
-            pars = ketjugw.orbital_parameters(*bbh[(0,1)])
+            energy = ketjugw.orbital_energy(bh1, bh2)
+            #energy = ketjugw.orbital_energy(*bbh[(0,1)])
+            pars = ketjugw.orbital_parameters(*bbh[(0,1)], PN_level=pn)
             ax2[0].semilogy(pars["t"]/yr, pars["a_R"]/pc, alpha=0.7)
             ax2[1].plot(pars["t"]/yr, pars["e_t"], alpha=0.7, label=label)
             ax2[-1].semilogy(pars["t"]/yr, 1-pars["e_t"], alpha=0.7, label=label)
+            ax3.plot(bh1.t/yr, energy)
+            #ax3.plot(bbh[(0,1)][0].t/yr, energy)
+            energy_positive = energy > 0
+            #ax3.scatter(bbh[(0,1)][0].t[energy_positive]/yr, energy[energy_positive])
         except KeyError:
             print("Binary not found")
             print(bbh)
@@ -188,28 +203,33 @@ class StaticPotential:
             pars = None
         if bind_figax1: figax1 = [fig1, ax1]
         if bind_figax2: figax2 = [fig2, ax2]
-        return figax1, figax2
+        if bind_figax3: figax3 = [fig3, ax3]
+        return figax1, figax2, figax3
 
 
 if __name__ == "__main__":
     Mgal = 1e11
-    ey = 0.3
+    ey = 0.2
     ez = 0.5
     gamma = 1.2
     kepler_initial_e = 0.2
-    perturb_crd = 5
+    perturb_crd = 0
 
     gal = StaticPotential(gamma, ey, ez, Mgal)
-    gal.times = [1e4, 4.5e8]
+    gal.times = [1e4, 1.0e8]
     if True:
         # set up BHs on Kepler orbit
-        gal.set_up_kepler(1e9, 1e9, 200, kepler_initial_e)
+        # pos in pc, mass in Msun
+        m1 = 1e9
+        m2 = 1e9
+        Rs = 2*(m1+m2)
+        gal.set_up_kepler(m1, m2, 100*pc, kepler_initial_e, np.pi/2)
     else:
         gal.add_particle(1e9, [200, 100, 10], [20, 10, 0])
         gal.add_particle(1e9, [-200, -100, -10], [-20, -10, 0])
-    figax1, figax2 = gal.plot(label="0.00")
+    figax1, figax2, figax3 = gal.plot(label="0.00")
 
-    if True:
+    if False:
         # perturb
         perturbs = (-10.0, -5.0, 5.1, 10.1)
         """if perturb_crd < 3:
@@ -219,14 +239,15 @@ if __name__ == "__main__":
         for i, xperturb in enumerate(perturbs):
             print(f"\nPerturbation: {i}\n---------------")
             gal.perturb_particle(0, perturb_crd, xperturb)
-            gal.plot(figax1=figax1, figax2=figax2, label=f"{xperturb:.1f}")
+            gal.plot(figax1=figax1, figax2=figax2, figax3=figax3, label=f"{xperturb:.1f}")
         figax2[1][1].legend()
     perturb_crd_str = ["x", "y", "z", "vx", "vy", "vz"]
     fig_name_base = f"scatter/S-{gal.ey:.1f}-{gal.ez:.1f}-e-{kepler_initial_e:.1f}-crd-{perturb_crd_str[perturb_crd]}"
     figax1[0].suptitle(fig_name_base.split("/")[-1])
     figax2[0].suptitle(fig_name_base.split("/")[-1])
-    figax1[0].savefig(os.path.join(cmf.FIGDIR, f"{fig_name_base}-orbit.png"))
-    figax2[0].savefig(os.path.join(cmf.FIGDIR, f"{fig_name_base}-pars.png"))
+    #figax1[0].savefig(os.path.join(cmf.FIGDIR, f"{fig_name_base}-orbit.png"))
+    #figax2[0].savefig(os.path.join(cmf.FIGDIR, f"{fig_name_base}-pars.png"))
+    plt.show()
 
 
 
