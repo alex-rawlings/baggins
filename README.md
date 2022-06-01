@@ -10,13 +10,19 @@ Helsinki Theoretical Astrophyiscs Group
 your `~/.bashrc` profile to load the necessary functions as a normal 
 module  
 2. The required python packages are given in the file `./code/requirements.txt`.
-To install the required packages: `python -m pip install -r requirements.txt`
+To install the required packages: `python -m pip install -r requirements.txt`. 
+Note that `pygad` will probably need to be installed separately: easiest way is to clone it from the group BitBucket page and 
+```
+cd pygad
+pip install . -e
+```
+as described in the `pygad` docs.
+Also need to install `ketjugw`, `voronoi-binning-cpp`, `merger-ic-generator` from the  group BitBucket, and add these modules to your `$PYTHONPATH` in the `~/.bashrc` file.  
+3. Edit the necessary fields in `./code/cm_functions/env_params.json` that are listed under `user_settings` (for e.g. directory where to save the figures to).  
 
 ## Directory Organisation  
 * all code (functions, scripts, classes, etc.) required to perform the 
 simulation initialisations and analysis is located in `./code/`
-* data (expected to be) from the output is saved in `./data/`, but is 
-not uploaded to the BitBucket
 * the paper(s) pertaining to this simulation set can be found in `./
 paper/`, with each paper section as a separate file in `./paper/sections/`
 * parameter files for all simulations can be found in `./parameters/`. 
@@ -45,7 +51,7 @@ bound.
 using `bh_perturb_distribution.py` and `brownian_rotate_fit_normal.py` in 
 `./code/analysis_scripts`. Ensure that only those times where the galaxy is
 relaxed is included in the latter analysis, by limiting the distribution fits
-to a time `T` after the system is stable with the `-t T`.  
+to a time `T` after the system is stable with the `-t T` flag.  
 7. Identify the time when the BHs form a bound binary using 
 `check_merger_progress.py <file> -b` in the directory `./code/analysis_scripts`.
 This will produce a plot showing the radial separation of the binaries, as well
@@ -62,8 +68,8 @@ paramfile` options may be changed here too (especially $\eta=0.002$).
 estimated using `hardening_rates.py` in `./code/analysis_scripts`. If the BHs
 have not merged within the upper limit set by the analytical expectation, the
 run may need to be terminated.  
-10. Perform relevant analysis of the merger remnant and the BH binary
-properties.  
+10. Datacubes of the key quantities for both the SMBH binary, and the galaxy properties, can be created to facilitate later analysis.
+This done using `make_child_datacubes.py` in `codes/analysis_scripts`.  
 
 ## A Brief Note on the Scripts  
 A detailed description of each initialisation and analysis script is not 

@@ -1,12 +1,20 @@
 import os
 import sys
 from matplotlib import rc_file, rcdefaults
+import subprocess
+import json
 
-__all__ = ["this_dir", "home_dir", "figure_dir", "username"]
+
+__all__ = ["this_dir", "home_dir", "figure_dir", "date_format", "username", "git_hash"]
+
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.path.expanduser("~")
-figure_dir = os.path.join(home_dir, "figures")
+env_params_file = os.path.join(this_dir, "env_params.json")
+with open(env_params_file, "r") as f:
+    env_params = json.load(f)
+figure_dir = os.path.join(home_dir, env_params["user_settings"]["figure_dir"])
+date_format = env_params["user_settings"]["date_format"]
 
 username = home_dir.rstrip("/").split("/")[-1]
 
@@ -16,6 +24,20 @@ os.makedirs(figure_dir, exist_ok=True)
 #set the matplotlib settings
 rcdefaults()
 rc_file(os.path.join(this_dir, "plotting/matplotlibrc"))
+
+# get the git hash
+# only set git hash if in the collisionless-merger-sample repo
+if "collisionless-merger-sample" in os.getcwd():
+    # the standard git describe command, save git hash to json file for use 
+    # of cm_functions outside the collisionless-merger-sample repo
+    git_hash = subprocess.run(["git", "describe", "--always", "--long", "--all"], check=True, capture_output=True).stdout.decode().rstrip("\n")
+    env_params["internal_settings"]["git_hash"] = git_hash
+    # make updates to env_params.json file
+    with open(env_params_file, "w") as f:
+        json.dump(env_params, f, indent=4)
+else:
+    print("Operating outside the git repo. Git hash read from file.")
+    git_hash = env_params["internal_settings"]["git_hash"]
 
 
 #make sure we are using a high enough version of python

@@ -1,11 +1,11 @@
 import datetime
 import warnings
 import pygad
+from ...env_config import date_format
 
 
-__all__ = ["date_str", "BHBinaryData"]
+__all__ = ["BHBinaryData"]
 
-date_str = "%Y-%m-%d %H:%M:%S"
 
 class BHBinaryData:
     def __init__(self) -> None:
@@ -248,6 +248,6 @@ class BHBinaryData:
     def add_to_log(self, msg):
         #add a message to the log
         now = datetime.datetime.now()
-        now = now.strftime(date_str)
+        now = now.strftime(date_format)
         self._log += (now+": "+msg+"\n")
 

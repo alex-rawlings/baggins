@@ -382,12 +382,13 @@ def enclosed_mass_radius(snap, binary=True, mass_frac=1):
         _r = _find_radius_for_mass(mass_frac*mass_bh, snap.stars["mass"][0], snap.stars["pos"], centre=centre)
         r[massive_ID] = _r
     else:
-        #we want the influence radius for each BH. No masking is done to separate the stars to their original galaxy
+        #we want the influence radius for each BH. No masking is done to 
+        # separate the stars to their original galaxy
         bhids = snap.bh["ID"]
         bhids.sort()
         for id in bhids:
             bh_id_mask = pygad.IDMask(id)
-            _r = _find_radius_for_mass(mass_frac*snap.bh[bh_id_mask]["mass"][0], snap.stars["mass"][0], snap.stars["pos"], centre=snap.bh[bh_id_mask]["pos"][0])
+            _r = _find_radius_for_mass(mass_frac*snap.bh[bh_id_mask]["mass"][0], snap.stars["mass"][0], snap.stars["pos"], centre=snap.bh[bh_id_mask]["pos"].flatten())
             r[id] = _r
     return r
 

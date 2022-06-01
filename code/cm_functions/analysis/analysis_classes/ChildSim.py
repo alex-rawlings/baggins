@@ -7,7 +7,7 @@ import numpy as np
 import pygad
 import ketjugw
 
-from . import BHBinary, ChildSimData, myr, date_str
+from . import BHBinary, ChildSimData, myr
 from ..analyse_snap import *
 from ..general import beta_profile, snap_num_for_time
 from ..masks import get_binding_energy_mask
@@ -16,7 +16,7 @@ from ...general import convert_gadget_time
 from ...literature import fit_Terzic05_profile
 from ...mathematics import get_histogram_bin_centres, spherical_components
 from ...utils import read_parameters
-from ...env_config import username
+from ...env_config import username, date_format
 
 __all__ = ["ChildSim"]
 
@@ -416,9 +416,9 @@ class ChildSim(BHBinary, ChildSimData):
             meta = f.create_group("meta")
             now = datetime.datetime.now()
             self._add_attr(meta, "merger_name", self.merger_name)
-            self._add_attr(meta, "created", now.strftime(date_str))
+            self._add_attr(meta, "created", now.strftime(date_format))
             self._add_attr(meta, "created_by", username)
-            self._add_attr(meta, "last_accessed", now.strftime(date_str))
+            self._add_attr(meta, "last_accessed", now.strftime(date_format))
             self._add_attr(meta, "last_user", username)
             meta.create_dataset("logs", data=self._log)
 

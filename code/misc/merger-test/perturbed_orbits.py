@@ -11,8 +11,8 @@ if False:
 else:
     data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05"
     perturbtime = 5071
-idx = 800
-idx2 = 500
+idx = 4500
+idx2 = -1000
 alpha = 0.4
 t0 = 5071
 #parentdir = os.path.join(data_path, "output")
@@ -37,17 +37,18 @@ for i, bhfile in enumerate(all_list):
         snap_idx = cmf.analysis.snap_num_for_time(snaplist, perturbtime)
         snap = pygad.Snapshot(snaplist[snap_idx], physical=True)
         t0 = cmf.general.convert_gadget_time(snap, new_unit="Myr")'''
-        idx0 = np.argmax(bh1.t/myr > t0)+1
+        idx0 = np.argmax(bh1.t/myr > t0)
+        idxs = np.r_[idx0-idx:idx0+idx2]
         for j, (x,y) in enumerate(zip((0,0), (1,2))):
             #ax[j,0].scatter(snap.bh["pos"][0,x]*1e3, snap.bh["pos"][0,y]*1e3, marker="s", s=50, c="k", alpha=alpha, label=("Perturbation Applied" if j==0 else ""))
             #ax[j,0].scatter(snap.bh["pos"][1,x]*1e3, snap.bh["pos"][1,y]*1e3, marker="s", c="k", s=50, alpha=alpha)
-            ax[j,0].plot(bh1.x[idx0-idx:idx0+idx2,x]/pc, bh1.x[idx0-idx:idx0+idx2,y]/pc, ls=ls, c="k", label=("Parent" if j==0 else ""))
-            ax[j,0].plot(bh2.x[idx0-idx:idx0+idx2,x]/pc, bh2.x[idx0-idx:idx0+idx2,y]/pc, ls=ls, c="k")
+            ax[j,0].plot(bh1.x[idxs,x]/pc, bh1.x[idxs,y]/pc, ls=ls, c="k", label=("Parent" if j==0 else ""), marker="o", markevery=[-1])
+            ax[j,0].plot(bh2.x[idxs,x]/pc, bh2.x[idxs,y]/pc, ls=ls, c="k", marker="o", markevery=[-1])
 
             #ax[j,1].scatter(snap.bh["vel"][0,x]*1e3, snap.bh["vel"][0,y]*1e3, marker="s", s=50, c="k", alpha=alpha)
             #ax[j,1].scatter(snap.bh["vel"][1,x]*1e3, snap.bh["vel"][1,y]*1e3, marker="s", c="k", s=50, alpha=alpha)
-            ax[j,1].plot(bh1.v[idx0-idx:idx0+idx2,x]/kms, bh1.v[idx0-idx:idx0+idx2,y]/kms, ls=ls, c="k")
-            ax[j,1].plot(bh2.v[idx0-idx:idx0+idx2,x]/kms, bh2.v[idx0-idx:idx0+idx2,y]/kms, ls=ls, c="k")
+            ax[j,1].plot(bh1.v[idxs,x]/kms, bh1.v[idxs,y]/kms, ls=ls, c="k")
+            ax[j,1].plot(bh2.v[idxs,x]/kms, bh2.v[idxs,y]/kms, ls=ls, c="k")
     else:
         for j, (x,y) in enumerate(zip((0,0), (1,2))):
             l = ax[j,0].plot(bh1.x[:idx,x]/pc, bh1.x[:idx,y]/pc, ls=ls, markevery=[-1], marker="o", label=("Child" if j==0 and i==1 else ""))
@@ -63,4 +64,5 @@ ax[1,1].set_xlabel("vx/km/s")
 ax[0,1].set_ylabel("vz/km/s")
 ax[1,1].set_ylabel("vy/km/s")
 plt.suptitle(r"$t\approx {:.3f}$ Gyr".format(perturbtime/1e3))
+cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "merger-test/AC-030-0050-perturbs.png"))
 plt.show()
