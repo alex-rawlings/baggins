@@ -97,6 +97,13 @@ if __name__ == "__main__":
         attrs = ["r_bound_ecc", "r_hard_ecc", "merger_name"]
         extract_and_plot_point(attrs)
     
+    if True:
+        print("Call {}".format(call))
+        call += 1
+        attrs = ["r_hard_time", "K", "merger_name"]
+        extract_and_plot_point(attrs)
+        plt.show()
+    
     if False:
         print("Call {}".format(call))
         call += 1
@@ -308,7 +315,7 @@ if __name__ == "__main__":
         plt.show()
 
 
-    if True:
+    if False:
         radcut = 600
         snaplist = cmf.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/C-D-3.0-0.005/perturbations/001/output")
         escapers = np.full_like(snaplist, np.nan, dtype=float)

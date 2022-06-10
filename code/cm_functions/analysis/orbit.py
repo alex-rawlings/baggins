@@ -176,7 +176,7 @@ def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
     t0 : float
         time to begin the fit (must be same units as t)
     tspan : float
-        uration over which the fit should be performed
+        duration over which the fit should be performed
     return_idxs : bool, optional
         return the array indices corresponding to t0 and t0+tspan, by default 
         False
