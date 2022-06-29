@@ -6,16 +6,17 @@ import pygad
 import ketjugw
 
 
-data_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.1/perturbations/000/output/"
+data_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/perturbations/000/output/"
 snaplist = cmf.utils.get_snapshots_in_dir(data_dir)
-ketjufile = os.path.join(data_dir, "ketju_bhs_cp.hdf5")
-bh1, bh2, merged = cmf.analysis.get_bound_binary(ketjufile)
-orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
+#ketjufile = os.path.join(data_dir, "ketju_bhs_cp.hdf5")
+#bh1, bh2, merged = cmf.analysis.get_bound_binary(ketjufile)
+#orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
 
 Myr = ketjugw.units.yr * 1e6
 kpc = ketjugw.units.pc * 1e3
 
 g_rho_sigma = {"t": np.full_like(snaplist, np.nan, dtype=float),
+               "r_infl": np.full_like(snaplist, np.nan, dtype=float),
                "Gps": np.full_like(snaplist, np.nan, dtype=float)}
 
 bh_binary = cmf.analysis.BHBinary(ketjufile, snaplist, 15)

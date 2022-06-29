@@ -14,4 +14,5 @@
   scripts are methods of a class  
 - [ ] Converter for parameter files to .yml or .json for portability  
 - [x] add metadata to figures produced  
-- [] define a top-level data directory so not so many /scratch/pjohanss/ stuff in parameter files  
+- [x] define a top-level data directory so not so many /scratch/pjohanss/ stuff in parameter files  
+- [] check timestamp of copied keju_bhs file, copy only if necessary in get_ketjubhs_in_dir()

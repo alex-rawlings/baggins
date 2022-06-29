@@ -17,9 +17,8 @@ transformed data {
     real t_sigma = sd(t);
 
     // rescale and recentre data
-    vector[N_tot] inv_a = 1 ./ a;
-    vector[N_tot] inv_a_recentre = inv_a - mean(inv_a);
-    vector[N_tot] t_transformed = (t - mean(t)) / t_sigma;
+    vector[N_tot] inv_a = inv(a);
+    vector[N_tot] t_transformed = (t - t_mean) / t_sigma;
 
 }
 
@@ -38,26 +37,17 @@ parameters {
 
 transformed parameters {
     vector[N_tot] inv_a_true;
-    vector[N_child] HGp_s;
-    // unscaled value
-    real HGp_s_mu;
-    real<lower=0> HGp_s_tau;
 
     // connection between 1/a and t
     inv_a_true = HGp_s_scaled[child_id] .* t_transformed + c[child_id];
-
-    // determine unscaled quantities
-    HGp_s[child_id] = HGp_s_scaled[child_id] / t_sigma;
-    HGp_s_mu = HGp_s_mu_scaled / t_sigma;
-    HGp_s_tau = HGp_s_tau_scaled / t_sigma;
 }
 
 model {
     // priors
     HGp_s_mu_scaled ~ normal(0, 1);
-    HGp_s_tau_scaled ~ cauchy(0, 5);
+    HGp_s_tau_scaled ~ cauchy(0, 1);
     c_mu ~ normal(0, 1);
-    c_tau ~ cauchy(0, 5);
+    c_tau ~ cauchy(0, 1);
     sigma ~ cauchy(0, 1);
 
     // connection to latent parameters
@@ -65,5 +55,25 @@ model {
     c ~ normal(c_mu, c_tau);
 
     // likelihood
-    inv_a_recentre ~ normal(inv_a_true, sigma);
+    inv_a ~ normal(inv_a_true, sigma);
+}
+
+generated quantities {
+    // unscaled value
+    vector[N_child] HGp_s;
+    real HGp_s_mu;
+    real<lower=0> HGp_s_tau;
+
+    // determine unscaled quantities
+    HGp_s[child_id] = HGp_s_scaled[child_id] / t_sigma;
+    HGp_s_mu = HGp_s_mu_scaled / t_sigma;
+    HGp_s_tau = HGp_s_tau_scaled / t_sigma;
+
+    // posterior predictive values
+    vector[N_tot] inv_a_posterior;
+
+    // perform posterior predictive check
+    inv_a_posterior = normal_rng(HGp_s_mu_scaled, HGp_s_tau_scaled) * t_transformed + normal_rng(c_mu, c_tau);
+    //inv_a_posterior = normal_rng(HGp_s_scaled[child_id] .* t_transformed + c[child_id], sigma);
+
 }

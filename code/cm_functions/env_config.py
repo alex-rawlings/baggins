@@ -5,7 +5,7 @@ import subprocess
 import json
 
 
-__all__ = ["this_dir", "home_dir", "figure_dir", "date_format", "username", "git_hash"]
+__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "username", "git_hash"]
 
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -14,6 +14,7 @@ env_params_file = os.path.join(this_dir, "env_params.json")
 with open(env_params_file, "r") as f:
     env_params = json.load(f)
 figure_dir = os.path.join(home_dir, env_params["user_settings"]["figure_dir"])
+data_dir = env_params["user_settings"]["data_dir"]
 date_format = env_params["user_settings"]["date_format"]
 
 username = home_dir.rstrip("/").split("/")[-1]
