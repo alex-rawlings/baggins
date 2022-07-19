@@ -629,7 +629,7 @@ def shell_com_motions_each_galaxy(snap, separate_galaxies=True, shell_kw={"start
     return xcoms, vcoms, global_xcom, global_vcom
 
 
-def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75], r_edges=np.geomspace(2e-1, 20, 51)):
+def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75], r_edges=np.geomspace(2e-1, 20, 51), rng=None):
     """
     Determine projected quantities of:
         - half mass radius,
@@ -656,6 +656,8 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
         default [0.25, 0.75]
     r_edges : array-like, optional
         edges of radial bins for density profile, by default np.geomspace(2e-1, 20, 51)
+    rng : np.random._generator.Generator, optional
+        random number generator, by default None (creates a new instance)
 
     Returns
     -------
@@ -685,15 +687,14 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
     vsig = dict.fromkeys(snap.bh["ID"], {"low":0, "estimate":0, "high":0})
     rho = dict.fromkeys(snap.bh["ID"], {"low":0, "estimate":0, "high":0})
     #set up rng and distributions 
-    rng = np.random.default_rng(set_seed_time())
+    if rng is None:
+        rng = np.random.default_rng(set_seed_time())
     rot_axis = rng.uniform(-1, 1, (obs, 3))
     rot_angle = rng.uniform(0, np.pi, obs)
     for j, bhid in enumerate(Re.keys()):
         if masks is None:
             centre_guess = pygad.analysis.center_of_mass(snap.bh)
             subsnap = getattr(snap, family)
-            if j > 0:
-                break
         else:
             centre_guess = snap.bh[snap.bh["ID"]==bhid]["pos"]
             subsnap = snap[masks[bhid]]
@@ -703,17 +704,18 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, q=[0.25, 0.75
         #temporary arrays to store data
         Re_temp = np.full(obs*3, np.nan)
         vvar_temp = np.full(obs*3, np.nan)
-        rho_temp =  np.full((obs*3, len(r_edges)-1), np.nan)
+        rho_temp = np.full((obs*3, len(r_edges)-1), np.nan)
         for i in range(obs):
-            rot = pygad.transformation.rot_from_axis_angle(rot_axis[i], rot_angle[i])
-            rot.apply(subsnap)
+            # rotation axis relative to centre, not origin!
+            rot = pygad.transformation.rot_from_axis_angle(rot_axis[i]-centre, rot_angle[i])
+            rot.apply(subsnap, total=True)
             for proj in range(3):
                 linear_idx = 3*i+proj
                 Re_temp[linear_idx] = pygad.analysis.half_mass_radius(subsnap, center=centre, proj=proj)
                 #we want vel dispersion within Re
                 ball_mask = pygad.BallMask(Re_temp[linear_idx], center=centre)
                 vvar_temp[linear_idx] = pygad.analysis.los_velocity_dispersion(subsnap[ball_mask], proj=proj)**2
-                rho_temp[linear_idx, :] = pygad.analysis.profile_dens(subsnap, qty="mass", r_edges=r_edges, center=centre)
+                rho_temp[linear_idx, :] = pygad.analysis.profile_dens(subsnap, qty="mass", r_edges=r_edges, center=centre, proj=proj)
         subsnap.delete_blocks()
         for qi, qkey in zip(q, Re[bhid].keys()):
             Re[bhid][qkey] = pygad.UnitArr(np.nanquantile(Re_temp, qi), units=snap["pos"].units)

@@ -55,7 +55,7 @@ if args.extract:
     extract_data(args.obs_file)
 
 # set up Stan Model
-my_stan = cmf.analysis.StanModel("stan/quinlan_k_2.stan", "stan/quinlan_prior_k_2.stan", args.obs_file, figname_base="stats/quinlan_stan/quinlan", random_select_obs={"num":200, "group":"name"})
+my_stan = cmf.analysis.StanModel("stan/quinlan_k_2.stan", "stan/quinlan_prior_k_2.stan", args.obs_file, figname_base="stats/quinlan_stan/quinlan", random_select_obs={"num":20, "group":"name"})
 
 # do data transformations
 my_stan.transform_obs("a", "inv_a", lambda a:1/a)
@@ -73,6 +73,7 @@ def _delta_e_maker():
 
 my_stan.obs["delta_e"] = _delta_e_maker()
 
+my_stan.categorical_label = "name"
 print(my_stan.obs)
 
 """fig, ax = plt.subplots(1,1)
@@ -117,7 +118,7 @@ else:
         a = my_stan.obs.loc[:, "a"],
         delta_e = my_stan.obs.loc[:, "delta_e"]
     )
-    my_stan.sample_model(data=data, save=True)
+    my_stan.sample_model(data=data)
     my_stan.parameter_plot(var_names=["HGp_s_mu", "HGp_s_tau", "K_mu", "K_tau", "sigma_inv_a", "sigma_e"])
     fig, ax = plt.subplots(1,1)
     ax.set_xlabel("t/Myr")

@@ -13,11 +13,21 @@ df = pd.read_pickle(args.obs_file)
 
 print(df)
 
+def insetax(ax, x, y, bounds, xlim, ylim):
+     # set up the inset axis
+    axins = ax.inset_axes(bounds)
+    ax.scatter(x, y, marker=".")
+    axins.scatter(x, y, marker=".")
+    axins.set_xlim(xlim)
+    axins.set_ylim(ylim)
+    ax.indicate_inset_zoom(axins, linewidth=2)
+
+
 fig, ax = plt.subplots(1,2)
 ax[0].set_xlabel("t/Myr")
-ax[0].set_ylabel("e")
-ax[1].set_xlabel(r"e$_{i-1}$")
-ax[1].set_ylabel(r"e$_{i}$")
+ax[0].set_ylabel("a/pc")
+ax[1].set_xlabel(r"a$_{i-1}$/pc")
+ax[1].set_ylabel(r"a$_{i}$/pc")
 #ax[1].set_xlabel("Count/bin")
 #ax[1].set_ylabel(r"$\sqrt{\mathrm{E}(\sigma_e^2)}$")
 #ax[1].set_xscale("log")
@@ -30,9 +40,13 @@ for j, n in enumerate(np.unique(df.loc[:, "name"])):
     print(f"Child {n}")
     mask = df.loc[:, "name"] == n
     x_data = df.loc[mask, "t"].to_numpy()
-    y_data = df.loc[mask, "e"].to_numpy()
-    s = ax[0].scatter(x_data, y_data, marker=".")
-    ax[1].scatter(y_data[:-1], y_data[1:], marker=".")
+    y_data = 1/df.loc[mask, "a"].to_numpy()
+    if True:
+        insetax(ax[0], x_data, y_data, [0.5, 0.05, 0.3, 0.3], [402, 405], [0.0405, 0.042])
+        insetax(ax[1], y_data[:-1], y_data[1:], [0.5, 0.05, 0.3, 0.3], [0.04, 0.041], [0.04, 0.041])
+    else:
+        s = ax[0].scatter(x_data, y_data, marker=".")
+        ax[1].scatter(y_data[:-1], y_data[1:], marker=".")
     '''for char, p in zip(chars, (2, 5, 10, 100, 1000, 5000, 10000, 50000)):
         l = int(np.floor(len(x_data)/p))
         x_tmp = np.full(l, np.nan, dtype=float)

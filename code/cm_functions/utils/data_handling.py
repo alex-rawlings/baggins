@@ -134,7 +134,7 @@ def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
 
     Returns
     -------
-    bh_files
+    bh_files : list
         alphabetically-sorted list of ketju bh files
     """
     bh_files = []
@@ -160,10 +160,13 @@ def create_file_copy(f, suffix="_cp"):
 
     Returns
     -------
-    new_f
-        copied file
+    new_f : str
+        copied file name
     """
     fname, fext = os.path.splitext(f)
     new_f = f"{fname}{suffix}{fext}"
-    shutil.copyfile(f, new_f)
+    # only copy file if the modification timestamp is more recent than an 
+    # already existing copy
+    if not os.path.exists(new_f) or (os.path.getmtime(new_f) < os.path.getmtime(f)):
+        shutil.copyfile(f, new_f)
     return new_f

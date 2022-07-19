@@ -4,7 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=128
 #SBATCH --time=03:30:00
-#SBATCH --partition=medium
+#SBATCH --partition=interactive
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=alexander.rawlings@helsinki.fi
 

@@ -3,9 +3,11 @@ import sys
 from matplotlib import rc_file, rcdefaults
 import subprocess
 import json
+from datetime import datetime
+from .utils.log_info import CustomLogger
 
 
-__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "username", "git_hash"]
+__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "username", "git_hash", "cmf_logger"]
 
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -18,6 +20,12 @@ data_dir = env_params["user_settings"]["data_dir"]
 date_format = env_params["user_settings"]["date_format"]
 
 username = home_dir.rstrip("/").split("/")[-1]
+
+# create the logger
+cmf_logger = CustomLogger("cm_funcs", env_params["user_settings"]["logging"]["console_level"])
+if env_params["user_settings"]["logging"]["file_level"] not in ["", " "]:
+    lf = f"{env_params['user_settings']['logging']['file'].rstrip('.log')}_{datetime.now():%Y-%m-%d}.log"
+    cmf_logger.add_file_handler(os.path.join(this_dir, lf), env_params["user_settings"]["logging"]["file_level"])
 
 #make the figure directory
 os.makedirs(figure_dir, exist_ok=True)
@@ -37,7 +45,7 @@ if "collisionless-merger-sample" in os.getcwd():
     with open(env_params_file, "w") as f:
         json.dump(env_params, f, indent=4)
 else:
-    print("Operating outside the git repo. Git hash read from file.")
+    cmf_logger.logger.warning("Operating outside the git repo. Git hash read from file.")
     git_hash = env_params["internal_settings"]["git_hash"]
 
 

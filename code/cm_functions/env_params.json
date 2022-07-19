@@ -2,9 +2,14 @@
     "user_settings": {
         "figure_dir": "figures",
         "data_dir": "/scratch/pjohanss/arawling/collisionless_merger",
-        "date_format": "%Y-%m-%d %H:%M:%S"
+        "date_format": "%Y-%m-%d %H:%M:%S",
+        "logging": {
+            "console_level": "INFO",
+            "file_level": "DEBUG",
+            "file": "logs/cm_funcs.log"
+        }
     },
     "internal_settings": {
-        "git_hash": "heads/master-0-g8a343b2"
+        "git_hash": "heads/master-0-g5d8e292"
     }
 }

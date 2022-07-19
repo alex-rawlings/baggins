@@ -6,7 +6,7 @@ import cmdstanpy
 import arviz as av
 
 
-from ...plotting import savefig, create_normed_colours
+from ...plotting import savefig, create_normed_colours, mplColours
 from ...env_config import figure_dir, data_dir
 
 __all__ = ["StanModel"]
@@ -54,6 +54,7 @@ class StanModel:
             self._random_obs_select(**random_select_obs)
         self._autoregress = autoregress
         self._parameter_plot_counter = 0
+        self._observation_mask = True
     
     @property
     def model_file(self):
@@ -70,6 +71,14 @@ class StanModel:
     @property
     def fit_gqs(self):
         return self._fit_gqs
+    
+    @property
+    def observation_mask(self):
+        return self._observation_mask
+
+    @observation_mask.setter
+    def observation_mask(self, m):
+        self._observation_mask = m
 
     def load_obs(self):
         """
@@ -87,7 +96,17 @@ class StanModel:
         else:
             raise NotImplementedError("Only .pickle and .hdf5 files supported!")
     
-
+    @property
+    def categorical_label(self):
+        return self._categorical_label
+    
+    @categorical_label.setter
+    def categorical_label(self, group):
+        self._categorical_label = np.full(self.obs.shape[0], 0, dtype=int)
+        for i, g in enumerate(np.unique(self.obs.loc[:, group])):
+            mask = self.obs.loc[:, group] == g
+            self._categorical_label[mask] = i
+    
     def transform_obs(self, key, newkey, func):
         """
         Apply a transformation to an observed quantity, saving the result to the
@@ -130,7 +149,7 @@ class StanModel:
         cmdstanpy.CmdStanMCMC 
             container output from stan sampling
         """
-        default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "adapt_delta":1-1e-1, "max_treedepth":12}
+        default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "adapt_delta":1-1e-1, "max_treedepth":12, "output_dir":os.path.join(data_dir, "stan_files")}
         # update user given sample kwargs
         for k, v in sample_kwargs.items():
             default_sample_kwargs[k] = v
@@ -207,8 +226,11 @@ class StanModel:
             self.build_model()
         self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
         if save:
-            print("Saving")
-            self._fit.save_csvfiles(os.path.join(data_dir, "stan_files"))
+            try:
+                self._fit.save_csvfiles(os.path.join(data_dir, "stan_files"))
+                print("Saved")
+            except ValueError:
+                print("File exists, not overwriting.")
     
 
     def sample_prior(self, data, sample_kwargs={}):
@@ -264,20 +286,20 @@ class StanModel:
         assert len(var_names) > 1, "Pair plot requires at least two variables!"
         # plot trace
         ax = av.plot_trace(self._fit, var_names=var_names, figsize=figsize)
-        fig = np.concatenate(ax).flatten()[0].get_figure()
+        fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, "trace"), fig=fig)
         plt.close(fig)
 
         # plot rank
         ax = av.plot_rank(self._fit, var_names=var_names)
-        fig = np.concatenate(ax).flatten()[0].get_figure()
+        fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, "rank"), fig=fig)
         plt.close(fig)
 
         # plot pair
         ax = av.plot_pair(self._fit, var_names=var_names, kind="scatter", divergences=True, marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize)
         av.plot_pair(self._fit, var_names=var_names, kind="kde", ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}}, point_estimate_marker_kwargs={"marker":""})
-        fig = np.concatenate(ax).flatten()[0].get_figure()
+        fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
         #plt.close(fig)
         self._parameter_plot_counter += 1
@@ -311,11 +333,13 @@ class StanModel:
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             print(f"Fitting level {l}")
-            av.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}%"})
+            av.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI"})
         # overlay data
-        data_kwargs = {"c":"tab:red", "marker":".", "label":"Obs.", "linewidth":0.5, "edgecolor":"k"}
-        ax.scatter(self.obs.loc[:, xobs], self.obs.loc[:, yobs], **data_kwargs)
-        ax.legend(loc="upper left")
+        cols = mplColours()
+        data_kwargs = {"marker":".", "linewidth":0.5, "edgecolor":"k"}
+        ax.scatter(self.obs.loc[:, xobs], self.obs.loc[:, yobs], c=self.categorical_label, label="Obs.", cmap="BuPu", **data_kwargs)
+            
+        ax.legend()
         savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
     
 
@@ -346,17 +370,16 @@ class StanModel:
         for l in levels:
             print(f"Fitting level {l}")
             if self._autoregress:
-                 av.plot_hdi(self.obs.loc[1:,xobs], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
+                 av.plot_hdi(self.obs.loc[self._observation_mask,xobs][:-1], ys[1:], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
             else:
-                av.plot_hdi(self.obs.loc[:,xobs], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
-        #ordered_idxs = np.argsort(self.obs.loc[:, xobs])
-        #ax.plot(self.obs.loc[ordered_idxs, xobs], np.nanmean(ys, axis=0)[ordered_idxs], label="Mean", lw=0.7, c="tab:orange")
+                # TODO check x, y shapes
+                av.plot_hdi(self.obs[:, xobs].to_numpy()[self._observation_mask,:], ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
         # overlay data
         data_kwargs = {"c":"tab:red", "marker":".", "label":"Obs.", "linewidth":0.5, "edgecolor":"k"}
         if self._autoregress:
-            ax.scatter(self.obs.loc[:-1, xobs], self.obs.loc[1:, yobs], zorder=100, **data_kwargs)
+            ax.scatter(self.obs.loc[self._observation_mask, xobs][:-1], self.obs.loc[self._observation_mask, yobs][1:], zorder=100, **data_kwargs)
         else:
-            ax.scatter(self.obs.loc[:, xobs], self.obs.loc[:, yobs], zorder=100, **data_kwargs)
+            ax.scatter(self.obs.loc[self._observation_mask, xobs], self.obs.loc[self._observation_mask, yobs], c=self.categorical_label, zorder=20, label="Obs.", cmap="autumn", **data_kwargs)
         ax.legend(loc="upper left")
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
 

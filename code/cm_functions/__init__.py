@@ -13,3 +13,4 @@ from . import env_config
 #set up some global environment variables
 HOME = env_config.home_dir
 FIGDIR = env_config.figure_dir
+LOGS = env_config.cmf_logger

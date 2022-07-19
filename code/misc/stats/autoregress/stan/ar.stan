@@ -17,7 +17,8 @@ transformed parameters {
 
 model {
     // priors
-    mu ~ normal(1, 10);
+    alpha ~ normal(0, 10);
+    beta ~ normal(1, 1);
 
     observed_data[2:N_tot] ~ normal(mu, sigma);
 }

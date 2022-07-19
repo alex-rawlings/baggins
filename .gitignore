@@ -200,3 +200,6 @@ TSWLatexianTemp*
 # stan stuff
 *.hpp
 code/misc/stats/stan/old/*
+
+# code logging
+code/cm_functions/logs
