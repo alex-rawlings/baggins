@@ -6,6 +6,8 @@ def cube(x):
     print("Worker {} received {}".format(current.pid, x))
 
 if __name__ == "__main__":
+    import __main__ as main
+    print(main.__dict__)
     print("Starting")
     ts = time.time()
     y=2

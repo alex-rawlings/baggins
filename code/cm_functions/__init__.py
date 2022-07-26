@@ -1,3 +1,5 @@
+from . import env_config
+
 from . import analysis
 from . import cosmology
 from . import general
@@ -8,9 +10,8 @@ from . import plotting
 from . import utils
 from . import visualisation
 
-from . import env_config
-
 #set up some global environment variables
 HOME = env_config.home_dir
 FIGDIR = env_config.figure_dir
+DATADIR = env_config.data_dir
 LOGS = env_config.cmf_logger

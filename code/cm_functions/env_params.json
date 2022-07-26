@@ -5,11 +5,11 @@
         "date_format": "%Y-%m-%d %H:%M:%S",
         "logging": {
             "console_level": "INFO",
-            "file_level": "DEBUG",
+            "file_level": "WARNING",
             "file": "logs/cm_funcs.log"
         }
     },
     "internal_settings": {
-        "git_hash": "heads/master-0-g5d8e292"
+        "git_hash": "heads/master-0-g1ae99a9"
     }
 }

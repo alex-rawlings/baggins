@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from matplotlib import colors
 import itertools
+from ..env_config import cmf_logger
 
 
 __all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions"]
@@ -73,7 +74,7 @@ def create_normed_colours(vmin, vmax, cmap="viridis", normalisation="Normalize")
     try:
         cmapv = getattr(plt.cm, cmap)
     except AttributeError:
-        print(f"{cmap} does not exist. Using default colormap: viridis")
+        cmf_logger.logger.warning(f"{cmap} does not exist. Using default colormap: viridis")
         cmapv = plt.cm.viridis
     _norm = getattr(colors, normalisation)
     norm = _norm(vmin=vmin, vmax=vmax)

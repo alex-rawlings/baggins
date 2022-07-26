@@ -17,7 +17,7 @@ args = parser.parse_args()
 #helper function to run
 def run_maker(c_dir):
     #make the child sim cube for this subdir in the perturbation directory
-    cdc = cmf.analysis.ChildSim(args.pf, c_dir, apfile=args.apf, verbose=args.verbose)
+    cdc = cmf.analysis.ChildSim(args.pf, c_dir, apfile=args.apf)
     file_save_name = os.path.join(file_save_dir, "cube-{}.hdf5".format(cdc.merger_name))
     cdc.make_hdf5(file_save_name)
 

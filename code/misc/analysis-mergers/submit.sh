@@ -9,7 +9,6 @@
 #SBATCH --mail-user=alexander.rawlings@helsinki.fi
 
 module purge
-module restore py386
-source "/users/arawling/py386venv/bin/activate"
+module restore py393
 
-python add_field.py
+python density.py -n

@@ -4,7 +4,7 @@ from matplotlib import rc_file, rcdefaults
 import subprocess
 import json
 from datetime import datetime
-from .utils.log_info import CustomLogger
+from ._backend import CustomLogger
 
 
 __all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "username", "git_hash", "cmf_logger"]
@@ -51,3 +51,4 @@ else:
 
 #make sure we are using a high enough version of python
 assert sys.version_info >= (3,8,6), "Required python version >= 3.8.6"
+

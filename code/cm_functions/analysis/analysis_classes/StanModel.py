@@ -7,7 +7,7 @@ import arviz as av
 
 
 from ...plotting import savefig, create_normed_colours, mplColours
-from ...env_config import figure_dir, data_dir
+from ...env_config import figure_dir, data_dir, cmf_logger
 
 __all__ = ["StanModel"]
 
@@ -157,8 +157,8 @@ class StanModel:
             fit = self._prior_model.sample(data=data, **default_sample_kwargs)
         else:
             fit = self._model.sample(data=data, **default_sample_kwargs)
-        print(fit.summary(sig_figs=4))
-        print(fit.diagnose())
+        cmf_logger.logger.info(fit.summary(sig_figs=4))
+        cmf_logger.logger.info(fit.diagnose())
         return fit
     
 
@@ -228,9 +228,9 @@ class StanModel:
         if save:
             try:
                 self._fit.save_csvfiles(os.path.join(data_dir, "stan_files"))
-                print("Saved")
+                cmf_logger.logger.info("Saved")
             except ValueError:
-                print("File exists, not overwriting.")
+                cmf_logger.logger.warning("File exists, not overwriting.")
     
 
     def sample_prior(self, data, sample_kwargs={}):
@@ -332,7 +332,7 @@ class StanModel:
         ys = self._prior_fit.stan_variable(ymodel)
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
-            print(f"Fitting level {l}")
+            cmf_logger.logger.info(f"Fitting level {l}")
             av.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI"})
         # overlay data
         cols = mplColours()
@@ -368,7 +368,7 @@ class StanModel:
         ys = self._fit.stan_variable(ymodel)
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
-            print(f"Fitting level {l}")
+            cmf_logger.logger.info(f"Fitting level {l}")
             if self._autoregress:
                  av.plot_hdi(self.obs.loc[self._observation_mask,xobs][:-1], ys[1:], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
             else:

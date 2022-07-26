@@ -7,6 +7,7 @@ import os
 from ..literature import *
 from ..cosmology import *
 from ..general import *
+from ..env_config import cmf_logger
 
 __all__ = ['galaxy_ic_base', 'ic_general_data', 'stellar_component', 'stellar_cuspy_ic', 'stellar_cored_ic', 'dm_component', 'dm_halo_NFW', 'dm_halo_dehnen', 'smbh']
 
@@ -32,9 +33,8 @@ class galaxy_ic_base:
         else:
             self.bh = None
 
-    def to_gadget_mass_units(self, verbose=True):
-        if verbose:
-            print('Converting mass units to gadget')
+    def to_gadget_mass_units(self):
+        cmf_logger.logger.info('Converting mass units to gadget')
         assert(self.general.mass_units == 'msol')
         self.stars.particle_mass /= 1e10
         self.stars.total_mass /= 1e10
@@ -172,29 +172,26 @@ class dm_component:
 
     @peak_mass.setter
     def peak_mass(self, input):
+        # TODO remove verbose inputs!
         verbose, value = input
         try:
             if value is not None:
                 dm_mass = value
             else:
                 dm_mass = self.parameter_file.DM_peak_mass
-                if verbose:
-                    print('DM Mass read from parameter file')
+                cmf_logger.logger.info('DM Mass read from parameter file')
             self._peak_mass = dm_mass
         except AttributeError:
             if self.dm_scaling_relation == 'moster':
-                if verbose:
-                    print('Using Moster+10 DM scaling relation')
+                cmf_logger.logger.info('Using Moster+10 DM scaling relation')
                 self._peak_mass = 10**Moster10(self.star_info.total_mass, [1e10, 1e15], z=self.star_info.general_info.redshift, plotting=False)
                 self.parameter_file.DM_peak_mass = self._peak_mass
             elif self.dm_scaling_relation == 'girelli':
-                if verbose:
-                    print('Using Girelli+20 DM scaling relation')
+                cmf_logger.logger.info('Using Girelli+20 DM scaling relation')
                 self._peak_mass = 10**Girelli20(self.star_info.total_mass, [1e10, 1e15], z=self.star_info.general_info.redshift, plotting=False)
                 self.parameter_file.DM_peak_mass = self._peak_mass
             elif self.dm_scaling_relation == 'behroozi':
-                if verbose:
-                    print('Using Behroozi+19 DM scaling relation')
+                cmf_logger.logger.info('Using Behroozi+19 DM scaling relation')
                 self._peak_mass = 10**Behroozi19(self.star_info.total_mass, [1e10, 1e15], z=self.star_info.general_info.redshift, plotting=False)
                 self.parameter_file.DM_peak_mass = self._peak_mass
             else:

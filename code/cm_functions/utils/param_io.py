@@ -4,11 +4,13 @@ import os
 import importlib
 import numpy as np
 
+from ..env_config import cmf_logger
+
 
 __all__ = ["read_parameters", "write_parameters"]
 
 
-def read_parameters(filepath, verbose=True):
+def read_parameters(filepath):
     """
     Read parameters from a python file as if it were a module. If the 
     invocation is:
@@ -21,8 +23,6 @@ def read_parameters(filepath, verbose=True):
     ----------
     filepath : str
         absolute or relative path to the parameter file
-    verbose : bool, optional
-        print the name of the file being read?, by default True
 
     Returns
     -------
@@ -40,8 +40,7 @@ def read_parameters(filepath, verbose=True):
     if module_ext != "py":
         raise ValueError("Input file must have .py extension!")
     else:
-        if verbose:
-            print(f"Reading parameters from: {filepath}")
+        cmf_logger.logger.info(f"Reading parameters from: {filepath}")
         params = importlib.import_module(module_name)
         #remove trailing '/' characters from strings
         for p in dir(params):
@@ -55,7 +54,7 @@ def read_parameters(filepath, verbose=True):
         return params
 
 
-def write_parameters(values, filepath=None, verbose=True, allow_updates=()):
+def write_parameters(values, filepath=None, allow_updates=()):
     """
     Write parameters that have been loaded with read_parameters() to a file.
 
@@ -66,8 +65,6 @@ def write_parameters(values, filepath=None, verbose=True, allow_updates=()):
     filepath : str, optional
         file to save the parameters to, by default None (values.__file__ is
         used)
-    verbose : bool, optional
-        print the name of the file being written to?, by default True
     allow_updates : tuple, optional
         tuple of parameter names as strings that are allowed to be updated 
         (prevents accidental overwriting), by default ()
@@ -87,8 +84,7 @@ def write_parameters(values, filepath=None, verbose=True, allow_updates=()):
                     if var not in allow_updates:
                         # but we don't want to update this value
                         continue
-                    if verbose:
-                        print(f"Updating variable: {var}")
+                    cmf_logger.logger.info(f"Updating variable: {var}")
                     if "#" in line.group(0):
                         comment = "  #" + "#".join(line.group(0).split("#")[1:])
                     else:
@@ -103,8 +99,7 @@ def write_parameters(values, filepath=None, verbose=True, allow_updates=()):
                 else:
                     #we are adding a new value to the parameter file
                     new_vars = True
-                    if verbose:
-                        print(f"Adding variable: {var}")
+                    cmf_logger.logger.info(f"Adding variable: {var}")
                     if isinstance(value, str):
                         contents += '{} = "{}"\n'.format(var, value)
                     else:
@@ -113,8 +108,7 @@ def write_parameters(values, filepath=None, verbose=True, allow_updates=()):
             #add a dividing line to make it easier to see which outputs are
             #from which scripts
             contents += "#----------------------\n"
-        if verbose:
-            print(f"Writing parameters to: {filepath}")
+        cmf_logger.logger.info(f"Writing parameters to: {filepath}")
         f.seek(0)
         #overwrite entire file
         f.write(contents)

@@ -19,14 +19,14 @@ def argparse_for_initialise(description="", update_help=None):
 
     Returns
     -------
-    _type_
-        _description_
+    argparse.ArgumentParser
+        argument parser for other arguments specific to the script to be parsed
+        to
     """
     parser = argparse.ArgumentParser(description=description, allow_abbrev=False)
     parser.add_argument(type=str, help="path to parameter file", dest="paramFile")
     if update_help is not None:
         parser.add_argument("-u", "--update", dest="parameter_update", help=update_help, action="store_true", default=False)
-    parser.add_argument("-v", "--verbose", dest="verbose", action="store_true", help="verbose printing in script")
     return parser
 
 

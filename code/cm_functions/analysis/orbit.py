@@ -3,6 +3,7 @@ import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
 from ..mathematics import radial_separation
+from ..env_config import cmf_logger
 
 __all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan"]
 
@@ -73,7 +74,7 @@ def interpolate_particle_data(p_old, t):
     return p_new
 
 
-def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
+def get_bh_particles(ketju_file, tol=1e-15):
     """
     Return the bh particles in the (usually-named) ketju_bhs.hdf5 file.
     This is really just a wrapper that ensures:
@@ -88,8 +89,6 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
     ----------
     ketju_file : str
         path to ketju_bhs.hdf5 file to analyse
-    verbose : bool, optional
-        verbose printing?, by default True
     tol : float, optional
         tolerance for equality testing, by default 1e-15
 
@@ -114,8 +113,7 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
         # series are in sync by construction, so no merger has occurred here
         # TODO is there a more robust way to ascertain if a merger has (not)
         # occurred that doesn't tie us to how Ketju data output occurs
-        if verbose:
-            print("Particle time series are not consistent with each other: linear interpolation will be performed")
+        cmf_logger.logger.warning("Particle time series are not consistent with each other: linear interpolation will be performed")
         t_arr = np.linspace(max(bh1.t[0], bh2.t[0]), min(bh1.t[-1], bh2.t[-1]), max(len1, len2))
         bh1interp = interpolate_particle_data(bh1, t_arr)
         bh2interp = interpolate_particle_data(bh2, t_arr)
@@ -133,7 +131,7 @@ def get_bh_particles(ketju_file, verbose=True, tol=1e-15):
         return bh1, bh2, merged
 
 
-def get_bound_binary(ketju_file, verbose=True, tol=1e-15):
+def get_bound_binary(ketju_file, tol=1e-15):
     """
     Return the data from the ketju_bhs.hdf5 file corresponding to when the 
     binary becomes (and remains) bound. 
@@ -142,8 +140,6 @@ def get_bound_binary(ketju_file, verbose=True, tol=1e-15):
     ----------
     ketju_file : str
         path to ketju_bhs.hdf5 file to analyse
-    verbose : bool, optional
-        verbose printing?, by default True
     tol : float, optional
         tolerance for equality testing, by default 1e-15
 
@@ -156,7 +152,7 @@ def get_bound_binary(ketju_file, verbose=True, tol=1e-15):
     merged: MergerInfo
         class containing merger remnant info
     """
-    bh1, bh2, merged = get_bh_particles(ketju_file, verbose, tol)
+    bh1, bh2, merged = get_bh_particles(ketju_file, tol)
     bhs = {0:bh1, 1:bh2}
     bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[0]
     return bh1, bh2, merged

@@ -16,12 +16,12 @@ from ...general import convert_gadget_time
 from ...literature import fit_Terzic05_profile
 from ...mathematics import get_histogram_bin_centres, spherical_components
 from ...utils import read_parameters
-from ...env_config import username, date_format
+from ...env_config import username, date_format, cmf_logger
 
 __all__ = ["ChildSim"]
 
 class ChildSim(BHBinary, ChildSimData):
-    def __init__(self, paramfile, perturbID, apfile, verbose=False) -> None:
+    def __init__(self, paramfile, perturbID, apfile) -> None:
         """
         A class which determines and sets the key merger remnant properties 
         from the raw simulation output data.
@@ -34,12 +34,8 @@ class ChildSim(BHBinary, ChildSimData):
             see BHBinary 
         apfile : str
             see BHBinary 
-        verbose : bool, optional
-            verbose printing?, by default False
         """
-        self.verbose = verbose
-        if self.verbose:
-            print("> Determining binary quantities")
+        cmf_logger.logger.info("> Determining binary quantities")
         super().__init__(paramfile, perturbID, apfile)
         afv = read_parameters(apfile)
         #set the analysis parameters from the separate file
@@ -70,8 +66,7 @@ class ChildSim(BHBinary, ChildSimData):
         )
 
         #set the particle counts
-        if self.verbose:
-            print("> Determining particle counts")
+        cmf_logger.logger.info("> Determining particle counts")
         self.particle_count = dict(
                     stars = len(self.main_snap.stars["mass"]),
                     dm = len(self.main_snap.dm["mass"]),
@@ -79,38 +74,31 @@ class ChildSim(BHBinary, ChildSimData):
         )
         
         #get the stellar velocity dispersions
-        if self.verbose:
-            print("> Determining stellar velocity dispersion")
+        cmf_logger.logger.info("> Determining stellar velocity dispersion")
         self.relaxed_stellar_velocity_dispersion = np.nanstd(self.main_snap.stars[self.galaxy_radius_mask]["vel"], axis=0)
 
         #projected effective radius, velocity dispersion in 1Re, and density 
-        if self.verbose:
-            print("> Determining projected quantities")
+        cmf_logger.logger.info("> Determining projected quantities")
         self.relaxed_effective_radius, self.relaxed_stellar_velocity_dispersion_projected, self.relaxed_density_profile_projected = self._get_projected_quantities()
 
         #DM fraction within 1Re
-        if self.verbose:
-            print("> Determining inner DM fraction")
+        cmf_logger.logger.info("> Determining inner DM fraction")
         self.relaxed_inner_DM_fraction = inner_DM_fraction(self.main_snap, Re=self.relaxed_effective_radius["estimate"])
 
         #3D half mass radius
-        if self.verbose:
-            print("> Determining half mass radius")
+        cmf_logger.logger.info("> Determining half mass radius")
         self.relaxed_half_mass_radius = pygad.analysis.half_mass_radius(self.main_snap.stars[self.galaxy_radius_mask])
 
         #total stellar mass of the remnant
-        if self.verbose:
-            print("> Determining total stellar mass")
+        cmf_logger.logger.info("> Determining total stellar mass")
         self.total_stellar_mass = pygad.UnitScalar(self.main_snap.stars["mass"][0] * len(self.main_snap.stars[self.galaxy_radius_mask]), units=self.main_snap["mass"].units)
 
         #3D density profile of relaxed remnant
-        if self.verbose:
-            print("> Determining 3D density profile")
+        cmf_logger.logger.info("> Determining 3D density profile")
         self.relaxed_density_profile = self._dens_prof_helper()
 
         #relaxed core parameters
-        if self.verbose:
-            print("> Determining core fit parameters")
+        cmf_logger.logger.info("> Determining core fit parameters")
         try:
             self.relaxed_core_parameters = fit_Terzic05_profile(self.radial_bin_centres["stars"], self.relaxed_density_profile["stars"], self.relaxed_effective_radius["estimate"], max_nfev=1000)
         except RuntimeError:
@@ -118,30 +106,25 @@ class ChildSim(BHBinary, ChildSimData):
             self.relaxed_core_parameters = {"rhob": np.nan, "rb": np.nan, "n": np.nan, "g": np.nan, "b": np.nan, "a": np.nan}
 
         #triaxiality parameters of relaxed remnant
-        if self.verbose:
-            print("> Determining triaxiality parameters at merger")
+        cmf_logger.logger.info("> Determining triaxiality parameters at merger")
         self.relaxed_triaxiality_parameters, self.binding_energy_bins = self._triaxial_helper()
 
         #IFU data at time when a = a_h
-        if self.verbose:
-            print("> Determining IFU data at time of a=a_h")
+        cmf_logger.logger.info("> Determining IFU data at time of a=a_h")
         self.ifu_map_ah = self.create_ifu_map(t=self.r_hard_time)
 
         #IFU data at merger
-        if self.verbose:
-            print("> Determining IFU data at time of merger / last snap")
+        cmf_logger.logger.info("> Determining IFU data at time of merger / last snap")
         self.ifu_map_merger = self.create_ifu_map(idx=self.merged_or_last_idx)
 
         # list of all snapshot times, waterhsed velocity, stellar inflow 
         # velocity, angle between galaxy stellar ang mom and BH ang mom,
         # num stars in loss cone, ang mom vectors, num escaping stars
-        if self.verbose:
-            print("> Determining time series data")
+        cmf_logger.logger.info("> Determining time series data")
         self.snapshot_times, self.bh_binary_watershed_velocity, self.stellar_shell_inflow_velocity, self.ang_mom_diff_angle, self.loss_cone, self.stars_in_loss_cone, self.ang_mom, self.num_escaping_stars = self._get_time_series_data(R=self.shell_radius)
 
         #velocity anisotropy of remnant as a function of radius
-        if self.verbose:
-            print("> Determining beta profile")
+        cmf_logger.logger.info("> Determining beta profile")
         self.beta_r = self._beta_r_helper()
     
 
@@ -155,8 +138,7 @@ class ChildSim(BHBinary, ChildSimData):
             self.merged_or_last_idx = snap_num_for_time(self.snaplist, self.merged.time, method="floor")
         else:
             self.merged_or_last_idx = -1
-        if self.verbose:
-            print(f"Merger remnant snapshot is number {self.merged_or_last_idx}")
+        cmf_logger.logger.info(f"Merger remnant snapshot is number {self.merged_or_last_idx}")
         snap = pygad.Snapshot(self.snaplist[self.merged_or_last_idx], physical=True)
         xcom = get_com_of_each_galaxy(snap, method="ss", family="stars", verbose=False)
         vcom = get_com_velocity_of_each_galaxy(snap, xcom, verbose=False)
@@ -191,8 +173,7 @@ class ChildSim(BHBinary, ChildSimData):
         # TEST 2
         # these are from https://ui.adsabs.harvard.edu/abs/2007MNRAS.381.1450N/abstract (Neto+07)
         # and rely on virial properties, so lets just set those values here too
-        if self.verbose:
-            print("> Determining virial information")
+        cmf_logger.logger.info("> Determining virial information")
         self.virial_info = {"radius":None, "mass":None}
         self.virial_info["radius"], self.virial_info["mass"] = pygad.analysis.virial_info(snap)
         virial_mask = pygad.BallMask(self.virial_info["radius"])

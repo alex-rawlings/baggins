@@ -2,6 +2,7 @@ import numpy as np
 import scipy.optimize, scipy.ndimage
 from scipy.stats import binned_statistic_2d
 from voronoi_binning import voronoi_binned_image
+from ..env_config import cmf_logger
 
 __all__ = ["voronoi_grid", "gauss_hermite_function", "fit_gauss_hermite_distribution", "voronoi_binned_los_V_statistics", "lambda_R"]
 
@@ -166,7 +167,7 @@ def voronoi_binned_los_V_statistics(x,y,V,m, Npx, **kwargs):
     y = y-ycom
     vz = V-Vcom
 
-    print(f"Binning {len(x)} particles...")
+    cmf_logger.logger.info(f"Binning {len(x)} particles...")
     particle_vor_bin_num, pixel_vor_bin_num, extent, xBar, yBar = voronoi_grid(x,y, Npx=Npx, **kwargs)
     bin_index = list(range(int(np.max(particle_vor_bin_num)+1)))
     
@@ -175,9 +176,8 @@ def voronoi_binned_los_V_statistics(x,y,V,m, Npx, **kwargs):
 
     fits = []
     for i in bin_index:
-        print("Fitting bin:", i, end='\r')
+        cmf_logger.logger.info("Fitting bin:", i, end='\r')
         fits.append(fit_gauss_hermite_distribution(vz[particle_vor_bin_num==i]))
-    print()
     bin_stats = np.array(fits)
     img_stats = bin_stats[pixel_vor_bin_num]
 
