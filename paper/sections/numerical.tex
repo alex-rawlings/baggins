@@ -55,7 +55,8 @@ The SMBH mass is taken from the $M_\text{bulge}\text{--}M_\bullet$ relation of \
 The SMBH is also given an initial spin $\chi$ from the \citet{lousto10} distribution, so that we may also investigate GW-induced recoil kicks in our merger remnants. 
 
 After creating the multicomponent ICs, the galaxies are evolved in isolation using \gadget for at least \drafting{$8\,\text{Gyr}$}, to ensure the systems are fully-relaxed and any potential effects arising from radial instabilities are mitigated. 
-We then extract the evolved systems, and use these as the progenitors for all subsequent merger configurations. 
+We then extract the evolved systems, and align each system with its reduced inertia tensor.
+We use these as the progenitor galaxies for all subsequent merger configurations. 
 
 \begin{deluxetable*}{cccccccccc}
     \tablecaption{
@@ -102,13 +103,13 @@ For each progenitor combination, we sample six different pericentre distances, a
 The integration of the system is conducted in two phases: a \textit{parent phase} and a \textit{child phase}. 
 The former is done to capture the large-scale dynamics when the SMBHs are at large separation, and the latter when the SMBH interactions become of primary interest.
 
-The progenitors are evolved through the \textit{parent phase} from $t(r_0)=0$ with \gadget until the SMBHs form a bound binary at $t_\text{stop}$, with a stellar softening of $\epsilon_\star=10\,\text{pc}$ and integration tolerances \drafting{check}.
+The progenitors are evolved through the \textit{parent phase} from $t(r_0)=0$ with \gadget until the SMBHs form a bound binary at $t_\text{stop}$, with a stellar softening of $\epsilon_\star=10\,\text{pc}$ and \gadget integration tolerances \texttt{ErrTolIntAccuracy}=$0.02$ and \texttt{ErrTolForceAcc}=$0.005$.
 We then initialise the \textit{child phase} by restarting from a snapshot sometime before $t_\text{stop}$.
 We apply a small perturbation to each SMBH position and velocity vector to mimic the effect of Brownian motion due to discrete sampling of the DF, thus negating the need to run many simulations from $r_0=3\,R_\text{vir,1}$. 
 The perturbations are drawn from a Gaussian distribution modelling the typical offset of the SMBH phase space coordinates from the phase space coordinates of the stellar centre of mass, determined using the shrinking sphere method. 
-The Gaussian distributions are characterised by $\mathcal{N}_\text{pos}\sim(\mu=0\,\text{pc}, \sigma^2=100\,\text{pc})$, and $\mathcal{N}_\text{vel}\sim(\mu=0\,\text{km\,s}^{-1}, \sigma^2=100\,\text{km\,s}^{-1})$ for each progenitor \drafting{should we show a figure of this?}. 
+The Gaussian distributions are characterised by $\mathcal{N}_\text{pos}\sim(\mu=0\,\text{pc}, \sigma^2=100\,\text{pc}^2)$, and $\mathcal{N}_\text{vel}\sim(\mu=0\,\text{km\,s}^{-1}, \sigma^2=100\,\text{km}^2\text{\,s}^{-2})$ for each progenitor \drafting{should we show a figure of this?}. 
 From each \parent, we create ten uniquely-perturbed \child runs, allowing us to explore the distribution of parameters describing both the orbital and remnant properties of each \parent merger. 
-Additionally, we lower the stellar softening to $\epsilon_\star=3.5\,\text{pc}$ and tighten the integration tolerances to \drafting{check} to optimise the run for \ketju.
+Additionally, we lower the stellar softening to $\epsilon_\star=3.5\,\text{pc}$ and tighten the integration tolerance \texttt{ErrTolIntAccuracy} to $0.002$ to optimise the run for \ketju.
 We check for energy conservation between the \parent and \child runs, and confirm that the total energy is conserved at the sub-percent level. 
 In total, we perform 360 ultra-high resolution unique \child simulations using \ketju, and use this sample for our analysis. 
 
@@ -148,6 +149,15 @@ If it is not clear if the third condition is satisfied, we continue to run the m
     XY-030-1000 & $1.0\times10^{-0}$ & 0.703
 \enddata
 \end{deluxetable*}
+
+\subsection{Bayesian Hierarchical Modelling}
+\drafting{\begin{enumerate}
+    \item HMC algorithm?
+    \item Description of hierarchical model
+    \item Prior distributions
+    \item forward modelling
+\end{enumerate}
+}
 
 \begin{figure*}
     \centering
