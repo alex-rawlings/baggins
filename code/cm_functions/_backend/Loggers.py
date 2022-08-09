@@ -1,16 +1,15 @@
 import logging
-import contextlib
-import sys
-
-__all__ = ["CustomLogger"]
+from datetime import datetime
 
 
+__all__ = ["InternalLogger", "CustomLogger"]
 
-class CustomLogger:
+
+class InternalLogger:
     def __init__(self, name, console_level="WARNING") -> None:
         """
-        Class for logging information. Two handlers are supported: a console
-        handler, and a file handler.
+        Class for logging information internal to the package. Two handlers are 
+        supported: a console handler, and a file handler.
 
         Parameters
         ----------
@@ -21,11 +20,10 @@ class CustomLogger:
         """
         self.logger = logging.getLogger(name)
         self.logger.setLevel("DEBUG")
-        self.console_level = console_level
         self._ch_format = "%(name)s: %(levelname)s: %(message)s"
         self._fh_format = "%(asctime)s: %(name)s: %(levelname)s: %(message)s"
         self._c_handler = logging.StreamHandler()
-        self._set_handler(self._c_handler, self.console_level, fmt=self._ch_format)
+        self._set_handler(self._c_handler, console_level, fmt=self._ch_format)
         self._f_handler = None
     
     def _set_handler(self, handler, level, fmt):
@@ -81,10 +79,30 @@ class CustomLogger:
             logging level, by default "ERROR"
         """
         with open(logfile, "a") as f:
-            f.write("\n-------\n")
-        self.file_level = file_level
+            f.write(f"\nLogger created at {datetime.now()}")
         self._f_handler = logging.FileHandler(filename=logfile)
-        self._set_handler(self._f_handler, self.file_level, fmt=self._fh_format)
+        self._set_handler(self._f_handler, file_level, fmt=self._fh_format)
+
+
+class CustomLogger(InternalLogger):
+    def __init__(self, name, console_level="WARNING") -> None:
+        """
+        General purpose logger to be used in external scripts. The error levels
+        can be updated, unlike the InternalLogger.
+
+        Parameters
+        ----------
+        name : str
+            name of logger
+        console_level : str, optional
+            logging level for console printing, by default "WARNING"
+        """
+        super().__init__(name, console_level)
+        self.console_level = console_level
+    
+    def add_file_handler(self, logfile, file_level="ERROR"):
+        self.file_level = file_level
+        super().add_file_handler(logfile, self.file_level)
     
     @property
     def console_level(self):
@@ -105,5 +123,4 @@ class CustomLogger:
         self._file_level = self._ensure_valid_level(v)
         if self._f_handler is not None:
             self._f_handler.setLevel(self._file_level)
-
 

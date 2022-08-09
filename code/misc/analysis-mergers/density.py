@@ -5,64 +5,79 @@ import matplotlib.pyplot as plt
 import cm_functions as cmf
 import pygad
 from datetime import datetime
-import psutil
-import sys
 
 
 if __name__ == "__main__":
-    savefile = "/scratch/pjohanss/arawling/testing/iida_density.pickle"
-    snapdir_ketju = "/scratch/pjohanss/ikostamo/test/ketju_run/output1"
-    snapdir_gadget = "/scratch/pjohanss/ikostamo/test/ketju_run/output_no_ketju"
-    r_edges = np.geomspace(5e-3, 300, 51)
+    iida = True
+    if iida:
+        savefile = "/scratch/pjohanss/arawling/testing/iida_density.pickle"
+        snapdirs = dict(
+                        ketju = "/scratch/pjohanss/ikostamo/test/ketju_run/output1",
+                        gadget = "/scratch/pjohanss/ikostamo/test/ketju_run/output_no_ketju",
+                        no_bh = "/scratch/pjohanss/ikostamo/test/ketju_no_bh/output",
+                        gadget_starExtraSoft = "/scratch/pjohanss/ikostamo/test/ketju_run/output_no_ketju_starsoftening/"
+        )
+        figname = "iida_2d"
+    else:
+        savefile = "/scratch/pjohanss/arawling/testing/alex_density.pickle"
+        snapdirs = dict(
+                        run2 = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/perturbations/002/output"
+        )
+        figname = "alex"
+    r_edges = np.geomspace(1e-2, 100, 51)
     rng = np.random.default_rng(42)
+    logs = cmf.CustomLogger("density_logs", "INFO")
 
     parser = argparse.ArgumentParser(description="Construct projected density estimates for time series data", allow_abbrev=False)
     parser.add_argument("-n", "--new", help="Run new analysis", action="store_true", dest="new")
     parser.add_argument("-o", "-obs", help="No. observations", type=int, dest="obs", default=3)
     args = parser.parse_args()
 
-    n_workers = int(cmf.utils.get_cpu_count()/2)
-
     if args.new:
         data = {}
-        print(f"RAM usage: {psutil.cpu_percent(4)}")
 
         x = cmf.mathematics.get_histogram_bin_centres(r_edges)
 
-        for i, (snapdir, sim) in enumerate(zip((snapdir_ketju, snapdir_gadget),
-                                                ("Ketju", "Gadget"))):
+        for i, (sim, snapdir) in enumerate(snapdirs.items()):
             data[sim] = {}
             data[sim]["x"] = x
             snapfiles = cmf.utils.get_snapshots_in_dir(snapdir)
             n = len(snapfiles)
             data[sim]["t"] = np.full(len(snapfiles), np.nan, dtype=float)
             data[sim]["density"] = {}
+            data[sim]["vsig_r"] = {}
             for ii, snapfile in enumerate(snapfiles):
-                cmf.LOGS.logger.info(f"{ii+1} of {n} snaps")
+                logs.logger.info(f"{ii+1} of {n} snaps")
+                print(f"Reading {snapfile}")
                 snap = pygad.Snapshot(snapfile, physical=True)
-                print(f"Snap size: {sys.getsizeof(snap)/(1024**2)} MB")
                 data[sim]["t"][ii] = cmf.general.convert_gadget_time(snap)
+                #idmask = cmf.analysis.get_all_id_masks(snap)
                 start_time = datetime.now()
-                re, vsig, Sigma = cmf.analysis.projected_quantities(snap, obs=args.obs, r_edges=r_edges, rng=rng, n_workers=n_workers)
+                re, vsig, vsig_r, Sigma = cmf.analysis.projected_quantities(snap, obs=args.obs, r_edges=r_edges, rng=rng)
                 end_time = datetime.now()
                 print(f"Execution time: {end_time-start_time}")
+                _kk = f"{data[sim]['t'][ii]:.1f}"
                 for j, (k,v) in enumerate(Sigma.items()):
                     if j > 0: break
-                    data[sim]["density"][f"{data[sim]['t'][ii]:.1f}"] = v
+                    data[sim]["density"][_kk] = v
+                for j, (k,v) in enumerate(vsig_r.items()):
+                    if j>0: break
+                    data[sim]["vsig_r"][_kk] = v
                 snap.delete_blocks()
                 del snap
-                print(f"RAM usage: {psutil.cpu_percent(4)}")
                 pygad.gc_full_collect()
         cmf.utils.save_data(data, filename=savefile)
     else:
         data = cmf.utils.load_data(savefile)
 
-    fig, ax = plt.subplots(1,2, sharex="all", sharey="all")
-    ax[0].set_xlabel("r/kpc")
-    ax[0].set_ylabel(r"$\rho$ / (M$_\odot$/kpc$^3$)")
-    ax[1].set_xlabel("r/kpc")
-    ax[0].set_xscale("log")
-    ax[1].set_yscale("log")
+    # set up figure
+    fig, ax = plt.subplots(2,len(data), sharex="all", sharey="row", squeeze=False)
+    ax[0,0].set_ylabel(r"$\Sigma(r)$ / (M$_\odot$/kpc$^2$)")
+    ax[1,0].set_ylabel(r"$\sigma_\star(r)$ / (km/s)")
+    ax[0,0].set_xscale("log")
+    ax[0,0].set_yscale("log")
+    for i in range(len(data)):
+        ax[-1,i].set_xlabel(r"$r$/kpc")
 
     max_time = []
     for v in data.values():
@@ -71,15 +86,17 @@ if __name__ == "__main__":
     mpcol, sm = cmf.plotting.create_normed_colours(0, 1.1*max(max_time), cmap="plasma")
 
     for i, (k,v) in enumerate(data.items()):
-        ax[i].set_title(k)
-        for j, v2 in enumerate(v["density"].values()):
-            if j<2: continue
-            # TODO why is field "estimate" the same as "high"??
-            #print(v2)
-            #quit()
-            ax[i].plot(v["x"], np.nanmedian(v2, axis=0), c=mpcol(v["t"][j]))
-            ax[i].fill_between(v["x"], y1=v2["low"], y2=v2["high"], alpha=0.4, fc=mpcol(v["t"][j]))
-    cbar = plt.colorbar(sm, ax=ax[1])
+        ax[0,i].set_title(k)
+        for j, (dens_v, sig_v) in enumerate(zip(v["density"].values(), v["vsig_r"].values())):
+            if v["t"][j] < 0.25: continue
+            if not iida and j>len(v["density"])-2: continue
+            # plot density
+            ax[0,i].plot(v["x"], np.nanmedian(dens_v, axis=0), c=mpcol(v["t"][j]))
+            ax[0,i].fill_between(v["x"], y1=np.nanquantile(dens_v, 0.75, axis=0), y2=np.nanquantile(dens_v, 0.25, axis=0), alpha=0.4, fc=mpcol(v["t"][j]))
+            # plot velocity dispersion
+            ax[1,i].plot(v["x"], np.sqrt(np.nanmedian(sig_v, axis=0)), c=mpcol(v["t"][j]))
+            ax[1,i].fill_between(v["x"], y1=np.sqrt(np.nanquantile(sig_v, 0.75, axis=0)), y2=np.sqrt(np.nanquantile(sig_v, 0.25, axis=0)), alpha=0.4, fc=mpcol(v["t"][j]))
+    cbar = plt.colorbar(sm, ax=ax[:,-1])
     cbar.ax.set_ylabel("t/Gyr")
-    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "other_tests/iida.png"))
+    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"other_tests/{figname}.png"))
     if not args.new: plt.show()

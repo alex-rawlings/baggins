@@ -18,4 +18,4 @@ def get_histogram_bin_centres(bins):
     : np.ndarray
         bin centres, has len = len(bins)-1
     """
-    return (bins[:-1] + bins[1:]) / 2
+    return (bins[:-1] + bins[1:]) / 2.0

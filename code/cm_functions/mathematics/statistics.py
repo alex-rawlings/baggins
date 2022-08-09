@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.stats
-from ..env_config import cmf_logger
+from ..env_config import _logger
 
 
 __all__ = ["iqr", "smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
@@ -58,12 +58,12 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     if rng is None:
         rng = np.random.default_rng()
     for i in range(number_resamples):
-        cmf_logger.logger.info(f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ", end="\r")
+        _logger.logger.info(f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ", end="\r")
         #resample data columnwise
         resampled_data = rng.choice(data, data.shape[0], replace=True, axis=0)
         bootstrap_data = rng.normal(resampled_data, sigma)
         bootstrap_stat[i, :] = statistic(bootstrap_data, axis=0)
-    cmf_logger.logger.info("Bootstrap complete                                ")
+    _logger.logger.info("Bootstrap complete                                ")
     return bootstrap_stat, np.mean(bootstrap_stat, axis=0)
 
 

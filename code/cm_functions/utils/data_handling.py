@@ -1,7 +1,7 @@
 import pickle
 import os
 import shutil
-from ..env_config import cmf_logger
+from ..env_config import _logger
 
 
 __all__ = ["save_data", "load_data", "get_files_in_dir", "get_snapshots_in_dir", "get_ketjubhs_in_dir", "create_file_copy"]
@@ -38,7 +38,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
     assert(filename.endswith(".pickle"))
     with open(filename, 'wb') as f:
         pickle.dump(data, f, protocol=protocol)
-    cmf_logger.logger.info(f"File {f} saved")
+    _logger.logger.info(f"File {f} saved")
 
 
 def load_data(filename):

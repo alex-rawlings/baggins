@@ -4,7 +4,7 @@ import os
 import importlib
 import numpy as np
 
-from ..env_config import cmf_logger
+from ..env_config import _logger
 
 
 __all__ = ["read_parameters", "write_parameters"]
@@ -40,7 +40,7 @@ def read_parameters(filepath):
     if module_ext != "py":
         raise ValueError("Input file must have .py extension!")
     else:
-        cmf_logger.logger.info(f"Reading parameters from: {filepath}")
+        _logger.logger.info(f"Reading parameters from: {filepath}")
         params = importlib.import_module(module_name)
         #remove trailing '/' characters from strings
         for p in dir(params):
@@ -84,7 +84,7 @@ def write_parameters(values, filepath=None, allow_updates=()):
                     if var not in allow_updates:
                         # but we don't want to update this value
                         continue
-                    cmf_logger.logger.info(f"Updating variable: {var}")
+                    _logger.logger.info(f"Updating variable: {var}")
                     if "#" in line.group(0):
                         comment = "  #" + "#".join(line.group(0).split("#")[1:])
                     else:
@@ -99,7 +99,7 @@ def write_parameters(values, filepath=None, allow_updates=()):
                 else:
                     #we are adding a new value to the parameter file
                     new_vars = True
-                    cmf_logger.logger.info(f"Adding variable: {var}")
+                    _logger.logger.info(f"Adding variable: {var}")
                     if isinstance(value, str):
                         contents += '{} = "{}"\n'.format(var, value)
                     else:
@@ -108,7 +108,7 @@ def write_parameters(values, filepath=None, allow_updates=()):
             #add a dividing line to make it easier to see which outputs are
             #from which scripts
             contents += "#----------------------\n"
-        cmf_logger.logger.info(f"Writing parameters to: {filepath}")
+        _logger.logger.info(f"Writing parameters to: {filepath}")
         f.seek(0)
         #overwrite entire file
         f.write(contents)

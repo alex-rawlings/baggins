@@ -4,7 +4,7 @@ import pygad
 
 from . import BHBinaryData
 from ...general import unit_as_str
-from ...env_config import cmf_logger
+from ...env_config import _logger
 
 __all__ = ["ChildSimData"]
 
@@ -315,7 +315,7 @@ class ChildSimData(BHBinaryData):
                         else:
                             ValueError(f"{kk}: Unkown type for unpacking!")
                         if verbose:
-                            cmf_logger.logger.info(f" > Successfully loaded dataset {kk}")
+                            _logger.logger.info(f" > Successfully loaded dataset {kk}")
         return C
     
     def _saver(self, g, l):

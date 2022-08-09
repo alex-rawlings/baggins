@@ -3,7 +3,7 @@ import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
 from ..mathematics import radial_separation
-from ..env_config import cmf_logger
+from ..env_config import _logger
 
 __all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan"]
 
@@ -113,7 +113,7 @@ def get_bh_particles(ketju_file, tol=1e-15):
         # series are in sync by construction, so no merger has occurred here
         # TODO is there a more robust way to ascertain if a merger has (not)
         # occurred that doesn't tie us to how Ketju data output occurs
-        cmf_logger.logger.warning("Particle time series are not consistent with each other: linear interpolation will be performed")
+        _logger.logger.warning("Particle time series are not consistent with each other: linear interpolation will be performed")
         t_arr = np.linspace(max(bh1.t[0], bh2.t[0]), min(bh1.t[-1], bh2.t[-1]), max(len1, len2))
         bh1interp = interpolate_particle_data(bh1, t_arr)
         bh2interp = interpolate_particle_data(bh2, t_arr)
