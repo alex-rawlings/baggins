@@ -728,11 +728,10 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
     if masks is None:
         if num_bhs>0:
             bhid = snap.bh["ID"][0]
-            centre_guess_dict[bhid] = pygad.analysis.center_of_mass(snap.bh)
         else:
             _logger.logger.info(f"Number of BHs present: {num_bhs}")
             bhid = 0
-            centre_guess_dict[bhid] = pygad.analysis.center_of_mass(snap.stars)
+        centre_guess_dict[bhid] = pygad.analysis.center_of_mass(snap.stars)
         subsnap_dict[bhid] = getattr(snap, family)
     else:
         if num_bhs<1:

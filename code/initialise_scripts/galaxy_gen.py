@@ -9,6 +9,7 @@ import cm_functions as cmf
 
 #get the command line arguments
 parser = cmf.utils.argparse_for_initialise(description='Generate the galaxy initial conditions.', update_help='allow updates of SMBH spin and other derived quantities')
+parser.add_argument("-v", "--verbose", help="verbose printing", dest="verbose", action="store_true")
 args = parser.parse_args()
 
 pfv = cmf.utils.read_parameters(args.paramFile)

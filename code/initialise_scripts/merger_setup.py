@@ -10,6 +10,7 @@ import cm_functions as cmf
 parser = cmf.utils.argparse_for_initialise(description="Generate the merger from two generated initial conditions.", update_help="allow updates of used virial_radius, r0, rperi, and e")
 parser.add_argument("-p", "--plot", dest="plot", help="plot the merger setup", action="store_true")
 parser.add_argument("-e", "--exists", help="Allow for overwriting of existing directories", action="store_true", dest="exists")
+parser.add_argument("-v", "--verbose", help="verbose printing", dest="verbose", action="store_true")
 args = parser.parse_args()
 
 pfv = cmf.utils.read_parameters(args.paramFile)
@@ -65,9 +66,9 @@ save_file_as = "{}/{}-{}-{}-{}{}.hdf5".format(save_path, pfv.galaxyName1, pfv.ga
 mg.write_hdf5_ic_file(save_file_as, merger, save_plots=False)
 
 if args.parameter_update:
-    cmf.utils.write_parameters(pfv, allow_updates=("virial_radius", "r0", "rperi", "e", "time_to_pericenter"), verbose=args.verbose)
+    cmf.utils.write_parameters(pfv, allow_updates=("virial_radius", "r0", "rperi", "e", "time_to_pericenter"))
 else:
-    cmf.utils.write_parameters(pfv, verbose=args.verbose)
+    cmf.utils.write_parameters(pfv)
 
 
 if args.plot:

@@ -1,4 +1,4 @@
-import os.path
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -13,7 +13,7 @@ __all__ = ["StanModel"]
 
 
 class StanModel:
-    def __init__(self, model_file, prior_file, obs_file, figname_base, rng=None, random_select_obs=None, autoregress=False) -> None:
+    def __init__(self, model_file, prior_file, obs_file, figname_base, rng=None, random_select_obs=None) -> None:
         """
         Class to set up, run, and plot key plots of a stan model.
 
@@ -52,9 +52,10 @@ class StanModel:
             assert all(k in random_select_obs.keys() for k in ["num", "group"])
             self.random_obs_select_dict = random_select_obs
             self._random_obs_select(**random_select_obs)
-        self._autoregress = autoregress
         self._parameter_plot_counter = 0
         self._observation_mask = True
+        self._plot_obs_data_kwargs = {"marker":".", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
+        self._num_groups = 0
     
     @property
     def model_file(self):
@@ -106,6 +107,17 @@ class StanModel:
         for i, g in enumerate(np.unique(self.obs.loc[:, group])):
             mask = self.obs.loc[:, group] == g
             self._categorical_label[mask] = i
+            self._num_groups += 1
+    
+    @property
+    def figname_base(self):
+        return self._figname_base
+    
+    @figname_base.setter
+    def figname_base(self, f):
+        self._figname_base = os.path.join(figure_dir, f)
+        d = os.path.join(figure_dir, f[::-1].partition("/")[-1][::-1])
+        os.makedirs(d, exist_ok=True)
     
     def transform_obs(self, key, newkey, func):
         """
@@ -157,8 +169,8 @@ class StanModel:
             fit = self._prior_model.sample(data=data, **default_sample_kwargs)
         else:
             fit = self._model.sample(data=data, **default_sample_kwargs)
-        _logger.logger.info(fit.summary(sig_figs=4))
-        _logger.logger.info(fit.diagnose())
+        _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
+        _logger.logger.info(f"\n{fit.diagnose()}")
         return fit
     
 
@@ -172,7 +184,8 @@ class StanModel:
             build prior model, by default False
         """
         if prior:
-            self._prior_model = cmdstanpy.CmdStanModel(stan_file=self._prior_file)
+            extrastr = "/appl/spack/v017/install-tree/gcc-11.2.0/boost-1.77.0-eriqoy/lib/x86_64-pc-linux-gnu/11.2.0/:/appl/spack/v017/install-tree/gcc-11.2.0/boost-1.77.0-eriqoy/lib/../lib64/"
+            self._prior_model = cmdstanpy.CmdStanModel(stan_file=self._prior_file)#, cpp_options={"-L":extrastr, "-I":extrastr})
         else:
             self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)
     
@@ -269,7 +282,8 @@ class StanModel:
         fname_parts = list(os.path.splitext(fname))
         if fname_parts[1] == "":
             fname_parts[1] = ".png"
-        return os.path.join(figure_dir, f"{fname_parts[0]}_{tag}{fname_parts[1]}")
+        #return os.path.join(figure_dir, f"{fname_parts[0]}_{tag}{fname_parts[1]}")
+        return f"{fname_parts[0]}_{tag}{fname_parts[1]}"
     
 
     def parameter_plot(self, var_names, figsize=(9.0, 6.75)):
@@ -333,14 +347,13 @@ class StanModel:
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            av.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI"})
+            av.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI", "edgecolor":None}, smooth=False)
         # overlay data
-        cols = mplColours()
-        data_kwargs = {"marker":".", "linewidth":0.5, "edgecolor":"k"}
-        #ax.scatter(self.obs.loc[:, xobs], self.obs.loc[:, yobs], c=self.categorical_label, label="Obs.", cmap="BuPu", **data_kwargs)
-            
+        if self._num_groups < 2:
+            self._plot_obs_data_kwargs["cmap"] = "Set1"
+        ax.scatter(self.obs.loc[:, xobs], self.obs.loc[:, yobs], c=self.categorical_label, **self._plot_obs_data_kwargs)
         ax.legend()
-        #savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
+        savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
     
 
     def posterior_plot(self, xobs, yobs, ymodel, levels=[50, 90, 95, 99], ax=None):
@@ -369,17 +382,10 @@ class StanModel:
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            if self._autoregress:
-                 av.plot_hdi(self.obs.loc[self._observation_mask,xobs][:-1], ys[1:], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
-            else:
-                # TODO check x, y shapes
-                av.plot_hdi(self.obs[:, xobs].to_numpy()[self._observation_mask,:], ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
+            # TODO check x, y shapes
+            av.plot_hdi(self.obs[:, xobs].to_numpy()[self._observation_mask,:], ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
         # overlay data
-        data_kwargs = {"c":"tab:red", "marker":".", "label":"Obs.", "linewidth":0.5, "edgecolor":"k"}
-        if self._autoregress:
-            ax.scatter(self.obs.loc[self._observation_mask, xobs][:-1], self.obs.loc[self._observation_mask, yobs][1:], zorder=100, **data_kwargs)
-        else:
-            ax.scatter(self.obs.loc[self._observation_mask, xobs], self.obs.loc[self._observation_mask, yobs], c=self.categorical_label, zorder=20, label="Obs.", cmap="autumn", **data_kwargs)
+        ax.scatter(self.obs.loc[self._observation_mask, xobs], self.obs.loc[self._observation_mask, yobs], c=self.categorical_label, zorder=20, label="Obs.", cmap="autumn", **self._plot_obs_data_kwargs)
         ax.legend(loc="upper left")
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
 

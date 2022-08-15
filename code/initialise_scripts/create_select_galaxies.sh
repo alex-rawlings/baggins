@@ -36,9 +36,9 @@ do
     fi
     sim="$param_dir$galaxy$file_ext"
     echo "Running: $sim"
-    python ./bh_dm_mass.py  $sim -v
-    python ./galaxy_gen.py $sim -v -u
-    python ./ic_kinematics.py $sim -v
-    python ./view_gal.py $sim
+    python ./bh_dm_mass.py  $sim
+    python ./galaxy_gen.py $sim -u -v
+    python ./ic_kinematics.py $sim
+    python ./view_gal.py $sim -v --numrotations 2
     echo $'\n'
 done

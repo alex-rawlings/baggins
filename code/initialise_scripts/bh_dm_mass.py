@@ -18,8 +18,8 @@ print('\nRunning bh_dm_mass.py\n')
 
 galaxy = cmf.initialise.galaxy_ic_base(pfv, stars=True, dm=True, bh=True)
 
-galaxy.dm.peak_mass = (args.verbose, None)
-galaxy.bh.mass = (args.verbose, None)
+galaxy.dm.peak_mass = (1, None)
+galaxy.bh.mass = (1, None)
 
 markersz = 1.5
 linewd = 1
@@ -86,9 +86,9 @@ ax3.text(13.5, -1.5, 'z: {:.2f}'.format(galaxy.general.redshift))
 plt.subplots_adjust(wspace=0.4, left=0.1, right=0.98)
 plt.savefig(galaxy.general.figure_location+'/'+galaxy.general.name+'_ic.png', dpi=300)
 
-if args.verbose:
+if True:
     print('Now run galaxy_gen.py to generate system.')
 if args.parameter_update:
-    cmf.utils.write_parameters(pfv, allow_updates=('BH_mass', 'DM_peak_mass', 'redshift'), verbose=args.verbose)
+    cmf.utils.write_parameters(pfv, allow_updates=('BH_mass', 'DM_peak_mass', 'redshift'))
 else:
-    cmf.utils.write_parameters(pfv, verbose=args.verbose)
+    cmf.utils.write_parameters(pfv)

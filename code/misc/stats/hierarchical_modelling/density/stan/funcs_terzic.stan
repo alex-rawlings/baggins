@@ -20,7 +20,7 @@ real I1(real R, real r_b, real g, real rho_b, real Upsilon){
         term = inv(R) * asin(sqrt(1.0 - R*R / (r_b * r_b)));
     } else {
         // TODO not sure if betac() will work...
-        term = 0.5 * pow(R, 1.0-g) * boost::math::betac(0.5, 0.5*(g-1.0), 1.0-(R*R)/(r_b*r_b));
+        term = 0.5 * pow(R, 1.0-g) * boost::math::beta(0.5, 0.5*(g-1.0), 1.0-(R*R)/(r_b*r_b));
     }
     return 2.0 / Upsilon * rho_b * pow(r_b, g) * term;
 }

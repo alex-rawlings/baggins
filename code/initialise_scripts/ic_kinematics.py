@@ -13,6 +13,7 @@ import pygad
 parser = cmf.utils.argparse_for_initialise(description='Analyse the kinematics of the initial conditions.', update_help='allow updates of kinematic quantities')
 parser.add_argument('--plotcontours', dest='plot_contours', help='plot contours of scale radius and gamma for Dehnen models to show degeneracy', action='store_true')
 parser.add_argument('--numrotations', dest='num_rots', help='number of rotations to use for averaging projected quantities', default=10)
+parser.add_argument("-v", "--verbose", help="verbose printing", dest="verbose", action="store_true")
 args = parser.parse_args()
 
 print('\nRunning ic_kinematics.py\n')
