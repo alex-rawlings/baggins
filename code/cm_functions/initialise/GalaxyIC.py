@@ -3,7 +3,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
-from ..literature.density_profiles import Terzic05
+import json
 import merger_ic_generator as mg
 import pygad
 
@@ -44,19 +44,18 @@ class GalaxyIC(_GalaxyICBase):
         ValueError
             _description_
         """
-        super().__init__()
-        self.load_parameters(parameter_file=parameter_file)
+        super().__init__(parameter_file=parameter_file)
         self.stars = None
         self.dm = None
         self.bh = None
         # set up stars
-        if hasattr(self.parameters.stellarParticleMass):
+        if hasattr(self.parameters, "stellarParticleMass"):
             if self.parameters.stellarCored:
-                self.stars = _StellarCore()
+                self.stars = _StellarCore(parameter_file=parameter_file)
             else:
-                self.stars = _StellarCusp()
+                self.stars = _StellarCusp(parameter_file=parameter_file)
         # set up DM
-        if hasattr(self.parameters.DMParticleMass):
+        if hasattr(self.parameters, "DMParticleMass"):
             try:
                 _star_mass = self.stars.total_mass
             except AttributeError:
@@ -67,11 +66,11 @@ class GalaxyIC(_GalaxyICBase):
                 else:
                     _star_mass = stellar_mass
             if self.parameters.use_NFW:
-                self.dm = _DMHaloNFW(stellar_mass=_star_mass)
+                self.dm = _DMHaloNFW(stellar_mass=_star_mass,parameter_file=parameter_file)
             else:
-                self.dm = _DMHaloDehnen(stellar_mass=_star_mass)
+                self.dm = _DMHaloDehnen(stellar_mass=_star_mass, parameter_file=parameter_file)
         # set up SMBH
-        if hasattr(self.parameters.BH_spin):
+        if hasattr(self.parameters, "BH_spin"):
             try:
                 _star_mass = self.stars.total_mass
             except AttributeError:
@@ -81,7 +80,7 @@ class GalaxyIC(_GalaxyICBase):
                     raise ValueError(msg)
                 else:
                     _star_mass = stellar_mass
-            self.bh = _SMBH(np.log10(_star_mass))
+            self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file)
         # TODO allow updating of parameters to parameter file?
         self.parameters_to_update = []
         self.hdf5_file_name = os.path.join(self.save_location, f"{self.name}.hdf5")
@@ -249,7 +248,7 @@ class GalaxyIC(_GalaxyICBase):
                     )
                     _logger.logger.warning("Using default NFW cut parameters")
                 dm_distribution = mg.NFWSphere(Mvir=self.dm.peak_mass, particle_mass=self.dm.particle_mass, particle_type=mg.ParticleType.DM_HALO, z=self.redshift, use_cut=True, cut_params=cut_params)
-                self.parameters.DM_actual_total_mass = dm_distribution * 1e10
+                self.parameters.DM_actual_total_mass = dm_distribution.mass * 1e10
                 self.parameters.DM_concentration = self.dm.concentration
                 self.parameters_to_update.extend(["DM_actual_total_mass", "DM_concentration"])
                 self.plot_dm_cut_function(cut_params=cut_params)
@@ -308,15 +307,21 @@ class GalaxyIC(_GalaxyICBase):
 
         BHsigmaData = pd.read_table(os.path.join(self.lit_location, self.parameters.BHsigmaData), sep=";", header=0, skiprows=[1])
 
-
         radial_bin_edges = dict(
             stars = np.logspace(-2, 2, 50),
             dm = np.geomspace(10, self.maximum_radius, 50),
             stars_dm = np.geomspace(1e-2, self.maximum_radius, 50)
         )
+
         radial_bin_centres = dict()
         for k,v in radial_bin_edges.items():
             radial_bin_centres[k] = get_histogram_bin_centres(v)
+
+        # load IC file as snapshot
+        ic = pygad.Snapshot(self.hdf5_file_name, physical=True)
+        mass_centre = pygad.analysis.shrinking_sphere(ic.stars, pygad.analysis.center_of_mass(ic.stars), 25.0)
+        total_stellar_mass = np.sum(ic.stars["mass"])
+        total_dm_mass = np.sum(ic.dm["mass"])
 
         #determine radial surface density profiles
         radial_surf_dens = dict(
@@ -325,19 +330,13 @@ class GalaxyIC(_GalaxyICBase):
             stars_dm = pygad.analysis.profile_dens(ic, qty="mass", r_edges=radial_bin_edges["stars_dm"], center=mass_centre)
         )
 
-        # load IC file as snapshot
-        ic = pygad.Snapshot(self.hdf5_file_name, physical=True)
-        mass_centre = pygad.analysis.shrinking_sphere(ic.stars, pygad.analysis.center_of_mass(ic.stars), 25.0)
-        total_stellar_mass = np.sum(ic.stars["mass"])
-        total_dm_mass = np.sum(ic.dm["mass"])
-
         # projected quantities
         eff_rad, vsig2_Re, *_ = projected_quantities(ic, obs=num_rots)
-        eff_rad = list(eff_rad.values())[0]
-        vsig2_Re = list(vsig2_Re.values())[0]
+        eff_rad = np.nanmedian(list(eff_rad.values())[0])
+        vsig2_Re = np.nanmedian(list(vsig2_Re.values())[0])
         self.parameters.projected_half_mass_radius = eff_rad
         # use an unbiased estimator of standard deviation
-        self.parameters.LOS_vel_dispersion = np.nanstd(vsig2_Re, ddof=1)
+        self.parameters.LOS_vel_dispersion = np.sqrt(vsig2_Re)
         self.parameters_to_update.extend(["projected_half_mass_radius", "LOS_vel_dispersion"])
 
         # estimate number of particles in Ketju region
@@ -418,7 +417,7 @@ class GalaxyIC(_GalaxyICBase):
         ball_mask = pygad.BallMask(eff_rad, center=mass_centre)
         inner_dm_mass = np.sum(ic.dm[ball_mask]["mass"])
         self.parameters.inner_DM_fraction = inner_dm_mass / (inner_dm_mass + np.sum(ic.stars[ball_mask]["mass"]))
-        self.parameters_to_update("inner_DM_fraction")
+        self.parameters_to_update.append("inner_DM_fraction")
         ax[1,1].scatter(self.stars.log_total_mass, self.parameters.inner_DM_fraction, c=cols[3], zorder=10)
         ax[1,1].legend(loc="upper left")
 
@@ -481,7 +480,7 @@ class GalaxyIC(_GalaxyICBase):
         spin_seq = np.linspace(0, 1, 1000)
         bhspin_mag = np.linalg.norm(self.bh.spin)
         if has_spin_distribution:
-            bh_chi_dist = scipy.stats.beta(*bh_spin_params)
+            bh_chi_dist = scipy.stats.beta(*bh_spin_params.values())
             ax[2,2].plot(spin_seq, bh_chi_dist.pdf(spin_seq), color=cols[0])
         else:
             bh_chi_dist = scipy.stats.uniform()
@@ -497,4 +496,16 @@ class GalaxyIC(_GalaxyICBase):
             write_parameters(self.parameters, allow_updates=self.parameters_to_update)
         else:
             write_parameters(self.parameters)
-        
+    
+
+    def parameters_to_json(self):
+        d = {}
+        for k,v in self.parameters.__dict__.items():
+            if k[:2] != "__":
+                if isinstance(v, np.ndarray):
+                    v = v.tolist()
+                d[k] = v
+        fname = os.path.join(self.save_location, f"{self.name}_parameters.json")
+        with open(fname, "w") as f:
+            json.dump(d, f, indent=4)
+        _logger.logger.info(f"Parameters saved to file {fname}")

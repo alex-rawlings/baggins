@@ -42,13 +42,16 @@ def read_parameters(filepath):
     else:
         _logger.logger.info(f"Reading parameters from: {filepath}")
         params = importlib.import_module(module_name)
-        #remove trailing '/' characters from strings
+        # remove trailing '/' characters from strings
         for p in dir(params):
             if p[:2] == "__":
                 continue
             v = getattr(params, p)
-            if isinstance(v, str) and v[-1].rstrip()=="/":
-                setattr(params, p, v.rstrip("/"))
+            if isinstance(v, str):
+                if v == "NaN":
+                    setattr(params, p, np.nan)
+                elif v[-1].rstrip()=="/":
+                    setattr(params, p, v.rstrip("/"))
             elif isinstance(v, list):
                 setattr(params, p, np.array(v, dtype="float64"))
         return params
@@ -77,10 +80,10 @@ def write_parameters(values, filepath=None, allow_updates=()):
         for var in dir(values):
             if var[:2] != "__":
                 value = getattr(values, var)
-                #include any potential comments
+                # include any potential comments
                 line = re.search(r"^\b{}\b.*".format(var), contents, flags=re.MULTILINE)
                 if line is not None:
-                    #the variable exists in the parameter file
+                    # the variable exists in the parameter file
                     if var not in allow_updates:
                         # but we don't want to update this value
                         continue
@@ -90,27 +93,39 @@ def write_parameters(values, filepath=None, allow_updates=()):
                     else:
                         comment = ""
                     if isinstance(value, str):
-                        contents = re.sub(r"^\b{}\b.*".format(var), '{} = "{}"{}'.format(var, value, comment), contents)
+                        contents, sc = re.subn(r"^\b{}\b.*".format(var), '{} = "{}"{}'.format(var, value, comment), contents, flags=re.MULTILINE)
                     elif isinstance(value, np.ndarray):
                         value = np.array2string(value, precision=5, floatmode="maxprec", separator=",", sign="+")
-                        contents = re.sub(r"^\b{}\b.*".format(var), '{} = {}{}'.format(var, value, comment), contents)
+                        contents, sc = re.subn(r"^\b{}\b.*".format(var), '{} = {}{}'.format(var, value, comment), contents, flags=re.MULTILINE)
                     else:
-                        contents = re.sub(r"^\b{}\b.*".format(var), '{} = {:.5e}{}'.format(var, value, comment), contents)
+                        # protect against NaN values
+                        if np.isnan(value):
+                            value = "NaN"
+                            contents, sc = re.subn(r"^\b{}\b.*".format(var), '{} = "{}"{}'.format(var, value, comment), contents, flags=re.MULTILINE)
+                        else:
+                            contents, sc = re.subn(r"^\b{}\b.*".format(var), '{} = {:.5e}{}'.format(var, value, comment), contents, flags=re.MULTILINE)
+                    if sc < 1:
+                        _logger.logger.error(f"{sc} substitions were made for variable {var}! The parameter file has not been updated correctly!")
                 else:
-                    #we are adding a new value to the parameter file
+                    # we are adding a new value to the parameter file
                     new_vars = True
                     _logger.logger.info(f"Adding variable: {var}")
                     if isinstance(value, str):
                         contents += '{} = "{}"\n'.format(var, value)
                     else:
-                        contents += '{} = {:.5e}\n'.format(var, value)
+                        # protect against NaN values
+                        if np.isnan(value):
+                            value = "NaN"
+                            contents += '{} = "{}"\n'.format(var, value)
+                        else:
+                            contents += '{} = {:.5e}\n'.format(var, value)
         if new_vars:
-            #add a dividing line to make it easier to see which outputs are
-            #from which scripts
+            # add a dividing line to make it easier to see which outputs are
+            # from which scripts
             contents += "#----------------------\n"
         _logger.logger.info(f"Writing parameters to: {filepath}")
         f.seek(0)
-        #overwrite entire file
+        # overwrite entire file
         f.write(contents)
-        #reduce file size
+        # reduce file size
         f.truncate()

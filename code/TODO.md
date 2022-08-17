@@ -10,12 +10,12 @@
   installed with pip will be affected?  
 - [ ] Create a publishing .mplstyle format, to make plots more appealing for
   publishing  
-- [ ] Refactoring initialisation scripts, functions, and classes, so the different 
+- [x] Refactoring initialisation scripts, functions, and classes, so the different 
   scripts are methods of a class  
-- [ ] Converter for parameter files to .yml or .json for portability  
+- [x] Converter for parameter files to .yml or .json for portability  
 - [x] add metadata to figures produced  
 - [x] define a top-level data directory so not so many /scratch/pjohanss/ stuff in parameter files  
 - [x] check timestamp of copied keju_bhs file, copy only if necessary in get_ketjubhs_in_dir()
-- [] implement logging statements instead of printing
-- [] parallelise certain serial code using DASK 
+- [x] implement logging statements instead of printing
+- [x] parallelise certain serial code using DASK 
     https://cosmiccoding.com.au/tutorials/multiprocessing

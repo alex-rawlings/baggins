@@ -17,14 +17,10 @@ MSOL = 1.998e30
 
 
 class _GalaxyICBase:
-    def __init__(self):
+    def __init__(self, parameter_file):
         """
         Basic properties that are always required for a GalaxyIC object.
-        """
-        pass
-
-    def load_parameters(self, parameter_file):
-        """
+        
         Parameters
         ----------
         parameter_file : str, path-like
@@ -88,7 +84,7 @@ class _GalaxyICBase:
 
 
 class _StellarComponent(_GalaxyICBase):
-    def __init__(self, parameter_file=None):
+    def __init__(self, parameter_file):
         """
         Base class for the stellar component of a GalaxyIC object.
 
@@ -97,8 +93,7 @@ class _StellarComponent(_GalaxyICBase):
         parameter_file : str, path-like, optional
             path to parameter file describing the galaxy ICs, by default None
         """
-        if parameter_file is not None:
-            self.load_parameters(parameter_file=parameter_file)
+        super().__init__(parameter_file=parameter_file)
         self.total_mass = None
         try:
             self.anisotropy_radius = self.parameters.anisotropyRadius
@@ -113,7 +108,7 @@ class _StellarComponent(_GalaxyICBase):
 
 
 class _StellarCusp(_StellarComponent):
-    def __init__(self, parameter_file=None):
+    def __init__(self, parameter_file):
         """
         Class describing a cuspy (Dehnen) stellar component.
 
@@ -129,7 +124,7 @@ class _StellarCusp(_StellarComponent):
 
 
 class _StellarCore(_StellarComponent):
-    def __init__(self, parameter_file=None):
+    def __init__(self, parameter_file):
         """
         Class describing a cored (Terzic) stellar component
 
@@ -173,7 +168,7 @@ class _StellarCore(_StellarComponent):
 
 
 class _DMComponent(_GalaxyICBase):
-    def __init__(self, stellar_mass, parameter_file=None):
+    def __init__(self, stellar_mass, parameter_file):
         """
         Base class for the stellar component of a GalaxyIC object.
 
@@ -184,12 +179,12 @@ class _DMComponent(_GalaxyICBase):
         parameter_file : str, path-like, optional
             path to parameter file describing the galaxy ICs, by default None
         """
-        if parameter_file is not None:
-            self.load_parameters(parameter_file=parameter_file)
+        super().__init__(parameter_file=parameter_file)
         self.particle_mass = self.parameters.DMParticleMass
         self.softening = self.parameters.DM_softening
         self.dm_scaling_relation = self.parameters.DM_mass_from.lower()
         self._stellar_mass = stellar_mass
+        self.peak_mass = None
 
     @property
     def peak_mass(self):
@@ -201,7 +196,7 @@ class _DMComponent(_GalaxyICBase):
             if val is not None:
                 self._peak_mass = val
             else:
-                self._peak_mass = self.self.parameters.DM_peak_mass
+                self._peak_mass = self.parameters.DM_peak_mass
                 _logger.logger.info("DM Mass read from parameter file")
         except AttributeError:
             _logger.logger.info("Setting DM peak mass")
@@ -218,7 +213,7 @@ class _DMComponent(_GalaxyICBase):
                 msg = "Invalid scaling relation in parameter file!"
                 _logger.logger.error(msg)
                 raise RuntimeError(msg)
-            self.self.parameters.DM_peak_mass = self._peak_mass
+            self.parameters.DM_peak_mass = self._peak_mass
 
     @property
     def log_peak_mass(self):
@@ -226,7 +221,7 @@ class _DMComponent(_GalaxyICBase):
 
 
 class _DMHaloNFW(_DMComponent):
-    def __init__(self, stellar_mass, parameter_file=None):
+    def __init__(self, stellar_mass, parameter_file):
         """
         Class describing an NFW profile.
 
@@ -260,7 +255,7 @@ class _DMHaloNFW(_DMComponent):
 
 
 class _DMHaloDehnen(_DMComponent):
-    def __init__(self, stellar_mass, parameter_file=None):
+    def __init__(self, stellar_mass, parameter_file):
         """
         Class describing a Dehnen DM halo.
 
@@ -285,7 +280,7 @@ class _DMHaloDehnen(_DMComponent):
 
 
 class _SMBH(_GalaxyICBase):
-    def __init__(self, log_stellar_mass, parameter_file=None):
+    def __init__(self, log_stellar_mass, parameter_file):
         """
         Class describing a SMBH component.
 
@@ -296,10 +291,11 @@ class _SMBH(_GalaxyICBase):
         parameter_file : str, path-like, optional
             path to parameter file describing the galaxy ICs, by default None
         """
-        if parameter_file is not None:
-            self.load_parameters(parameter_file=parameter_file)
+        super().__init__(parameter_file=parameter_file)
         self._log_stellar_mass = log_stellar_mass
+        self.mass = None
         self.spin = self.parameters.BH_spin
+        self.softening = self.parameters.BH_softening
     
     @property
     def mass(self):
@@ -342,7 +338,7 @@ class _SMBH(_GalaxyICBase):
                 bh_spin_params = None
             # set up random spins
             if valid_str:
-                spin_mag = scipy.stats.beta.rvs(*bh_spin_params, random_state=self._rng)
+                spin_mag = scipy.stats.beta.rvs(*bh_spin_params.values(), random_state=self._rng)
                 t, p = uniform_sample_sphere(1, rng=self._rng)
                 self._spin = spin_mag * np.array([
                                                 np.sin(t) * np.cos(p),
