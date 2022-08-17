@@ -1,2 +1,2 @@
-from .galaxy_ic_class import *
+from .GalaxyIC import GalaxyIC
 from .mergers import *
