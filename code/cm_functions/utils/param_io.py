@@ -3,11 +3,12 @@ import sys
 import os
 import importlib
 import numpy as np
+import json
 
 from ..env_config import _logger
 
 
-__all__ = ["read_parameters", "write_parameters"]
+__all__ = ["read_parameters", "write_parameters", "to_json"]
 
 
 def read_parameters(filepath):
@@ -129,3 +130,24 @@ def write_parameters(values, filepath=None, allow_updates=()):
         f.write(contents)
         # reduce file size
         f.truncate()
+
+
+def to_json(obj, fname):
+    """
+    Convert a .py parameter file to a .json representation
+
+    Parameters
+    ----------
+    obj : dict
+        object to serialise
+    fname : str, path-like
+        file name to save to
+    """
+    d = {}
+    for k,v in obj.items():
+        if k[:2] != "__":
+            if isinstance(v, np.ndarray):
+                v = v.tolist()
+            d[k] = v
+    with open(fname, "w") as f:
+        json.dump(d, f, indent=4)

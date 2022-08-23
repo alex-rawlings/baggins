@@ -3,7 +3,6 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 import matplotlib.pyplot as plt
-import json
 import merger_ic_generator as mg
 import pygad
 
@@ -13,7 +12,7 @@ from ..env_config import _logger
 from ..literature import *
 from ..mathematics import get_histogram_bin_centres
 from ..plotting import mplColours, savefig
-from ..utils import create_error_col, write_parameters
+from ..utils import create_error_col, write_parameters, to_json
 
 __all__ = ["GalaxyIC"]
 
@@ -499,13 +498,9 @@ class GalaxyIC(_GalaxyICBase):
     
 
     def parameters_to_json(self):
-        d = {}
-        for k,v in self.parameters.__dict__.items():
-            if k[:2] != "__":
-                if isinstance(v, np.ndarray):
-                    v = v.tolist()
-                d[k] = v
+        """
+        Convert the IC parameter file to a .json file
+        """
         fname = os.path.join(self.save_location, f"{self.name}_parameters.json")
-        with open(fname, "w") as f:
-            json.dump(d, f, indent=4)
+        to_json(self.parameters.__dict__, fname)
         _logger.logger.info(f"Parameters saved to file {fname}")

@@ -154,7 +154,11 @@ def get_bound_binary(ketju_file, tol=1e-15):
     """
     bh1, bh2, merged = get_bh_particles(ketju_file, tol)
     bhs = {0:bh1, 1:bh2}
-    bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[0]
+    try:
+        bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[0]
+    except IndexError:
+        _logger.logger.exception("No binaries found!", exc_info=True)
+        raise
     return bh1, bh2, merged
 
 

@@ -79,7 +79,7 @@ class InternalLogger:
             logging level, by default "ERROR"
         """
         with open(logfile, "a") as f:
-            f.write(f"\nLogger created at {datetime.now()}")
+            f.write(f"Logger created at {datetime.now()}\n")
         self._f_handler = logging.FileHandler(filename=logfile)
         self._set_handler(self._f_handler, file_level, fmt=self._fh_format)
 

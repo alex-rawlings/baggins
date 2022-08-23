@@ -35,7 +35,7 @@ array[] real log10_I(int N, array[] real R, real I_b, real g, real a, real r_b, 
     for(i in 1:N){
         log10_I_arr[i] = pre_term + g/a * log(1.0 + pow((r_b/R[i]), a)) - b*pow(((pow(R[i], a) + pow(r_b, a)) / pow(Re, a)), inv(a*n));
         // change base to log10
-        log10_I_arr[i] = log10_I_arr[i] / denom;
+        log10_I_arr[i] = log10_I_arr[i] / denom + 10.0;
     }
     return log10_I_arr;
 }

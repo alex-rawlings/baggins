@@ -7,6 +7,7 @@ import arviz as av
 
 
 from ...plotting import savefig, create_normed_colours, mplColours
+from ...utils import load_data
 from ...env_config import figure_dir, data_dir, _logger
 
 __all__ = ["StanModel"]
@@ -40,6 +41,7 @@ class StanModel:
         if rng is None:
             self._rng = np.random.default_rng()
         self.obs = None
+        self._obs_len = None
         self._stan_data = None
         self._model = None
         self._fit = None
@@ -47,7 +49,7 @@ class StanModel:
         self._prior_stan_data = None
         self._prior_model = None
         self._prior_fit = None
-        #self.load_obs()
+        self.load_obs()
         if random_select_obs is not None:
             assert all(k in random_select_obs.keys() for k in ["num", "group"])
             self.random_obs_select_dict = random_select_obs
@@ -56,6 +58,7 @@ class StanModel:
         self._observation_mask = True
         self._plot_obs_data_kwargs = {"marker":".", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
         self._num_groups = 0
+        self._loaded_from_file = False
     
     @property
     def model_file(self):
@@ -80,22 +83,10 @@ class StanModel:
     @observation_mask.setter
     def observation_mask(self, m):
         self._observation_mask = m
-
-    def load_obs(self):
-        """
-        Load observed data
-
-        Raises
-        ------
-        NotImplementedError
-            for files other than .pickle and .hdf5
-        """
-        if self._obs_file.endswith(".pickle"):
-            self.obs = pd.read_pickle(self._obs_file)
-        elif self._obs_file.endswith(".hdf5"):
-            self.obs = pd.read_hdf(self._obs_file)
-        else:
-            raise NotImplementedError("Only .pickle and .hdf5 files supported!")
+    
+    @property
+    def obs_len(self):
+        return self._obs_len
     
     @property
     def categorical_label(self):
@@ -103,9 +94,9 @@ class StanModel:
     
     @categorical_label.setter
     def categorical_label(self, group):
-        self._categorical_label = np.full(self.obs.shape[0], 0, dtype=int)
-        for i, g in enumerate(np.unique(self.obs.loc[:, group])):
-            mask = self.obs.loc[:, group] == g
+        self._categorical_label = np.full(self.obs_len, 0, dtype=int)
+        for i, g in enumerate(np.unique(self.obs[group])):
+            mask = self.obs[group] == g
             self._categorical_label[mask] = i
             self._num_groups += 1
     
@@ -119,6 +110,38 @@ class StanModel:
         d = os.path.join(figure_dir, f[::-1].partition("/")[-1][::-1])
         os.makedirs(d, exist_ok=True)
     
+
+    def load_obs(self):
+        """
+        Load observed data
+
+        Raises
+        ------
+        NotImplementedError
+            for files other than .pickle
+        """
+        if self._obs_file.endswith(".pickle"):
+            self.obs = load_data(self.obs_file)
+            for i, (k,v) in enumerate(self.obs.items()):
+                if isinstance(v, dict):
+                    raise ValueError("Single-layer dictionary only for observation data!")
+                elif isinstance(v, list):
+                    self.obs[k] = np.array(v)
+                try:
+                    assert not np.any(np.isnan(v))
+                except AssertionError:
+                    _logger.logger.error("NaN values detected in observed variable {k}! This can lead to undefined behaviour.")
+                    raise
+                # data consistency checks
+                if i==0:
+                    self._obs_len = self.obs[k].shape[-1]
+                else:
+                    if self.obs[k].shape[-1] != self.obs_len:
+                        raise ValueError(f"Data must be of the same length! Length is {self.obs_len}, but variable {k} has length {self.obs[k].shape[-1]}")
+        else:
+            raise NotImplementedError("Only .pickle files currently supported!")
+    
+    
     def transform_obs(self, key, newkey, func):
         """
         Apply a transformation to an observed quantity, saving the result to the
@@ -127,20 +150,24 @@ class StanModel:
         Parameters
         ----------
         key : str
-            observation column name
+            observation dictionary key
         newkey : str
-            column name for transformed quantity
+            dictionary key for transformed quantity
         func : function
             transformation
 
         Raises
         ------
         ValueError
-            when proposed column name is a reserved keyword
+            when proposed dictionary key is a reserved keyword
         """
-        if newkey == "mask":
-            raise ValueError("Key 'mask' is a reserved key!")
-        self.obs[newkey] = func(self.obs.loc[:, key])
+        for k in self.obs.keys():
+            if k == newkey:
+                _logger.logger.warning(f"Requested key {newkey} already exists! Transformation will not be reapplied --> Skipping.")
+                break
+        else:
+            _logger.logger.info(f"Applying transformation designated by {newkey}")
+            self.obs[newkey] = func(self.obs[key])
     
 
     def _sampler(self, data, prior=False, sample_kwargs={}):
@@ -161,17 +188,21 @@ class StanModel:
         cmdstanpy.CmdStanMCMC 
             container output from stan sampling
         """
-        default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "adapt_delta":1-1e-1, "max_treedepth":12, "output_dir":os.path.join(data_dir, "stan_files")}
-        # update user given sample kwargs
-        for k, v in sample_kwargs.items():
-            default_sample_kwargs[k] = v
-        if prior:
-            fit = self._prior_model.sample(data=data, **default_sample_kwargs)
+        if self._loaded_from_file:
+            _logger.logger.warning("Instance instantiated from file: sampling the model again is not possible --> Skipping.")
+            return self._fit
         else:
-            fit = self._model.sample(data=data, **default_sample_kwargs)
-        _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
-        _logger.logger.info(f"\n{fit.diagnose()}")
-        return fit
+            default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "adapt_delta":1-1e-1, "max_treedepth":12, "output_dir":os.path.join(data_dir, "stan_files")}
+            # update user given sample kwargs
+            for k, v in sample_kwargs.items():
+                default_sample_kwargs[k] = v
+            if prior:
+                fit = self._prior_model.sample(data=data, **default_sample_kwargs)
+            else:
+                fit = self._model.sample(data=data, **default_sample_kwargs)
+            _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
+            _logger.logger.info(f"\n{fit.diagnose()}")
+            return fit
     
 
     def build_model(self, prior=False):
@@ -205,20 +236,22 @@ class StanModel:
         num : int
             number of quantities per group to include in subset 
         group : str
-            dataframe column name that specifies the group
+            dataframe dictionary key that specifies the group
         """
         i_s = []
         counter = 0
-        for kk in np.unique(self.obs.loc[:, group]):
-            _mask = self.obs.loc[:, group] == kk
-            ids = self.obs.loc[_mask, group].index
+        for kk in np.unique(self.obs[group]):
+            _mask = self.obs[group] == kk
+            ids = np.arange(self._obs_len)[_mask]
             _i_s = self._rng.integers(int(ids.min()), int(ids.max()), num)
             i_s.extend(_i_s)
             counter += 1
         idxs = np.r_[i_s]
-        # delete unselected rows, and rename the row indices to default
-        self.obs.drop(self.obs.index.difference(idxs), inplace=True)
-        self.obs.reset_index(drop=True, inplace=True)
+        # delete unselected rows
+        del_mask = np.full(self._obs_len, 1, dtype=bool)
+        del_mask[idxs] = False
+        for k, v in self.obs.items():
+            self.obs[k] = v[del_mask]
     
 
     def sample_model(self, data, sample_kwargs={}, save=False):
@@ -235,7 +268,7 @@ class StanModel:
             save stan sampling to .csv files, by default False
         """
         self._stan_data = data
-        if self._model is None:
+        if self._model is None and not self._loaded_from_file:
             self.build_model()
         self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
         if save:
@@ -258,7 +291,7 @@ class StanModel:
             kwargs to be passed to CmdStanModel.sample(), by default {}
         """
         self._prior_stan_data = data
-        if self._prior_model is None:
+        if self._prior_model is None and not self._loaded_from_file:
             self.build_model(prior=True)
         self._prior_fit = self._sampler(data=self._prior_stan_data, sample_kwargs=sample_kwargs, prior=True)
     
@@ -282,7 +315,6 @@ class StanModel:
         fname_parts = list(os.path.splitext(fname))
         if fname_parts[1] == "":
             fname_parts[1] = ".png"
-        #return os.path.join(figure_dir, f"{fname_parts[0]}_{tag}{fname_parts[1]}")
         return f"{fname_parts[0]}_{tag}{fname_parts[1]}"
     
 
@@ -315,7 +347,7 @@ class StanModel:
         av.plot_pair(self._fit, var_names=var_names, kind="kde", ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}}, point_estimate_marker_kwargs={"marker":""})
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
-        #plt.close(fig)
+        plt.close(fig)
         self._parameter_plot_counter += 1
     
 
@@ -326,13 +358,13 @@ class StanModel:
         Parameters
         ----------
         xobs : str
-            column name for observed independent variable 
+            dictionary key for observed independent variable 
         yobs : str
-            column name for observed dependent variable
+            dictionary key for observed dependent variable
         xmodel : str
-            column name for modelled independent variable
+            dictionary key for modelled independent variable
         ymodel : str
-            column name for modelled dependent variable
+            dictionary key for modelled dependent variable
         levels : list, optional
             HDI intervals to plot, by default [50, 90, 95, 99]
         ax : matplotlib.axes._subplots.AxesSubplot, optional
@@ -351,23 +383,26 @@ class StanModel:
         # overlay data
         if self._num_groups < 2:
             self._plot_obs_data_kwargs["cmap"] = "Set1"
-        ax.scatter(self.obs.loc[:, xobs], self.obs.loc[:, yobs], c=self.categorical_label, **self._plot_obs_data_kwargs)
+        ax.scatter(self.obs[xobs], self.obs[yobs], c=self.categorical_label, **self._plot_obs_data_kwargs)
         ax.legend()
         savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
     
 
-    def posterior_plot(self, xobs, yobs, ymodel, levels=[50, 90, 95, 99], ax=None):
+    def posterior_plot(self, xobs, yobs, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None):
         """
         Plot a posterior predictive check for a regression stan model.
 
         Parameters
         ----------
         xobs : str
-            column name for observed independent variable
+            dictionary key for observed independent variable
         yobs : str
-            column name for observed dependent variable
+            dictionary key for observed dependent variable
         ymodel : str
-             column name for modelled dependent variable
+            dictionary key for modelled dependent variable
+        yobs_err : str, optional
+             dictionary key for observed dependent variable scatter, by default 
+             None
         levels : list, optional
             HDI intervals to plot, by default [50, 90, 95, 99]
         ax : matplotlib.axes._subplots.AxesSubplot, optional
@@ -382,12 +417,41 @@ class StanModel:
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            # TODO check x, y shapes
-            av.plot_hdi(self.obs[:, xobs].to_numpy()[self._observation_mask,:], ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"})
+            av.plot_hdi(self.obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"}, smooth=False)
         # overlay data
-        ax.scatter(self.obs.loc[self._observation_mask, xobs], self.obs.loc[self._observation_mask, yobs], c=self.categorical_label, zorder=20, label="Obs.", cmap="autumn", **self._plot_obs_data_kwargs)
-        ax.legend(loc="upper left")
+        if yobs_err is None:
+            ax.scatter(self.obs[xobs][self._observation_mask], self.obs[yobs][self._observation_mask], c=self.categorical_label, zorder=20, **self._plot_obs_data_kwargs)
+        else:
+            colvals = np.unique(self.categorical_label)
+            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
+            for c in colvals:
+                col = cmapper(c)
+                mask = np.logical_and(self.categorical_label==c, self._observation_mask)
+                ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", capsize=5)
+        ax.legend()
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
+
+
+    def print_parameter_percentiles(self, vars):
+        """
+        Print a simple table with the 5%, 50%, and 95% percentiles for some
+        variables.
+
+        Parameters
+        ----------
+        vars : list
+            variables in the CmdStanMCMC object to print
+        """
+        df = self._fit.summary(sig_figs=4)
+        vars.insert(0, "Variable")
+        max_str_len = max([len(v) for v in vars]) + 1
+        head_str = f"\n{vars[0]:>{max_str_len}}       5%      50%     95%"
+        print(head_str)
+        dashes = ["-" for _ in range(len(head_str))]
+        print("".join(dashes))
+        for v in vars[1:]:
+            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>6}  {df.loc[v,'50%']:>6}  {df.loc[v,'95%']:>6}")
+        print()
 
 
     @classmethod
@@ -409,5 +473,7 @@ class StanModel:
         # initiate a class instance
         C = cls(model_file=None, prior_file=None, obs_file=obs_file, figname_base=figname_base, rng=rng, random_select_obs=None)
         C._fit = cmdstanpy.from_csv(fit_files)
+        C._loaded_from_file = True
+        return C
 
 
