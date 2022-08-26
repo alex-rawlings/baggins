@@ -1,0 +1,38 @@
+We perform full Bayesian Hierarchical Modelling for the projected mass density profiles of our simulated galaxies. 
+The modelling is performed using the statistical software \textsc{Stan}\footnote{https://mc-stan.org}, which itself implements Hamiltonian Monte Carlo (HMC).
+
+\subsection{Hamiltonian Monte Carlo}
+An excellent overview of HMC may be found in \citet{betancourt17}, with a brief description provided here.
+
+In numerically sampling an arbitrary target distribution, we are required to sample from the \textit{typical set}, or those regions of the target distribution which provide the dominant contribution to an expectation value. 
+Simplistically, this may be achieved using any Markov generating process, such as the widely-used Metropolis-Hastings (MH) algorithm, albeit at the expense of inefficient and biased sampling. 
+The MH algorithm generates from a starting position $q$ a proposal for the next position $q'$, with proposals accepted with some probability $Q(q'|q)$, where $Q$ is often chosen to be the normal distribution. 
+Sampling with increased efficiency can be achieved by using information about the geometry of the typical set of the target distribution through a vector field aligned with the typical set, which may be estimated using the gradient of the target distribution. 
+To align the gradient vector field with the typical set vector field, we can introduce auxillary momenta variables $p$, promoting our $D$-dimensional target distribution to a projection of a $2D$-dimensional canonical distribution in some phase space:
+\begin{equation*}
+    P(q,p) = P(p|q)P(q) = e^{-H(q,p)}
+\end{equation*}
+where $H$ is an invariant Hamiltonian function. 
+The desired vector field may then be generated from the Hamiltonian $H$ using Hamilton's equations. 
+This formulation also lends itself to improved sampling efficiency by decomposing the Hamiltonian into a \textit{kinetic energy} term and a \textit{potential energy} term, with the latter equivalent to the logarithm of the target distribution. 
+As the Hamiltonian is phase space conserving, they may be accurately integrated using a volume-preserving integration scheme, such as symplectic integrators. 
+Of these, the leapfrog scheme offers both a simple implementation and high accuracy over long integration times. 
+
+
+\subsection{Hierarchical Models}
+\begin{itemize}
+    \item Data doesn't have error, model has uncertainty
+    \item Require multiple observations from a population --> samples
+    \item Assume population described by a series of hyperparameters
+    \item Prior distributions on those hyperparameters
+    \item Forward fold through model, combine with likelihood function from data
+\end{itemize}
+
+
+\drafting{\begin{enumerate}
+    \item HMC algorithm?
+    \item Description of hierarchical model
+    \item Prior distributions
+    \item forward modelling
+\end{enumerate}
+}
