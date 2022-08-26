@@ -256,8 +256,10 @@ class GalaxyIC(_GalaxyICBase):
             dists.append(dm_distribution)
 
         if self.bh is not None:
+            # set up bh
             bh_particle = mg.CentralPointMass(mass=self.bh.mass, softening=self.parameters.BH_softening, chi=self.bh.spin, particle_type=mg.ParticleType.BH)
             dists.append(bh_particle)
+            self.parameters_to_update.append("BH_spin")
         
         # generate the galaxy
         generated_galaxy = mg.SphericalSystem(*dists, rmax=self.maximum_radius, anisotropy_radius=self.stars.anisotropy_radius)

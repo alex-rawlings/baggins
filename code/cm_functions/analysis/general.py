@@ -1,15 +1,15 @@
 import numpy as np
 import scipy.stats
-import warnings
 import pygad
 from ..general import convert_gadget_time
 from ..mathematics import get_histogram_bin_centres
+from ..env_config import _logger
 
 
 __all__ = ["beta_profile", "snap_num_for_time"]
 
-
-def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
+# TODO add option for a defined binning, and not only have it done internally
+def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
     """
     Determine the beta profile as defined in B&T Eq. 4.61
 
@@ -20,8 +20,9 @@ def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
     vspherical : (n,3) np.ndarray
         spherical velocity components, with columns corresponding to radius, 
         theta, and phi velocities
-    binwidth : float
-        fixed width of bins (dex for logscale)
+    binning : float, int, array-like
+        fixed width of bins (dex for logscale) if int or float, otherwise an 
+        array specifying the bins to use
     qcut : float, optional
         remove those particles which have r > qcut quantile (e.g. those few particles that are very far away), by default 0.98
     logbin : bool, optional
@@ -43,12 +44,20 @@ def beta_profile(r, vspherical, binwidth, qcut=0.98, logbin=True, eps=1e-16):
         mask = r < np.quantile(r, qcut)
         r = r[mask]
         vspherical = vspherical[mask, :]
-    #determine the bins -> used fixed binwidths
-    if logbin:
-        rmin = pygad.UnitScalar(1.0, "pc")
-        bins = 10**np.arange(rmin.in_units_of(r.units), np.log10(np.max(r))+binwidth, binwidth)
-    else:
-        bins = np.arange(0, np.max(r)+binwidth, binwidth)
+    try:
+        assert isinstance(binning, (float, int, np.ndarray, pygad.UnitArr))
+        if isinstance(binning, (float, int)):
+            #determine the bins -> used fixed binwidths
+            if logbin:
+                rmin = pygad.UnitScalar(1.0, "pc")
+                bins = 10**np.arange(rmin.in_units_of(r.units), np.log10(np.max(r))+binning, binning)
+            else:
+                bins = np.arange(0, np.max(r)+binning, binning)
+        else:
+            bins = binning
+    except AssertionError:
+        _logger.logger.exception(f"Parameter 'binning' must be either an int, float, or array-like! Type {type(binning)} is not valid.", exc_info=True)
+        raise
     #bin the statistics
     standard_devs, bin_edges, binnumbers = scipy.stats.binned_statistic(r, [vspherical[:,0], vspherical[:,1], vspherical[:,2]], statistic="std", bins=bins)
     #mask out nan values
@@ -99,9 +108,11 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
     if method not in ["floor", "ceil", "nearest"]: raise ValueError("method must be one of 'floor', 'ceil', or 'nearest'.")
     assert(isinstance(time_to_find, (float, int, pygad.UnitArr)))
     for ind, this_snap in enumerate(snaplist):
+        # TODO more efficient to read directly from hdf5 instead of loading snapshot?
         snap = pygad.Snapshot(this_snap, physical=True)
         this_time = convert_gadget_time(snap, new_unit=units)
         snap.delete_blocks()
+        pygad.gc_full_collect()
         del snap
         if ind == 0:
             prev_time = this_time
@@ -120,5 +131,5 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
         prev_time = this_time
     else:
         idx = len(snaplist)-1
-        warnings.warn("Returning the final snapshot in the list!")
+        _logger.logger.warning("Returning the final snapshot in the list!")
     return idx

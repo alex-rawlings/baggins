@@ -71,10 +71,14 @@ else:
 
 
 if args.load_file is not None:
-    my_stan = cmf.analysis.StanModel.load_fit(args.load_file, obs_file=args.file, figname_base=figname_base)
+    my_stan = cmf.analysis.StanModel.load_fit(args.load_file, figname_base=figname_base)
 else:
-    my_stan = cmf.analysis.StanModel(model_file="stan/graham.stan", prior_file="stan/graham_prior.stan", obs_file=args.file, figname_base=figname_base)
-
+    my_stan = cmf.analysis.StanModel(model_file="stan/graham.stan", prior_file="stan/graham_prior.stan", figname_base=figname_base)
+my_stan.load_observations_from_pickle(args.file)
+print(my_stan.obs)
+print(my_stan.obs["R"].shape)
+print(my_stan.obs["Sigma"].shape)
+quit()
 
 my_stan.categorical_label = "name"
 my_stan.transform_obs("Sigma", "log10_Sigma", lambda x: np.log10(x))

@@ -77,10 +77,13 @@ def get_com_of_each_galaxy(snap, method="pot", masks=None, family="all", initial
             bh_id_mask = pygad.IDMask(bhid)
             if snap.bh[bh_id_mask]["mass"] < 1e-15:
                 #the BH has 0 mass, most likley due to a merger -> skip this
-                _logger.logger.info(f"Zero-mass BH ({bhid}) detected! Skipping CoM estimate with this BH position as an initial guess")
+                _logger.logger.warning(f"Zero-mass BH ({bhid}) detected! Skipping CoM estimate associated with this BH ID")
                 continue
-            _logger.logger.info(f"Finding CoM associated with BH ID {bhid}")
-            coms[bhid] = pygad.analysis.shrinking_sphere(masked_subsnap, center=snap.bh[bh_id_mask]["pos"], R=initial_radius)
+            if masks is None and i > 0:
+                # we don't want to get two CoMs --> break early
+                break
+            _logger.logger.debug(f"Finding CoM associated with BH ID {bhid}")
+            coms[bhid] = pygad.analysis.shrinking_sphere(masked_subsnap, center=pygad.analysis.center_of_mass(masked_subsnap), R=initial_radius)
     return coms
 
 
@@ -737,7 +740,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
         if num_bhs<1:
             raise ValueError("BHs must be present in snapshot for masking!")
         for bhid in snap.bh["ID"]:
-            centre_guess_dict[bhid] = snap.bh[snap.bh["ID"]==bhid]["pos"]
+            centre_guess_dict[bhid] = snap.stars[snap.bh["ID"]==bhid]["pos"]
             subsnap_dict[bhid] = getattr(snap[masks[bhid]], family)
     
     #pre-allocate dictionaries

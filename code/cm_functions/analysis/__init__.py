@@ -1,6 +1,6 @@
 from .analyse_snap import *
 #from .new_analysis_classes import *
-from .analysis_classes import BHBinaryData, BHBinary, ChildSimData, ChildSim, StanModel
+from .analysis_classes import BHBinaryData, BHBinary, ChildSimData, ChildSim, StanModel, HMQuantitiesData, HMQuantities
 from .general import *
 from .masks import *
 from .orbit import *

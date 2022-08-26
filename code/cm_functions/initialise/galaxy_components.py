@@ -7,7 +7,7 @@ from ..literature import *
 from ..cosmology import *
 from ..general import *
 from ..mathematics import uniform_sample_sphere
-from ..utils import read_parameters, write_parameters
+from ..utils import read_parameters
 from ..env_config import _logger
 
 __all__ = []
@@ -266,7 +266,7 @@ class _DMHaloDehnen(_DMComponent):
         parameter_file : str, path-like, optional
             path to parameter file describing the galaxy ICs, by default None
         """
-        super().__init__(self, stellar_mass=stellar_mass, parameter_file=parameter_file)
+        super().__init__(stellar_mass=stellar_mass, parameter_file=parameter_file)
         self.scale_radius = self.parameters.DMScaleRadius
         self.gamma = self.parameters.DMGamma
 
@@ -324,7 +324,7 @@ class _SMBH(_GalaxyICBase):
 
     @spin.setter
     def spin(self, val):
-        if isinstance(val, str):
+        if isinstance(val, str) or val is None:
             valid_str = True
             # choose spin parameters from the following distributions
             if self.parameters.BH_spin_from.lower() == "zlochower_dry":
@@ -338,6 +338,7 @@ class _SMBH(_GalaxyICBase):
                 bh_spin_params = None
             # set up random spins
             if valid_str:
+                _logger.logger.info(f"Generating BH spins from {self.parameters.BH_spin_from.lower()}")
                 spin_mag = scipy.stats.beta.rvs(*bh_spin_params.values(), random_state=self._rng)
                 t, p = uniform_sample_sphere(1, rng=self._rng)
                 self._spin = spin_mag * np.array([
