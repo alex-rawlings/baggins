@@ -2,37 +2,102 @@ We perform full Bayesian Hierarchical Modelling for the projected mass density p
 The modelling is performed using the statistical software \textsc{Stan}\footnote{https://mc-stan.org}, which itself implements Hamiltonian Monte Carlo (HMC).
 
 \subsection{Hamiltonian Monte Carlo}
-An excellent overview of HMC may be found in \citet{betancourt17}, with a brief description provided here.
+An excellent overview of HMC may be found in \citet{betancourt17}, with a brief description provided here. \drafting{Mention NUTS here somewhere?}
 
 In numerically sampling an arbitrary target distribution, we are required to sample from the \textit{typical set}, or those regions of the target distribution which provide the dominant contribution to an expectation value. 
 Simplistically, this may be achieved using any Markov generating process, such as the widely-used Metropolis-Hastings (MH) algorithm, albeit at the expense of inefficient and biased sampling. 
 The MH algorithm generates from a starting position $q$ a proposal for the next position $q'$, with proposals accepted with some probability $Q(q'|q)$, where $Q$ is often chosen to be the normal distribution. 
 Sampling with increased efficiency can be achieved by using information about the geometry of the typical set of the target distribution through a vector field aligned with the typical set, which may be estimated using the gradient of the target distribution. 
 To align the gradient vector field with the typical set vector field, we can introduce auxillary momenta variables $p$, promoting our $D$-dimensional target distribution to a projection of a $2D$-dimensional canonical distribution in some phase space:
-\begin{equation*}
+\begin{equation}\label{eq:hmc}
     P(q,p) = P(p|q)P(q) = e^{-H(q,p)}
-\end{equation*}
+\end{equation}
 where $H$ is an invariant Hamiltonian function. 
 The desired vector field may then be generated from the Hamiltonian $H$ using Hamilton's equations. 
 This formulation also lends itself to improved sampling efficiency by decomposing the Hamiltonian into a \textit{kinetic energy} term and a \textit{potential energy} term, with the latter equivalent to the logarithm of the target distribution. 
-As the Hamiltonian is phase space conserving, they may be accurately integrated using a volume-preserving integration scheme, such as symplectic integrators. 
-Of these, the leapfrog scheme offers both a simple implementation and high accuracy over long integration times. 
+\begin{align}
+    H(q,p) &= -\log P(q,p) \\
+    &= -\log \left( P(p|q)P(q) \right) \\
+    &= -\log P(p|q) -\log P(q)
+\end{align}
+As the Hamiltonian is phase space conserving, the Hamilton equations may be accurately integrated using a volume-preserving integration scheme, such as symplectic integrators. 
+Of these integrators, the leapfrog scheme offers both a simple implementation and high accuracy over long integration times. 
 
 
 \subsection{Hierarchical Models}
-\begin{itemize}
-    \item Data doesn't have error, model has uncertainty
-    \item Require multiple observations from a population --> samples
-    \item Assume population described by a series of hyperparameters
-    \item Prior distributions on those hyperparameters
-    \item Forward fold through model, combine with likelihood function from data
-\end{itemize}
+In general, a model, whether empirical or physical, is a mathematical description of some observed data involving one or more model parameters. 
+There are a vast number of methods, such as least-squares fitting and $\chi^2$-minimisation, that aim to recover the optimal or `best-fit' parameters for a model given some data. 
+Hierarchical models extend this concept by generalising parameters as realisations of an underlying multi-dimensional population distribution with some given shape parameters, or \textit{hyperparameters}.
+Given a sample of observations that may be reasonably assumed to be drawn from some larger population, we are able to use Bayesian analysis to recover the optimal latent parameters, constrained by prior information we have on the hyperparameters.
 
+In this work, we have 36 merger configuration families, with each family containing ten perturbed realisations of the same initial state. 
+As we only slightly perturb the SMBH phase space coordinates, each \child simulation can be thought of as a sampled observation of the general galaxy-merger configuration for its corresponding family. 
+Thus, we are able to employ hierarchical modelling to recover latent parameter distributions for various observable quantities of the merger remnant. 
 
-\drafting{\begin{enumerate}
-    \item HMC algorithm?
-    \item Description of hierarchical model
-    \item Prior distributions
-    \item forward modelling
+Robust Bayesian analysis relies on a well-informed choice of the (hyper-) parameter prior distributions. 
+Broadly speaking, there are three categories of prior distributions used:
+\begin{enumerate}
+    \item \textit{Uninformative} priors: no prior information is given to the prior distribution, and thus all physically-allowed values are equally likely. A uniform distribution over the parameter domain is used.
+    \item \textit{Weakly-informative} priors: a small amount of prior information is encoded into the prior distribution, however the distribution is chosen to have a large variance. This generally ensures parameter values close to the expected order of magnitude are favoured over values that are `insensibly' extreme. An example is a normal distribution $\mathcal{N}(\mu=0, \sigma^2=100)$ for a parameter than is expected to be in the range $[-1,1]$. 
+    \item \textit{Strongly-informative} priors: a large amount of prior information is encoded into the prior distribution, with small variance. This can lead to severely-biased parameter estimates from Bayesian analysis due to excessive `weight' given to the prior distribution over the data. An example is a normal distribution $\mathcal{N}(\mu=0, \sigma^2=0.5)$ for a parameter than is expected to be in the range $[-1,1]$. 
 \end{enumerate}
+In this work, we opt for weakly-informative priors: from the literature, we know the approximate range of `sensible' values that our model parameters may take, but ensure that the prior distribution variance is wide so as to not excessively weight our priors relative to our data.
+
+Additionally, we must also consider the shape of each parameter's prior distribution, as parameters are generally constrained by some physical condition. 
+For example, a normalising radius $a$ cannot take a value less than 0, so a normal distribution, which has an unbounded domain, is an inappropriate choice for the prior distribution of this variable.
+Choosing a log-normal or gamma distribution with support on $[0,\infty)$ would represent a physically-motivated choice for the prior distribution here. 
+
+\subsection{Predictive Checks}
+\drafting{Check names: forward fold, push forward}
+To ensure consistency between the (hyper-) parameter prior distributions and the observed data, we perform both prior-predictive and posterior-predictive checks of our modelling process.
+
+Prior predictive checks involve sampling model parameters directly from the model prior distributions, and ensuring that the observed dependent variable can be reasonably explained by those prior distributions given the observed independent variable as input \citep{gabry19}.
+If a model is described by a set of parameters $\theta$ which are drawn from a prior distribution $P$, then the model parameters are sampled according to $\theta^\mathrm{sim} \sim P(\theta)$. 
+Simulated data $y^\mathrm{sim}$ may then be sampled from the sampling distribution $Q$ given the set $\theta^\mathrm{sim}$, so that $y^\mathrm{sim} \sim Q(y | \theta^\mathrm{sim})$.
+
+
+Posterior predictive checks are similar to prior predictive checks, except that the posterior distributions that are recovered from the Bayesian analysis are sampled instead of the prior distributions of the model, and are thus conditioned on the data \citep{gelman15}.
+For some data dependent $y$, new dependent data $y^\mathrm{rep}$ \textit{using the original independent data} is predicted following:
+\begin{equation}
+    P(y^\mathrm{rep} | y) = \int_\Omega P(y^\mathrm{rep} | \theta) P(\theta | y) \dd{\theta}
+\end{equation}
+
+Ideally, the the observed dataset $y$ should appear somehow typical of those datasets $r^\mathrm{rep}$ that are predicted.
+In this work, we visually classify a `good' fit as one where the data falls within the 50\% highest density interval (HDI, also referred to as the posterior density region). 
+The $\alpha$\% HDI region is defined \citep[e.g.][]{gelman15} as the region containing:
+\begin{enumerate}
+    \item $100(1-\alpha)$\% of the probability, and
+    \item the density within the HDI region is always greater than the density outside the region.
+\end{enumerate}   
+The HDI differs from a regular confidence interval in that a confidence interval does not impose condition (ii), making it unsuitable for describing distributions other than those that are unimodal and symmetric.
+
+In addition to visual inspection of the posterior predictive distribution, we wish to quantitatively assess the statistical ability of our model to capture the key features we are interested in.
+Critically, the exact form of such a test will depend on which features we define as being `important' for the model to capture.
+Typically though, a sense of how well a posterior distribution captures the first and second moments of a distribution (i.e., the mean and variance) are metrics we will be guided by.
+\begin{enumerate}
+    \item Does the posterior predictive distribution capture the \textit{location} of the data generating process? If our model predicts data $y^\mathrm{sim}$ significantly offset from our observed data $y$, then the model is not very useful in predicting future observations generated from the same data generating process as $y$.
+    \item Does the posterior predictive distribution capture the \textit{scale} of the data generating process? \drafting{What does this imply??}
+\end{enumerate}
+
+To answer these questions, we define a test statistic $T$ from which we determine a Bayes-equivalent of the frequentist $p$-value \citep{gelman15}.
+\begin{align}
+    p_\mathrm{Bayes} &= \mathrm{Pr}\left( T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y \right) \\
+    &= \iint I_{T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y} p\left( y^\mathrm{rep}|\theta\right) p\left( \theta|y\right) \dd{y^\mathrm{rep}} \dd{\theta}
+\end{align}
+Here, $I$ is the indicator function. 
+
+
+\subsection{Assessing the HMC}
+\drafting{Probably cite \citet{betancourt17} here, maybe others. Is this section necessary, or saying `default stan exit conditions' sufficient? Don't want to just be rewording stan docs, but also want to be transparent}.
+
+In determining whether or not the multi-dimensional distribution described by a hierarchical model has been well sampled, a number of checks are performed by \textsc{Stan}, which we describe briefly here.
+
+\drafting{
+    \begin{itemize}
+        \item sampler tree depth
+        \item divergences
+        \item potential energy
+        \item effective sample size
+        \item split R-hat values
+    \end{itemize}
 }

@@ -1,0 +1,63 @@
+\documentclass[border=10pt]{standalone}
+\usepackage{newtxtext, newtxmath}
+\usepackage{tikz}
+\usetikzlibrary{bayesnet}
+
+\begin{document}
+\begin{tikzpicture}
+    
+    % define nodes
+    % define layer 1
+    \node[obs] (Shat) {$\hat{\Sigma}$};
+    \factor[below=of Shat] {S_f} {right:Lognorm} {} {};
+    \node[det, below=of S_f] (S) {$\Sigma$};
+    \node[obs, below=of S] (R) {$\hat{R}$};
+    \node[obs, right=of S] (sigma) {$\hat{\sigma_\Sigma}^2$};
+
+    % define layer 2
+    \node[latent, left=of S] (Sb) {$\tilde{\Sigma}_\mathrm{b}$};
+    \node[latent, below=of Sb] (Re) {$R_\mathrm{e}$};
+    \node[latent, below=of Re] (rb) {$r_\mathrm{b}$};
+    \node[latent, above=of Sb] (g) {$\gamma$};
+    \node[latent, above=of g] (n) {$n$};
+
+    % define layer 3
+    \factor[left=of rb] {rb_f} {below:$\Gamma$} {} {};
+    \node[hyper, left=of rb_f, yshift=-1.2em] (rba) {$r_{\mathrm{b},\alpha}$};
+    \node[hyper, left=of rb_f, yshift=1.2em] (rbb) {$r_{\mathrm{b},\beta}$};
+
+    \factor[left=of Re] {Re_f} {below:$\Gamma$} {} {};
+    \node[hyper, left=of Re_f, yshift=-1.2em] (Rea) {$R_{\mathrm{e},\alpha}$};
+    \node[hyper, left=of Re_f, yshift=1.2em] (Reb) {$R_{\mathrm{e},\beta}$};
+
+    \factor[left=of Sb] {Sb_f} {below:$\Gamma$} {} {};
+    \node[hyper, left=of Sb_f, yshift=-1.2em] (Sba) {$\tilde{\Sigma}_{\mathrm{b},\alpha}$};
+    \node[hyper, left=of Sb_f, yshift=1.2em] (Sbb) {$\tilde{\Sigma}_{\mathrm{b},\beta}$};
+
+    \factor[left=of g] {g_f} {below:$\Gamma$} {} {};
+    \node[hyper, left=of g_f, yshift=-1.2em] (ga) {$\gamma_\alpha$};
+    \node[hyper, left=of g_f, yshift=1.2em] (gb) {$\gamma_\beta$};
+
+    \factor[left=of n] {n_f} {below:$\Gamma$} {} {};
+    \node[hyper, left=of n_f, yshift=-1.2em] (na) {$n_\alpha$};
+    \node[hyper, left=of n_f, yshift=1.2em] (nb) {$n_\beta$};
+
+
+    % connect the nodes
+    \factoredge {sigma, S} {S_f} {Shat};
+    
+    \edge {rb, Re, Sb, g, n, R} {S};
+
+    \factoredge {rba, rbb} {rb_f} {rb};
+    \factoredge {Rea, Reb} {Re_f} {Re};
+    \factoredge {Sba, Sbb} {Sb_f} {Sb};
+    \factoredge {ga, gb} {g_f} {g};
+    \factoredge {na, nb} {n_f} {n};
+    
+    % plates
+    \plate {rS} {(R)(S)(sigma)(Shat)} {$\forall R,\sigma_\Sigma^2$};
+    \plate {pars} {(R)(S)(sigma)(rb)(Re)(Sb)(g)(n)} {$\forall$ child};
+
+    
+\end{tikzpicture}
+\end{document}
