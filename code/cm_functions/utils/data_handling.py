@@ -1,16 +1,12 @@
 import pickle
 import os
 import shutil
+import h5py
 from ..env_config import _logger
 
 
 __all__ = ["save_data", "load_data", "get_files_in_dir", "get_snapshots_in_dir", "get_ketjubhs_in_dir", "create_file_copy"]
 
-
-# TODO: not memory efficient to be using dicts for data
-#would be better to save each object as a separate object
-#and then use a generator to read in each object sequentially
-# QUESTION: could we read in specific separate objects using a variable name?
 
 def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
     """
@@ -96,7 +92,7 @@ def get_files_in_dir(path, ext=".hdf5", name_only=False, recursive=False):
     return file_list
 
 
-def get_snapshots_in_dir(path, ext='.hdf5', exclude=[]):
+def get_snapshots_in_dir(path, ext=".hdf5", exclude=[]):
     """
     Get a list of the full-path name of all snapshots within a directory.
 
@@ -119,7 +115,17 @@ def get_snapshots_in_dir(path, ext='.hdf5', exclude=[]):
     exclude.append("ketju_bhs")
     for e in exclude:
         all_files = [f for f in all_files if e not in f]
-    return all_files
+    # filter out corrupt snaps
+    bad_snaps = []
+    for s in all_files:
+        try:
+            with h5py.File(s, "r") as f:
+                # this throws an error if corrupt
+                f["Header"].attrs
+        except KeyError:
+            _logger.logger.warning(f"Snapshot {s} potentially corrupt. Removing it from the list of snapshots!")
+            bad_snaps.append(s)
+    return [a for a in all_files if a not in bad_snaps]
 
 
 def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):

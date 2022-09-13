@@ -80,7 +80,6 @@ class GalaxyIC(_GalaxyICBase):
                 else:
                     _star_mass = stellar_mass
             self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file)
-        # TODO allow updating of parameters to parameter file?
         self.parameters_to_update = []
         self.hdf5_file_name = os.path.join(self.save_location, f"{self.name}.hdf5")
     
@@ -121,19 +120,8 @@ class GalaxyIC(_GalaxyICBase):
         Plot the stellar mass distribution, and the scaling relations of BH mass -- bulge mass and bulge mass -- DM mass.
         """
         #read in literature data
-        mass_data = pd.read_table(os.path.join(self.lit_location, self.parameters.massData), sep=",")
-        bh_data = pd.read_table(os.path.join(self.lit_location, self.parameters.bulgeBHData), sep=",", header=0)
-        #restrict to only ETGs (exclude also S0)
-        bh_data = bh_data.loc[np.logical_or(bh_data.loc[:,"Type"]=="E", bh_data.loc[:,"Type"]=="ES"), :]
-
-        cored_galaxies = np.zeros(bh_data.shape[0], dtype="bool")
-        for ind, gal in enumerate(bh_data.loc[:,"Galaxy"]):
-            if gal[-1] == "a":
-                cored_galaxies[ind] = 1
-        bh_data.insert(2, "Cored", cored_galaxies)
-
-        create_error_col(bh_data, "logM*_sph")
-        create_error_col(bh_data, "logMbh")
+        mass_data = LiteratureTables("sdss_mass")
+        bh_data = LiteratureTables("sahu_2020")
 
         # set up figure
         fig, ax = plt.subplots(1, 3)
@@ -151,16 +139,16 @@ class GalaxyIC(_GalaxyICBase):
         ax[2].text(13.5, -1.5, f"z: {self.redshift}")
 
         #plot bulge mass distribution
-        ax[0].hist(mass_data.loc[:,"logMstar"], 20, density=True, facecolor="tab:blue", alpha=0.5, linewidth=0.8, edgecolor="black", label="SDSS DR7")
+        mass_data.hist("logMstar", ax=ax[0], label="SDSS DR7")
         ax[0].axvline(x=self.stars.log_total_mass, color=cols[3], label="Simulation")
-        ax[0].axvline(x=np.median(mass_data.loc[:,"logMstar"]), color=cols[2], ls="--", label="Median")
+        mass_data.add_qauntile_to_plot(0.5, "logMstar", ax[0], lkwargs={"c":cols[2], "ls":"--"})
         for q in [0.16, 0.84]:
-            ax[0].axvline(x=np.quantile(mass_data.loc[:,"logMstar"], q), color=cols[2], ls=":", label=f"{q} quantile")
+            mass_data.add_qauntile_to_plot(q, "logMstar", ax[0], {"c":cols[2], "ls":":"})
         ax[0].legend(loc="upper left")
         
         #plot bh - bulge relation
-        ax[1].errorbar(bh_data.loc[bh_data.loc[:,"Cored"], "logM*_sph"], bh_data.loc[bh_data.loc[:,"Cored"], "logMbh"], xerr=bh_data.loc[bh_data.loc[:,"Cored"],"logM*_sph_ERR"], yerr=bh_data.loc[bh_data.loc[:,"Cored"],"logMbh_ERR"], ls="", marker=".", elinewidth=0.8, alpha=0.8,  label="Cored", zorder=3)
-        ax[1].errorbar(bh_data.loc[~bh_data.loc[:,"Cored"], "logM*_sph"], bh_data.loc[~bh_data.loc[:,"Cored"], "logMbh"], xerr=bh_data.loc[~bh_data.loc[:,"Cored"],"logM*_sph_ERR"], yerr=bh_data.loc[~bh_data.loc[:,"Cored"],"logMbh_ERR"], ls="", marker=".", elinewidth=0.8, alpha=0.8,  label=r"S$\acute\mathrm{e}$rsic", zorder=3)
+        bh_data.scatter("logM*_sph", "logMbh", xerr="logM*_sph_ERR", yerr="logMbh_ERR", ax=ax[1], mask=bh_data.table.loc[:,"Cored"], label="Cored")
+        bh_data.scatter("logM*_sph", "logMbh", xerr="logM*_sph_ERR", yerr="logMbh_ERR", ax=ax[1], mask=~bh_data.table.loc[:,"Cored"], scatter_kwargs={"marker":"s"}, label=r"S$\acute\mathrm{e}$rsic")
         logmstar_seq = np.linspace(8, 12, 500)
         ax[0].plot(logmstar_seq, Sahu19(logmstar_seq), c="k", alpha=0.4)
         ax[0].scatter(self.stars.log_total_mass, self.bh.log_mass, zorder=10, ls="None", color=cols[3], label="Simulation")
@@ -299,14 +287,9 @@ class GalaxyIC(_GalaxyICBase):
             number of rotations performed for projected quantities, by default 3
         """
         # load literature data
-        bulgeBHData = pd.read_table(os.path.join(self.lit_location, self.parameters.bulgeBHData), sep=",", header=0)
-        # restrict to only ETGs (exclude also S0)
-        bulgeBHData = bulgeBHData.loc[np.logical_or(bulgeBHData.loc[:,"Type"]=="E", bulgeBHData.loc[:,"Type"]=="ES"), :]
-        create_error_col(bulgeBHData, "logM*_sph")
-
-        fDMData = pd.read_fwf(os.path.join(self.lit_location, self.parameters.fDMData), comment="#", names=["MaNGAID", "log(M*/Msun)", "Re(kpc)", "f_DM", "p_e", "q_e", "T_e", "f_cold", "f_warm", "f_hot", "f_CR", "f_prolong", "f_CRlong", "f_box", "f_SR"])
-
-        BHsigmaData = pd.read_table(os.path.join(self.lit_location, self.parameters.BHsigmaData), sep=";", header=0, skiprows=[1])
+        bulgeBHData = LiteratureTables("sahu_2020")
+        fDMData = LiteratureTables("jin_2020")
+        BHsigmaData = LiteratureTables("vdBosch_2016")
 
         radial_bin_edges = dict(
             stars = np.logspace(-2, 2, 50),
@@ -395,8 +378,8 @@ class GalaxyIC(_GalaxyICBase):
         if isinstance(self.stars, _StellarCusp):
             self.parameters.half_mass_radius, *_ = halfMassDehnen(self.stars.scale_radius, self.stars.gamma)
             ax[1,0].scatter(np.log10(self.parameters.half_mass_radius), np.log10(np.unique(ic.stars["mass"]) * len(ic.stars["mass"])), color=cols[3], marker="x", s=60, zorder=10, label="Theory")
-        logRe_vals = np.log10(bulgeBHData["Re_maj"].astype("float") * bulgeBHData["scale"].astype("float"))
-        ax[1,0].errorbar(logRe_vals, bulgeBHData.loc[:, "logM*_sph"], yerr=bulgeBHData.loc[:, "logM*_sph_ERR"], marker=".", ls="None", elinewidth=0.5, capsize=0, color=cols[1], ms=markersz, zorder=1, label="Sahu+20")
+        logRe_vals = np.log10(bulgeBHData.table["Re_maj"].astype("float") * bulgeBHData.table["scale"].astype("float"))
+        ax[1,0].errorbar(logRe_vals, bulgeBHData.table.loc[:, "logM*_sph"], yerr=bulgeBHData.table.loc[:, "logM*_sph_ERR"], marker=".", ls="None", elinewidth=0.5, capsize=0, color=cols[1], ms=markersz, zorder=1, label="Sahu+20")
         logRe_seq = np.linspace(np.min(logRe_vals)*0.99, 1.01*np.max(logRe_vals))
         self.parameters.half_mass_radius = pygad.analysis.half_mass_radius(ic.stars, center=mass_centre)
         self.parameters_to_update.append("half_mass_radius")
@@ -411,8 +394,8 @@ class GalaxyIC(_GalaxyICBase):
         ax[1,1].set_ylabel(r"f$_\mathrm{DM}(r<1\,$R$_\mathrm{e})$")
         ax[1,1].set_title("Inner DM Fraction", fontsize="small")
 
-        binned_fdm = scipy.stats.binned_statistic(fDMData.loc[:, "log(M*/Msun)"], values=fDMData.loc[:,"f_DM"], bins=5, statistic="median")
-        ax[1,1].scatter(fDMData.loc[:, "log(M*/Msun)"], fDMData.loc[:,"f_DM"], c=cols[1], alpha=0.6, s=3, label="Jin+20")
+        binned_fdm = scipy.stats.binned_statistic(fDMData.table.loc[:, "log(M*/Msun)"], values=fDMData.table.loc[:,"f_DM"], bins=5, statistic="median")
+        ax[1,1].scatter(fDMData.table.loc[:, "log(M*/Msun)"], fDMData.table.loc[:,"f_DM"], c=cols[1], alpha=0.6, s=3, label="Jin+20")
         fdm_radii = get_histogram_bin_centres(binned_fdm[1])
         ax[1,1].plot(fdm_radii, binned_fdm[0], "-x", c=cols[2], label="Median")
         ball_mask = pygad.BallMask(eff_rad, center=mass_centre)
@@ -453,12 +436,9 @@ class GalaxyIC(_GalaxyICBase):
         ax[2,1].set_xlabel(r"log($\sigma_*$/ km/s)")
         ax[2,1].set_ylabel(r"log(M$_\bullet$/M$_\odot$)")
         ax[2,1].set_title("BH Mass - Stellar Dispersion", fontsize="small")
-        # clean data
-        BHsigmaData.loc[BHsigmaData.loc[:,"e_logBHMass"]==BHsigmaData.loc[:,"logBHMass"], "e_logBHMass"] = np.nan
-        BHsigmaData.loc[BHsigmaData.loc[:,"logBHMass"]<1, "logBHMass"] = np.nan
 
         ax[2,1].scatter(np.log10(self.parameters.LOS_vel_dispersion), np.log10(ic.bh["mass"]), zorder=10, color=cols[3])
-        ax[2,1].errorbar(BHsigmaData.loc[:,"logsigma"], BHsigmaData.loc[:,"logBHMass"], xerr=BHsigmaData.loc[:,"e_logsigma"], yerr=[BHsigmaData.loc[:,"e_logBHMass"], BHsigmaData.loc[:,"E_logBHMass"]], marker=".", ls="None", elinewidth=0.5, capsize=0, color=cols[1], ms=markersz, zorder=1, label="Bosch+16")
+        ax[2,1].errorbar(BHsigmaData.table.loc[:,"logsigma"], BHsigmaData.table.loc[:,"logBHMass"], xerr=BHsigmaData.table.loc[:,"e_logsigma"], yerr=[BHsigmaData.table.loc[:,"e_logBHMass"], BHsigmaData.table.loc[:,"E_logBHMass"]], marker=".", ls="None", elinewidth=0.5, capsize=0, color=cols[1], ms=markersz, zorder=1, label="Bosch+16")
         ax[2,1].legend()
 
         # BH spin distribution

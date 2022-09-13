@@ -5,18 +5,18 @@ from cm_functions.mathematics import radial_separation
 
 rng = np.random.default_rng(42)
 
-near_particle = False
+near_particle = True
 perturbation = 0.01 # kpc
-parttype = "dm"
+parttype = "star"
 
 particles = {"star":"PartType4", "dm":"PartType1"}
 
 if near_particle:
-    snapfile = f"/scratch/pjohanss/arawling/collisionless_merger/high-time-output/star_perturb/near_{parttype}_{perturbation}/ic.hdf5"
+    snapfile = f"/scratch/pjohanss/arawling/gadget4-ketju/A-C-3.0-0.05/perturbations/near_{parttype}_{perturbation}/snap_050.hdf5"
     r_boundary = [0, 0.05]
     print(f"Perturbing a particle between {r_boundary[0]} and {r_boundary[1]} kpc...")
 else:
-    snapfile = f"/scratch/pjohanss/arawling/collisionless_merger/high-time-output/star_perturb/distant_{parttype}_{perturbation}/ic.hdf5"
+    snapfile = f"/scratch/pjohanss/arawling/gadget4-ketju/A-C-3.0-0.05/perturbations/distant_{parttype}_{perturbation}/snap_050.hdf5"
     r_boundary = [0.1, 10.0]
     print(f"Perturbing a {particles[parttype]} particle between {r_boundary[0]} and {r_boundary[1]} kpc...")
 print(f"IC file: {snapfile}")
@@ -37,9 +37,10 @@ with h5py.File(snapfile, "r+") as f:
     print(f"  SMBH 2: {r2.flatten()}")
     if r2 < r_boundary[0]:
         print(f"Particle to be perturbed is within {r_boundary[1]} kpc of SMBH 2! Cancelling...")
+        quit()
     print("Before perturbing: ")
     print(f[f"/{particles[parttype]}/Coordinates"][selected_part_idx,:])
-    f[f"/{particles[parttype]}/Coordinates"][selected_part_idx,:] += perturbation
+    f[f"/{particles[parttype]}/Coordinates"][selected_part_idx,0] += perturbation
 
 with h5py.File(snapfile, "r") as f:
     print("After perturbing: ")

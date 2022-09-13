@@ -2,7 +2,8 @@ from datetime import datetime
 import inspect
 from matplotlib.pyplot import gcf
 from PIL import Image
-from ..env_config import git_hash, username, date_format
+import os.path
+from ..env_config import git_hash, username, date_format, fig_ext
 
 __all__ = ["savefig", "get_meta"]
 
@@ -23,15 +24,22 @@ def savefig(fname, fig=None, save_kwargs={}):
         fig = gcf()
     f = inspect.stack()[-1] # get outermost caller on stack
     now = datetime.now()
+    if fig_ext == "png":
+        now = now.strftime(date_format)
     # ensure things are deterministic
     try:
         meta_data = dict(
-                         user = username,
-                         script = f.filename,
-                         created = now.strftime(date_format),
-                         git_hash = git_hash
+                         Author = username,
+                         Creator = f.filename,
+                         CreationDate = now,
+                         Keywords = git_hash
         )
-        fig.savefig(fname, metadata=meta_data, **save_kwargs)
+        # save to the correct format
+        fname_name, fname_ext = os.path.splitext(fname)
+        # protect against cases where no extension is specified, and the file 
+        # name has a "." in it
+        _fname = fname_name if fname_ext in (".png", ".pdf") else fname
+        fig.savefig(f"{_fname}.{fig_ext}", metadata=meta_data, **save_kwargs)
     finally:
         del f
 

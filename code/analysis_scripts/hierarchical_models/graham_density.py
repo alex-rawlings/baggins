@@ -3,6 +3,8 @@ import os.path
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
+from arviz.labels import MapLabeller
 import cm_functions as cmf
 
 
@@ -14,10 +16,12 @@ parser.add_argument("-p", "--prior", help="Plot for prior", action="store_true",
 parser.add_argument("-l", "--load", type=str, help="Load previous stan file", dest="load_file", default=None)
 args = parser.parse_args()
 
+SL = cmf.CustomLogger("script_logger", console_level="INFO")
+
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
     merger_id = f["/meta"].attrs["merger_id"]
-figname_base = f"hierarchical_models/density/graham_density-{merger_id}"
+figname_base = f"hierarchical_models/density/{merger_id}/graham_density-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
 
@@ -32,21 +36,32 @@ else:
 
 # set up observations
 observations = {"R":[], "proj_density":[], "name":[]}
-for i, f in enumerate(HMQ_files):
-    print(f"Loading file: {f}")
+i = 0
+for f in HMQ_files:
+    SL.logger.info(f"Loading file: {f}")
     hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
+    try:
+        idx = hmq.get_idx_in_vec(analysis_params.target_semimajor_axis, hmq.semimajor_axis_of_snapshot)
+    except ValueError:
+        SL.logger.warning(f"No snapshot data prior to merger! The semimajor_axis_of_snapshot attribute is: {hmq.semimajor_axis_of_snapshot}. This run will not form part of the analysis.")
+        continue
+    except AssertionError:
+        SL.logger.warning(f"Trying to search for value {analysis_params.target_semimajor_axis}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis_of_snapshot)} - {max(hmq.semimajor_axis_of_snapshot)}. This run will not form part of the analysis.")
+        continue
     r = cmf.mathematics.get_histogram_bin_centres(hmq.radial_edges)
     observations["R"].extend(r)
-    idx = hmq.get_idx_in_vec(analysis_params.target_semimajor_axis, hmq.semimajor_axis_of_snapshot)
     if i == 0:
         observations["proj_density"] = list(hmq.projected_mass_density.values())[idx]
     else:
         observations["proj_density"] = np.hstack((observations["proj_density"], list(hmq.projected_mass_density.values())[idx]))
     observations["name"].extend([i+1 for _ in range(len(r))])
+    i += 1
 graham_model.obs = observations
-
-
 graham_model.categorical_label = "name"
+
+SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
+assert graham_model.num_groups >= analysis_params.hm_min_num_samples
+
 graham_model.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
 graham_model.transform_obs("proj_density", "log10_proj_density_mean", lambda x: np.nanmean(np.log10(x), axis=0))
 graham_model.transform_obs("proj_density", "log10_proj_density_std", lambda x: np.nanstd(np.log10(x), axis=0))
@@ -67,8 +82,8 @@ if args.prior:
     # prior predictive check
     fig, ax = plt.subplots(1,1)
     ax.set_ylim(-1, 15.1)
-    ax.set_xlabel("r/kpc")
-    ax.set_ylabel(r"log($\Sigma(r)$/(M$_\odot$/kpc$^2$))")
+    ax.set_xlabel("R/kpc")
+    ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
     ax.set_xscale("log")
     graham_model.prior_plot("R", "log10_proj_density_mean", xmodel="R", ymodel="projected_density", yobs_err="log10_proj_density_std", ax=ax)
 else:
@@ -86,17 +101,45 @@ else:
     graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params.stan_sample_kwargs)
 
     # parameter corner plots
-    graham_model.parameter_plot(["r_b_a", "r_b_b", "Re_a", "Re_b"])
-    graham_model.parameter_plot(["I_b_a", "I_b_b", "g_a", "g_b", "n_a", "n_b"])
+    var_name_map = dict(
+        r_b_a = r"$r_{\mathrm{b}, \alpha}$",
+        r_b_b = r"$r_{\mathrm{b}, \beta}$",
+        Re_a = r"$R_{\mathrm{e},\alpha}$",
+        Re_b = r"$R_{\mathrm{e}, \beta}$",
+        I_b_a = r"$I_{\mathrm{b}, \alpha}$",
+        I_b_b = r"$I_{\mathrm{b}, \beta}$",
+        g_a = r"$\gamma_\alpha$",
+        g_b = r"$\gamma_\beta$",
+        n_a = r"$n_\alpha$",
+        n_b = r"$n_\beta$"
+    )
+    labeller = MapLabeller(var_name_map)
+    graham_model.parameter_plot(["r_b_a", "r_b_b", "Re_a", "Re_b"], labeller=labeller)
+    graham_model.parameter_plot(["I_b_a", "I_b_b"], labeller=labeller)
+    graham_model.parameter_plot(["g_a", "g_b", "n_a", "n_b"], labeller=labeller)
 
     # posterior predictive check
     fig, ax = plt.subplots(1,1)
     ax.set_xscale("log")
     ax.set_xlabel("R/kpc")
-    ax.set_ylabel(r"$\Sigma$/(M$_\odot$kpc$^{-2}$)")
+    ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
     graham_model.posterior_plot("R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax)
 
     graham_model.print_parameter_percentiles(["r_b_a", "r_b_b", "Re_a", "Re_b", "I_b_a", "I_b_b", "g_a", "g_b", "n_a", "n_b"])
+
+    # plot latent parameter distributions
+    fig = plt.figure()
+    ax = []
+    gs = GridSpec(2, 6, figure=fig)
+    for i in range(3):
+        ax.append(fig.add_subplot(gs[0, 2*i:2*(i+1)]))
+    for i in range(2):
+        ax.append(fig.add_subplot(gs[1, 2*i+1:2*(i+1)+1]))
+    ax = np.array(ax)
+    latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior"]
+    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{10}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
+    graham_model.print_parameter_percentiles(latent_qtys)
+    
 
 plt.show()
 

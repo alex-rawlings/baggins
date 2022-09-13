@@ -6,7 +6,7 @@ from ..mathematics import get_histogram_bin_centres
 from ..env_config import _logger
 
 
-__all__ = ["beta_profile", "snap_num_for_time"]
+__all__ = ["snap_num_for_time"]
 
 # TODO add option for a defined binning, and not only have it done internally
 def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
@@ -60,16 +60,17 @@ def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
         raise
     #bin the statistics
     standard_devs, bin_edges, binnumbers = scipy.stats.binned_statistic(r, [vspherical[:,0], vspherical[:,1], vspherical[:,2]], statistic="std", bins=bins)
+    # TODO keep nan masking?
     #mask out nan values
-    nanmask = ~np.any(np.isnan(standard_devs), axis=0)
-    standard_devs = standard_devs[:, nanmask]
+    #nanmask = ~np.any(np.isnan(standard_devs), axis=0)
+    #standard_devs = standard_devs[:, nanmask]
     #get the counts in each bin
     bincounts,*_ = np.histogram(r, bins=bins)
     #calculate beta(r)
     beta = 1 - (standard_devs[1,:]**2 + standard_devs[2,:]**2) / (2 * standard_devs[0,:]**2+eps)
     bin_centres = get_histogram_bin_centres(bin_edges)
-    bin_centres = bin_centres[nanmask]
-    bincounts = bincounts[nanmask]
+    #bin_centres = bin_centres[nanmask]
+    #bincounts = bincounts[nanmask]
     return beta, pygad.UnitArr(bin_centres, units=r.units), bincounts
 
 

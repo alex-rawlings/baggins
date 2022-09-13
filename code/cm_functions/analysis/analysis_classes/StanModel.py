@@ -42,6 +42,7 @@ class StanModel:
         self._stan_data = None
         self._model = None
         self._fit = None
+        self._fit_for_av = None
         self._prior_stan_data = None
         self._prior_model = None
         self._prior_fit = None
@@ -54,7 +55,8 @@ class StanModel:
         self._plot_obs_data_kwargs = {"marker":".", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
         self._num_groups = 0
         self._loaded_from_file = False
-    
+        self._generated_quantities = None
+
 
     @property
     def model_file(self):
@@ -80,11 +82,14 @@ class StanModel:
     def obs(self, d):
         self._check_observation_validity(d)
         self._obs = d
-
     
     @property
     def obs_len(self):
         return self._obs_len
+    
+    @property
+    def num_groups(self):
+        return self._num_groups
     
     @property
     def categorical_label(self):
@@ -107,6 +112,10 @@ class StanModel:
         self._figname_base = os.path.join(figure_dir, f)
         d = os.path.join(figure_dir, f[::-1].partition("/")[-1][::-1])
         os.makedirs(d, exist_ok=True)
+    
+    @property
+    def generated_quantities(self):
+        return self._generated_quantities
     
 
     def _check_observation_validity(self, d):
@@ -280,7 +289,7 @@ class StanModel:
             self.obs[k] = v[del_mask]
     
 
-    def sample_model(self, data, sample_kwargs={}, save=False):
+    def sample_model(self, data, sample_kwargs={}):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
 
@@ -290,19 +299,12 @@ class StanModel:
             stan data values
         sample_kwargs : dict, optional
              kwargs to be passed to CmdStanModel.sample(), by default {}
-        save : bool, optional
-            save stan sampling to .csv files, by default False
         """
         self._stan_data = data
         if self._model is None and not self._loaded_from_file:
             self.build_model()
         self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
-        if save:
-            try:
-                self._fit.save_csvfiles(os.path.join(data_dir, "stan_files"))
-                _logger.logger.info("Saved")
-            except ValueError:
-                _logger.logger.warning("File exists, not overwriting.")
+        self._fit_for_av = av.from_cmdstanpy(self._fit)
     
 
     def sample_prior(self, data, sample_kwargs={}):
@@ -347,7 +349,7 @@ class StanModel:
         return f"{fname_parts[0]}_{tag}{fname_parts[1]}"
     
 
-    def parameter_plot(self, var_names, figsize=(9.0, 6.75)):
+    def parameter_plot(self, var_names, figsize=(9.0, 6.75), labeller=None):
         """
         Plot key pair plots and diagnostics of a stan likelihood model.
 
@@ -359,21 +361,23 @@ class StanModel:
             size of figures, by default (9.0, 6.75)
         """
         assert len(var_names) > 1, "Pair plot requires at least two variables!"
+        if len(var_names) > 4:
+            _logger.logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
         # plot trace
-        ax = av.plot_trace(self._fit, var_names=var_names, figsize=figsize)
+        ax = av.plot_trace(self._fit_for_av, var_names=var_names, figsize=figsize)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"trace_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
 
         # plot rank
-        ax = av.plot_rank(self._fit, var_names=var_names)
+        ax = av.plot_rank(self._fit_for_av, var_names=var_names)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"rank_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
 
         # plot pair
-        ax = av.plot_pair(self._fit, var_names=var_names, kind="scatter", divergences=True, marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize)
-        av.plot_pair(self._fit, var_names=var_names, kind="kde", ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}}, point_estimate_marker_kwargs={"marker":""})
+        ax = av.plot_pair(self._fit_for_av, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller)
+        av.plot_pair(self._fit_for_av, var_names=var_names, kind="kde", divergences=True, ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
@@ -475,7 +479,79 @@ class StanModel:
         ax.legend()
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
 
-    # TODO method to plot arbitrary generated quantities, in particular parameter distributions given sampled hyperparameters
+    
+    def sample_generated_quantity(self, gq, force_resample=False):
+        """
+        Sample the 'generated quantities' block of a Stan model
+
+        Parameters
+        ----------
+        gq : str
+            stan variable to sample
+        force_resample : bool, optional
+            run the generate_quantities method() again even if already run, by 
+            default False
+
+        Returns
+        -------
+        np.ndarray
+            set of draws for the variable gq
+        """
+        if self.generated_quantities is None or force_resample:
+            self.generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit)
+        return self.generated_quantities.stan_variable(gq)
+
+
+    def plot_generated_quantity_dist(self, gq, ax=None, xlabels=None, save=True, plot_kwargs={}):
+        """
+        Plot the 1-D distribution of an arbitrary variable in the generated quantities block of a stan model.
+
+        Parameters
+        ----------
+        gq : list
+            variables to plot
+        ax : matplotlib.axes._subplots.AxesSubplot or np.ndarray of, optional
+            axes object to plot to, by default None
+        xlabels : list, optional
+            labels for the x-axis, by default None
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        matplotlib.axes._subplots.AxesSubplot
+            plotting axes
+        """
+        if ax is None:
+            fig, ax = plt.subplots(len(gq),1)
+        elif isinstance(ax, (np.ndarray, list)):
+            fig = np.atleast_2d(ax)[0,0].get_figure()
+        else:
+            fig = ax.get_figure()
+        if isinstance(ax, np.ndarray):
+            ax_shape = ax.shape
+        else:
+            ax = np.array(ax)
+            ax_shape = (1,)
+        ax = ax.flatten()
+        if xlabels is None:
+            xlabels = gq
+        else:
+            assert len(gq) == len(xlabels)
+        for i, (_gq, l) in enumerate(zip(gq, xlabels)):
+            ys = self.sample_generated_quantity(gq)
+            try:
+                assert len(ys.shape) < 3
+            except AssertionError:
+                _logger.logger.exception(f"Generated quantity {_gq} must have shape 2, has shape {len(ys.shape)}", exc_info=True)
+                raise
+            av.plot_dist(ys, ax=ax[i], plot_kwargs=plot_kwargs)
+            ax[i].set_xlabel(l)
+        ax.reshape(ax_shape)
+        if save:
+            savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
+        return ax
+    
 
     def print_parameter_percentiles(self, vars):
         """
@@ -516,6 +592,7 @@ class StanModel:
         # initiate a class instance
         C = cls(model_file=None, prior_file=None, figname_base=figname_base, rng=rng, random_select_obs=None)
         C._fit = cmdstanpy.from_csv(fit_files)
+        C._fit_for_av = av.from_cmdstanpy(C._fit)
         C._loaded_from_file = True
         return C
 

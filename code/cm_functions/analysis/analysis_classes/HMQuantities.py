@@ -7,12 +7,10 @@ import ketjugw
 import pygad
 
 from . import HMQuantitiesData
-from ..analyse_snap import influence_radius, hardening_radius, projected_quantities, get_com_of_each_galaxy, inner_DM_fraction, determine_if_merged
-from ..general import beta_profile
+from ..analyse_snap import get_com_velocity_of_each_galaxy, influence_radius, hardening_radius, projected_quantities, get_com_of_each_galaxy, inner_DM_fraction, determine_if_merged, velocity_anisotropy, get_massive_bh_ID
 from ..orbit import get_bound_binary
 from ...env_config import _logger, date_format, username
 from ...general import convert_gadget_time
-from ...mathematics import spherical_components
 from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 
 
@@ -111,10 +109,13 @@ class HMQuantities(HMQuantitiesData):
             self.analysed_snapshots.append(snapfile)
             _logger.logger.debug(f"Reading: {snapfile}")
             # get the centre
-            com = list(get_com_of_each_galaxy(snap, method="ss", family="stars").values())[0]
+            _xcom = get_com_of_each_galaxy(snap, method="ss", family="stars")
+            bh_id = get_massive_bh_ID(snap.bh)
+            xcom = xcom[bh_id]
+            vcom = get_com_velocity_of_each_galaxy(snap, _xcom)[bh_id]
 
             # aperture mask of galaxy_radius
-            ball_mask = pygad.BallMask(pygad.UnitScalar(self._analysis_params.galaxy_radius, "kpc", subs=snap), center=com)
+            ball_mask = pygad.BallMask(pygad.UnitScalar(self._analysis_params.galaxy_radius, "kpc", subs=snap), center=xcom)
 
             # snapshot time
             self.time_of_snapshot.append(t)
@@ -126,7 +127,7 @@ class HMQuantities(HMQuantitiesData):
             else:
                 self.semimajor_axis_of_snapshot.append(np.nan)
 
-            # some import radii
+            # some important radii
             self.influence_radius.append(
                 list(influence_radius(snap).values())[0]
             )
@@ -134,11 +135,11 @@ class HMQuantities(HMQuantitiesData):
                 hardening_radius(snap.bh["mass"], self.influence_radius[i])
             )
             self.half_mass_radius.append(
-                pygad.analysis.half_mass_radius(snap.stars[ball_mask], center=com)
+                pygad.analysis.half_mass_radius(snap.stars[ball_mask], center=xcom)
             )
 
             # virial info
-            _vr, _vm = pygad.analysis.virial_info(snap, center=com)
+            _vr, _vm = pygad.analysis.virial_info(snap, center=xcom)
             self.virial_mass.append(_vm)
             self.virial_radius.append(_vr)
 
@@ -154,13 +155,11 @@ class HMQuantities(HMQuantitiesData):
             self.inner_DM_fraction[k] = []
             for j, _re in enumerate(self.effective_radius[k]):
                 self.inner_DM_fraction[k].append(
-                    inner_DM_fraction(snap[ball_mask], Re=_re, centre=com)
+                    inner_DM_fraction(snap[ball_mask], Re=_re, centre=xcom)
                 )
 
             # beta profile
-            _r = pygad.utils.geo.dist(snap.stars[ball_mask]["pos"], com)
-            vspherical = spherical_components(snap.stars[ball_mask]["pos"], snap.stars[ball_mask]["vel"])
-            self.velocity_anisotropy[k], *_ = beta_profile(_r, vspherical, binning=self.radial_edges)
+            self.velocity_anisotropy[k], *_ = velocity_anisotropy(snap.stars[ball_mask], r_edges=self.radial_edges, xcom=xcom, vcom=vcom)
 
             # masses
             self.masses_in_galaxy_radius["stars"].append(
@@ -173,6 +172,7 @@ class HMQuantities(HMQuantitiesData):
                         np.sum(snap.bh[ball_mask]["mass"])
             )
             
+            # clean up for next iteration
             snap.delete_blocks()
             pygad.gc_full_collect()
             del snap
@@ -186,20 +186,7 @@ class HMQuantities(HMQuantitiesData):
     
     @snaplist.setter
     def snaplist(self, v):
-        bad_snaps = []
-        for i, vi in enumerate(v):
-            try:
-                s = pygad.Snapshot(vi, physical=True)
-                s.delete_blocks()
-                pygad.gc_full_collect()
-                del s
-            except KeyError:
-                msg = f"Snapshot {vi} potentially corrupt. Removing it from the list of snapshots for further analysis!"
-                _logger.logger.warning(msg)
-                self.add_to_log(msg)
-                bad_snaps.append(vi)
-        self._snaplist = [x for x in v if x not in bad_snaps]
-    
+        self._snaplist = v
 
     def make_hdf5(self, fname, exist_ok=False):
         """

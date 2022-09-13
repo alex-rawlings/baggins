@@ -18,7 +18,7 @@ pip install . -e
 ```
 as described in the `pygad` docs.
 Also need to install `ketjugw`, `voronoi-binning-cpp`, `merger-ic-generator` from the  group BitBucket, and add these modules to your `$PYTHONPATH` in the `~/.bashrc` file.  
-3. Edit the necessary fields in `./code/cm_functions/env_params.json` that are listed under `user_settings` (for e.g. directory where to save the figures to).  
+3. Edit the necessary fields in `./code/cm_functions/env_params.json` that are listed under `user_settings` (for e.g. directory where to save the figures to). The fields under `internal_settings` should not be edited by the user directly.  
 
 ## Directory Organisation  
 * all code (functions, scripts, classes, etc.) required to perform the 
@@ -32,7 +32,7 @@ functions and scripts in `./code/`
 ## Simulation Workflow  
 The simulation workflow consists of a number of steps to produce 
 realistic initial conditions for the merger. The steps are:  
-1. Create the progenitor galaxies using `create_select_galaxies.sh` in 
+1. Create the progenitor galaxies using `make_galay.py` in 
 `./code/initialise_scripts`. A valid parameter file must be first created.  
 2. Evolve the progenitors in isolation until the 
 system is stable (this is particularly relevant for Osipkov-Merritt 

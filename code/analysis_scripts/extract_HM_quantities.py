@@ -9,7 +9,7 @@ import cm_functions as cmf
 parser = argparse.ArgumentParser(description="Extract key quantities from a simulation run for use in later Bayesian hierarchical modelling.", allow_abbrev=False)
 parser.add_argument(type=str, help="path to merger parameter file", dest="mpf")
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
-parser.add_argument("-n", "--number", type=str, help="perturbation number", dest="pnum", default="all")
+parser.add_argument("-n", "--number", help="perturbation number", dest="pnum", action="append")
 parser.add_argument("-o", "--overwrite", help="allow overwriting", dest="overwrite", action="store_true")
 args=parser.parse_args()
 
@@ -34,11 +34,11 @@ if __name__ == "__main__":
     analysis_params = cmf.utils.read_parameters(args.apf)
 
     # determine which perturbation directories to run
-    if args.pnum == "all":
+    if not args.pnum:
         perturb_dir = os.path.join(merger_params.full_save_location, merger_params.perturbSubDir)
         perturb_ids = next(os.walk(perturb_dir))[1]
     else:
-        perturb_ids = [args.pnum]
+        perturb_ids = args.pnum
     
     # save the cubes to arg.saveloc/Gal1-Gal2-R0-Rperi/
     merger_id = merger_params.full_save_location.rstrip("/").split("/")[-1]

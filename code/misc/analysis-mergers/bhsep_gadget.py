@@ -7,7 +7,7 @@ import pygad
 
 snapdir = "/scratch/pjohanss/arawling/gadget4-ketju/A-C-3.0-0.05/parent/output"
 
-snapfiles = cmf.utils.get_snapshots_in_dir(snapdir)
+snapfiles = cmf.utils.get_snapshots_in_dir(snapdir, exclude=["bak"])
 
 t = np.full(len(snapfiles), np.nan, dtype=float)
 sep = np.full_like(t, np.nan)
@@ -22,4 +22,6 @@ for i, snapfile in enumerate(snapfiles):
     del snap
 
 plt.plot(t, sep, "-o")
+idxs = np.arange(0, len(t), 10)
+plt.scatter(t[idxs], sep[idxs], c="tab:red", zorder=10)
 plt.show()

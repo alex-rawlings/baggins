@@ -7,7 +7,7 @@ from datetime import datetime
 from ._backend import InternalLogger
 
 
-__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "username", "git_hash", "_logger"]
+__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "figure_ext", "username", "git_hash", "_logger"]
 
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -18,6 +18,7 @@ with open(env_params_file, "r") as f:
 figure_dir = os.path.join(home_dir, env_params["user_settings"]["figure_dir"])
 data_dir = env_params["user_settings"]["data_dir"]
 date_format = env_params["user_settings"]["date_format"]
+fig_ext = env_params["user_settings"]["figure_ext"].lstrip(".")
 
 username = home_dir.rstrip("/").split("/")[-1]
 
@@ -27,7 +28,14 @@ if env_params["user_settings"]["logging"]["file_level"] not in ["", " "]:
     lf = f"{env_params['user_settings']['logging']['file'].rstrip('.log')}_{datetime.now():%Y-%m-%d}.log"
     _logger.add_file_handler(os.path.join(this_dir, lf), env_params["user_settings"]["logging"]["file_level"])
 
-#make the figure directory
+# ensure valid figure format
+try:
+    assert fig_ext in ("pdf", "png")
+except AssertionError:
+    _logger.logger.exception("Invalid figure format given in env_params.json! Reverting to default format: png")
+    fig_ext = "png"
+
+# make the figure directory
 os.makedirs(figure_dir, exist_ok=True)
 
 #set the matplotlib settings

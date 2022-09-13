@@ -1,0 +1,60 @@
+{
+    "models": {
+        "family-AC": {
+            "A-C-3.0-0.001": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-C-3.0-0.001/graham-20220902191112_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-C-3.0-0.001/"
+            },
+            "A-C-3.0-0.005": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-C-3.0-0.005/graham-20220902193055_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-C-3.0-0.005/"
+            },
+            "A-C-3.0-0.050": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-C-3.0-0.05/graham-20220826180324_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-C-3.0-0.05/"
+            },
+            "A-C-3.0-0.100": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-C-3.0-0.1/graham-20220905172937_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-C-3.0-0.1/"
+            }
+        },
+        "family-AD": {
+            "A-D-3.0-0.001": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-D-3.0-0.001/graham-20220909163215_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-D-3.0-0.001/"
+            },
+            "A-D-3.0-0.005": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-D-3.0-0.005/graham-20220909164258_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-D-3.0-0.005/"
+            },
+            "A-D-3.0-0.01": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-D-3.0-0.01/graham-20220912163710_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-D-3.0-0.01/"
+            },
+            "A-D-3.0-0.05": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-D-3.0-0.05/graham-20220912164411_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-D-3.0-0.05/"
+            },
+            "A-D-3.0-1.000": {
+                "stan": "/scratch/pjohanss/arawling/collisionless_merger/stan_files/A-D-3.0-1.0/graham-20220829165959_*.csv",
+                "cube": "/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/A-D-3.0-1.0/"
+            }
+        },
+        "family-AE": {
+            "stan": "",
+            "cube": ""
+        },
+        "family-CD": {
+            "stan": "",
+            "cube": ""
+        },
+        "family-CE": {
+            "stan": "",
+            "cube": ""
+        },
+        "family-DE": {
+            "stan": "",
+            "cube": ""
+        }
+    }
+}

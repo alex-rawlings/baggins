@@ -245,19 +245,22 @@ class HMQuantitiesData(HDF5Base):
         """
         try:
             assert not np.isnan(t)
-            try:
-                idx = np.nanargmin(np.abs(tarr-t))
-                if idx == len(tarr)-1:
-                    s = "large"
-                    raise ValueError
-                elif idx == 0:
-                    s = "smalle"
-                    raise ValueError
-                else:
-                    return idx
-            except ValueError:
-                _logger.logger.exception(f"Value is {s}r than the {s}st array value!", exc_info=True)
-                raise
         except AssertionError:
             _logger.logger.exception("t must not be nan", exc_info=True)
+            raise
+        try:
+            idx = np.nanargmin(np.abs(tarr-t))
+            if idx == len(tarr)-1:
+                s = "large"
+                raise AssertionError
+            elif idx == 0:
+                s = "smalle"
+                raise AssertionError
+            else:
+                return idx
+        except AssertionError:
+            _logger.logger.exception(f"Value is {s}r than the {s}st array value!", exc_info=True)
+            raise
+        except ValueError:
+            _logger.logger.exception(f"Array tarr has value {np.unique(tarr)}")
             raise

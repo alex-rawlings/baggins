@@ -2,18 +2,18 @@ import copy
 import warnings
 from datetime import datetime
 import numpy as np
-import scipy.linalg, scipy.interpolate, scipy.spatial.transform
+import scipy.linalg, scipy.interpolate, scipy.spatial.transform, scipy.stats
 import pygad
 import dask
 
 from . import masks as masks
-from ..mathematics import radial_separation, density_sphere
+from ..mathematics import radial_separation, density_sphere, spherical_components
 from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time, unit_as_str
 from ..env_config import _logger
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles", "velocity_anisotropy"]
 
 
 def get_com_of_each_galaxy(snap, method="pot", masks=None, family="all", initial_radius=20):
@@ -44,21 +44,23 @@ def get_com_of_each_galaxy(snap, method="pot", masks=None, family="all", initial
     assert(snap.phys_units_requested)
     assert(method in ["pot", "ss"])
     num_bhs = len(snap.bh)
+    # get IDs corresponding to decreasing mass
+    mass_ordered_bh_ids = snap.bh["ID"][np.argsort(-snap.bh["mass"])]
     def _yield_masked_subsnap(s=snap, masks=masks, family=family):
         # helper function to get the maybe masked-, maybe sub-, snapshot
         if masks is None:
             if family=="all":
-                for i in range(num_bhs): yield (s, snap.bh["ID"][i])
+                for id in mass_ordered_bh_ids: yield (s, id)
             else:
-                for i in range(num_bhs): yield (getattr(s, family), snap.bh["ID"][i])
+                for id in mass_ordered_bh_ids: yield (getattr(s, family), id)
         else:
             assert(len(masks) == num_bhs)
-            for id, m in masks.items():
+            for id in mass_ordered_bh_ids:
                 if family=="all":
-                    yield (s[m], id)
+                    yield (s[masks[id]], id)
                 else:
                     ss = getattr(s, family)
-                    yield (ss[m], id)
+                    yield (ss[masks[id]], id)
     
     coms = dict.fromkeys(snap.bh["ID"], None)
     masked_subsnap_gen = _yield_masked_subsnap()
@@ -72,14 +74,16 @@ def get_com_of_each_galaxy(snap, method="pot", masks=None, family="all", initial
                 else:
                     coms[bhid] = list(coms.values())[0]
     else:
+        zero_mass_flag = False
         for i in range(num_bhs):
             masked_subsnap, bhid = next(masked_subsnap_gen)
             bh_id_mask = pygad.IDMask(bhid)
             if snap.bh[bh_id_mask]["mass"] < 1e-15:
                 #the BH has 0 mass, most likley due to a merger -> skip this
+                zero_mass_flag = True
                 _logger.logger.warning(f"Zero-mass BH ({bhid}) detected! Skipping CoM estimate associated with this BH ID")
                 continue
-            if masks is None and i > 0:
+            if masks is None and i > 0 and not zero_mass_flag:
                 # we don't want to get two CoMs --> break early
                 break
             _logger.logger.debug(f"Finding CoM associated with BH ID {bhid}")
@@ -679,7 +683,12 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
         assert(len(masks) == num_bhs)
     
     # shrinking sphere scaling
-    shrink_sphere_scaling = {"stars":1.0, "dm":20.0}
+    shrink_sphere_r0 = {"stars":10.0, "dm":200.0}
+    try:
+        shrink_sphere_r0[family]
+    except KeyError:
+        _logger.logger.warning(f"Shrinking sphere initial guess not defined for '{family}', using value for 'stars' instead.")
+        shrink_sphere_r0[family] = shrink_sphere_r0["stars"]
     
     #set up rng and distributions 
     if rng is None:
@@ -751,7 +760,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
     
     # for each distinct galaxy in the sim
     for j, bhid in enumerate(centre_guess_dict.keys()):
-        centre = pygad.analysis.shrinking_sphere(subsnap_dict[bhid], centre_guess_dict[bhid], 10*shrink_sphere_scaling[family])
+        centre = pygad.analysis.shrinking_sphere(subsnap_dict[bhid], centre_guess_dict[bhid], shrink_sphere_r0[family])
         _logger.logger.debug(f"Difference between centre guess and shrinking sphere centre is: {centre_guess_dict[bhid][0] - centre}")
         for o in range(obs):
             # rotate the snapshot, and independently the CoM
@@ -979,4 +988,46 @@ def count_new_hypervelocity_particles(snap, prev=[], vesc=None, family="stars"):
     prev.extend(new_hyper_ids)
     return len(new_hyper_ids), prev
 
-    
+
+def velocity_anisotropy(snap, r_edges, xcom=[0,0,0], vcom=[0,0,0], qcut=1.0, eps=1e-16):
+    """
+    Determine the beta profile for a snapshot.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snap to analyse
+    r_edges : array-like
+        edges of radial bins for beta profile
+    xcom : list or array-like, optional
+        positional centre of mass, by default [0,0,0]
+    vcom : list or array-like, optional
+        velocity centre of mass, by default [0,0,0]
+    qcut : float, optional
+        filter out particles above qcut quantile in radial distance, by default 
+        1.0
+    eps : float, optional
+        tolerance to prevent zero-division, by default 1e-16
+
+    Returns
+    -------
+    np.ndarray
+        beta profile as a function of radius
+    np.ndarray
+        number of particles per radial bin
+    """
+    pygad.Translation(-xcom).apply(snap)
+    pygad.Boost(-vcom).apply(snap)
+    r = pygad.utils.geo.dist(snap["pos"])
+    v_sphere = spherical_components(snap["pos"], snap["vel"])
+    if qcut < 1:
+        mask = r < np.nanquantile(r, qcut)
+        r = r[mask]
+        v_sphere = v_sphere[mask, :]
+    # bin statistics
+    standard_devs, *_ = scipy.stats.binned_statistic(r, [v_sphere[:,i] for i in range(3)], statistic="std", bins=r_edges)
+    bin_counts , *_ = np.histogram(r, bins=r_edges)
+    # determine beta(r)
+    beta = 1 - (standard_devs[1,:]**2 + standard_devs[2,:]**2) / (2 * standard_devs[0,:]**2+eps)
+    return beta, bin_counts
+

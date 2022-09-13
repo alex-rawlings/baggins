@@ -38,5 +38,7 @@ num_projection_rotations = 10
 ##### Stan Settings #####
 #############################
 
+# minimum number of allowed samples for hierarchical modelling
+hm_min_num_samples = 6
 # sampling kwargs
 stan_sample_kwargs = {"adapt_delta":0.9}

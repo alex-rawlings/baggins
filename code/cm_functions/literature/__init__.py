@@ -1,3 +1,4 @@
+from .LiteratureTables import LiteratureTables
 from .bh_bulge import *
 from .density_profiles import *
 from .dm_bulge import *

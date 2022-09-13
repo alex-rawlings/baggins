@@ -1,5 +1,6 @@
 {
     "user_settings": {
+        "figure_ext": ".png",
         "figure_dir": "figures",
         "data_dir": "/scratch/pjohanss/arawling/collisionless_merger",
         "date_format": "%Y-%m-%d %H:%M:%S",
@@ -10,6 +11,6 @@
         }
     },
     "internal_settings": {
-        "git_hash": "heads/master-0-gf57ae98"
+        "git_hash": "heads/master-0-gd8b1225"
     }
 }

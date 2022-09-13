@@ -5,7 +5,7 @@ import ketjugw
 from ..mathematics import radial_separation
 from ..env_config import _logger
 
-__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan"]
 
 #common units
 myr = 1e6 * ketjugw.units.yr
@@ -312,6 +312,32 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
     propagate_time = 8*(tf-t0) + t0
     ap, ep, _,_, tp = ketjugw.orbit.peters_evolution(a0, e0, m1, m2, (t0, propagate_time, 5), ext_derivs=quinlan_derivatives)
     return tp, ap, ep
+
+
+def get_hard_timespan(t, a, t_s, ah_s):
+    """
+    Determine for how long a binary is hard, e.g. the binary semimajor axis is 
+    less than the hardening radius. Linear interpolation is used to find values of a between snapshot measurements.
+
+    Parameters
+    ----------
+    t : array-like
+        time where the binary is bound (E<0)
+    a : array-like
+        semimajor axis of the binary
+    t_s : list
+        time of snapshots where binary is bound (same units as t)
+    ah_s : list
+        semimajor axis of binary at snapshot times (same units as a)
+
+    Returns
+    -------
+    float
+        time duration where the binary is hard
+    """
+    f = scipy.interpolate.interp1d(t_s, ah_s, bounds_error=False, fill_value=(ah_s[0], ah_s[-1]))
+    return np.sum(a < f(t)) * (t[1]-t[0])
+
 
 
 #### CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT ####

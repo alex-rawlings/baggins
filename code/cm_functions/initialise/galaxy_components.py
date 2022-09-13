@@ -143,6 +143,9 @@ class _StellarCore(_StellarComponent):
         self.core_density = 10**self.parameters.logCoreDensity
         self.mass_light_ratio = self.parameters.M2Lratio
         self.stellar_distance_units = "arcsec"
+        self.to_kpc_units()
+        rhof = lambda r: r**2 * Terzic05(r, rhob=self.core_density*1e9, rb=self.core_radius, n=self.sersic_index, g=self.core_slope, b=self.sersic_b_parameter, Re=self.effective_radius, a=self.transition_index)
+        self.total_mass = 4*np.pi * self.mass_light_ratio * scipy.integrate.quad(rhof, 1e-5, self.maximum_radius, limit=100)[0]
 
     def to_kpc_units(self):
         """
@@ -153,18 +156,12 @@ class _StellarCore(_StellarComponent):
         self.effective_radius = arcsec_to_kpc(self.distance_modulus, self.effective_radius)
         self.stellar_distance_units = "kpc"
         # save the kpc values
-        self.self.parameters.input_Re_in_kpc = self.effective_radius
-        self.self.parameters.input_Rb_in_kpc = self.core_radius
+        self.parameters.input_Re_in_kpc = self.effective_radius
+        self.parameters.input_Rb_in_kpc = self.core_radius
 
     @cached_property
     def sersic_b_parameter(self):
         return sersic_b_param(self.sersic_index)
-
-    @cached_property
-    def total_mass(self):
-        self.to_kpc_units()
-        rhof = lambda r: r**2 * Terzic05(r, rhob=self.core_density*1e9, rb=self.core_radius, n=self.sersic_index, g=self.core_slope, b=self.sersic_b_parameter, Re=self.effective_radius, a=self.transition_index)
-        return 4*np.pi * self.mass_light_ratio * scipy.integrate.quad(rhof, 1e-5, self.maximum_radius, limit=100)[0]
 
 
 class _DMComponent(_GalaxyICBase):

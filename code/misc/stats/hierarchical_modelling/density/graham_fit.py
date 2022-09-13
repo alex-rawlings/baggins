@@ -66,8 +66,8 @@ def extract_data(pickle_file, a_val=10):
 # extract data if desired
 if args.extract:
     extract_data(args.file)
-else:
-    obs = cmf.utils.load_data(args.file)
+#else:
+#    obs = cmf.utils.load_data(args.file)
 
 
 if args.load_file is not None:
@@ -78,6 +78,9 @@ my_stan.load_observations_from_pickle(args.file)
 print(my_stan.obs)
 print(my_stan.obs["R"].shape)
 print(my_stan.obs["Sigma"].shape)
+my_stan.observation_mask = my_stan.obs["name"] == my_stan.obs["name"][0]
+plt.hist(my_stan.obs["Sigma"][:, 0])
+plt.show()
 quit()
 
 my_stan.categorical_label = "name"

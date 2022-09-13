@@ -76,7 +76,11 @@ def create_normed_colours(vmin, vmax, cmap="viridis", normalisation="Normalize")
     except AttributeError:
         _logger.logger.warning(f"{cmap} does not exist. Using default colormap: viridis")
         cmapv = plt.cm.viridis
-    _norm = getattr(colors, normalisation)
+    try:
+        _norm = getattr(colors, normalisation)
+    except AttributeError:
+        _logger.logger.warning(f"Normalisation {normalisation} is not valid. Using default (Linear).")
+        _norm = colors.Normalize()
     norm = _norm(vmin=vmin, vmax=vmax)
     sm = plt.cm.ScalarMappable(norm=norm, cmap=cmapv)
     mapcols = lambda x: cmapv(norm(x))
@@ -164,22 +168,3 @@ def shade_bool_regions(ax, xdata, mask, **kwargs):
     for region in regions:
         ax.axvspan(xdata[region[0]], xdata[region[1]], **kwargs)
 
-
-def zero_centre_colour(x):
-    """
-    Ensure that a colormap is symmetric about 0.
-    # TODO remove this method, and use builtin pyplot method
-
-    Parameters
-    ----------
-    x : np.ndarray
-        data corresponding that will be represented with colour
-
-    Returns
-    -------
-    : matplotlib.colors.Normalize
-        colour normalisation
-    """
-    DeprecationWarning("Method will be removed, use matplotlib.colors.CenteredNorm")
-    extremum = np.max(np.abs(x))
-    return colors.Normalize(-extremum, extremum)
