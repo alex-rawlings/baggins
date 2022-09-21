@@ -1,4 +1,4 @@
-TARGET = paper
+TARGET = paper-2
 
 # needed for latexmk to handle the dependencies
 .PHONY: $(TARGET).pdf

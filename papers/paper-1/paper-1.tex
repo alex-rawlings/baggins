@@ -86,7 +86,7 @@
 
 % Title of the paper, and the short title which is used in the headers.
 % Keep the title short and informative.
-\title[BAGGinS]{Bayesian Analysis of Gas-free Galaxies in Simulations}
+\title[BAGGinS]{Bayesian Analysis of Gas-free Galaxies in Simulations I: Reviving Stochasticity}
 
 % The list of authors, and the short list which is used in the headers.
 % If you need two or more lines of authors, add an extra line using \newauthor
@@ -114,7 +114,7 @@ Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
 
 % Abstract of the paper
 \begin{abstract}
-We present the Bayesian Analysis of Gas-free Galaxies in Simulations (BAGGinS) project
+We present the Bayesian Analysis of Gas-free Galaxies in Simulations (BAGGinS) project, show that stochasticity is ubiquitous with collisionless merger sims.
 \end{abstract}
 
 % Select between one and six entries from the list of approved keywords.
@@ -127,28 +127,25 @@ keyword1 -- keyword2 -- keyword3
 
 %%%%%%%%%%%%%%%%% BODY OF PAPER %%%%%%%%%%%%%%%%%%
 
-\section{Introduction}
+
 \input{./sections/intro}
 
-
-\section{Numerical Simulations}
 \input{./sections/numerical}
 
-\section{Statistical Analysis}
 \input{./sections/stats}
 
-
-\section{Results}
 \input{./sections/results}
 
+\input{./sections/discuss}
 
-\section{Conclusions}
 \input{./sections/conclusions}
+
+\textit{Software:} \ketju \citep{rantala17}, \gadget \citep{springel05}, \textsc{Stan} \citep{carpenter17}, NumPy \citep{numpy}, SciPy \citep{scipy}, Matplotlib \citep{matplotlib}, pygad \citep{rottgers20}, Arviz \citep{arviz}. 
 
 
 \section*{Acknowledgements}
 
-A.R. acknowledge the support
+P.H.J. acknowledge the support
 by the European Research Council via ERC Consolidator Grant KETJU (no. 818930).
 
 The numerical simulations used computational resources provided by
@@ -168,7 +165,7 @@ the CSC -- IT Center for Science, Finland.
 % The best way to enter references is to use BibTeX:
 
 \bibliographystyle{mnras}
-\bibliography{ref} % if your bibtex file is called example.bib
+\bibliography{../ref} % if your bibtex file is called example.bib
 
 
 % Alternatively you could enter them by hand, like this:

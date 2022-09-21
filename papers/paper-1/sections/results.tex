@@ -6,6 +6,7 @@ Figures to do
 \item Example of forward-modelled semimajor axis and eccentricity
 \item Example of forward-modelled density profile
 \item Example of forward-modelled velocity dispersion profile
+\item comparison latent parameters to SAMI (n, Re) and Thomas (rb)
 \end{itemize}
 and maybe another one of BH merger remnant properties.
 }
@@ -86,9 +87,6 @@ We first inspect how the posterior distribution appears visually by computing po
 We find that the data is well described by the 50\% BCI \drafting{introduce what BCI is} of the posterior distribution, as desired. 
 
 As part of the hierarchical modelling sampling process, we obtain in addition to the posterior distribution on $\Sigma(R)$ the latent parameter distributions from which $\Sigma(R)$ is determined. 
-We compare the latent parameter distributions in \autoref{fig:compareAC} for the AC merger class\footnote{The merger family A-C-3.0-1.0 did not have enough \child samples (3 from 10) from which to construct the likelihood function, and thus is omitted here.}, with line colour corresponding to the first pericentre distance of the merger family, $r_\mathrm{peri}/R_{\mathrm{vir},1}$. 
-We find no convincing evidence for an influence of first pericentre distance on the resulting projected mass density profiles, with the distributions of latent parameters consistent between all families in the AC progenitor class. 
-Whilst we purposely avoid point estimates on our latent parameter distributions, we report the median values here to give a sense of scale. 
 For the AC progenitor class, we find the core radius to be $\sim 1.4\,\mathrm{kpc}$, effective radius $\sim 7.2\,\mathrm{kpc}$ (recall progenitor A had $R_\mathrm{e} \sim 4\,\mathrm{kpc}$), normalising density of $\sim 3.1\times10^9\,\Msun\,\mathrm{kpc}^{-2}$, core slope index of $\sim 0.05$, and S\'ersic index of $\sim 1.8$. 
 
 \drafting{
@@ -128,10 +126,3 @@ For the AC progenitor class, we find the core radius to be $\sim 1.4\,\mathrm{kp
     \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid, and seen to lie well within the 50\% BCI. }}
     \label{fig:postpred}
 \end{figure*}
-
-\begin{figure*}
-    \includegraphics{compare_AC_gqs.png}
-    \caption{\drafting{Comparing the latent parameters for different members of the same progenitor class. Here shown is those families part of the AC merger class. There is no significant difference in latent parameter values with increasing rperi. TODO do this same plot for each merger class.}}
-    \label{fig:compareAC}
-\end{figure*}
-
