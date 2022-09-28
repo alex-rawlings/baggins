@@ -4,14 +4,161 @@ import os
 import importlib
 import numpy as np
 import json
+import yaml
+from pygad import UnitArr
 
 from ..env_config import _logger
 
 
-__all__ = ["read_parameters", "write_parameters", "to_json"]
+__all__ = ["read_parameters", "write_calculated_parameters", "to_json"]
+
+
+class ScientificDumper(yaml.SafeDumper):
+    def represent_float(self, data):
+        """
+        Overload the default YAML SafeDumper float representation method to 
+        control when we start to use scientific notation
+
+        Parameters
+        ----------
+        data : float
+            data to represent
+
+        Returns
+        -------
+        pyyaml.ScalarNode
+            method for representing floats
+        """
+        if data != data or (data == 0.0 and data == 1.0):
+            value = '.nan'
+        elif data == self.inf_value:
+            value = '.inf'
+        elif data == -self.inf_value:
+            value = '-.inf'
+        else:
+            if data < 1e4:
+                value = repr(data).lower()
+            else:
+                value = f"{data:.8e}".lower()
+            if '.' not in value and 'e' in value:
+                value = value.replace('e', '.0e', 1)
+        return self.represent_scalar('tag:yaml.org,2002:float', value)
 
 
 def read_parameters(filepath):
+    """
+    Read a .yml configuration file. Numpy methods can be specified and saved to 
+    the loaded dictionary.
+
+    Parameters
+    ----------
+    filepath : str, path-like
+        path to parameter file to read
+    
+    Returns
+    -------
+    params_and_calc : dict
+        dictionary of user parameters and calculated parameters (the latter stored under the key top-level key 'calculated')
+    """
+    def _unpack_helper(d):
+        """
+        Helper to unpack a numpy method, e.g. a linspace
+
+        Parameters
+        ----------
+        d : dict
+            dictionary to unpack
+
+        Returns
+        -------
+        d : dict
+            dictionary with the results of a numpy method saved to it
+        """
+        for k, v in d.items():
+            if k == "numpy_method":
+                try:
+                    args = d["args"]
+                    if not isinstance(args, list):
+                        args = [args]
+                except KeyError:
+                    _logger.logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must have a corresponding 'args' key!", exc_info=True)
+                    raise
+                try:
+                    assert "value" not in d
+                except AssertionError:
+                    _logger.logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must not have a corresponding 'value' key!", exc_info=True)
+                    raise
+                method = getattr(np, k)
+                d["value"] = method(*args)
+            elif isinstance(v, str) and v[-1] == "/":
+                d[k] = v.rstrip("/")
+            elif isinstance(v, dict):
+                _unpack_helper(v)
+        return d
+            
+    with open(filepath, "r") as f:
+        params_list = list(yaml.safe_load_all(f))
+    params_and_calc = params_list[0].copy()
+    params_and_calc["calculated"] = {}
+    for i, params in enumerate(params_list):
+        params = _unpack_helper(params)
+        if i == 0: continue
+        for k in params.keys():
+            params_and_calc["calculated"][k] = params[k]
+    return params_and_calc
+
+
+def write_calculated_parameters(data, filepath):
+    """
+    Write static, calculated variables (e.g. particle count) to a new .yml 
+    block located within the .yml file (by using the --- separators) 
+    corresponding to the system that was created. Parameters in the "main" 
+    block are never overwritten. Previously-calculated values may be 
+    overwritten. New values will be added to the second block block.
+
+    Parameters
+    ----------
+    data : dict
+        parameters (name, value) to add to the parameter file
+    filepath : str, path-like
+        path to parameter file where values will be saved
+    """    
+    def _type_converter(d):
+        new_d = {}
+        for k, v in d.items():
+            if isinstance(v, np.float64):
+                new_d[k] = float(v)
+            elif isinstance(v, np.ndarray):
+                new_d[k] = v.tolist()
+            elif isinstance(v, UnitArr):
+                new_d[k] = {"unit":str(v.units).strip("[]"), "value":float(v)}
+            elif isinstance(v, dict):
+                new_d[k] = _type_converter(v)
+            else:
+                new_d[k] = d[k]
+        return new_d
+
+    with open(filepath, "r+") as f:
+        _data_list = list(yaml.safe_load_all(f))
+        # skip the first block, which consists of the user-defined parameters
+        if len(_data_list)==1: _data_list.append({})
+        # update values: will update all blocks after the first
+        _data_list[1] = _type_converter(data)
+        f.seek(0)
+        lines = f.readlines()
+        f.seek(0)
+        for line in lines:
+            f.write(line)
+            # we have reached the end of the parameter section
+            if "..." in line: break
+        f.write("\n")
+        s = yaml.dump_all(_data_list[1:], explicit_end=True, explicit_start=True, Dumper=ScientificDumper)
+        f.write(s)
+        f.write("\n")
+        f.truncate()
+
+
+def read_parameters_py(filepath):
     """
     Read parameters from a python file as if it were a module. If the 
     invocation is:
@@ -58,7 +205,7 @@ def read_parameters(filepath):
         return params
 
 
-def write_parameters(values, filepath=None, allow_updates=()):
+def write_parameters_py(values, filepath=None, allow_updates=()):
     """
     Write parameters that have been loaded with read_parameters() to a file.
 

@@ -2,6 +2,7 @@ import warnings
 import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
+from ..general import get_idx_in_array
 from ..mathematics import radial_separation
 from ..env_config import _logger
 
@@ -334,9 +335,12 @@ def get_hard_timespan(t, a, t_s, ah_s):
     -------
     float
         time duration where the binary is hard
+    int
+        array index corresponding to when the binary first becomes hard
     """
     f = scipy.interpolate.interp1d(t_s, ah_s, bounds_error=False, fill_value=(ah_s[0], ah_s[-1]))
-    return np.sum(a < f(t)) * (t[1]-t[0])
+    bool_arr = a < f(t)
+    return np.sum(bool_arr) * (t[1]-t[0]), get_idx_in_array(1, bool_arr)
 
 
 

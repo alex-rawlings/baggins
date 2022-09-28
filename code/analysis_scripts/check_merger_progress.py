@@ -43,10 +43,5 @@ if not merged():
 if args.orbparams:
     bh1, bh2, merged = cmf.analysis.get_bound_binary(new_filename)
     op = ketjugw.orbital_parameters(bh1, bh2)
-    fig2, ax2 = plt.subplots(2,1, sharex=True)
-    ax2[0].set_ylabel("a/kpc")
-    ax2[1].set_ylabel("e")
-    ax2[1].set_xlabel("t/Gyr")
-    ax2[0].semilogy(op["t"]/gyr, op["a_R"]/kpc)
-    ax2[1].plot(op["t"]/gyr, op["e_t"])
+    cmf.plotting.binary_param_plot(op)
 plt.show()

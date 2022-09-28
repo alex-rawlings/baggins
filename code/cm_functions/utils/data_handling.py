@@ -2,6 +2,7 @@ import pickle
 import os
 import shutil
 import h5py
+from multiprocessing import managers
 from ..env_config import _logger
 
 
@@ -30,7 +31,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
         filename must have .pickle extension
 
     """
-    assert(isinstance(data, dict))
+    assert(isinstance(data, (dict, managers.DictProxy)))
     assert(filename.endswith(".pickle"))
     with open(filename, 'wb') as f:
         pickle.dump(data, f, protocol=protocol)

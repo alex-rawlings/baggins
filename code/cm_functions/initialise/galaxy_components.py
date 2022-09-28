@@ -33,25 +33,22 @@ class _GalaxyICBase:
         """
         self.parameter_file = parameter_file
         self.parameters = read_parameters(self.parameter_file)
-        self.name = self.parameters.galaxyName
-        self.save_location = os.path.join(self.parameters.saveLocation, self.name)
-        self.figure_location = os.path.join(self.save_location,  self.parameters.figureLocation)
-        self.data_location = os.path.join(self.save_location, self.parameters.dataLocation)
-        self.lit_location = self.parameters.litDataLocation
-        self.seed = self.parameters.randomSeed
+        self.name = self.parameters["general"]["galaxy_name"]
+        self.save_location = os.path.join(self.parameters["file_locations"]["save_location"], self.name)
+        self.figure_location = os.path.join(self.save_location,  self.parameters["file_locations"]["figure_location"])
+        self.data_location = os.path.join(self.save_location, self.parameters["file_locations"]["data_location"])
+        self.seed = self.parameters["general"]["random_seed"]
         self._rng = np.random.default_rng(self.seed)
-        self.simulation_time = self.parameters.simulationTime
-        self.maximum_radius = self.parameters.maximumRadius
-        self.minimum_radius = self.parameters.minimumRadius
-        if self.simulation_time < 1e-6:
+        self.simulation_start_time = self.parameters["general"]["simulation_start_time"]["value"]
+        self.maximum_radius = self.parameters["general"]["maximum_radius"]["value"]
+        self.minimum_radius = self.parameters["general"]["minimum_radius"]["value"]
+        try:
+            assert self.simulation_start_time < 0
             #we are using redshift 0
             self.redshift = 0
-        else:
-            msg = "Only redshift 0 is currently supported"
-            _logger.logger.error(msg)
-            raise NotImplementedError(msg)
-        # add redshift to the parameter file
-        self.parameters.redshift = self.redshift
+        except AssertionError:
+            _logger.logger.exception("Only redshift 0 is currently supported", exc_info=True)
+            raise
         self.cosmology = cosmology
         self.mass_units = "msol"
         #make output directories if not already existing
@@ -95,12 +92,12 @@ class _StellarComponent(_GalaxyICBase):
         """
         super().__init__(parameter_file=parameter_file)
         self.total_mass = None
-        try:
-            self.anisotropy_radius = self.parameters.anisotropyRadius
-        except AttributeError:
+        if self.parameters["stars"]["anisotropy_radius"]["value"] is None:
             self.anisotropy_radius = None
-        self.particle_mass = self.parameters.stellarParticleMass
-        self.softening = self.parameters.stellar_softening
+        else:
+            self.anisotropy_radius = self.parameters["stars"]["anisotropy_radius"]["value"]
+        self.particle_mass = self.parameters["stars"]["particle_mass"]["value"]
+        self.softening = self.parameters["stars"]["softening"]["value"]
 
     @property
     def log_total_mass(self):
@@ -118,9 +115,10 @@ class _StellarCusp(_StellarComponent):
             path to parameter file describing the galaxy ICs, by default None
         """
         super().__init__(parameter_file=parameter_file)
-        self.scale_radius = self.parameters.stellarScaleRadius
-        self.gamma = self.parameters.stellarGamma
-        self.total_mass = 10**self.parameters.logStellarMass
+        pars = self.parameters["stars"]["cuspy"]
+        self.scale_radius = pars["scale_radius"]["value"]
+        self.gamma = pars["gamma"]
+        self.total_mass = 10**pars["log_total_mass"]
 
 
 class _StellarCore(_StellarComponent):
@@ -134,15 +132,17 @@ class _StellarCore(_StellarComponent):
             path to parameter file describing the galaxy ICs, by default None
         """
         super().__init__(parameter_file=parameter_file)
-        self.distance_modulus = self.parameters.distanceModulus
-        self.effective_radius = self.parameters.effectiveRadius
-        self.sersic_index = self.parameters.sersicN
-        self.transition_index = self.parameters.transitionIndex
-        self.core_slope = self.parameters.coreSlope
-        self.core_radius = self.parameters.coreRadius
-        self.core_density = 10**self.parameters.logCoreDensity
-        self.mass_light_ratio = self.parameters.M2Lratio
+        pars = self.parameters["stars"]["cored"]
+        self.distance_modulus = pars["distance_modulus"]
+        self.effective_radius = pars["effective_radius"]["value"]
+        self.sersic_index = pars["sersic_n"]
+        self.transition_index = pars["transition_index"]
+        self.core_slope = pars["core_slope"]
+        self.core_radius = pars["core_radius"]["value"]
+        self.core_density = 10**pars["log_core_density"]["value"]
+        self.mass_light_ratio = pars["mass_light_ratio"]
         self.stellar_distance_units = "arcsec"
+        # TODO checks for unit consistency
         self.to_kpc_units()
         rhof = lambda r: r**2 * Terzic05(r, rhob=self.core_density*1e9, rb=self.core_radius, n=self.sersic_index, g=self.core_slope, b=self.sersic_b_parameter, Re=self.effective_radius, a=self.transition_index)
         self.total_mass = 4*np.pi * self.mass_light_ratio * scipy.integrate.quad(rhof, 1e-5, self.maximum_radius, limit=100)[0]
@@ -155,9 +155,7 @@ class _StellarCore(_StellarComponent):
         self.core_radius = arcsec_to_kpc(self.distance_modulus, self.core_radius)
         self.effective_radius = arcsec_to_kpc(self.distance_modulus, self.effective_radius)
         self.stellar_distance_units = "kpc"
-        # save the kpc values
-        self.parameters.input_Re_in_kpc = self.effective_radius
-        self.parameters.input_Rb_in_kpc = self.core_radius
+    
 
     @cached_property
     def sersic_b_parameter(self):
@@ -177,9 +175,9 @@ class _DMComponent(_GalaxyICBase):
             path to parameter file describing the galaxy ICs, by default None
         """
         super().__init__(parameter_file=parameter_file)
-        self.particle_mass = self.parameters.DMParticleMass
-        self.softening = self.parameters.DM_softening
-        self.dm_scaling_relation = self.parameters.DM_mass_from.lower()
+        self.particle_mass = self.parameters["dm"]["particle_mass"]["value"]
+        self.softening = self.parameters["dm"]["softening"]["value"]
+        self.dm_scaling_relation = self.parameters["dm"]["mass_relation"].lower()
         self._stellar_mass = stellar_mass
         self.peak_mass = None
 
@@ -193,9 +191,9 @@ class _DMComponent(_GalaxyICBase):
             if val is not None:
                 self._peak_mass = val
             else:
-                self._peak_mass = self.parameters.DM_peak_mass
+                self._peak_mass = self.parameters["calculated"]["dm"]["peak_mass"]
                 _logger.logger.info("DM Mass read from parameter file")
-        except AttributeError:
+        except KeyError:
             _logger.logger.info("Setting DM peak mass")
             if self.dm_scaling_relation == "moster":
                 _logger.logger.info("Using Moster+10 DM scaling relation")
@@ -210,7 +208,6 @@ class _DMComponent(_GalaxyICBase):
                 msg = "Invalid scaling relation in parameter file!"
                 _logger.logger.error(msg)
                 raise RuntimeError(msg)
-            self.parameters.DM_peak_mass = self._peak_mass
 
     @property
     def log_peak_mass(self):
@@ -264,8 +261,8 @@ class _DMHaloDehnen(_DMComponent):
             path to parameter file describing the galaxy ICs, by default None
         """
         super().__init__(stellar_mass=stellar_mass, parameter_file=parameter_file)
-        self.scale_radius = self.parameters.DMScaleRadius
-        self.gamma = self.parameters.DMGamma
+        self.scale_radius = self.parameters["dm"]["Dehnen"]["scale_radius"]["value"]
+        self.gamma = self.parameters["dm"]["Dehnen"]["gamma"]
 
     @property
     def virial_radius(self):
@@ -291,8 +288,12 @@ class _SMBH(_GalaxyICBase):
         super().__init__(parameter_file=parameter_file)
         self._log_stellar_mass = log_stellar_mass
         self.mass = None
-        self.spin = self.parameters.BH_spin
-        self.softening = self.parameters.BH_softening
+        self.spin_relation = self.parameters["bh"]["spin_relation"].lower()
+        try:
+            self.spin = self.parameters["calculated"]["bh"]["spin"]
+        except KeyError:
+            self.spin = self.parameters["bh"]["set_spin"]
+        self.softening = self.parameters["bh"]["softening"]["value"]
     
     @property
     def mass(self):
@@ -304,11 +305,10 @@ class _SMBH(_GalaxyICBase):
             if val is not None:
                 self._mass = val
             else:
-                self._mass = self.parameters.BH_mass
+                self._mass = self.parameters["calculated"]["bh"]["mass"]
                 _logger.logger.info("BH Mass read from parameter file")
-        except AttributeError:
+        except KeyError:
             self._mass = 10**Sahu19(self._log_stellar_mass)
-            self.parameters.BH_mass = self._mass
             _logger.logger.info("BH Mass determined from Sahu+19 relation")
 
     @property
@@ -324,18 +324,18 @@ class _SMBH(_GalaxyICBase):
         if isinstance(val, str) or val is None:
             valid_str = True
             # choose spin parameters from the following distributions
-            if self.parameters.BH_spin_from.lower() == "zlochower_dry":
+            if self.spin_relation == "zlochower_dry":
                 bh_spin_params = zlochower_dry_spins
-            elif self.parameters.BH_spin_from.lower() == "zlochower_cold":
+            elif self.spin_relation == "zlochower_cold":
                 bh_spin_params = zlochower_cold_spins
-            elif self.parameters.BH_spin_from.lower() == "zlochower_hot":
+            elif self.spin_relation == "zlochower_hot":
                 bh_spin_params = zlochower_hot_spins
             else:
                 valid_str = False
                 bh_spin_params = None
             # set up random spins
             if valid_str:
-                _logger.logger.info(f"Generating BH spins from {self.parameters.BH_spin_from.lower()}")
+                _logger.logger.info(f"Generating BH spins from {self.spin_relation}")
                 spin_mag = scipy.stats.beta.rvs(*bh_spin_params.values(), random_state=self._rng)
                 t, p = uniform_sample_sphere(1, rng=self._rng)
                 self._spin = spin_mag * np.array([
@@ -350,6 +350,4 @@ class _SMBH(_GalaxyICBase):
         else:
             assert len(val) == 3
             self._spin = val
-        #save the new spin value
-        self.parameters.BH_spin = self._spin
 

@@ -1,8 +1,9 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from datetime import datetime
 import cmdstanpy
-import arviz as av
+import arviz as az
 
 
 from ...plotting import savefig, create_normed_colours, mplColours
@@ -42,7 +43,7 @@ class StanModel:
         self._stan_data = None
         self._model = None
         self._fit = None
-        self._fit_for_av = None
+        self._fit_for_az = None
         self._prior_stan_data = None
         self._prior_model = None
         self._prior_fit = None
@@ -104,6 +105,10 @@ class StanModel:
             self._num_groups += 1
     
     @property
+    def generated_quantities(self):
+        return self._generated_quantities
+
+    @property
     def figname_base(self):
         return self._figname_base
     
@@ -114,9 +119,34 @@ class StanModel:
         os.makedirs(d, exist_ok=True)
     
     @property
-    def generated_quantities(self):
-        return self._generated_quantities
+    def sample_diagnosis(self):
+        return self._sample_diagnosis
     
+
+    def _make_fig_name(self, fname, tag):
+        """
+        Make figure names by appending a tag to a base name.
+
+        Parameters
+        ----------
+        fname : str
+            base figure name to which a tag will be appended
+        tag : str
+            tag to append
+
+        Returns
+        -------
+        str, path-like
+            path to save figure as
+        """
+        fname_parts = list(os.path.splitext(fname))
+        if fname_parts[1] == "":
+            fname_parts[1] = ".png"
+        elif fname_parts[1] not in (".png", ".jpeg", ".jpg", ".eps", ".pdf"):
+            # we do not have a valid extension
+            fname_parts = [fname, ".png"]
+        return f"{fname_parts[0]}_{tag}{fname_parts[1]}"
+
 
     def _check_observation_validity(self, d):
         """
@@ -200,61 +230,7 @@ class StanModel:
             _logger.logger.info(f"Applying transformation designated by {newkey}")
             self.obs[newkey] = func(self.obs[key])
             self._check_observation_validity(self.obs)
-    
 
-    def _sampler(self, data, prior=False, sample_kwargs={}):
-        """
-        Sample a stan model
-
-        Parameters
-        ----------
-        data : dict
-            stan data values
-        prior : bool, optional
-            run sampler for prior model, by default False
-        sample_kwargs : dict, optional
-            kwargs to be passed to CmdStanModel.sample(), by default {}
-
-        Returns
-        -------
-        cmdstanpy.CmdStanMCMC 
-            container output from stan sampling
-        """
-        if self._loaded_from_file:
-            _logger.logger.warning("Instance instantiated from file: sampling the model again is not possible --> Skipping.")
-            return self._fit
-        else:
-            default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "max_treedepth":12}
-            if not prior:
-                default_sample_kwargs["output_dir"] = os.path.join(data_dir, "stan_files")
-            # update user given sample kwargs
-            for k, v in sample_kwargs.items():
-                default_sample_kwargs[k] = v
-            if "output_dir" in default_sample_kwargs:
-                os.makedirs(default_sample_kwargs["output_dir"], exist_ok=True)
-            if prior:
-                fit = self._prior_model.sample(data=data, **default_sample_kwargs)
-            else:
-                fit = self._model.sample(data=data, **default_sample_kwargs)
-            _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
-            _logger.logger.info(f"\n{fit.diagnose()}")
-            return fit
-    
-
-    def build_model(self, prior=False):
-        """
-        Build the stan model
-
-        Parameters
-        ----------
-        prior : bool, optional
-            build prior model, by default False
-        """
-        if prior:
-            self._prior_model = cmdstanpy.CmdStanModel(stan_file=self._prior_file)
-        else:
-            self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)
-    
 
     def _random_obs_select(self, num, group):
         """
@@ -289,6 +265,62 @@ class StanModel:
             self.obs[k] = v[del_mask]
     
 
+    def _sampler(self, data, prior=False, sample_kwargs={}):
+        """
+        Sample a stan model
+
+        Parameters
+        ----------
+        data : dict
+            stan data values
+        prior : bool, optional
+            run sampler for prior model, by default False
+        sample_kwargs : dict, optional
+            kwargs to be passed to CmdStanModel.sample(), by default {}
+
+        Returns
+        -------
+        cmdstanpy.CmdStanMCMC 
+            container output from stan sampling
+        """
+        if self._loaded_from_file:
+            _logger.logger.warning("Instance instantiated from file: sampling the model again is not possible --> Skipping.")
+            self._sample_diagnosis = self._fit.diagnose()
+            return self._fit
+        else:
+            default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "max_treedepth":12}
+            if not prior:
+                default_sample_kwargs["output_dir"] = os.path.join(data_dir, "stan_files")
+            # update user given sample kwargs
+            for k, v in sample_kwargs.items():
+                default_sample_kwargs[k] = v
+            if "output_dir" in default_sample_kwargs:
+                os.makedirs(default_sample_kwargs["output_dir"], exist_ok=True)
+            if prior:
+                fit = self._prior_model.sample(data=data, **default_sample_kwargs)
+            else:
+                fit = self._model.sample(data=data, **default_sample_kwargs)
+            self._sample_diagnosis = fit.diagnose()
+            _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
+            _logger.logger.info(f"\n{self.sample_diagnosis}")
+            return fit
+    
+
+    def build_model(self, prior=False):
+        """
+        Build the stan model
+
+        Parameters
+        ----------
+        prior : bool, optional
+            build prior model, by default False
+        """
+        if prior:
+            self._prior_model = cmdstanpy.CmdStanModel(stan_file=self._prior_file)
+        else:
+            self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)
+    
+
     def sample_model(self, data, sample_kwargs={}):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
@@ -304,7 +336,7 @@ class StanModel:
         if self._model is None and not self._loaded_from_file:
             self.build_model()
         self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
-        self._fit_for_av = av.from_cmdstanpy(self._fit)
+        self._fit_for_az = az.from_cmdstanpy(self._fit)
     
 
     def sample_prior(self, data, sample_kwargs={}):
@@ -322,31 +354,28 @@ class StanModel:
         if self._prior_model is None and not self._loaded_from_file:
             self.build_model(prior=True)
         self._prior_fit = self._sampler(data=self._prior_stan_data, sample_kwargs=sample_kwargs, prior=True)
-    
 
-    def _make_fig_name(self, fname, tag):
+
+    def sample_generated_quantity(self, gq, force_resample=False):
         """
-        Make figure names by appending a tag to a base name.
+        Sample the 'generated quantities' block of a Stan model
 
         Parameters
         ----------
-        fname : str
-            base figure name to which a tag will be appended
-        tag : str
-            tag to append
+        gq : str
+            stan variable to sample
+        force_resample : bool, optional
+            run the generate_quantities method() again even if already run, by 
+            default False
 
         Returns
         -------
-        str, path-like
-            path to save figure as
+        np.ndarray
+            set of draws for the variable gq
         """
-        fname_parts = list(os.path.splitext(fname))
-        if fname_parts[1] == "":
-            fname_parts[1] = ".png"
-        elif fname_parts[1] not in (".png", ".jpeg", ".jpg", ".eps", ".pdf"):
-            # we do not have a valid extension
-            fname_parts = [fname, ".png"]
-        return f"{fname_parts[0]}_{tag}{fname_parts[1]}"
+        if self.generated_quantities is None or force_resample:
+            self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit)
+        return self.generated_quantities.stan_variable(gq)
     
 
     def parameter_plot(self, var_names, figsize=(9.0, 6.75), labeller=None):
@@ -364,20 +393,20 @@ class StanModel:
         if len(var_names) > 4:
             _logger.logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
         # plot trace
-        ax = av.plot_trace(self._fit_for_av, var_names=var_names, figsize=figsize)
+        ax = az.plot_trace(self._fit_for_az, var_names=var_names, figsize=figsize)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"trace_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
 
         # plot rank
-        ax = av.plot_rank(self._fit_for_av, var_names=var_names)
+        ax = az.plot_rank(self._fit_for_az, var_names=var_names)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"rank_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
 
         # plot pair
-        ax = av.plot_pair(self._fit_for_av, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller)
-        av.plot_pair(self._fit_for_av, var_names=var_names, kind="kde", divergences=True, ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller)
+        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller)
+        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
@@ -415,7 +444,7 @@ class StanModel:
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            av.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI", "edgecolor":None}, smooth=False)
+            az.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI", "edgecolor":None}, smooth=False)
         # overlay data
         if self._num_groups < 2:
             self._plot_obs_data_kwargs["cmap"] = "Set1"
@@ -462,7 +491,7 @@ class StanModel:
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            av.plot_hdi(self.obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"}, smooth=False)
+            az.plot_hdi(self.obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"}, smooth=False)
         # overlay data
         if self._num_groups < 2:
             self._plot_obs_data_kwargs["cmap"] = "Set1"
@@ -478,28 +507,6 @@ class StanModel:
                 ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", capsize=5, label=("Obs." if i==ncols-1 else ""))
         ax.legend()
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
-
-    
-    def sample_generated_quantity(self, gq, force_resample=False):
-        """
-        Sample the 'generated quantities' block of a Stan model
-
-        Parameters
-        ----------
-        gq : str
-            stan variable to sample
-        force_resample : bool, optional
-            run the generate_quantities method() again even if already run, by 
-            default False
-
-        Returns
-        -------
-        np.ndarray
-            set of draws for the variable gq
-        """
-        if self.generated_quantities is None or force_resample:
-            self.generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit)
-        return self.generated_quantities.stan_variable(gq)
 
 
     def plot_generated_quantity_dist(self, gq, ax=None, xlabels=None, save=True, plot_kwargs={}):
@@ -539,13 +546,13 @@ class StanModel:
         else:
             assert len(gq) == len(xlabels)
         for i, (_gq, l) in enumerate(zip(gq, xlabels)):
-            ys = self.sample_generated_quantity(gq)
+            ys = self.sample_generated_quantity(_gq)
             try:
                 assert len(ys.shape) < 3
             except AssertionError:
                 _logger.logger.exception(f"Generated quantity {_gq} must have shape 2, has shape {len(ys.shape)}", exc_info=True)
                 raise
-            av.plot_dist(ys, ax=ax[i], plot_kwargs=plot_kwargs)
+            az.plot_dist(ys, ax=ax[i], plot_kwargs=plot_kwargs)
             ax[i].set_xlabel(l)
         ax.reshape(ax_shape)
         if save:
@@ -574,9 +581,25 @@ class StanModel:
             print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>6}  {df.loc[v,'50%']:>6}  {df.loc[v,'95%']:>6}")
         print()
 
+    
+    def determine_loo(self, stan_log_lik="log_lik"):
+        """
+        Determine Leave-One Out Statistics (wrapper for arviz method)
+
+        Parameters
+        ----------
+        stan_log_lik : str, optional
+            name of log-likelihood variable in stan code, by default "log_lik"
+        """
+        if "log_likelihood" not in self._fit_for_az:
+            self.sample_generated_quantity(stan_log_lik)
+            self._fit_for_az.add_groups({"log_likelihood":self.generated_quantities.draws_xr(stan_log_lik)})
+        l = az.loo(self._fit_for_az)
+        print(l)
+
 
     @classmethod
-    def load_fit(cls, fit_files, figname_base, rng=None):
+    def load_fit(cls, model_file, fit_files, figname_base, rng=None):
         """
         Restore a stan model from a previously-saved set of csv files
 
@@ -590,9 +613,14 @@ class StanModel:
             random number generator, by default None (creates a new instance)
         """
         # initiate a class instance
-        C = cls(model_file=None, prior_file=None, figname_base=figname_base, rng=rng, random_select_obs=None)
+        C = cls(model_file=model_file, prior_file=None, figname_base=figname_base, rng=rng, random_select_obs=None)
+        # set up the model, be aware of changes between sampling and loading
+        C.build_model()
         C._fit = cmdstanpy.from_csv(fit_files)
-        C._fit_for_av = av.from_cmdstanpy(C._fit)
+        fit_time = datetime.strptime(C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z")
+        model_build_time = os.path.getmtime(C._model.exe_file)
+        if model_build_time > fit_time.timestamp():
+            _logger.logger.warning(f"Stan executable has been recompiled since sampling was performed! Proceed with caution!")
         C._loaded_from_file = True
         return C
 

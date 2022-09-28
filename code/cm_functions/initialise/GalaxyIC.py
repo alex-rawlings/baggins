@@ -1,4 +1,5 @@
 import os.path
+from datetime import datetime
 import numpy as np
 import scipy.stats
 import pandas as pd
@@ -8,11 +9,11 @@ import pygad
 
 from .galaxy_components import _GalaxyICBase, _StellarCore, _StellarCusp, _DMHaloDehnen, _DMHaloNFW, _SMBH
 from ..analysis import projected_quantities
-from ..env_config import _logger
+from ..env_config import _logger, date_format
 from ..literature import *
 from ..mathematics import get_histogram_bin_centres
 from ..plotting import mplColours, savefig
-from ..utils import create_error_col, write_parameters, to_json
+from ..utils import to_json, write_calculated_parameters
 
 __all__ = ["GalaxyIC"]
 
@@ -44,17 +45,25 @@ class GalaxyIC(_GalaxyICBase):
             _description_
         """
         super().__init__(parameter_file=parameter_file)
+        self._calc_quants = {"stars":{}, "dm":{}, "bh":{}}
+        # add redshift to the parameter file
+        self._calc_quants["redshift"] = self.redshift
         self.stars = None
         self.dm = None
         self.bh = None
         # set up stars
-        if hasattr(self.parameters, "stellarParticleMass"):
-            if self.parameters.stellarCored:
+        star_pars = self.parameters["stars"]
+        if star_pars["particle_mass"]["value"] is not None:
+            if star_pars["use_cored"]:
                 self.stars = _StellarCore(parameter_file=parameter_file)
+                # save the kpc values
+                self._calc_quants["input_effective_radius"] = {"value":self.stars.effective_radius, "unit":self.stars.stellar_distance_units}
+                self._calc_quants["input_core_radius"] = {"value":self.stars.core_radius, "unit":self.stars.stellar_distance_units}
             else:
                 self.stars = _StellarCusp(parameter_file=parameter_file)
         # set up DM
-        if hasattr(self.parameters, "DMParticleMass"):
+        dm_pars = self.parameters["dm"]
+        if dm_pars["particle_mass"]["value"] is not None:
             try:
                 _star_mass = self.stars.total_mass
             except AttributeError:
@@ -64,23 +73,27 @@ class GalaxyIC(_GalaxyICBase):
                     raise ValueError(msg)
                 else:
                     _star_mass = stellar_mass
-            if self.parameters.use_NFW:
+            if dm_pars["use_NFW"]:
                 self.dm = _DMHaloNFW(stellar_mass=_star_mass,parameter_file=parameter_file)
             else:
                 self.dm = _DMHaloDehnen(stellar_mass=_star_mass, parameter_file=parameter_file)
+            self._calc_quants["dm"]["peak_mass"] = self.dm.peak_mass
         # set up SMBH
-        if hasattr(self.parameters, "BH_spin"):
+        bh_pars = self.parameters["bh"]
+        if bh_pars["set_spin"] is not None:
             try:
                 _star_mass = self.stars.total_mass
             except AttributeError:
                 if stellar_mass is None:
-                    msg = "If no stellar component supplied, a stellar mass must be given to initialise the DM halo"
+                    msg = "If no stellar component supplied, a stellar mass must be given to initialise the SMBH mass"
                     _logger.logger.error(msg)
                     raise ValueError(msg)
                 else:
                     _star_mass = stellar_mass
             self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file)
-        self.parameters_to_update = []
+            self._calc_quants["bh"]["mass"] = self.bh.mass
+            #save the new spin value
+            self._calc_quants["bh"]["spin"] = self.bh.spin
         self.hdf5_file_name = os.path.join(self.save_location, f"{self.name}.hdf5")
     
 
@@ -113,6 +126,15 @@ class GalaxyIC(_GalaxyICBase):
             pass
         self.mass_units = "gadget"
         _logger.logger.info(f"Mass units are now in {self.mass_units} standard.")
+    
+
+    def write_calculated_parameters(self):
+        """
+        Write calculated parameters to the parameter file
+        """
+        now = datetime.now()
+        self._calc_quants["last_update"] = now.strftime(date_format)
+        write_calculated_parameters(self._calc_quants, self.parameter_file)
     
     
     def plot_mass_scaling_relations(self):
@@ -188,7 +210,7 @@ class GalaxyIC(_GalaxyICBase):
         savefig(os.path.join(self.figure_location, f"{self.name}_nfwcut.png"))
 
 
-    def generate_galaxy(self, update_file=False):
+    def generate_galaxy(self):
         """
         Generate the initial conditions as a hdf5 file that can be used by 
         Gadget.
@@ -215,8 +237,7 @@ class GalaxyIC(_GalaxyICBase):
                             )
                 rho = lambda r: 0.1 * self.stars.mass_light_ratio * Terzic05(r, **df_kwargs)
                 star_distribution = mg.GenericSphericalComponent(density_function=rho, particle_mass=self.stars.particle_mass, particle_type=mg.ParticleType.STARS)
-                self.parameters.stellar_actual_total_mass = star_distribution.mass * 1e10
-                self.parameters_to_update.extend(["input_Re_in_kpc", "input_Rb_in_kpc", "stellar_actual_total_mass"])
+                self._calc_quants["stars"]["actual_total_mass"] = star_distribution.mass * 1e10
             else:
                 star_distribution = mg.DehnenSphere(self.stars.total_mass, scale_radius=self.stars.scale_radius, gamma=self.stars.gamma, particle_mass=self.stars.particle_mass, particle_type=mg.ParticleType.STARS)
             dists.append(star_distribution)
@@ -224,8 +245,8 @@ class GalaxyIC(_GalaxyICBase):
         if self.dm is not None:
             # set up dm
             if isinstance(self.dm, _DMHaloNFW):
-                if hasattr(self.parameters, "DM_cut"):
-                    cut_params = self.parameters.DM_cut
+                if self.parameters["dm"]["NFW"]["cut_pars"] is not None:
+                    cut_params = self.self.parameters["dm"]["NFW"]["cut_pars"]
                     _logger.logger.info("Using user-defined NFW cut parameters")
                 else:
                     cut_params = dict(
@@ -235,9 +256,8 @@ class GalaxyIC(_GalaxyICBase):
                     )
                     _logger.logger.warning("Using default NFW cut parameters")
                 dm_distribution = mg.NFWSphere(Mvir=self.dm.peak_mass, particle_mass=self.dm.particle_mass, particle_type=mg.ParticleType.DM_HALO, z=self.redshift, use_cut=True, cut_params=cut_params)
-                self.parameters.DM_actual_total_mass = dm_distribution.mass * 1e10
-                self.parameters.DM_concentration = self.dm.concentration
-                self.parameters_to_update.extend(["DM_actual_total_mass", "DM_concentration"])
+                self._calc_quants["dm"]["actial_total_mass"] = dm_distribution.mass * 1e10
+                self._calc_quants["dm"]["concentration"] = self.dm.concentration
                 self.plot_dm_cut_function(cut_params=cut_params)
             else:
                 dm_distribution = mg.DehnenSphere(mass=self.dm.peak_mass, scale_radius=self.dm.scale_radius, gamma=self.dm.gamma, particle_mass=self.dm.particle_mass, particle_type=mg.ParticleType.DM_HALO)
@@ -245,9 +265,8 @@ class GalaxyIC(_GalaxyICBase):
 
         if self.bh is not None:
             # set up bh
-            bh_particle = mg.CentralPointMass(mass=self.bh.mass, softening=self.parameters.BH_softening, chi=self.bh.spin, particle_type=mg.ParticleType.BH)
+            bh_particle = mg.CentralPointMass(mass=self.bh.mass, softening=self.bh.softening, chi=self.bh.spin, particle_type=mg.ParticleType.BH)
             dists.append(bh_particle)
-            self.parameters_to_update.append("BH_spin")
         
         # generate the galaxy
         generated_galaxy = mg.SphericalSystem(*dists, rmax=self.maximum_radius, anisotropy_radius=self.stars.anisotropy_radius)
@@ -258,23 +277,18 @@ class GalaxyIC(_GalaxyICBase):
         
         # ensure no particles dropped
         for k in generated_galaxy.particle_counts.keys():
-            var_name = "count_" + str(k).split(".")[1]
             particle_count = generated_galaxy.particle_counts.get(k)
+            t = str(k).split(".")[1].lower().replace("_halo", "")
+            self._calc_quants[t]["particle_count"] = float(particle_count)
             if k != mg.ParticleType.BH and particle_count < 1e3:
                 _logger.logger.warning(f"{k} has: {particle_count} particles!")
-            setattr(self.parameters, var_name, particle_count)
-            self.parameters_to_update.append(var_name)
         
         # save galaxy
         mg.write_hdf5_ic_file(self.hdf5_file_name, generated_galaxy)
-        if update_file:
-            write_parameters(self.parameters, allow_updates=self.parameters_to_update)
-        else:
-            write_parameters(self.parameters)
-        self.parameters_to_update = []
+        self.write_calculated_parameters()
 
 
-    def plot_ic_kinematics(self, update_file=False, num_rots=3):
+    def plot_ic_kinematics(self, num_rots=3):
         """
         Plot kinematic properties of the ICs to check for consistency with 
         observations.
@@ -286,6 +300,7 @@ class GalaxyIC(_GalaxyICBase):
         num_rots : int, optional
             number of rotations performed for projected quantities, by default 3
         """
+        self._calc_quants["kinematics"] = {}
         # load literature data
         bulgeBHData = LiteratureTables("sahu_2020")
         fDMData = LiteratureTables("jin_2020")
@@ -318,10 +333,10 @@ class GalaxyIC(_GalaxyICBase):
         eff_rad, vsig2_Re, *_ = projected_quantities(ic, obs=num_rots)
         eff_rad = np.nanmedian(list(eff_rad.values())[0])
         vsig2_Re = np.nanmedian(list(vsig2_Re.values())[0])
-        self.parameters.projected_half_mass_radius = eff_rad
+        self._calc_quants["kinematics"]["projected_half_mass_radius"] = {"unit":"kpc", "value":float(eff_rad)}
         # use an unbiased estimator of standard deviation
-        self.parameters.LOS_vel_dispersion = np.sqrt(vsig2_Re)
-        self.parameters_to_update.extend(["projected_half_mass_radius", "LOS_vel_dispersion"])
+        LOS_sigma = np.sqrt(vsig2_Re)
+        self._calc_quants["kinematics"]["LOS_velocity_dispersion"] = {"unit":"km/s", "value":float(LOS_sigma)}
 
         # estimate number of particles in Ketju region
         max_softening = max([self.stars.softening, self.bh.softening])
@@ -329,8 +344,7 @@ class GalaxyIC(_GalaxyICBase):
         print(f"Assumed Ketju radius: {ketju_radius:.2f} kpc")
         ketju_mask = pygad.BallMask(ketju_radius, center=mass_centre)
         number_ketju_particles = len(ic.stars[ketju_mask]) + 1 #smbh
-        self.parameters.number_ketju_particles = number_ketju_particles
-        self.parameters_to_update.append("number_ketju_particles")
+        self._calc_quants["kinematics"]["ketju_particles"] = number_ketju_particles
 
         # generate figure layout
         fig, ax = plt.subplots(3,3)
@@ -376,15 +390,16 @@ class GalaxyIC(_GalaxyICBase):
         ax[1,0].set_ylabel(r"log(M$_\mathrm{*,sph}$ / M$_\odot$)")
         ax[1,0].set_title(r"R$_\mathrm{e}$ - log(M$_*$) Relation", fontsize="small")
         if isinstance(self.stars, _StellarCusp):
-            self.parameters.half_mass_radius, *_ = halfMassDehnen(self.stars.scale_radius, self.stars.gamma)
-            ax[1,0].scatter(np.log10(self.parameters.half_mass_radius), np.log10(np.unique(ic.stars["mass"]) * len(ic.stars["mass"])), color=cols[3], marker="x", s=60, zorder=10, label="Theory")
+            hmr = halfMassDehnen(self.stars.scale_radius, self.stars.gamma)[0]
+            self._calc_quants["kinematics"]["half_mass_radius_analytic"] = {"unit":"kpc", "value":hmr}
+            ax[1,0].scatter(np.log10(hmr), np.log10(np.unique(ic.stars["mass"]) * len(ic.stars["mass"])), color=cols[3], marker="x", s=60, zorder=10, label="Theory")
         logRe_vals = np.log10(bulgeBHData.table["Re_maj"].astype("float") * bulgeBHData.table["scale"].astype("float"))
         ax[1,0].errorbar(logRe_vals, bulgeBHData.table.loc[:, "logM*_sph"], yerr=bulgeBHData.table.loc[:, "logM*_sph_ERR"], marker=".", ls="None", elinewidth=0.5, capsize=0, color=cols[1], ms=markersz, zorder=1, label="Sahu+20")
         logRe_seq = np.linspace(np.min(logRe_vals)*0.99, 1.01*np.max(logRe_vals))
-        self.parameters.half_mass_radius = pygad.analysis.half_mass_radius(ic.stars, center=mass_centre)
-        self.parameters_to_update.append("half_mass_radius")
+        hmrT = pygad.analysis.half_mass_radius(ic.stars, center=mass_centre)
+        self._calc_quants["kinematics"]["half_mass_radius_true"] = {"unit":"kpc", "value":hmrT}
         ax[1,0].plot(logRe_seq, Sahu20(logRe_seq), c=cols[1])
-        ax[1,0].scatter(np.log10(self.parameters.half_mass_radius), np.log10(np.unique(ic.stars["mass"]) * len(ic.stars["mass"])), color=cols[3], zorder=10, label="Actual")
+        ax[1,0].scatter(np.log10(hmrT), np.log10(np.unique(ic.stars["mass"]) * len(ic.stars["mass"])), color=cols[3], zorder=10, label="Actual")
         ax[1,0].legend()
 
         # inner dark matter
@@ -400,13 +415,14 @@ class GalaxyIC(_GalaxyICBase):
         ax[1,1].plot(fdm_radii, binned_fdm[0], "-x", c=cols[2], label="Median")
         ball_mask = pygad.BallMask(eff_rad, center=mass_centre)
         inner_dm_mass = np.sum(ic.dm[ball_mask]["mass"])
-        self.parameters.inner_DM_fraction = inner_dm_mass / (inner_dm_mass + np.sum(ic.stars[ball_mask]["mass"]))
-        self.parameters_to_update.append("inner_DM_fraction")
-        ax[1,1].scatter(self.stars.log_total_mass, self.parameters.inner_DM_fraction, c=cols[3], zorder=10)
+        idmf = inner_dm_mass / (inner_dm_mass + np.sum(ic.stars[ball_mask]["mass"]))
+        self._calc_quants["kinematics"]["inner_DM_frac"] = idmf
+        ax[1,1].scatter(self.stars.log_total_mass, idmf, c=cols[3], zorder=10)
         ax[1,1].legend(loc="upper left")
 
         # virial info
-        self.parameters.virial_radius, self.parameters.virial_mass = pygad.analysis.virial_info(ic, center=mass_centre, N_min=10)
+        vr, vm = pygad.analysis.virial_info(ic, center=mass_centre, N_min=10)
+        self._calc_quants["kinematics"]["virial_info"] = {"mass":{"unit":"Msol", "value":float(vm)}, "radius":{"unit":"kpc", "value":float(vr)}}
         ax[1,2].set_xlabel("log(r/kpc)")
         ax[1,2].set_ylabel("Count")
         ax[1,2].set_title("Star Count", fontsize="small")
@@ -416,13 +432,13 @@ class GalaxyIC(_GalaxyICBase):
         ax[1,2].axvline(star_rad_dist[100], c=cols[1], label=r"$10^2$")
         ax[1,2].axvline(star_rad_dist[1000], c=cols[1], label=r"$10^3$")
         ax[1,2].legend()
-        self.parameters.inner_100_star_radius = 10**star_rad_dist[100]
-        self.parameters.inner_1000_star_radius = 10**star_rad_dist[1000]
-        self.parameters_to_update.extend(["inner_100_star_radius", "inner_1000_star_radius"])
+        i100star = 10**star_rad_dist[100]
+        i1000star = 10**star_rad_dist[1000]
+        self._calc_quants["stars"]["radius_to"] = {"unit":"kpc", "inner_100":i100star, "inner_1000":i1000star}
         # add the virial radius to the density plots
         for axi in (ax[0,1], ax[0,2]):
-            axi.axvline(self.parameters.virial_radius, c=cols[1], zorder=0, lw=0.7, label=r"R$_\mathrm{vir}$")
-            axi.axvline(5*self.parameters.virial_radius, c=cols[2], zorder=0, lw=0.7, label=r"5R$_\mathrm{vir}$")
+            axi.axvline(vr, c=cols[1], zorder=0, lw=0.7, label=r"R$_\mathrm{vir}$")
+            axi.axvline(5*vr, c=cols[2], zorder=0, lw=0.7, label=r"5R$_\mathrm{vir}$")
         ax[0,1].legend()
 
         # histogram of LOS velocities
@@ -437,20 +453,20 @@ class GalaxyIC(_GalaxyICBase):
         ax[2,1].set_ylabel(r"log(M$_\bullet$/M$_\odot$)")
         ax[2,1].set_title("BH Mass - Stellar Dispersion", fontsize="small")
 
-        ax[2,1].scatter(np.log10(self.parameters.LOS_vel_dispersion), np.log10(ic.bh["mass"]), zorder=10, color=cols[3])
+        ax[2,1].scatter(np.log10(LOS_sigma), np.log10(ic.bh["mass"]), zorder=10, color=cols[3])
         ax[2,1].errorbar(BHsigmaData.table.loc[:,"logsigma"], BHsigmaData.table.loc[:,"logBHMass"], xerr=BHsigmaData.table.loc[:,"e_logsigma"], yerr=[BHsigmaData.table.loc[:,"e_logBHMass"], BHsigmaData.table.loc[:,"E_logBHMass"]], marker=".", ls="None", elinewidth=0.5, capsize=0, color=cols[1], ms=markersz, zorder=1, label="Bosch+16")
         ax[2,1].legend()
 
         # BH spin distribution
         has_spin_distribution = False
-        if hasattr(self.parameters, "BH_spin_from"):
-            if self.parameters.BH_spin_from.lower() == "zlochower_dry":
+        if self.parameters["bh"]["spin_relation"] is not None:
+            if self.bh.spin_relation == "zlochower_dry":
                 bh_spin_params = zlochower_dry_spins
                 has_spin_distribution = True
-            elif self.parameters.BH_spin_from.lower() == "zlochower_cold":
+            elif self.bh.spin_relation == "zlochower_cold":
                 bh_spin_params = zlochower_cold_spins
                 has_spin_distribution = True
-            elif self.parameters.BH_spin_from.lower() == "zlochower_hot":
+            elif self.bh.spin_relation == "zlochower_hot":
                 bh_spin_params = zlochower_hot_spins
                 has_spin_distribution = True
             else:
@@ -473,16 +489,5 @@ class GalaxyIC(_GalaxyICBase):
 
         # save figure
         savefig(os.path.join(self.figure_location, f"{self.name}_kinematics_ic.png"))
-        if update_file:
-            write_parameters(self.parameters, allow_updates=self.parameters_to_update)
-        else:
-            write_parameters(self.parameters)
-    
+        self.write_calculated_parameters()
 
-    def parameters_to_json(self):
-        """
-        Convert the IC parameter file to a .json file
-        """
-        fname = os.path.join(self.save_location, f"{self.name}_parameters.json")
-        to_json(self.parameters.__dict__, fname)
-        _logger.logger.info(f"Parameters saved to file {fname}")

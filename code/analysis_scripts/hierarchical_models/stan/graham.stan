@@ -123,5 +123,11 @@ generated quantities {
 
     log10_surf_rho_posterior = log10_I(N_tot, R, I_b_posterior, g_posterior, a, r_b_posterior, Re_posterior, n_posterior);
 
+    /****** determine log likelihood function ******/
+    vector[N_tot] log_lik;
+    for(i in 1:N_tot){
+        log_lik[i] = normal_lpdf(log10_surf_rho[i] | log10_surf_rho_true[i], log10_surf_rho_err[i]);
+    }
+
 }
 

@@ -24,15 +24,15 @@ with h5py.File(HMQ_files[0], mode="r") as f:
 figname_base = f"hierarchical_models/density/{merger_id}/graham_density-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
+stan_model_file = "stan/graham.stan"
 
 if args.load_file is not None:
     # load a previous sample for improved performance: no need to resample the
     # likelihood function
-    graham_model = cmf.analysis.StanModel.load_fit(args.load_file, figname_base=figname_base)
+    graham_model = cmf.analysis.StanModel.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
 else:
     # sample
-    graham_model = cmf.analysis.StanModel(model_file="stan/graham.stan", prior_file="stan/graham_prior.stan", figname_base=figname_base)
-
+    graham_model = cmf.analysis.StanModel(model_file=stan_model_file, prior_file="stan/graham_prior.stan", figname_base=figname_base)
 
 # set up observations
 observations = {"R":[], "proj_density":[], "name":[]}
@@ -100,14 +100,16 @@ else:
     analysis_params.stan_sample_kwargs["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}")
     graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params.stan_sample_kwargs)
 
+    graham_model.determine_loo("log10_surf_rho_posterior")
+
     # parameter corner plots
     var_name_map = dict(
         r_b_a = r"$r_{\mathrm{b}, \alpha}$",
         r_b_b = r"$r_{\mathrm{b}, \beta}$",
         Re_a = r"$R_{\mathrm{e},\alpha}$",
         Re_b = r"$R_{\mathrm{e}, \beta}$",
-        I_b_a = r"$I_{\mathrm{b}, \alpha}$",
-        I_b_b = r"$I_{\mathrm{b}, \beta}$",
+        I_b_a = r"$\Sigma_{\mathrm{b}, \alpha}$",
+        I_b_b = r"$\Sigma_{\mathrm{b}, \beta}$",
         g_a = r"$\gamma_\alpha$",
         g_b = r"$\gamma_\beta$",
         n_a = r"$n_\alpha$",
@@ -139,7 +141,6 @@ else:
     latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior"]
     graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{10}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
     graham_model.print_parameter_percentiles(latent_qtys)
-    
 
 plt.show()
 

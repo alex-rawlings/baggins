@@ -1,5 +1,7 @@
 import numpy as np
+import warnings
 from ...env_config import _logger
+from ...general import get_idx_in_array
 from . import HDF5Base
 
 __all__ = ["HMQuantitiesData"]
@@ -221,46 +223,5 @@ class HMQuantitiesData(HDF5Base):
 
     # some general functions
     def get_idx_in_vec(self, t, tarr):
-        """
-        Get the index of a value within an array
-
-        Parameters
-        ----------
-        t : int, float
-            value to search for
-        tarr : array-like
-            array to search within
-
-        Returns
-        -------
-        int
-            index of t in tarr
-
-        Raises
-        ------
-        ValueError
-            if value to search for is less than the first element of the array
-        ValueError
-            if value to search for is more than the last element of the array
-        """
-        try:
-            assert not np.isnan(t)
-        except AssertionError:
-            _logger.logger.exception("t must not be nan", exc_info=True)
-            raise
-        try:
-            idx = np.nanargmin(np.abs(tarr-t))
-            if idx == len(tarr)-1:
-                s = "large"
-                raise AssertionError
-            elif idx == 0:
-                s = "smalle"
-                raise AssertionError
-            else:
-                return idx
-        except AssertionError:
-            _logger.logger.exception(f"Value is {s}r than the {s}st array value!", exc_info=True)
-            raise
-        except ValueError:
-            _logger.logger.exception(f"Array tarr has value {np.unique(tarr)}")
-            raise
+        warnings.warn("This function is a now called through general.get_idx_in_array()", DeprecationWarning)
+        return get_idx_in_array(t, tarr)

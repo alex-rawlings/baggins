@@ -11,4 +11,4 @@
 module purge
 module restore py393
 
-python central_measures.py
+python central_measures.py -e

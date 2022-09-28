@@ -222,7 +222,7 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
         if mask input is not of correct type
     """
     if masks is None:
-        return pygad.analysis.virial_info(snap, center=xcom)
+        return pygad.analysis.virial_info(snap, center=list(xcom.values())[0])
     elif isinstance(masks, list):
         mask_list = masks
         masks = dict()
@@ -1016,6 +1016,10 @@ def velocity_anisotropy(snap, r_edges, xcom=[0,0,0], vcom=[0,0,0], qcut=1.0, eps
     np.ndarray
         number of particles per radial bin
     """
+    if isinstance(xcom, list):
+        xcom = np.array(xcom)
+    if isinstance(vcom, list):
+        vcom = np.array(vcom)
     pygad.Translation(-xcom).apply(snap)
     pygad.Boost(-vcom).apply(snap)
     r = pygad.utils.geo.dist(snap["pos"])
