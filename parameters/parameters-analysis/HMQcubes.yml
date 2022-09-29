@@ -1,0 +1,32 @@
+# parameter file for constructing Hierarchical Model Quantity Datacubes
+
+---
+# info on file locations
+file_locations:
+  cube_dir: '/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes'
+
+# info on BH Binary properties
+bh_binary:
+  # semimajor axis used to 'synchronise' simulations for fair comparison
+  target_semimajor_axis:
+    unit: 'kpc'
+    value: 10.0
+
+# info on galaxy properties and quantities needed to determine those properties
+galaxy:
+  maximum_radius:
+    unit: 'kpc'
+    # do not edit '&gr' --> used for referencing later in the file
+    value: &gr 30.0
+  radial_edges:
+    unit: 'kpc'
+    numpy_method: 'geomspace'
+    args: [0.2, *gr, 51]
+  num_projection_rotations: 10
+
+# info for stan settings
+stan:
+  min_num_samples: 6
+  sample_kwargs:
+    adapt_delta: 0.9
+...

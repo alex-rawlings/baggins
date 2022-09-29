@@ -135,7 +135,7 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
             continue
         #make a ball about the CoM
         ball_radius = np.sort(pygad.utils.dist(masked_subsnap['pos'], xcom[idx]))[int(min_particle_count)]
-        _logger.logger.info(f"Maximum radius for velocity CoM set to {ball_radius:.3e} kpc")
+        _logger.logger.debug(f"Maximum radius for velocity CoM set to {ball_radius:.3e} kpc")
         ball_mask = pygad.BallMask(pygad.UnitQty(ball_radius, "kpc"), center=xcom[idx])
         vcoms[idx] = pygad.analysis.mass_weighted_mean(masked_subsnap[ball_mask], qty='vel')
     return vcoms

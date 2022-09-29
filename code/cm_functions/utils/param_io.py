@@ -60,7 +60,7 @@ def read_parameters(filepath):
     params_and_calc : dict
         dictionary of user parameters and calculated parameters (the latter stored under the key top-level key 'calculated')
     """
-    def _unpack_helper(d):
+    def _unpack_helper(d, l):
         """
         Helper to unpack a numpy method, e.g. a linspace
 
@@ -68,13 +68,20 @@ def read_parameters(filepath):
         ----------
         d : dict
             dictionary to unpack
+        l : int
+            level of unpacking (to keep track of reserved top-level keys)
 
         Returns
         -------
         d : dict
             dictionary with the results of a numpy method saved to it
         """
-        for k, v in d.items():
+        for k, v in d.copy().items():
+            try:
+                if l==0: assert k != "calculated"
+            except AssertionError:
+                _logger.logger.exception("Main parameter block cannot contain the top-level reserved key 'calculated'!", exc_info=True)
+                raise
             if k == "numpy_method":
                 try:
                     args = d["args"]
@@ -88,12 +95,14 @@ def read_parameters(filepath):
                 except AssertionError:
                     _logger.logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must not have a corresponding 'value' key!", exc_info=True)
                     raise
-                method = getattr(np, k)
+                method = getattr(np, v)
                 d["value"] = method(*args)
             elif isinstance(v, str) and v[-1] == "/":
                 d[k] = v.rstrip("/")
             elif isinstance(v, dict):
-                _unpack_helper(v)
+                l += 1
+                _unpack_helper(v,l)
+                l -= 1
         return d
             
     with open(filepath, "r") as f:
@@ -101,7 +110,7 @@ def read_parameters(filepath):
     params_and_calc = params_list[0].copy()
     params_and_calc["calculated"] = {}
     for i, params in enumerate(params_list):
-        params = _unpack_helper(params)
+        params = _unpack_helper(params, l=0)
         if i == 0: continue
         for k in params.keys():
             params_and_calc["calculated"][k] = params[k]
@@ -124,7 +133,7 @@ def write_calculated_parameters(data, filepath):
         path to parameter file where values will be saved
     """    
     def _type_converter(d):
-        new_d = {}
+        new_d = _data_list[1].copy()
         for k, v in d.items():
             if isinstance(v, np.float64):
                 new_d[k] = float(v)

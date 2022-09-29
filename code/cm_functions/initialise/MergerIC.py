@@ -92,8 +92,8 @@ class MergerIC:
         Parameters
         ----------
         x : np.ndarray
-            normalised rperi values (normalised to the virial radius of the larger
-            progenitor)
+            normalised rperi values (normalised to the virial radius of the 
+            larger progenitor)
         a : float, optional
             shape parameter, by default 0.320
         b : float, optional
@@ -156,12 +156,12 @@ class MergerIC:
 
         os.makedirs(os.path.join(self.save_location, "output"), exist_ok=self.exist_ok)
         file_name = os.path.join(self.save_location, f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{oppars['r0']['value']}-{oppars['rperi']['value']}.hdf5")
-        '''try:
+        try:
             assert not os.path.exists(file_name)
         except AssertionError:
             _logger.logger.exception(f"File {file_name} already exists!", exc_info=True)
             raise
-        mg.write_hdf5_ic_file(filename=file_name, system=merger, save_plots=False)'''
+        mg.write_hdf5_ic_file(filename=file_name, system=merger, save_plots=False)
         # save parameters
         self.write_calculated_parameters()
     
@@ -223,7 +223,11 @@ class MergerIC:
 
     def perturb_bhs(self):
         """
-        Perturb the BHs of a merger system by a Gaussian distribution
+        Perturb the BHs of a merger system by a Gaussian distribution.
+        XXX: For consistency with the large sample already run, the 
+        perturbation is applied along each coordinate axis. For future, it 
+        would be worth considering creating a perturbation of a given magnitude 
+        that is then projected along the different coordinate axes. 
         """
         ppars = self.parameters["perturb_properties"]
         snapfile = self.find_snapfile_to_perturb()
@@ -233,28 +237,32 @@ class MergerIC:
         xcoms = get_com_of_each_galaxy(snap, method="ss", masks=star_id_masks, family="stars")
         vcoms = get_com_velocity_of_each_galaxy(snap, xcoms, masks=star_id_masks)
 
-        # determine radial coordinate distribution in brownian motion
-        # and set up the perturbation values
-        perturb_pos = dict()
-        perturb_vel = dict()
-        for bhid in star_id_masks:
-            perturb_pos[bhid] = np.full((ppars["number_perturbs"], 3), np.nan, dtype=float)
-            perturb_vel[bhid] = np.full((ppars["number_perturbs"], 3), np.nan, dtype=float)
-
-        for bhid in perturb_pos.keys():
-            for (spread, crd_dict, com_crd) in zip((ppars["perturb_bhs"]["perturb_position"]["value"], ppars["perturb_bhs"]["perturb_velocity"]["value"]), (perturb_pos, perturb_vel), (xcoms, vcoms)):
-                # perturb in Cartesian space using spread from parameter file
-                crd_dict[bhid] = self.rng.normal(com_crd[bhid], spread, size=(ppars["number_perturbs"], 3))
-
         # set up children directories and ICs
         self.create_perturbation_directories(snapfile)
+        # for each perturbation 'child'
         for i, (child_dir, ic_name) in enumerate(zip(self.perturb_directories, self._ic_file_names)):
             # edit BH coordinates
-            snap = pygad.Snapshot(os.path.join(child_dir, f"{ic_name}.hdf5"), physical=True)
-            for bhid in snap.bh["ID"]:
-                snap.bh["pos"][snap.bh["ID"] == bhid] = pygad.UnitArr(np.atleast_2d(perturb_pos[bhid][i,:]), units=snap["pos"].units)
-                snap.bh["vel"][snap.bh["ID"] == bhid] = pygad.UnitArr(np.atleast_2d(perturb_vel[bhid][i,:]), units=snap["vel"].units)
-            snap.write(os.path.join(child_dir, "{ic_file_name}.hdf5"), overwrite=True, gformat=3)
+            fname = os.path.join(child_dir, f"{ic_name}.hdf5")
+            _logger.logger.debug(f"Perturbing file: {fname}")
+            snap = pygad.Snapshot(fname, physical=True)
+            for bhid in star_id_masks.keys():
+                bhid_mask = bhid==snap.bh["ID"]
+                _logger.logger.debug(f"Before perturb BH {bhid} has:\n position: {snap.bh['pos'][bhid_mask]}\n velocity: {snap.bh['vel'][bhid_mask]}")
+                snap.bh["pos"][bhid_mask] = pygad.UnitArr(
+                                np.atleast_2d(
+                                self.rng.normal(
+                                    xcoms[bhid], 
+                                    ppars["perturb_bhs"]["perturb_position"]["value"])),
+                                units=snap["pos"].units)
+                snap.bh["vel"][bhid_mask] = pygad.UnitArr(
+                                np.atleast_2d(
+                                self.rng.normal(
+                                    vcoms[bhid], 
+                                    ppars["perturb_bhs"]["perturb_velocity"]["value"])),
+                                units=snap["vel"].units
+                                )
+                _logger.logger.debug(f"After perturb BH {bhid} has:\n position: {snap.bh['pos'][bhid_mask]}\n velocity: {snap.bh['vel'][bhid_mask]}")
+            snap.write(fname, overwrite=True, gformat=3, double_prec=True)
             # add file names to update
             update_pars = ppars["gadget_parameters_to_update"]
             update_pars["InitCondFile"] = ic_name
@@ -262,6 +270,9 @@ class MergerIC:
             # edit paramfile
             gadget_file = os.path.join(child_dir, "paramfile")
             self.update_gadget_paramfile(gadget_file, update_pars)
+            snap.delete_blocks()
+            pygad.gc_full_collect()
+            del snap
             
         #add new parameters to file
         self.write_calculated_parameters()
