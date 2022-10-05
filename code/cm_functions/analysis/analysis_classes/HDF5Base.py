@@ -18,7 +18,7 @@ class HDF5Base:
         not be instantiated directly.
         """
         self._log = ""
-        self.allowed_types = (int, float, str, bytes, np.int64, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list, tuple)
+        self.allowed_types = (int, float, str, bytes, np.int64, np.float32, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list, tuple)
         self.hdf5_file_name = None
     
     def add_to_log(self, msg):

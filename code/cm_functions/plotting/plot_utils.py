@@ -7,7 +7,7 @@ from ..env_config import git_hash, username, date_format, fig_ext
 
 __all__ = ["savefig", "get_meta"]
 
-def savefig(fname, fig=None, save_kwargs={}):
+def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
     """
     Wrapper arounf pyplot's savefig() that adds some more useful meta data
 
@@ -19,12 +19,14 @@ def savefig(fname, fig=None, save_kwargs={}):
         figure object to save, by default None (gets current figure)
     save_kwargs : dict, optional
         optional kwargs to pass to pyplot.savefig(), by default {}
+    force_ext : bool
+        override config file figure extension, by default False
     """
     if fig is None:
         fig = gcf()
     f = inspect.stack()[-1] # get outermost caller on stack
     now = datetime.now()
-    if fig_ext == "png":
+    if fig_ext == "png" and not force_ext:
         now = now.strftime(date_format)
     # ensure things are deterministic
     try:
@@ -35,11 +37,14 @@ def savefig(fname, fig=None, save_kwargs={}):
                          Keywords = git_hash
         )
         # save to the correct format
-        fname_name, fname_ext = os.path.splitext(fname)
-        # protect against cases where no extension is specified, and the file 
-        # name has a "." in it
-        _fname = fname_name if fname_ext in (".png", ".pdf") else fname
-        fig.savefig(f"{_fname}.{fig_ext}", metadata=meta_data, **save_kwargs)
+        if force_ext:
+            fig.savefig(fname, metadata=meta_data, **save_kwargs)
+        else:
+            fname_name, fname_ext = os.path.splitext(fname)
+            # protect against cases where no extension is specified, and the 
+            # file name has a "." in it
+            _fname = fname_name if fname_ext in (".png", ".pdf") else fname
+            fig.savefig(f"{_fname}.{fig_ext}", metadata=meta_data, **save_kwargs)
     finally:
         del f
 

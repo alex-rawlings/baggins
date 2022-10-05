@@ -564,8 +564,10 @@ def get_G_rho_per_sigma(snaplist, t, extent=None):
         rho_units = rho_temp.units
         sigma_units = sigma_temp.units
         inner_density[i], inner_sigma[i] = rho_temp, sigma_temp
-    f_rho = scipy.interpolate.interp1d(ts, inner_density)
-    f_sigma = scipy.interpolate.interp1d(ts, inner_sigma)
+    if t < ts[0] or t > ts[1]:
+        _logger.logger.warning(f"Requested time {t} is not within the bounds {ts}. The boundary value in time range will be used.")
+    f_rho = scipy.interpolate.interp1d(ts, inner_density, bounds_error=False, fill_value=tuple(inner_density))
+    f_sigma = scipy.interpolate.interp1d(ts, inner_sigma, bounds_error=False, fill_value=tuple(inner_sigma))
     G_rho_per_sigma = pygad.physics.G * pygad.UnitScalar(f_rho(t), rho_units) / pygad.UnitScalar(f_sigma(t), sigma_units)
     return G_rho_per_sigma.in_units_of("pc**-1/yr")
 

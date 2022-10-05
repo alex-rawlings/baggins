@@ -332,30 +332,7 @@ class ChildSim(BHBinary, ChildSimData):
             raise ValueError("HDF5 file already exists!")
         with h5py.File(fname, mode="w") as f:
             #save the binary info
-            bhb = f.create_group("bh_binary")
-            data_list = ["bh_masses",
-                "binary_formation_time",
-                "binary_lifetime_timescale",
-                "r_infl",
-                "r_infl_time",
-                "r_infl_ecc",
-                "r_bound",
-                "r_bound_time",
-                "r_bound_ecc",
-                "r_hard",
-                "r_hard_time",
-                "r_hard_ecc",
-                "analytical_tspan",
-                "G_rho_per_sigma",
-                "H",
-                "K",
-                "gw_dominant_semimajoraxis",
-                "predicted_orbital_params",
-                "formation_ecc_spread",
-                "binary_merger_remnant",
-                "binary_spin_flip"]
-            self._saver(bhb, data_list)
-            self._add_attr(f["/bh_binary/predicted_orbital_params"], "quantiles", self.param_estimate_e_quantiles)
+            self._make_hdf5_helper(f)
 
             #save the galaxy properties
             gp = f.create_group("galaxy_properties")
@@ -392,14 +369,3 @@ class ChildSim(BHBinary, ChildSimData):
             #save the parent properties
             gP = f.create_group("parent_properties")
             self._saver(gP, ["parent_quantities"])
-
-            #set up some meta data
-            meta = f.create_group("meta")
-            now = datetime.datetime.now()
-            self._add_attr(meta, "merger_name", self.merger_name)
-            self._add_attr(meta, "created", now.strftime(date_format))
-            self._add_attr(meta, "created_by", username)
-            self._add_attr(meta, "last_accessed", now.strftime(date_format))
-            self._add_attr(meta, "last_user", username)
-            meta.create_dataset("logs", data=self._log)
-

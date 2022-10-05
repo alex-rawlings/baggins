@@ -132,8 +132,8 @@ def write_calculated_parameters(data, filepath):
     filepath : str, path-like
         path to parameter file where values will be saved
     """    
-    def _type_converter(d):
-        new_d = _data_list[1].copy()
+    def _type_converter(d, d2):
+        new_d = d2.copy()
         for k, v in d.items():
             if isinstance(v, np.float64):
                 new_d[k] = float(v)
@@ -142,7 +142,10 @@ def write_calculated_parameters(data, filepath):
             elif isinstance(v, UnitArr):
                 new_d[k] = {"unit":str(v.units).strip("[]"), "value":float(v)}
             elif isinstance(v, dict):
-                new_d[k] = _type_converter(v)
+                try:
+                    new_d[k] = _type_converter(v, new_d[k])
+                except KeyError:
+                    new_d[k] = _type_converter(v, {})
             else:
                 new_d[k] = d[k]
         return new_d
@@ -150,9 +153,9 @@ def write_calculated_parameters(data, filepath):
     with open(filepath, "r+") as f:
         _data_list = list(yaml.safe_load_all(f))
         # skip the first block, which consists of the user-defined parameters
-        if len(_data_list)==1: _data_list.append({})
+        if len(_data_list)==1: _data_list.append(data)
         # update values: will update all blocks after the first
-        _data_list[1] = _type_converter(data)
+        _data_list[1] = _type_converter(data, _data_list[1])
         f.seek(0)
         lines = f.readlines()
         f.seek(0)

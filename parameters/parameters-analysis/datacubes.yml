@@ -1,0 +1,52 @@
+# parameter file for constructing child data cubes
+
+---
+# info on file locations
+file_locations:
+  cube_dir = '/scratch/pjohanss/arawling/collisionless_merger/mergers/cubes'
+
+# info on BH Binary properties
+bh_binary:
+  target_semimajor_axis:
+    unit: 'pc'
+    value: 10.0
+  eccentricity_quantiles_for_estimates:
+    - 0.05
+    - 0.50 
+    - 0.95
+
+# info on galaxy properties
+galaxy:
+  galaxy_radius:
+    unit: 'pc'
+    value: 3.e+4
+  com_consistency:
+    position:
+      unit: 'pc'
+      value: 100
+    velocity:
+      unit: 'km/s'
+      value: 1.0
+  relaxed_criteria:
+    separation:
+      unit: 'kpc'
+      value: 0.01
+    velocity_ratio: 1.0
+  voronoi:
+    Npx: 300
+    part_per_bin: 5000
+  shell_radius:
+    unit: 'pc'
+    value: 30
+  radial_edges:
+    unit: 'pc'
+    stars:
+      numpy_method: 'geomspace'
+      args: [20, 2.e+4, 51]
+    dm:
+      numpy_method: 'geomspace'
+      args: [1.e+3, 1.e+6, 51]
+    all:
+      numpy_method: 'geomspace'
+      args: [20, 1.e+6, 51]
+...

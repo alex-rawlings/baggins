@@ -58,7 +58,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     if rng is None:
         rng = np.random.default_rng()
     for i in range(number_resamples):
-        _logger.logger.info(f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ", end="\r")
+        print(f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ", end="\r")
         #resample data columnwise
         resampled_data = rng.choice(data, data.shape[0], replace=True, axis=0)
         bootstrap_data = rng.normal(resampled_data, sigma)
@@ -67,63 +67,51 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     return bootstrap_stat, np.mean(bootstrap_stat, axis=0)
 
 
-def stat_interval(x, y, xnew, type="conf", conf_lev=0.68):
+def stat_interval(x, y, type="conf", conf_lev=0.68):
     """
-    Determine either a confidence or prediction interval given some data. The
-    approach follows that of "Mathematical Statistics (Wackerly) 7ed pg 595".
+    _summary_
 
     Parameters
     ----------
-    x : np.ndarray
-        observed x data
-    y : np.ndarray
-        observed y data
-    xnew : np.ndaray
-        values we wish to compute for
+    x : array-like
+        observed independent data
+    y : array-like
+        observed dependent data
     type : str, optional
-        either a confidence or prediction interval, by default "conf"
+        confidence interval for mean or prediction interval, by default "conf"
     conf_lev : float, optional
         confidence level, where the value (1-conf_lev) is the the integral area 
         for the t-distribution, by default 0.68
 
     Returns
     -------
-    upper : np.ndarray
-        upper interval bound
-    lower : np.ndarray
-        lower interval bound
-
-    Raises
-    ------
-    AssertionError
-        conf_level must be in range (0,1)
-    ValueError
-        type must be one of [conf, pred]
+    : callable
+        function for error estimate
     """
-    assert(conf_lev<1 and conf_lev>0)
+    try:
+        assert(conf_lev<1 and conf_lev>0)
+    except AssertionError:
+        _logger.logger.exception(f"Confidence level must be between 0 and 1, not {conf_lev}!", exc_info=True)
+        raise
+    try:
+        assert type in ("conf", "pred")
+    except AssertionError:
+        _logger.logger.exception(f"Type {type} is not valid! Must be one of 'conf' or 'pred'!", exc_info=True)
+        raise
     #clean data
     x = x[~np.isnan(x) & ~np.isnan(y)]
     y = y[~np.isnan(x) & ~np.isnan(y)]
-    #fit a linear regression model
-    slope, intercept, *_ = scipy.stats.linregress(x, y)
     #quantities we will need later
     x_avg = np.mean(x)
     Sxx = np.sum((x - x_avg)**2)
     n = len(x)
     #determine the t_{alpha/2} statistic
     tstat = scipy.stats.t.ppf((1-conf_lev)/2, n-2)
-    #this is the part from the model
-    part_1 = intercept + slope * xnew
     #and below this is the part from the error estimate
     if type == "conf":
-        part_2 = tstat * np.std(y) * np.sqrt(1/n + (xnew-x_avg)**2/Sxx)
-    elif type == "pred":
-        part_2 = tstat * np.std(y) * np.sqrt(1 + 1/n + (xnew-x_avg)**2/Sxx)
+        return lambda u: tstat * np.std(y) * np.sqrt(1/n + (u-x_avg)**2/Sxx)
     else:
-        raise ValueError("type must be conf or pred!")
-    upper = part_1 + part_2
-    lower = part_1 - part_2
-    return upper, lower
+        return lambda u: tstat * np.std(y) * np.sqrt(1 + 1/n + (u-x_avg)**2/Sxx)
 
 
 def uniform_sample_sphere(n, rng=None):

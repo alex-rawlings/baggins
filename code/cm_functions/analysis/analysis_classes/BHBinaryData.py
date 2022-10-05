@@ -1,13 +1,15 @@
 import datetime
+import os.path
 import warnings
 import pygad
+from . import HDF5Base
 from ...env_config import date_format
 
 
 __all__ = ["BHBinaryData"]
 
 
-class BHBinaryData:
+class BHBinaryData(HDF5Base):
     def __init__(self) -> None:
         """
         A class that defines the fields which constitute the variables of 
@@ -15,7 +17,7 @@ class BHBinaryData:
         child classes, and also correspond to the fields which are loadable 
         from a hdf5 file. 
         """
-        self._log = ""
+        super().__init__()
     
     @property
     def snaplist(self):
@@ -23,17 +25,7 @@ class BHBinaryData:
     
     @snaplist.setter
     def snaplist(self, v):
-        bad_snaps = []
-        for i, vi in enumerate(v):
-            try:
-                s = pygad.Snapshot(vi, physical=True)
-                s.delete_blocks()
-            except KeyError:
-                msg = f"Snapshot {vi} potentially corrupt. Removing it from the list of snapshots for further analysis!"
-                warnings.warn(msg)
-                self.add_to_log(msg)
-                bad_snaps.append(vi)
-        self._snaplist = [x for x in v if x not in bad_snaps]
+        self._snaplist = v
 
     @property
     def bh_masses(self):
@@ -42,6 +34,14 @@ class BHBinaryData:
     @bh_masses.setter
     def bh_masses(self, v):
         self._bh_masses = v
+    
+    @property
+    def stellar_mass(self):
+        return self._stellar_mass
+    
+    @stellar_mass.setter
+    def stellar_mass(self, v):
+        self._stellar_mass = v
     
     @property
     def binary_formation_time(self):

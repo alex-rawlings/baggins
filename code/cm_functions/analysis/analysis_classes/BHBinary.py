@@ -1,5 +1,7 @@
 import os.path
 import warnings
+import datetime
+import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
@@ -12,6 +14,7 @@ from ...general import xval_of_quantity
 from ...mathematics import iqr
 from ...plotting import binary_param_plot
 from ...utils import read_parameters, get_ketjubhs_in_dir, get_snapshots_in_dir
+from ...env_config import date_format, username, _logger
 
 __all__ = ["myr", "BHBinary"]
 
@@ -40,24 +43,29 @@ class BHBinary(BHBinaryData):
             the data path does not exist
         """
         super().__init__()
-        pfv = read_parameters(paramfile)
-        afv = read_parameters(apfile)
-        data_path = os.path.join(pfv.full_save_location, pfv.perturbSubDir, perturbID, "output")
+        self.merger_pars = read_parameters(paramfile)
+        self.analysis_pars = read_parameters(apfile)
+        data_path = os.path.join(self.merger_pars["calculated"]["full_save_location"], self.merger_pars["file_locations"]["perturb_sub_dir"], perturbID, "output")
         if not os.path.isdir(data_path):
             raise ValueError("The data path does not exist!")
-        self.merger_name = f"{pfv.full_save_location.rstrip('/').split('/')[-1]}-{perturbID}"
+        self.merger_name = f"{self.merger_pars['calculated']['full_save_location'].rstrip('/').split('/')[-1]}-{perturbID}"
         self.bhfile = get_ketjubhs_in_dir(data_path)[0]
         self.snaplist = get_snapshots_in_dir(data_path)
-        self.gr_safe_radius = afv.gr_safe_radius
+        self.gr_safe_radius = self.analysis_pars["bh_binary"]["target_semimajor_axis"]["value"]
         bh1, bh2, self.merged = get_bound_binary(self.bhfile)
         self.orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
-        self.time_offset = pfv.perturbTime * 1e3
-        self.param_estimate_e_quantiles = afv.param_estimate_e_quantiles
+        self.time_offset = self.merger_pars["perturb_properties"]["perturb_time"]["value"]
+        if self.merger_pars["perturb_properties"]["perturb_time"]["unit"] == "Gyr":
+            self.time_offset *= 1e3
+        self.param_estimate_e_quantiles = self.analysis_pars["bh_binary"]["eccentricity_quantiles_for_estimates"]
 
         #set the properties
         #black hole mass
         snap = pygad.Snapshot(self.snaplist[0], physical=True)
         self.bh_masses = snap.bh["mass"]
+
+        # stellar mass
+        self.stellar_mass = snap.stars["mass"][0]
 
         #time when binary is 'formed'
         self.binary_formation_time = self.time_offset + self.orbit_params["t"][0] / myr
@@ -134,7 +142,8 @@ class BHBinary(BHBinaryData):
 
             #eccentricity at time of bound radius
             self.r_hard_ecc = self._get_ecc_for_idx(self.r_hard_time_idx)
-        except ValueError("r_hard_time_idx not valid -> setting to 0"):
+        except ValueError:
+            _logger.logger.warning("r_hard_time_idx not valid -> setting to 0")
             self.r_hard_time_idx = 0
 
         #index where semimajor axis is more than X pc
@@ -168,9 +177,9 @@ class BHBinary(BHBinaryData):
         except ValueError:
             #when the radius is reached is not covered by the data
             if r > self.orbit_params["a_R"][0] / ketjugw.units.pc:
-                warnings.warn(f"Time of {desc} cannot be estimated from the data, as it occurs before the binary is bound! This point will be omitted from further analysis and plots.")
+                _logger.logger.warning(f"Time of {desc} cannot be estimated from the data, as it occurs before the binary is bound! This point will be omitted from further analysis and plots.")
             elif r < self.orbit_params["a_R"][-1] / ketjugw.units.pc:
-                warnings.warn(f"Time of {desc} cannot be estimated from the data, as it occurs after the last available data point! This point will be omitted from further analysis and plots.")
+                _logger.logger.warnings(f"Time of {desc} cannot be estimated from the data, as it occurs after the last available data point! This point will be omitted from further analysis and plots.")
             else:
                 raise ValueError(f"{desc} cannot be determined")
             return np.nan
@@ -288,3 +297,50 @@ class BHBinary(BHBinaryData):
         print(f"  Spin flip: {self.binary_spin_flip}")
         if self.merged():
             print(self.merged)
+    
+    def _make_hdf5_helper(self, f):
+        # helper method for saving hdf5 files that works with inheritance
+        # f is a file stream
+        bhb = f.create_group("bh_binary")
+        data_list = [
+            "bh_masses",
+            "stellar_mass",
+            "binary_formation_time",
+            "binary_lifetime_timescale",
+            "r_infl",
+            "r_infl_time",
+            "r_infl_ecc",
+            "r_bound",
+            "r_bound_time",
+            "r_bound_ecc",
+            "r_hard",
+            "r_hard_time",
+            "r_hard_ecc",
+            "analytical_tspan",
+            "G_rho_per_sigma",
+            "H",
+            "K",
+            "gw_dominant_semimajoraxis",
+            "predicted_orbital_params",
+            "formation_ecc_spread",
+            "binary_merger_remnant",
+            "binary_spin_flip"]
+        self._saver(bhb, data_list)
+        self._add_attr(f["/bh_binary/predicted_orbital_params"], "quantiles", self.param_estimate_e_quantiles)
+
+        #set up some meta data
+        meta = f.create_group("meta")
+        now = datetime.datetime.now()
+        self._add_attr(meta, "merger_name", self.merger_name)
+        self._add_attr(meta, "created", now.strftime(date_format))
+        self._add_attr(meta, "created_by", username)
+        self._add_attr(meta, "last_accessed", now.strftime(date_format))
+        self._add_attr(meta, "last_user", username)
+        meta.create_dataset("logs", data=self._log)
+
+    def make_hdf5(self, fname, exist_ok=False):
+        if os.path.isfile(fname) and not exist_ok:
+            raise ValueError("HDF5 file already exists!")
+        with h5py.File(fname, mode="w") as f:
+            #save the binary info
+            self._make_hdf5_helper(f)
