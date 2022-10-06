@@ -9,7 +9,6 @@ parser.add_argument(type=str, help="perturbation number", dest="num")
 parser.add_argument("-a", "--aparams", type=str, help="path to analysis parameter file", dest="apf", default=os.path.join(cmf.HOME, "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.yml"))
 args = parser.parse_args()
 
-#pfv = cmf.utils.read_parameters(args.path, verbose=False)
 
 # create the bh binary class that will hold all the data
 bh_binary = cmf.analysis.BHBinary(args.path, args.num, args.apf)

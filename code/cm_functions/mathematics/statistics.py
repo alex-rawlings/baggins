@@ -53,7 +53,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     """
     number_resamples = int(number_resamples)
     if sigma is None:
-        sigma = 2*np.std(data, axis=0) / np.sqrt(data.shape[0])
+        sigma = 2*np.nanstd(data, axis=0) / np.sqrt(data.shape[0])
     bootstrap_stat = np.full((number_resamples, data.shape[-1]), np.nan)
     if rng is None:
         rng = np.random.default_rng()
@@ -64,7 +64,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
         bootstrap_data = rng.normal(resampled_data, sigma)
         bootstrap_stat[i, :] = statistic(bootstrap_data, axis=0)
     _logger.logger.info("Bootstrap complete                                ")
-    return bootstrap_stat, np.mean(bootstrap_stat, axis=0)
+    return bootstrap_stat, np.nanmean(bootstrap_stat, axis=0)
 
 
 def stat_interval(x, y, type="conf", conf_lev=0.68):

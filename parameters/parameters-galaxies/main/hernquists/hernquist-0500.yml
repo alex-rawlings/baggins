@@ -8,7 +8,7 @@
 ---
 # general info about the galaxy
 general:
-  galaxy_name: 'hernquist'
+  galaxy_name: 'hernquist-0500'
   simulation_start_time:
     unit: 'Gyr'
     # set to -1 to use redshift 0
@@ -33,7 +33,7 @@ stars:
   use_cored: false
   particle_mass:
     unit: 'Msol'
-    value: 1.e+5
+    value: 2.e+5
   anisotropy_radius:
     unit: 'kpc'
     value:
@@ -69,7 +69,7 @@ dm:
   use_NFW: false
   particle_mass:
     unit: 'Msol'
-    value: 3.e+6
+    value: 6.e+6
   softening:
     unit: 'kpc'
     value: 0.1
@@ -104,37 +104,37 @@ bh:
   - -0.05783078223139425
   - -0.5266575805127018
 dm:
-  particle_count: 2.54572000e+06
+  particle_count: 1.27286000e+06
   peak_mass: 8.22068728e+12
 kinematics:
   LOS_velocity_dispersion:
     unit: km/s
-    value: 105.20805982082285
+    value: 105.19946599484034
   half_mass_radius_analytic:
     unit: kpc
     value: 9.656854249492378
   half_mass_radius_true:
     unit: kpc
-    value: 9.55079223492013
-  inner_DM_frac: 0.10150071978569031
+    value: 9.518063528766028
+  inner_DM_frac: 0.10066763311624527
   ketju_particles: 3
   projected_half_mass_radius:
     unit: kpc
-    value: 7.178569168384862
+    value: 7.161184918013881
   virial_info:
     mass:
       unit: Msol
-      value: 1.19601275e+12
+      value: 1.19056575e+12
     radius:
       unit: kpc
-      value: 172.64027882467522
-last_update: '2022-10-06 17:52:06'
+      value: 172.3785926705203
+last_update: '2022-10-06 17:57:18'
 redshift: 0
 stars:
-  particle_count: 9.99001000e+05
+  particle_count: 4.99500000e+05
   radius_to:
-    inner_100: 0.04021823079249049
-    inner_1000: 0.128820939962102
+    inner_100: 0.055190453334298555
+    inner_1000: 0.18527352606641107
     unit: kpc
 ...
 

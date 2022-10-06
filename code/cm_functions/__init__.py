@@ -16,3 +16,4 @@ from ._backend import CustomLogger
 HOME = env_config.home_dir
 FIGDIR = env_config.figure_dir
 DATADIR = env_config.data_dir
+VERBOSITY = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
