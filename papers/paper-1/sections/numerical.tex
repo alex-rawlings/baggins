@@ -1,3 +1,74 @@
 \section{Numerical Simulations}
 
-\drafting{Describe the numerical set up, code, etc}
+\subsection{Initial Conditions}
+
+\begin{table*}
+    \centering
+    \caption{Parameters of Hernquist sphere galaxy models used in the sample.}
+    \label{tab:hernquist_pars}
+    \begin{tabular}{ccccccc}
+        \hline
+        Name & $m_\star / (10^5 \Msun)$ & $N_\star/10^6$ & $\varepsilon_\star$/pc & $m_\mathrm{DM} / (10^7 \Msun)$ & $N_\mathrm{DM}/10^6$ & $\varepsilon_\mathrm{DM}$/pc\\
+        \hline
+        H-1.00 & 1.0 & 1.00 & 3.5 & 3.0 & 2.54 & 200.0 \\
+        H-0.50 & 2.0 & 0.50 & 3.5 & 6.0 & 1.27 & 200.0 \\
+        H-0.25 & 4.0 & 0.25 & 3.5 & 12.0 & 0.64 & 200.0 \\
+        H-0.10 & 10.0 & 0.10 & 7.0 & 30.0 & 0.25 & 200.0 \\
+        H-0.05 & 20.0 & 0.05 & 7.0 & 60.0 & 0.13 & 200.0 \\
+        \hline
+    \end{tabular}
+\end{table*}
+
+We simulate the merger of two identical galaxies. 
+Each galaxy is modelled as a spherically-symmetric multicomponent system: a stellar component embedded within a DM halo, and a single SMBH at the centre of the galaxy. 
+The total stellar mass is set to $M_\star=10^{11}\,\Msun$, the total DM mass is set to $M_\mathrm{DM} \sim 8\times 10^{12}\,\Msun$, and the SMBH mass is set to $M_\bullet \sim 8.8\times10^8\,\Msun$.
+Five realisations of the system are generated with varying mass resolutions between the stellar (and DM) particles and the SMBH particle. 
+Both the stellar and DM components have a density profile given by an ergodic Hernquist sphere parametrised by scale radius $a$:
+\begin{equation}\label{eq:hernquist}
+    \rho = \frac{2M}{4\pi} \frac{a}{r(r+a)^3}.
+\end{equation}
+We use a value of $a_\star=4.0\,\mathrm{kpc}$ for the stellar component, and a value of $a_\mathrm{DM}=300.0\,\mathrm{kpc}$ for the DM component. 
+We Monte Carlo sample the phase space distribution function
+\begin{equation}\label{eq:eddington}
+    f(\mathcal{E}) = \frac{1}{\sqrt{8}\pi^2} \left[ \int_0^\mathcal{E} \dv{\Psi}{\sqrt{\mathcal{E}-\Psi}} \dv{^2\nu_\mathcal{E}}{\Psi^2} + \frac{1}{\sqrt{\mathcal{E}}} \left(\dv{\nu_\mathcal{E}}{\Psi}\right)_{\Psi=0}\right],
+\end{equation}
+to generate position and velocity coordinates for all stellar and DM particles.
+As mentioned, the SMBH is initialised at rest at the origin.
+Additionally, we give the SMBH a randomly-drawn value of the dimensionless spin parameter $\chi$ following \drafting{one of the Zlochower papers}, with shape parameters $\alpha=10.5868, \beta=4.66884$. 
+This distribution has a mode at $\chi \sim 0.8$. 
+
+We simulate the equal-mass merger between like-mass resolution systems for each mass resolution listed in \autoref{tab:hernquist_pars}.
+The progenitor galaxies in each merger are set to an initial separation of $3.0\Rvir$ on quasi-Keplerian orbit, assuming each galaxy is a point-mass containing half its total mass. 
+The initial orbital eccentricity is chosen to be almost radial ($e_0 = 0.9999$), and the first pericentre distance $r_\mathrm{peri}$ is set to $10^{-3}\Rvir$. 
+
+\subsection{Simulations}
+In typical N-body simulations, one tests the sensitivity of the model by Monte Carlo sampling the phase space distribution function given by \autoref{eq:eddington} a number of times with different random seeds.
+This is done to quantify the uncertainty in the model due to the discrete sampling of the phase space of field particles, which induce a Brownian motion to the orbit of the more massive SMBH particle. 
+We observe that resampling \autoref{eq:eddington} is in effect displacing the centre of mass (CoM) of the system with the respect to the SMBH.
+To avoid the need to run a large number of simulations from the large $3.0\Rvir$ initial separation, we instead \textit{displace the SMBH} with respect to the CoM of the system at a time $t_\mathrm{perturb}$ after the simulation has begun. 
+This is done by measuring the Brownian-motion induced displacement in position and velocity space of the SMBH from the CoM for a galaxy in isolation.
+After identifying the displacement along each axis to be Gaussian-distributed, we use the variance of this distribution to reposition the SMBH relative to the CoM. 
+We thus `recentre' the SMBH on the CoM with a perturbation of $\mathcal{N}_\text{pos}(\mu=0\,\text{pc}, \sigma^2=100\,\text{pc}^2)$ for each position axis, and $\mathcal{N}_\text{vel}(\mu=0\,\text{km\,s}^{-1}, \sigma^2=100\,\text{km}^2\text{\,s}^{-2})$ for each velocity axis. 
+In this way, we mimic the effect of Brownian motion for a single run beginning at large separation (the \parent{} run) to generate an arbitrary number of perturbed \child{} runs. 
+The perturbation is applied no later than the second-to-last pericentre passage before the SMBH particles form a bound binary system, and ensure the separation of the SMBHs at the time of the perturbation is of the order 1000 larger than the perturbation applied. 
+
+The progenitors are evolved through the \textit{parent phase} from $t(r_0)=0$ with \gadget{} until the SMBHs form a bound binary at $t_\text{stop}$, with a stellar softening of $\epsilon_\star=10\,\text{pc}$ and \gadget integration tolerances \texttt{ErrTolIntAccuracy}=$0.02$ and \texttt{ErrTolForceAcc}=$0.005$.
+We then initialise the \textit{child phase} by restarting from the snapshot closest to but earlier than $t=t_\mathrm{perturb}$.
+We apply the small perturbation to each SMBH position and velocity vector in the simulation, from which we create ten uniquely-perturbed \child{} runs, allowing us to explore the distribution of parameters describing both the orbital and remnant properties of each \parent{} merger. 
+Additionally, we lower the stellar softening to the values presented in \autoref{tab:hernquist_pars} and tighten the integration tolerance \texttt{ErrTolIntAccuracy} to $0.002$ to optimise the run for \ketju{}.
+We check for energy conservation between the \parent{} and \child{} runs, and confirm that the total energy is conserved at the sub-percent level. 
+In total, we perform 50 unique \child{} simulations using \ketju{}, and use this sample for our analysis. 
+
+Within a relatively short time frame from beginning the \child{} run, the SMBH binary hardens predominantly through dynamical friction and three-body stellar interactions. 
+We evolve the binary to the time $t_{a_h}=t(a_h)$, and continue to when $t_\text{safe}=t(a=10\,\text{pc})$. 
+We then analytically predict the orbital evolution of the binary by determining the hardening constant $H$ in \autoref{eq:quinlan_H} and eccentricity constant $K$ in \autoref{eq:quinlan_K} by fitting the derivative of $\text{d}(1/a)/\text{d}t$ with a linear function between $t_{a_h}$ and $t_\text{safe}$.
+Using $a_0=a_h$ and three different values of $e_0$, taken to be the 5\%, 50\%, and 95\% quantiles of the eccentricity distribution within the same time interval 
+$t_{a_h} \text{--} t_\text{safe}$, we predict the expected merger timescale of the system. 
+We continue to run the \child runs until one of three conditions are met:
+\begin{enumerate}
+    \item The SMBHs merge, or
+    \item The Hubble time, $13.8\,\text{Gyr}$, is exceeded, or
+    \item The eccentricity stabilises to below the analytically-determined eccentricity estimated from the 5\%-quantile eccentricity value, and said analytical-estimate indicates that the merger will occur significantly after the Hubble time.
+\end{enumerate}
+If it is not clear if the third condition is satisfied, we continue to run the merger until the second condition is met.
+

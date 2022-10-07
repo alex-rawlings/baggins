@@ -3,7 +3,7 @@
 \drafting{Something cool}
 
 \drafting{
-    Introduce core sersic profile here.
+    Introduce necessary formulae
 }
 \begin{equation}\label{eq:coresersic}
     \Sigma(R) = \Sigma'\left[ 1+\left(\frac{r_\mathrm{b}}{R}\right)^\alpha \right]^{\gamma/\alpha} \exp\left[ -b_n \left(\frac{R^\alpha+r_\mathrm{b}^\alpha}{R_\mathrm{e}^\alpha}\right)^{1/(\alpha n)} \right],
@@ -12,3 +12,24 @@ where
 \begin{equation}\label{eq:coresersic2}
     \Sigma' = \Sigma_\mathrm{b} 2^{-\gamma/\alpha} \exp\left[ b_n \left( 2^{1/\alpha} r_\mathrm{b}/R_\mathrm{e} \right)\right]
 \end{equation}
+
+\begin{equation}\label{eq:quinlan_H}
+    \dv{}{t}\left( \frac{1}{a} \right) = H \frac{G\rho}{\sigma}
+\end{equation}
+
+\begin{equation}\label{eq:quinlan_K}
+    \dv{e}{t} = -K a^{-1} \dv{a}{t}
+\end{equation}
+
+\begin{equation}\label{eq:kepler_L}
+    L = \mu\sqrt{GMa \left(1-e^2\right)}
+\end{equation}
+
+\begin{equation}\label{eq:influence_radius}
+    r_\mathrm{infl} = r_\star(<2 M)
+\end{equation}
+
+\begin{equation}\label{eq:a_hard}
+    a_\mathrm{h} = \frac{q}{1+q} \frac{r_\mathrm{infl}}{4},
+\end{equation}
+where $q=M_{\bullet,2}/M_{\bullet,1} < 1$.

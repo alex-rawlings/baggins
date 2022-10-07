@@ -1,12 +1,10 @@
-\label{sec:results}
+\section{Results}\label{sec:results}
 
 \drafting{
 Figures to do
 \begin{itemize}
 \item Example of forward-modelled semimajor axis and eccentricity
-\item Example of forward-modelled density profile
 \item Example of forward-modelled velocity dispersion profile
-\item comparison latent parameters to SAMI (n, Re) and Thomas (rb)
 \end{itemize}
 and maybe another one of BH merger remnant properties.
 }
@@ -52,38 +50,43 @@ A probabilistic graphical model detailing the connection between hyperparameters
 
 \begin{figure}
     \includegraphics{hm_coresersic.pdf}
-    \caption{Probabilistic graphical model for the likelihood of the core-S\'ersic model. Probabilistic parameters and observable quantities (hatted variables) are shown as circles, whereas deterministic quantities are represented by diamonds. Hyperparameters are represented by purple circles, latent parameters in blue, and observable quantities as red circles. The nodes indicate the distribution used in constructing the prior distributions (for latent parameters) and likelihood function (for $\hat{\Sigma}$). The radial box represents observed and latent variables for each radial bin for a \child, and the child box represents latent parameters for each \child simulation in a family. }
+    \caption{Probabilistic graphical model for the likelihood of the core-S\'ersic model. Probabilistic parameters and observable quantities (hatted variables) are shown as circles, whereas deterministic quantities are represented by diamonds. Hyperparameters are represented by purple circles, latent parameters in blue, and observable quantities as red circles. The nodes indicate the distribution used in constructing the prior distributions (for latent parameters) and likelihood function (for $\hat{\Sigma}$). The radial box represents observed and latent variables for each radial bin for a \child{}, and the child box represents latent parameters for each \child{} simulation in a family. }
     \label{fig:graphicalmodel}
 \end{figure}
 
 \subsubsection{Observable Quantities}
 The hierarchical model takes three observable quantities, denoted by hat-variables in red circles in \autoref{fig:graphicalmodel}. 
 These variables are the radius $\hat{R}$, and the mean projected mass density $\hat{\Sigma}$, and the standard deviation of the projected mass density $\hat{\sigma}_\Sigma$ measured in the radial bins centred on $\hat{R}$.
-For each \child simulation, we choose to `observe' the first snapshot where the binary semimajor axis is \textit{at most} $10\,\mathrm{pc}$. 
-In the event that there is no snapshot satisfying the above requirement (due to, for example, rapid merging of the SMBH binary in a time period shorter than the snapshot output frequency), the \child simulation is not included in the analysis.
-We enforce a minimum of six \child simulations per family for that family to be analysed with our hierarchical modelling technique. 
-For those \child simulations which pass our selection criteria, we take 30 random projections of the merger remnant, and determine the projected mass density in 50 radial bins evenly-spaced in logarithm space, with a minimum value of $0.2\,\mathrm{kpc}$ and a maximum value of $20.0\,\mathrm{kpc}$.
+For each \child{} simulation, we choose to `observe' the first snapshot where the binary semimajor axis is \textit{at most} $10\,\mathrm{pc}$. 
+In the event that there is no snapshot satisfying the above requirement (due to, for example, rapid merging of the SMBH binary in a time period shorter than the snapshot output frequency), the \child{} simulation is not included in the analysis.
+We enforce a minimum of six \child{} simulations per family for that family to be analysed with our hierarchical modelling technique. 
+For those \child{} simulations which pass our selection criteria, we take 30 random projections of the merger remnant, and determine the projected mass density in 50 radial bins evenly-spaced in logarithm space, with a minimum value of $0.2\,\mathrm{kpc}$ and a maximum value of $20.0\,\mathrm{kpc}$.
 This allows us to build up a distribution of projected mass densities per radial bin, from which $\hat{\Sigma}$ and $\hat{\sigma}_\Sigma$ are determined. 
 
 \subsubsection{Latent Parameters for Observables}
-With the omission of the parameter $\alpha$ in the modelling process, there are five latent parameters ($r_\mathrm{b}$, $R_\mathrm{e}$, $\tilde{\Sigma}_\mathrm{b}$, $\gamma$, and $n$, the set of which we denote as $\kappa$) that describe each \child simulation in a family. 
+With the omission of the parameter $\alpha$ in the modelling process, there are five latent parameters ($r_\mathrm{b}$, $R_\mathrm{e}$, $\tilde{\Sigma}_\mathrm{b}$, $\gamma$, and $n$, the set of which we denote as $\kappa$) that describe each \child{} simulation in a family. 
 Here, we define $\tilde{\Sigma}_\mathrm{b} \equiv \Sigma_\mathrm{b}/10^{10}$, where $\Sigma_\mathrm{b}$ is defined in \autoref{eq:coresersic2}.
 These latent parameters, depicted as non-hatted variables in blue circles in \autoref{fig:graphicalmodel}, are sampled to obtain a latent estimate on the projected mass density, $\Sigma$.
 As each latent parameter in the set $\kappa$ is strictly non-negative, we use as prior distributions for each latent parameter a gamma distribution with hyperparameters $(\kappa_\alpha, \kappa_\beta)$, which are themselves drawn from a gamma distribution. 
 To ensure our hyperparameter prior distributions are weakly-informative, the hyperparameters are drawn from the distributions in \autoref{tab:cshypers} for all simulation families. 
 The sampled hyperparameter distributions are shown as corner plots in Figures \ref{fig:corner_params_1}-\ref{fig:corner_params_3}. 
 
-We ensure our hyperparameter and latent parameter distributions are representative of our observed data by performing prior predictive checks, an example of which is shown for the A-C-3.0-0.05 family in \autoref{fig:priorpred}. 
+We ensure our hyperparameter and latent parameter distributions are representative of our observed data by performing prior predictive checks, an example of which is shown for the H-1.00 family in \autoref{fig:priorpred}. 
 Critically, both the range of values spanned by the prior distributions and the general shape of the distribution suggests that the data is well represented by the model and the prior distributions on the hyper and latent parameters. 
 
 As likelihood function, we use the lognormal distribution $\mathrm{Lognorm}(\Sigma, \hat{\sigma}_\Sigma^2)$ as it a) has support on $[0,\infty)$, and b) produces normally-distributed variates in logarithm space, which is representative of the distribution of $\hat{\Sigma}$ for a given radial bin when we backwards-model and na\"ively bin our observations of $\hat{\Sigma}$ for that radial bin.
 
 \drafting{Write explicitly the posterior distribution we are sampling from.}
 
+\begin{figure*}
+    \includegraphics[width=0.7\textwidth]{{graham_density-A-C-3.0-0.05_posterior_pred_log10_proj_density_mean}.png}
+    \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid, and seen to lie well within the 50\% BCI. }}
+    \label{fig:postpred}
+\end{figure*}
 
 \subsection{Latent Parameter Posterior Distributions}
 We compute the posterior distribution using \textsc{Stan}, ensuring that the sampler exits without encountering any divergences, and that all \drafting{R-hat (is a summary stat, but how to draw? Don't want to confuse with observed radius)} values are within the range \drafting{$[0.99, 1.01]$}.
-We first inspect how the posterior distribution appears visually by computing posterior predictive checks, an example of which is shown in \autoref{fig:postpred} for the family A-C-3.0-0.05. 
+We first inspect how the posterior distribution appears visually by computing posterior predictive checks, an example of which is shown in \autoref{fig:postpred} for the family H-1.00. 
 We find that the data is well described by the 50\% BCI \drafting{introduce what BCI is} of the posterior distribution, as desired. 
 
 As part of the hierarchical modelling sampling process, we obtain in addition to the posterior distribution on $\Sigma(R)$ the latent parameter distributions from which $\Sigma(R)$ is determined. 
@@ -96,33 +99,20 @@ For the AC progenitor class, we find the core radius to be $\sim 1.4\,\mathrm{kp
     \end{itemize}
 }
 
+\begin{figure}
+    \includegraphics{compare_binaries.pdf}
+    \caption{\drafting{Show an example of the scatter we get from perturbations. These are plotted with t=0 corresponding to when the child run started. Best way to show this, or should a time-shift be done? This way at least we see clearly that different sims become bound at different times.}}
+    \label{fig:ketju_scatter}
+\end{figure}
 
-\begin{figure*}
-    \includegraphics[width=\textwidth]{{graham_density-A-C-3.0-0.05_prior_pred_log10_proj_density_mean}.png}
-    \caption{\drafting{Prior predictive estimate for the core-S\'ersic fit. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid. From the prior predictive estimate, it is seen that the model and the assumed parameter hyperdistributions are able to describe the observed data, in that the observed data lies within the range allowed by the prior predictive estimate.}}
-    \label{fig:priorpred}
-\end{figure*}
+\subsection{Binary Properties}
+After considering the robustness of the projected density profile to SMBH Brownian motion, we turn our attention to a similar analysis of the orbital parameters of the SMBH binary, namely the semimajor axis $a$ and the eccentricity $e$. 
+It is instructive to first consider the raw data of a particular simulation family, shown in \autoref{fig:ketju_scatter} for the case of H-1.00. 
+Immediately apparent is the scatter in eccentricity between different realisations, with some runs (e.g. 006) having $e<0.2$ for the majority of the integration time, whilst other realisations (e.g. 002) have $e>0.9$ for the same time period.
+As discussed in \drafting{section}, the efficiency of GW as a hardening mechanism is directly related to the binary eccentricity, and is highly non-linear. 
+This is observed in those \child{} realisations that merged, and the timescale within which they merged.
+As seen in \autoref{fig:ketju_scatter}, a higher eccentricity leads to more rapid BH binary mergers as opposed to a lower eccentricity. 
+Out of the 50 simulations that we ran, we observe \drafting{XXX} systems that resulted in SMBH binary coalescence. 
 
-\begin{figure*}
-    \includegraphics[width=0.7\textwidth]{{graham_density-A-C-3.0-0.05_pair_0}.png}
-    \caption{\drafting{Corner plot of hierarchical model hyperparameters. Each of the hyperdistributions are modelled as Gamma distributions with shape parameters $\alpha$ and $\beta$. For example, the hyperdistribution on the core radius $r_\mathrm{b}$ is modelled as $r_\mathrm{b} \sim \text{Gamma}(r_{\mathrm{b},\alpha}, r_{\mathrm{b},\beta})$. Critically, the hyperdistributions are unimodal with highest-density regions located some distance from the distribution edges, indicating the HMC sampling has converged well. }}
-    \label{fig:corner_params_1}
-\end{figure*}
-
-\begin{figure*}
-    \includegraphics[width=0.7\textwidth]{{graham_density-A-C-3.0-0.05_pair_1}.png}
-    \caption{\drafting{Same as \autoref{fig:corner_params_1}}}
-    \label{fig:corner_params_2}
-\end{figure*}
-
-\begin{figure*}
-    \includegraphics[width=0.7\textwidth]{{graham_density-A-C-3.0-0.05_pair_2}.png}
-    \caption{\drafting{Same as \autoref{fig:corner_params_1}}}
-    \label{fig:corner_params_3}
-\end{figure*}
-
-\begin{figure*}
-    \includegraphics[width=0.7\textwidth]{{graham_density-A-C-3.0-0.05_posterior_pred_log10_proj_density_mean}.png}
-    \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid, and seen to lie well within the 50\% BCI. }}
-    \label{fig:postpred}
-\end{figure*}
+Also of note is the rapid oscillation in eccentricity between $\sim100$--$300\,\mathrm{Myr}$. 
+This is contrasted by a relatively smooth evolution in semimajor axis, indicating that the SMBH binary orbit is highly sensitive to the surrounding stellar mass distribution.
