@@ -79,8 +79,8 @@ As likelihood function, we use the lognormal distribution $\mathrm{Lognorm}(\Sig
 \drafting{Write explicitly the posterior distribution we are sampling from.}
 
 \begin{figure*}
-    \includegraphics[width=0.7\textwidth]{{graham_density-A-C-3.0-0.05_posterior_pred_log10_proj_density_mean}.png}
-    \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid, and seen to lie well within the 50\% BCI. }}
+    \includegraphics[width=0.7\textwidth]{{graham_density-H-H-3.0-0.001_posterior_pred_log10_proj_density_mean}.png}
+    \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit for highest (fiducial) mass resolution. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid, and seen to lie well within the 50\% BCI. }}
     \label{fig:postpred}
 \end{figure*}
 
@@ -104,6 +104,12 @@ For the AC progenitor class, we find the core radius to be $\sim 1.4\,\mathrm{kp
     \caption{\drafting{Show an example of the scatter we get from perturbations. These are plotted with t=0 corresponding to when the child run started. Best way to show this, or should a time-shift be done? This way at least we see clearly that different sims become bound at different times.}}
     \label{fig:ketju_scatter}
 \end{figure}
+
+\begin{figure*}
+    \includegraphics{compare_HH_gqs_res.png}
+    \caption{\drafting{Comparison of core sersic fit for different mass resolutions. Note the scatter does not seem to decrease with increasing mass resolution, however the distribution modes seem to converge towards something. y-axes should read PDF}}
+    \label{fig:cs_mass_compare}
+\end{figure*}
 
 \subsection{Binary Properties}
 After considering the robustness of the projected density profile to SMBH Brownian motion, we turn our attention to a similar analysis of the orbital parameters of the SMBH binary, namely the semimajor axis $a$ and the eccentricity $e$. 
