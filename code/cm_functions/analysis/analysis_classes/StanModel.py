@@ -374,11 +374,15 @@ class StanModel:
             set of draws for the variable gq
         """
         if self.generated_quantities is None or force_resample:
-            self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit)
+            if self._stan_data is None:
+                _logger.logger.warning(f"Required stan data does not exist, so generated quantities cannot be resampled! We will set the generated quantities to the values determined during sampling: this will be a static sample!")
+                self._generated_quantities = self._fit
+            else:
+                self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit)
         return self.generated_quantities.stan_variable(gq)
     
 
-    def parameter_plot(self, var_names, figsize=(9.0, 6.75), labeller=None):
+    def parameter_plot(self, var_names, figsize=(9.0, 6.75), labeller=None, levels=[50, 90, 95, 99]):
         """
         Plot key pair plots and diagnostics of a stan likelihood model.
 
@@ -405,8 +409,9 @@ class StanModel:
         plt.close(fig)
 
         # plot pair
+        levels = [l/100 for l in levels]
         ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller)
-        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller)
+        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
@@ -554,6 +559,7 @@ class StanModel:
                 raise
             az.plot_dist(ys, ax=ax[i], plot_kwargs=plot_kwargs)
             ax[i].set_xlabel(l)
+            ax[i].set_ylabel("PDF")
         ax.reshape(ax_shape)
         if save:
             savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)

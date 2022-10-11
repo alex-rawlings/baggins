@@ -6,7 +6,7 @@ __all__ = ["InternalLogger", "CustomLogger"]
 
 
 class InternalLogger:
-    def __init__(self, name, console_level="WARNING") -> None:
+    def __init__(self, name, console_level="WARNING", capture_warnings=True) -> None:
         """
         Class for logging information internal to the package. Two handlers are 
         supported: a console handler, and a file handler.
@@ -17,15 +17,28 @@ class InternalLogger:
             name of logger
         console_level : str, optional
             logging level for console printing, by default "WARNING"
+        capture_warnings : bool
+            redirect all warnings to the logger, by default True
         """
         self.logger = logging.getLogger(name)
+        self._base_name = self.logger.name
         self.logger.setLevel("DEBUG")
         self._ch_format = "%(name)s: %(levelname)s: %(message)s"
         self._fh_format = "%(asctime)s: %(name)s: %(levelname)s: %(message)s"
         self._c_handler = logging.StreamHandler()
         self._set_handler(self._c_handler, console_level, fmt=self._ch_format)
         self._f_handler = None
+        logging.captureWarnings(capture_warnings)
     
+    @property
+    def name(self):
+        return self.logger.name
+    
+    @name.setter
+    def name(self, n):
+        self.logger.name = n
+
+
     def _set_handler(self, handler, level, fmt):
         """
         Helper function to set a handler

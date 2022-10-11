@@ -120,8 +120,10 @@ generated quantities {
     
     /****** posterior predictive values ******/
     array[N_tot] real log10_surf_rho_posterior;
+    array[N_tot] real surf_rho_posterior;
 
     log10_surf_rho_posterior = log10_I(N_tot, R, I_b_posterior, g_posterior, a, r_b_posterior, Re_posterior, n_posterior);
+    surf_rho_posterior = pow(10, log10_surf_rho_posterior);
 
     /****** determine log likelihood function ******/
     vector[N_tot] log_lik;

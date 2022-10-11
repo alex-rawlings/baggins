@@ -1,4 +1,3 @@
-import warnings
 import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
@@ -195,7 +194,7 @@ def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
     #error when t0+tspan==t[-1]
     if t0+tspan >= t[-1]:
         tfidx = -1
-        warnings.warn("Analytical fit to binary evolution done to the end of the time data -> proceed with caution!")
+        _logger.logger.warning("Analytical fit to binary evolution done to the end of the time data -> proceed with caution!")
     # assume dy/dt is a approx. linear
     popt, pcov = scipy.optimize.curve_fit(lambda x, a, b: a*x+b,
                                           t[t0idx:tfidx], y[t0idx:tfidx])

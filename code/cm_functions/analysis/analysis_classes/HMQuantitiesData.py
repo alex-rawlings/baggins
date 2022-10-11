@@ -1,6 +1,4 @@
-import numpy as np
 import warnings
-from ...env_config import _logger
 from ...general import get_idx_in_array
 from . import HDF5Base
 
@@ -26,7 +24,6 @@ class HMQuantitiesData(HDF5Base):
     def binary_time(self, v):
         self._binary_time = v
 
-    
     # semimajor axis of binary orbit
     @property
     def semimajor_axis(self):
@@ -36,7 +33,6 @@ class HMQuantitiesData(HDF5Base):
     def semimajor_axis(self, v):
         self._semimajor_axis = v
     
-
     # eccentricity of binary orbit
     @property
     def eccentricity(self):
@@ -46,6 +42,32 @@ class HMQuantitiesData(HDF5Base):
     def eccentricity(self, v):
         self._eccentricity = v
     
+    # angular momentum of binary
+    @property
+    def binary_angular_momentum(self):
+        return self._binary_angular_momentum
+    
+    @binary_angular_momentum.setter
+    def binary_angular_momentum(self, v):
+        self._binary_angular_momentum = v
+    
+    # period of binary
+    @property
+    def binary_period(self):
+        return self._binary_period
+    
+    @binary_period.setter
+    def binary_period(self, v):
+        self._binary_period = v
+
+    # separation of BHs in binary
+    @property
+    def binary_separation(self):
+        return self._binary_separation
+
+    @binary_separation.setter
+    def binary_separation(self, v):
+        self._binary_separation = v
 
     ##--------------------- Merger Quantities ---------------------##
 
@@ -58,7 +80,6 @@ class HMQuantitiesData(HDF5Base):
     def merger_remnant(self, v):
         self._merger_remnant = v
     
-
     ##--------------------- Galaxy Quantities ---------------------##
 
     # time of snapshot
@@ -69,7 +90,6 @@ class HMQuantitiesData(HDF5Base):
     @analysed_snapshots.setter
     def analysed_snapshots(self, v):
         self._analysed_snapshots = v
-
     
     # radial edges used in binning
     @property
@@ -79,7 +99,6 @@ class HMQuantitiesData(HDF5Base):
     @radial_edges.setter
     def radial_edges(self, v):
         self._radial_edges = v
-    
 
     # time of snapshot
     @property
@@ -90,8 +109,7 @@ class HMQuantitiesData(HDF5Base):
     def time_of_snapshot(self, v):
         self._time_of_snapshot = v
     
-
-    # time of snapshot
+    # semimajor axis of binary in snapshot
     @property
     def semimajor_axis_of_snapshot(self):
         return self._semimajor_axis_of_snapshot
@@ -99,7 +117,6 @@ class HMQuantitiesData(HDF5Base):
     @semimajor_axis_of_snapshot.setter
     def semimajor_axis_of_snapshot(self, v):
         self._semimajor_axis_of_snapshot = v
-
 
     # influence radius of binary as a function of time
     @property
@@ -110,7 +127,6 @@ class HMQuantitiesData(HDF5Base):
     def influence_radius(self, v):
         self._influence_radius = v
     
-
     # hardening radius of binary as a function of time
     @property
     def hardening_radius(self):
@@ -119,7 +135,6 @@ class HMQuantitiesData(HDF5Base):
     @hardening_radius.setter
     def hardening_radius(self, v):
         self._hardening_radius = v
-    
 
     # projected mass density as a function of time
     @property
@@ -129,7 +144,6 @@ class HMQuantitiesData(HDF5Base):
     @projected_mass_density.setter
     def projected_mass_density(self, v):
         self._projected_mass_density = v
-    
 
     # projected velocity dispersion squared (as a function of radius) as a function of time
     @property
@@ -139,7 +153,6 @@ class HMQuantitiesData(HDF5Base):
     @projected_vel_dispersion_2.setter
     def projected_vel_dispersion_2(self, v):
         self._projected_vel_dispersion_2 = v
-    
 
     # effective (half-light) radius as a function of time
     @property
@@ -149,7 +162,6 @@ class HMQuantitiesData(HDF5Base):
     @effective_radius.setter
     def effective_radius(self, v):
         self._effective_radius = v
-    
 
     # velocity dispersion squared within 1 effective radius as a function of time
     @property
@@ -159,7 +171,6 @@ class HMQuantitiesData(HDF5Base):
     @vel_dispersion_1Re_2.setter
     def vel_dispersion_1Re_2(self, v):
         self._vel_dispersion_1Re_2 = v
-    
 
     # half mass radius as a function of time, max radius = galaxy_radius
     @property
@@ -169,7 +180,6 @@ class HMQuantitiesData(HDF5Base):
     @half_mass_radius.setter
     def half_mass_radius(self, v):
         self._half_mass_radius = v
-    
 
     # virial mass as a function of time
     @property
@@ -180,7 +190,6 @@ class HMQuantitiesData(HDF5Base):
     def virial_mass(self, v):
         self._virial_mass = v
     
-
     # virial radius as a function of time
     @property
     def virial_radius(self):
@@ -190,7 +199,6 @@ class HMQuantitiesData(HDF5Base):
     def virial_radius(self, v):
         self._virial_radius = v
     
-
     # fraction of DM within 1 effective radius as a function of time
     @property
     def inner_DM_fraction(self):
@@ -200,7 +208,6 @@ class HMQuantitiesData(HDF5Base):
     def inner_DM_fraction(self, v):
         self._inner_DM_fraction = v
     
-
     # velocity anisotropy (beta(r)) as a function of time
     @property
     def velocity_anisotropy(self):
@@ -210,7 +217,6 @@ class HMQuantitiesData(HDF5Base):
     def velocity_anisotropy(self, v):
         self._velocity_anisotropy = v
     
-
     # stellar, DM, and BH mass within galaxy_radius of centre, as a function of time
     @property
     def masses_in_galaxy_radius(self):
@@ -220,8 +226,15 @@ class HMQuantitiesData(HDF5Base):
     def masses_in_galaxy_radius(self, v):
         self._masses_in_galaxy_radius = v
     
+    @property
+    def particle_masses(self):
+        return self._particle_masses
+    
+    @ particle_masses.setter
+    def particle_masses(self, v):
+        self._particle_masses = v
 
-    # some general functions
+    ##--------------------- Some General Functions ---------------------##
     def get_idx_in_vec(self, t, tarr):
         warnings.warn("This function is a now called through general.get_idx_in_array()", DeprecationWarning)
         return get_idx_in_array(t, tarr)

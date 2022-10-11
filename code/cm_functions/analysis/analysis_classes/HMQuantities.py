@@ -11,6 +11,7 @@ from ..analyse_snap import get_com_velocity_of_each_galaxy, influence_radius, ha
 from ..orbit import get_bound_binary
 from ...env_config import _logger, date_format, username
 from ...general import convert_gadget_time
+from ...mathematics import radial_separation
 from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 
 
@@ -47,7 +48,7 @@ class HMQuantities(HMQuantitiesData):
         self.ketju_file = kf[0]
         self.snaplist = get_snapshots_in_dir(self.data_directory)
         self._analysis_params = read_parameters(parameter_file)
-        self.radial_edges = copy.copy(self._analysis_params.radial_edges)
+        self.radial_edges = copy.copy(self._analysis_params["galaxy"]["radial_edges"]["value"])
 
         ##------------------- Determine binary quantities -------------------##
 
@@ -62,6 +63,15 @@ class HMQuantities(HMQuantitiesData):
 
         # eccentricity of binary
         self.eccentricity = orbit_pars["e_t"]
+
+        # angular momentum of binary
+        self.binary_angular_momentum = radial_separation(ketjugw.orbital_angular_momentum(bh1, bh2))
+
+        # radial separation of binary
+        self.binary_separation = radial_separation(bh1.x / kpc, bh2.x / kpc)
+
+        # period of binary
+        self.binary_period = 2*np.pi / orbit_pars["n"] / myr
 
         ##------------------- Determine merger properties -------------------##
 
@@ -90,6 +100,7 @@ class HMQuantities(HMQuantitiesData):
         self.inner_DM_fraction = {}
         self.velocity_anisotropy = {}
         self.masses_in_galaxy_radius = {"stars":[], "dm":[], "bh":[]}
+        self.particle_masses = {"stars":None, "dm":None, "bh":None}
         
 
         # loop through all snapshots
@@ -99,6 +110,10 @@ class HMQuantities(HMQuantitiesData):
         for snapfile in self.snaplist:
             snap = pygad.Snapshot(snapfile, physical=True)
             t = convert_gadget_time(snap, new_unit="Myr")
+            if i==0:
+                self.particle_masses["stars"] = max(np.unique(snap.stars["mass"]))
+                self.particle_masses["dm"] = max(np.unique(snap.dm["mass"]))
+                self.particle_masses["bh"] = min(np.unique(snap.bh["mass"]))
             if t < self.binary_time[0]:
                 # snapshot is from before binary is bound, let's skip
                 _logger.logger.debug(f"Snapshot {snapfile} is before the binary is bound --> skipping.")
@@ -111,11 +126,11 @@ class HMQuantities(HMQuantitiesData):
             # get the centre
             _xcom = get_com_of_each_galaxy(snap, method="ss", family="stars")
             bh_id = get_massive_bh_ID(snap.bh)
-            xcom = xcom[bh_id]
+            xcom = _xcom[bh_id]
             vcom = get_com_velocity_of_each_galaxy(snap, _xcom)[bh_id]
 
             # aperture mask of galaxy_radius
-            ball_mask = pygad.BallMask(pygad.UnitScalar(self._analysis_params.galaxy_radius, "kpc", subs=snap), center=xcom)
+            ball_mask = pygad.BallMask(pygad.UnitScalar(self._analysis_params["galaxy"]["maximum_radius"]["value"], self._analysis_params["galaxy"]["maximum_radius"]["unit"], subs=snap), center=xcom)
 
             # snapshot time
             self.time_of_snapshot.append(t)
@@ -145,7 +160,7 @@ class HMQuantities(HMQuantitiesData):
 
             # projected quantities
             k = f"{t:.3f}"
-            _Re, _vsig2Re, _vsig2r, _Sigma = projected_quantities(snap[ball_mask], obs=self._analysis_params.num_projection_rotations, r_edges=self.radial_edges)
+            _Re, _vsig2Re, _vsig2r, _Sigma = projected_quantities(snap[ball_mask], obs=self._analysis_params["galaxy"]["num_projection_rotations"], r_edges=self.radial_edges)
             self.effective_radius[k] = list(_Re.values())[0]
             self.vel_dispersion_1Re_2[k] = list(_vsig2Re.values())[0]
             self.projected_vel_dispersion_2[k] = list(_vsig2r.values())[0]
@@ -223,7 +238,10 @@ class HMQuantities(HMQuantitiesData):
             _bhb_dl = [
                         "binary_time",
                         "semimajor_axis",
-                        "eccentricity"
+                        "eccentricity",
+                        "binary_angular_momentum",
+                        "binary_separation",
+                        "binary_period"
             ]
             self._saver(bhb, _bhb_dl)
             _logger.logger.info(f"BH binary quantities saved to {fname}")
@@ -250,7 +268,8 @@ class HMQuantities(HMQuantitiesData):
                        "virial_radius",
                        "inner_DM_fraction",
                        "velocity_anisotropy",
-                       "masses_in_galaxy_radius"
+                       "masses_in_galaxy_radius",
+                       "particle_masses"
             ]
             self._saver(gp, _gp_dl)
             _logger.logger.info(f"Galaxy property quantities saved to {fname}")

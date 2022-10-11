@@ -1,0 +1,13 @@
+---
+data_dir: /scratch/pjohanss/arawling/collisionless_merger
+date_format: '%Y-%m-%d %H:%M:%S'
+figure_dir: figures
+figure_ext: .png
+logging:
+  console_level: INFO
+  file: logs/cm_funcs.log
+  file_level: WARNING
+...
+---
+git_hash: heads/master-0-g8711d91
+...

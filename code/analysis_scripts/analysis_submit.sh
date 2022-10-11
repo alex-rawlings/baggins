@@ -13,6 +13,12 @@ module restore py393
 
 #python ./bh_perturb_distribution_new.py "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/output" -l 51
 
-python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AD/AD-030-0050.py" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.py"
+python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists/H-H-030-0001.yml" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml" -o
 
-python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AD/AD-030-0010.py" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.py"
+python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists/H0500-H0500-030-0001.yml" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml" -o
+
+python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists/H0250-H0250-030-0001.yml" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml" -o
+
+python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists/H0100-H0100-030-0001.yml" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml" -o
+
+python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists/H0050-H0050-030-0001.yml" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml" -o

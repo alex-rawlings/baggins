@@ -2,7 +2,7 @@ import os
 import sys
 from matplotlib import rc_file, rcdefaults
 import subprocess
-import json
+import yaml
 from datetime import datetime
 from ._backend import InternalLogger
 
@@ -12,21 +12,21 @@ __all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "fig
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.path.expanduser("~")
-env_params_file = os.path.join(this_dir, "env_params.json")
+env_params_file = os.path.join(this_dir, "env_params.yml")
 with open(env_params_file, "r") as f:
-    env_params = json.load(f)
-figure_dir = os.path.join(home_dir, env_params["user_settings"]["figure_dir"])
-data_dir = env_params["user_settings"]["data_dir"]
-date_format = env_params["user_settings"]["date_format"]
-fig_ext = env_params["user_settings"]["figure_ext"].lstrip(".")
+    user_params, internal_params = yaml.safe_load_all(f)
+figure_dir = os.path.join(home_dir, user_params["figure_dir"])
+data_dir = user_params["data_dir"]
+date_format = user_params["date_format"]
+fig_ext = user_params["figure_ext"].lstrip(".")
 
 username = home_dir.rstrip("/").split("/")[-1]
 
 # create the logger
-_logger = InternalLogger("cm_funcs", env_params["user_settings"]["logging"]["console_level"])
-if env_params["user_settings"]["logging"]["file_level"] not in ["", " "]:
-    lf = f"{env_params['user_settings']['logging']['file'].rstrip('.log')}_{datetime.now():%Y-%m-%d}.log"
-    _logger.add_file_handler(os.path.join(this_dir, lf), env_params["user_settings"]["logging"]["file_level"])
+_logger = InternalLogger("cm_funcs", user_params["logging"]["console_level"])
+if user_params["logging"]["file_level"] not in ["", " "]:
+    lf = f"{user_params['logging']['file'].rstrip('.log')}_{datetime.now():%Y-%m-%d}.log"
+    _logger.add_file_handler(os.path.join(this_dir, lf), user_params["logging"]["file_level"])
 
 # ensure valid figure format
 try:
@@ -48,13 +48,13 @@ if "collisionless-merger-sample" in os.getcwd():
     # the standard git describe command, save git hash to json file for use 
     # of cm_functions outside the collisionless-merger-sample repo
     git_hash = subprocess.run(["git", "describe", "--always", "--long", "--all"], check=True, capture_output=True).stdout.decode().rstrip("\n")
-    env_params["internal_settings"]["git_hash"] = git_hash
+    internal_params["git_hash"] = git_hash
     # make updates to env_params.json file
     with open(env_params_file, "w") as f:
-        json.dump(env_params, f, indent=4)
+        yaml.safe_dump_all([user_params, internal_params], f, explicit_end=True, explicit_start=True)
 else:
     _logger.logger.warning("Operating outside the git repo. Git hash read from file.")
-    git_hash = env_params["internal_settings"]["git_hash"]
+    git_hash = internal_params["git_hash"]
 
 
 #make sure we are using a high enough version of python

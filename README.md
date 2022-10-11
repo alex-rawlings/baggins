@@ -18,7 +18,7 @@ pip install . -e
 ```
 as described in the `pygad` docs.
 Also need to install `ketjugw`, `voronoi-binning-cpp`, `merger-ic-generator` from the  group BitBucket, and add these modules to your `$PYTHONPATH` in the `~/.bashrc` file.  
-3. Edit the necessary fields in `./code/cm_functions/env_params.json` that are listed under `user_settings` (for e.g. directory where to save the figures to). The fields under `internal_settings` should not be edited by the user directly.  
+3. Edit the necessary fields in `./code/cm_functions/env_params.yml` that are listed under the top document (for e.g. directory where to save the figures to). The fields under the second document are internal settings of the code, and should not be edited.  
 
 ## Directory Organisation  
 * all code (functions, scripts, classes, etc.) required to perform the 
@@ -30,6 +30,31 @@ These parameter files are expected to be used in conjunction with the
 functions and scripts in `./code/`
 
 ## Simulation Workflow  
+### For Project 1: Hernquist Spheres  
+1. Create the progenitor galaxies using `make_galay.py` in 
+`./code/initialise_scripts`. A valid parameter file must be first created.  
+2. Set up the merger configuration with a separate merger parameter file, using
+the script `merger_setup.py`. Ensure to pass the option `new`.  
+3. Identify the time when the BHs form a bound binary using 
+`check_merger_progress.py <file> -b` in the directory `./code/analysis_scripts`.
+This will produce a plot showing the radial separation of the binaries, as well
+as the orbital energy of the binary system. Those points where the binary 
+energy transitions from $\mathcal{E}>0$ to $\mathcal{E}<0$ are indicated by
+numbered arrows, and the corresponding times printed to the console. The desired
+time to turn on `Ketju` can thus be found.  
+4. Create the children perturbed runs of the main `Gadget` run using the script
+`merger_setup.py` in `./code/initialise_scripts` with the merger parameter file and one option of:  
+    - `bh`: perturb the BHs by a user-defined amount in phase space.  
+    - `field`: pertub a single field particle by a user defined amount.  
+This generates a set of runs with perturbed phase-space coordinates of the BHs 
+relative to the galaxy centre of mass. Other `Gadget
+paramfile` options may be changed here too (especially $\eta=0.002$).  
+5. Run each pertured run with `Ketju`. The analytical time to merger can be 
+estimated using `hardening_rates.py` in `./code/analysis_scripts`. If the BHs
+have not merged within the upper limit set by the analytical expectation, the
+run may need to be terminated.  
+
+### For Project 2: Testing Initial Conditions  
 The simulation workflow consists of a number of steps to produce 
 realistic initial conditions for the merger. The steps are:  
 1. Create the progenitor galaxies using `make_galay.py` in 
@@ -59,12 +84,14 @@ as the orbital energy of the binary system. Those points where the binary
 energy transitions from $\mathcal{E}>0$ to $\mathcal{E}<0$ are indicated by
 numbered arrows, and the corresponding times printed to the console. The desired
 time to turn on `Ketju` can thus be found.  
-8. Create the children perturbed runs of the main `Gadget` run using the script
-`perturb_bhs.py` in `./code/initialise_scripts` with the merger parameter file.
-This generates a set of runs with the phase-space coordinates of the BHs 
-randomised using the Brownian motion distributions of step 6. Other `Gadget
+4. Create the children perturbed runs of the main `Gadget` run using the script
+`merger_setup.py` in `./code/initialise_scripts` with the merger parameter file and one option of:  
+    - `bh`: perturb the BHs by a user-defined amount in phase space.  
+    - `field`: pertub a single field particle by a user defined amount.  
+This generates a set of runs with perturbed phase-space coordinates of the BHs 
+relative to the galaxy centre of mass. Other `Gadget
 paramfile` options may be changed here too (especially $\eta=0.002$).  
-9. Run each pertured run with `Ketju`. The analytical time to merger can be 
+5. Run each pertured run with `Ketju`. The analytical time to merger can be 
 estimated using `hardening_rates.py` in `./code/analysis_scripts`. If the BHs
 have not merged within the upper limit set by the analytical expectation, the
 run may need to be terminated.  
@@ -78,12 +105,7 @@ methods of python. If you are unsure how a script should be invoked, the
 best way to find out is by running  
 `python ./script.py -h`  
 A list of 
-required inputs and optional inputs will be displayed.
-
-### Contribution guidelines  
-* Writing tests
-* Code review
-* Other guidelines
+required inputs and optional inputs will be displayed.  
 
 ### Who do I talk to?  
 * Alex Rawlings (alexander.rawlings@helsinki.fi)

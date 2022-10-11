@@ -37,7 +37,7 @@ perturb_properties:
   # when to apply the perturbation
   perturb_time:
     unit: 'Gyr'
-    value: 6.132
+    value: 6.096
   number_perturbs: 10
   # perturb BH particles with a Gaussian distribution
   perturb_bhs:
@@ -68,7 +68,8 @@ perturb_properties:
 ---
 e0: 0.9999853916166503
 full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/H0250-H0250-3.0-0.001
-last_update: '2022-10-06 18:08:21'
+last_update: '2022-10-07 12:39:50'
+perturb_snap_idx: 62
 r0_physical: 518.7425114584652
 rperi_physical: 0.17291417048615507
 time_to_pericentre: 1.4007631348323966

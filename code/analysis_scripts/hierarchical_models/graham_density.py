@@ -14,9 +14,10 @@ parser.add_argument(type=str, help="Directory to HMQuantity HDF5 files", dest="d
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
 parser.add_argument("-p", "--prior", help="Plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="Load previous stan file", dest="load_file", default=None)
+parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
-SL = cmf.CustomLogger("script_logger", console_level="INFO")
+SL = cmf.CustomLogger("script", console_level=args.verbose)
 
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
@@ -41,12 +42,12 @@ for f in HMQ_files:
     SL.logger.info(f"Loading file: {f}")
     hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
     try:
-        idx = hmq.get_idx_in_vec(analysis_params.target_semimajor_axis, hmq.semimajor_axis_of_snapshot)
+        idx = hmq.get_idx_in_vec(analysis_params["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis_of_snapshot)
     except ValueError:
         SL.logger.warning(f"No snapshot data prior to merger! The semimajor_axis_of_snapshot attribute is: {hmq.semimajor_axis_of_snapshot}. This run will not form part of the analysis.")
         continue
     except AssertionError:
-        SL.logger.warning(f"Trying to search for value {analysis_params.target_semimajor_axis}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis_of_snapshot)} - {max(hmq.semimajor_axis_of_snapshot)}. This run will not form part of the analysis.")
+        SL.logger.warning(f"Trying to search for value {analysis_params['bh_binary']['target_semimajor_axis']['value']}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis_of_snapshot)} - {max(hmq.semimajor_axis_of_snapshot)}. This run will not form part of the analysis.")
         continue
     r = cmf.mathematics.get_histogram_bin_centres(hmq.radial_edges)
     observations["R"].extend(r)
@@ -60,11 +61,12 @@ graham_model.obs = observations
 graham_model.categorical_label = "name"
 
 SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
-assert graham_model.num_groups >= analysis_params.hm_min_num_samples
+assert graham_model.num_groups >= analysis_params["stan"]["min_num_samples"]
 
+graham_model.transform_obs("R", "log10_R", lambda x: np.log10(x))
 graham_model.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
-graham_model.transform_obs("proj_density", "log10_proj_density_mean", lambda x: np.nanmean(np.log10(x), axis=0))
-graham_model.transform_obs("proj_density", "log10_proj_density_std", lambda x: np.nanstd(np.log10(x), axis=0))
+graham_model.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
+graham_model.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
 
 
 stan_data = {"a": 10.0}
@@ -77,7 +79,7 @@ if args.prior:
         N_tot = len(R_unique)
     ))
 
-    graham_model.sample_prior(data=stan_data, sample_kwargs=analysis_params.stan_sample_kwargs)
+    graham_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
     # prior predictive check
     fig, ax = plt.subplots(1,1)
@@ -97,8 +99,8 @@ else:
                 log10_surf_rho_err = graham_model.obs["log10_proj_density_std"]
     ))
 
-    analysis_params.stan_sample_kwargs["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}")
-    graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params.stan_sample_kwargs)
+    analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}")
+    graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
     graham_model.determine_loo("log10_surf_rho_posterior")
 
@@ -122,10 +124,9 @@ else:
 
     # posterior predictive check
     fig, ax = plt.subplots(1,1)
-    ax.set_xscale("log")
-    ax.set_xlabel("R/kpc")
+    ax.set_xlabel(r"log($R$/kpc)")
     ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
-    graham_model.posterior_plot("R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax)
+    graham_model.posterior_plot("log10_R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax)
 
     graham_model.print_parameter_percentiles(["r_b_a", "r_b_b", "Re_a", "Re_b", "I_b_a", "I_b_b", "g_a", "g_b", "n_a", "n_b"])
 
@@ -139,7 +140,7 @@ else:
         ax.append(fig.add_subplot(gs[1, 2*i+1:2*(i+1)+1]))
     ax = np.array(ax)
     latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior"]
-    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{10}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
+    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
     graham_model.print_parameter_percentiles(latent_qtys)
 
 plt.show()

@@ -9,8 +9,8 @@ file_locations:
 bh_binary:
   # semimajor axis used to 'synchronise' simulations for fair comparison
   target_semimajor_axis:
-    unit: 'pc'
-    value: 10.0
+    unit: 'kpc'
+    value: 0.01
 
 # info on galaxy properties and quantities needed to determine those properties
 galaxy:
@@ -28,5 +28,5 @@ galaxy:
 stan:
   min_num_samples: 6
   sample_kwargs:
-    adapt_delta: 0.9
+    adapt_delta: 0.99
 ...

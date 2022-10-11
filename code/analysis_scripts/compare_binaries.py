@@ -9,10 +9,17 @@ parser = argparse.ArgumentParser(description="Quickly check SMBH binary paramete
 parser.add_argument(type=str, help="path to directory", dest="path")
 parser.add_argument("-m", "--masking", type=float, help="mask to times less than this (Myr)", default=None, dest="mask")
 parser.add_argument("-s", "--save", action="store_true", dest="save", help="save figure")
+parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, default="INFO", choices=cmf.VERBOSITY, dest="verbosity", help="set verbosity level")
 args = parser.parse_args()
 
 SL = cmf.CustomLogger("script", args.verbosity)
+
+if args.publish:
+    cmf.plotting.set_publishing_style()
+    legend_kwargs = {"ncol":2, "fontsize":"x-small"}
+else:
+    legend_kwargs = {}
 
 ketjufiles = cmf.utils.get_ketjubhs_in_dir(args.path)
 ax = None
@@ -28,7 +35,8 @@ for i, k in enumerate(ketjufiles):
     else:
         op = ketjugw.orbital_parameters(bh1, bh2)
     ax = cmf.plotting.binary_param_plot(op, ax=ax, label=f"{k.split('/')[-3]}")
-ax[0].legend()
+ax[0].legend(loc="upper right", **legend_kwargs)
+ax[0].set_xscale("log")
 if args.save:
     cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries.png"))
 plt.show()

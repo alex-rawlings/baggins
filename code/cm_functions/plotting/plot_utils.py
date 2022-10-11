@@ -1,11 +1,13 @@
 from datetime import datetime
 import inspect
+from matplotlib import rc_file, rcdefaults
 from matplotlib.pyplot import gcf
 from PIL import Image
 import os.path
-from ..env_config import git_hash, username, date_format, fig_ext
+from ..env_config import _logger, git_hash, username, date_format, fig_ext
 
-__all__ = ["savefig", "get_meta"]
+__all__ = ["savefig", "get_meta", "set_publishing_style"]
+
 
 def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
     """
@@ -62,3 +64,14 @@ def get_meta(fname):
     with Image.open(fname) as img:
         for k,v in img.text.items():
             print(f"{k}: {v}")
+
+
+def set_publishing_style():
+    """
+    Set a custom matplolibrc file that is designed specifically for 
+    publishing-style plots. Mainly changes figure size and axis label size.
+    """
+    rcdefaults()
+    rc_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "matplotlibrc_publish"))
+    _logger.logger.info("Publishing Matplotlib style set")
+

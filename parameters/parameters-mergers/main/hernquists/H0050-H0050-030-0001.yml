@@ -37,7 +37,7 @@ perturb_properties:
   # when to apply the perturbation
   perturb_time:
     unit: 'Gyr'
-    value: 6.132
+    value: 6.086
   number_perturbs: 10
   # perturb BH particles with a Gaussian distribution
   perturb_bhs:
@@ -60,7 +60,8 @@ perturb_properties:
   gadget_parameters_to_update:
   # create a copy of a gadget paramfile with changes made to these vars
   # 'InitCondFile', 'SnapshotFileBase' are always updated
-    SofteningStars: 0.0035
+    SofteningStars: 0.0070
+    ketju_region_physical_radius: 0.0210
     ketju_disable_integration: 0
     ErrTolIntAccuracy: 0.002
 ...
@@ -68,7 +69,8 @@ perturb_properties:
 ---
 e0: 0.9999853916166503
 full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/H0050-H0050-3.0-0.001
-last_update: '2022-10-06 18:12:33'
+last_update: '2022-10-07 14:56:47'
+perturb_snap_idx: 62
 r0_physical: 516.9139156469917
 rperi_physical: 0.17230463854899722
 time_to_pericentre: 1.3943947420040586

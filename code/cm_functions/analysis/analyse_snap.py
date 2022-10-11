@@ -1,4 +1,3 @@
-import copy
 import warnings
 from datetime import datetime
 import numpy as np
@@ -133,11 +132,19 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
             _logger.logger.info(f"No estimate for CoM associated with BH {idx}. Skipping velocity estimate")
             vcoms[idx] = None
             continue
+        # for very low resolution snaps
+        if len(masked_subsnap) < min_particle_count and ind==0:
+            n = len(masked_subsnap)
+            while min_particle_count > 0.5 * n:
+                min_particle_count *= 0.5
+                _logger.logger.warning(f"Particle count is {n}, which is less than the minimum particle count for CoM velocity calculations. Minimum particle count will be set to {min_particle_count}.")
         #make a ball about the CoM
         ball_radius = np.sort(pygad.utils.dist(masked_subsnap['pos'], xcom[idx]))[int(min_particle_count)]
         _logger.logger.debug(f"Maximum radius for velocity CoM set to {ball_radius:.3e} kpc")
         ball_mask = pygad.BallMask(pygad.UnitQty(ball_radius, "kpc"), center=xcom[idx])
         vcoms[idx] = pygad.analysis.mass_weighted_mean(masked_subsnap[ball_mask], qty='vel')
+    del subsnap, masked_subsnap
+    pygad.gc_full_collect()
     return vcoms
 
 
@@ -525,7 +532,7 @@ def get_inner_rho_and_sigma(snap, extent=None):
         extent_mask = pygad.BallMask(extent, center=pygad.analysis.center_of_mass(snap.bh))
         subsnap = snap.stars[extent_mask]
     else:
-        warnings.warn("Inner quantities will be calculated for all stars!")
+        _logger.logger.warning("Inner quantities will be calculated for all stars!")
         subsnap = snap.stars
     inner_density = density_sphere(np.sum(subsnap["mass"]), extent)
     inner_sigma = np.nanmean(np.nanstd(subsnap["vel"], axis=0))
