@@ -4,9 +4,11 @@ import pygad
 
 from . import BHBinaryData
 from ...general import unit_as_str
-from ...env_config import _logger
+from ...env_config import _cmlogger
 
 __all__ = ["ChildSimData"]
+
+_logger = _cmlogger.copy(__file__)
 
 class ChildSimData(BHBinaryData):
     def __init__(self) -> None:

@@ -56,7 +56,7 @@ if __name__ == "__main__":
         data = manager.dict()
         extract_helper_P = partial(extract_helper, data=data)
 
-        SL = cmf.CustomLogger("script_logger", console_level="INFO")
+        SL = cmf.ScriptLogger("script_logger", console_level="INFO")
         for d in data_dirs:
             merger_class = d.rstrip("/").split("/")[-1]
 

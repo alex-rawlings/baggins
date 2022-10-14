@@ -1,8 +1,9 @@
 import logging
+import os.path
 from datetime import datetime
 
 
-__all__ = ["InternalLogger", "CustomLogger"]
+__all__ = ["InternalLogger", "ScriptLogger"]
 
 
 class InternalLogger:
@@ -21,23 +22,22 @@ class InternalLogger:
             redirect all warnings to the logger, by default True
         """
         self.logger = logging.getLogger(name)
+        self._console_level = console_level
+        self._capture_warnings = capture_warnings
         self._base_name = self.logger.name
         self.logger.setLevel("DEBUG")
         self._ch_format = "%(name)s: %(levelname)s: %(message)s"
         self._fh_format = "%(asctime)s: %(name)s: %(levelname)s: %(message)s"
         self._c_handler = logging.StreamHandler()
-        self._set_handler(self._c_handler, console_level, fmt=self._ch_format)
+        self._set_handler(self._c_handler, self._console_level, fmt=self._ch_format)
         self._f_handler = None
-        logging.captureWarnings(capture_warnings)
+        self._logfile = None
+        self._file_level = None
+        logging.captureWarnings(self._capture_warnings)
     
     @property
     def name(self):
         return self.logger.name
-    
-    @name.setter
-    def name(self, n):
-        self.logger.name = n
-
 
     def _set_handler(self, handler, level, fmt):
         """
@@ -91,13 +91,39 @@ class InternalLogger:
         file_level : str, optional
             logging level, by default "ERROR"
         """
+        self._logfile = logfile
+        self._file_level = file_level
         with open(logfile, "a") as f:
             f.write(f"Logger created at {datetime.now()}\n")
         self._f_handler = logging.FileHandler(filename=logfile)
         self._set_handler(self._f_handler, file_level, fmt=self._fh_format)
 
+    def copy(self, n=None):
+        """
+        Copy the logger, with the option to append a string its name. If the 
+        logger has a file handler, the copy will also print to the same file.
 
-class CustomLogger(InternalLogger):
+        Parameters
+        ----------
+        n : str, optional
+            str to append to current name, by default None
+
+        Returns
+        -------
+        InternalLogger
+            copy of the logger
+        """
+        if n is None:
+            name = self.name
+        else:
+            name = f"{self.name}:{os.path.splitext(os.path.basename(n))[0]}"
+        c = InternalLogger(name=name, console_level=self._console_level, capture_warnings=self._capture_warnings)
+        if self._logfile is not None:
+            c.add_file_handler(self._logfile, self._file_level)
+        return c
+
+
+class ScriptLogger(InternalLogger):
     def __init__(self, name, console_level="WARNING") -> None:
         """
         General purpose logger to be used in external scripts. The error levels

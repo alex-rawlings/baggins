@@ -14,7 +14,7 @@ parser.add_argument("-o", "--overwrite", help="allow overwriting", dest="overwri
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args=parser.parse_args()
 
-SL = cmf.CustomLogger("script", args.verbose)
+SL = cmf.ScriptLogger("script", args.verbose)
 
 # helper function to run with multiprocessing
 def extractor_helper(child_num):

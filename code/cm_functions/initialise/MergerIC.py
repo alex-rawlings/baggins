@@ -8,13 +8,15 @@ import numpy as np
 import pygad
 import merger_ic_generator as mg
 
-from ..env_config import _logger, date_format
+from ..env_config import _cmlogger, date_format
 from ..utils import read_parameters, write_calculated_parameters, get_snapshots_in_dir
 from ..analysis import snap_num_for_time, get_com_of_each_galaxy, get_com_velocity_of_each_galaxy
 from ..mathematics import radial_separation
 from ..analysis.masks import *
 
 __all__ = ["MergerIC"]
+
+_logger = _cmlogger.copy(__file__)
 
 
 class MergerIC:

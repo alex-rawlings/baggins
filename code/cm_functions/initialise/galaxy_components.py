@@ -8,10 +8,11 @@ from ..cosmology import *
 from ..general import *
 from ..mathematics import uniform_sample_sphere
 from ..utils import read_parameters
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 __all__ = []
 
+_logger = _cmlogger.copy(__file__)
 
 MSOL = 1.998e30
 

@@ -9,11 +9,12 @@ from . import masks as masks
 from ..mathematics import radial_separation, density_sphere, spherical_components
 from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time, unit_as_str
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 
 __all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles", "velocity_anisotropy"]
 
+_logger = _cmlogger.copy(__file__)
 
 def get_com_of_each_galaxy(snap, method="pot", masks=None, family="all", initial_radius=20):
     """

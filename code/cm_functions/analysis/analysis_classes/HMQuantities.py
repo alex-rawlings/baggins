@@ -9,13 +9,15 @@ import pygad
 from . import HMQuantitiesData
 from ..analyse_snap import get_com_velocity_of_each_galaxy, influence_radius, hardening_radius, projected_quantities, get_com_of_each_galaxy, inner_DM_fraction, determine_if_merged, velocity_anisotropy, get_massive_bh_ID
 from ..orbit import get_bound_binary
-from ...env_config import _logger, date_format, username
+from ...env_config import _cmlogger, date_format, username
 from ...general import convert_gadget_time
 from ...mathematics import radial_separation
 from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 
 
 __all__ = ["HMQuantities"]
+
+_logger = _cmlogger.copy(__file__)
 
 myr = ketjugw.units.yr * 1e6
 kpc = ketjugw.units.pc * 1e3

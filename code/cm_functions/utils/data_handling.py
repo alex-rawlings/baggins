@@ -3,10 +3,12 @@ import os
 import shutil
 import h5py
 from multiprocessing import managers
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 
 __all__ = ["save_data", "load_data", "get_files_in_dir", "get_snapshots_in_dir", "get_ketjubhs_in_dir", "create_file_copy"]
+
+_logger = _cmlogger.copy(__file__)
 
 
 def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):

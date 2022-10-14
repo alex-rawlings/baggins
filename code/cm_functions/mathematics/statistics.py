@@ -1,9 +1,11 @@
 import numpy as np
 import scipy.stats
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 
 __all__ = ["iqr", "smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
+
+_logger = _cmlogger.copy(__file__)
 
 
 def iqr(x):

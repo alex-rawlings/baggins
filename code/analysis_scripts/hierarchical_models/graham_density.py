@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 import os.path
 import numpy as np
 import h5py
@@ -14,10 +15,11 @@ parser.add_argument(type=str, help="Directory to HMQuantity HDF5 files", dest="d
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
 parser.add_argument("-p", "--prior", help="Plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="Load previous stan file", dest="load_file", default=None)
+parser.add_argument("-r", "--r", type=int, dest="random_sample", default=None, help="randomly sample x observations from each population member")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
-SL = cmf.CustomLogger("script", console_level=args.verbose)
+SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
@@ -60,6 +62,9 @@ for f in HMQ_files:
 graham_model.obs = observations
 graham_model.categorical_label = "name"
 
+if args.random_sample is not None:
+    graham_model.random_obs_select(args.random_sample, "name")
+
 SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
 assert graham_model.num_groups >= analysis_params["stan"]["min_num_samples"]
 
@@ -68,7 +73,7 @@ graham_model.transform_obs("proj_density", "log10_proj_density", lambda x: np.lo
 graham_model.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
 graham_model.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
 
-
+# set the transition index for the core sersic fit
 stan_data = {"a": 10.0}
 
 if args.prior:
@@ -99,7 +104,12 @@ else:
                 log10_surf_rho_err = graham_model.obs["log10_proj_density_std"]
     ))
 
-    analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}")
+    if args.random_sample:
+        now = datetime.now()
+        now = now.strftime("%Y%m%d-%H%M%S")
+        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}-{now}")
+    else:
+        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}")
     graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
     graham_model.determine_loo("log10_surf_rho_posterior")

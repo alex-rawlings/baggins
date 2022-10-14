@@ -7,7 +7,9 @@ import json
 import yaml
 from pygad import UnitArr
 
-from ..env_config import _logger
+from ..env_config import _cmlogger
+
+_logger = _cmlogger.copy(__file__)
 
 
 __all__ = ["read_parameters", "write_calculated_parameters", "to_json"]

@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description="Visually compare galaxy ICs", allo
 parser.add_argument(type=str, help="path to comparison parameter file", dest="path")
 args = parser.parse_args()
 
-SL = cmf.CustomLogger("script_log", console_level="INFO")
+SL = cmf.ScriptLogger("script_log", console_level="INFO")
 marker_kwargs = {"zorder":10, "edgecolor":"k", "linewidth":0.5}
 
 #read in literature data

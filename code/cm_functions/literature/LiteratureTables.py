@@ -3,10 +3,13 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from ..env_config import _logger, this_dir
+from ..env_config import _cmlogger, this_dir
 from ..utils import create_error_col
 
 __all__ = ["LiteratureTables"]
+
+_logger = _cmlogger.copy(__file__)
+
 
 class LiteratureTables:
     def __init__(self, table_name) -> None:

@@ -2,10 +2,11 @@ import numpy as np
 import scipy.optimize, scipy.ndimage
 from scipy.stats import binned_statistic_2d
 from voronoi_binning import voronoi_binned_image
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 __all__ = ["voronoi_grid", "gauss_hermite_function", "fit_gauss_hermite_distribution", "voronoi_binned_los_V_statistics", "lambda_R"]
 
+_logger = _cmlogger.copy(__file__)
 
 def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
     """

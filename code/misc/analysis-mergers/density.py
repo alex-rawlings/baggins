@@ -26,7 +26,7 @@ if __name__ == "__main__":
         figname = "alex"
     r_edges = np.geomspace(1e-2, 100, 51)
     rng = np.random.default_rng(42)
-    logs = cmf.CustomLogger("density_logs", "INFO")
+    logs = cmf.ScriptLogger("density_logs", "INFO")
 
     parser = argparse.ArgumentParser(description="Construct projected density estimates for time series data", allow_abbrev=False)
     parser.add_argument("-n", "--new", help="Run new analysis", action="store_true", dest="new")

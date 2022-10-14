@@ -5,16 +5,18 @@ from datetime import datetime
 import cmdstanpy
 import arviz as az
 
-
-from ...plotting import savefig, create_normed_colours, mplColours
+from ...mathematics import assert_all_unique
+from ...plotting import savefig, create_normed_colours
 from ...utils import load_data
-from ...env_config import figure_dir, data_dir, _logger
+from ...env_config import figure_dir, data_dir, _cmlogger
 
 __all__ = ["StanModel"]
 
+_logger = _cmlogger.copy(__file__)
+
 
 class StanModel:
-    def __init__(self, model_file, prior_file, figname_base, rng=None, random_select_obs=None) -> None:
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         """
         Class to set up, run, and plot key plots of a stan model.
 
@@ -47,10 +49,6 @@ class StanModel:
         self._prior_stan_data = None
         self._prior_model = None
         self._prior_fit = None
-        if random_select_obs is not None:
-            assert all(k in random_select_obs.keys() for k in ["num", "group"])
-            self.random_obs_select_dict = random_select_obs
-            self._random_obs_select(**random_select_obs)
         self._parameter_plot_counter = 0
         self._observation_mask = True
         self._plot_obs_data_kwargs = {"marker":".", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
@@ -162,7 +160,7 @@ class StanModel:
         try:
             assert isinstance(d, dict)
         except AssertionError:
-            _logger.logger.exception(f"Observational data must be a dict! Current type is {type(d)}")
+            _logger.logger.exception(f"Observational data must be a dict! Current type is {type(d)}", exc_info=True)
             raise
         for i, (k,v) in enumerate(d.items()):
             try:
@@ -175,7 +173,7 @@ class StanModel:
             try:
                 assert not np.any(np.isnan(v))
             except AssertionError:
-                _logger.logger.error("NaN values detected in observed variable {k}! This can lead to undefined behaviour.")
+                _logger.logger.exception("NaN values detected in observed variable {k}! This can lead to undefined behaviour.", exc_info=True)
                 raise
             # data consistency checks
             if i==0:
@@ -232,7 +230,7 @@ class StanModel:
             self._check_observation_validity(self.obs)
 
 
-    def _random_obs_select(self, num, group):
+    def random_obs_select(self, num, group):
         """
         Randomly select a subset of observed quantity data. Data that is not
         selected will be dropped from the data frame of observed quantities. 
@@ -249,20 +247,40 @@ class StanModel:
         group : str
             dataframe dictionary key that specifies the group
         """
+        try:
+            assert num < self._obs_len
+        except AssertionError:
+            _logger.logger.exception(f"Cannot randomly sample {num} samples from {self._obs_len} observations without replacement!", exc_info=True)
+            raise
         i_s = []
-        counter = 0
-        for kk in np.unique(self.obs[group]):
+        groups = np.unique(self.obs[group])
+        for kk in groups:
             _mask = self.obs[group] == kk
             ids = np.arange(self._obs_len)[_mask]
-            _i_s = self._rng.integers(int(ids.min()), int(ids.max()), num)
+            _i_s = self._rng.choice(ids, size=num, replace=False)
             i_s.extend(_i_s)
-            counter += 1
         idxs = np.r_[i_s]
+        try:
+            assert assert_all_unique(idxs)
+        except AssertionError:
+            _logger.logger.exception(f"Duplicate elements detected in array 'idxs'.", exc_info=True)
+            raise
         # delete unselected rows
-        del_mask = np.full(self._obs_len, 1, dtype=bool)
-        del_mask[idxs] = False
+        keep_mask = np.full(self._obs_len, 0, dtype=bool)
+        keep_mask[idxs] = True
         for k, v in self.obs.items():
-            self.obs[k] = v[del_mask]
+            _logger.logger.debug(f"Updating StanModel observed variable {k}")
+            if len(v.shape) == 1:
+                self.obs[k] = v[keep_mask]
+            else:
+                self.obs[k] = v[:,keep_mask]
+        self._obs_len = self.obs[group].shape[-1]
+        try:
+            assert self.obs_len == len(groups) * num
+        except AssertionError:
+            _logger.logger.exception(f"After random sampling, the number of observations is {self.obs_len}, however we are expecting {len(groups)*num}!", exc_info=True)
+            raise
+        _logger.logger.debug(f"Number of observations is now {self.obs_len}")
     
 
     def _sampler(self, data, prior=False, sample_kwargs={}):
@@ -392,6 +410,8 @@ class StanModel:
             variable names to plot
         figsize : tuple, optional
             size of figures, by default (9.0, 6.75)
+        levels : list, optional
+            HDI intervals to plot, by default [50, 90, 95, 99]
         """
         assert len(var_names) > 1, "Pair plot requires at least two variables!"
         if len(var_names) > 4:
@@ -549,7 +569,11 @@ class StanModel:
         if xlabels is None:
             xlabels = gq
         else:
-            assert len(gq) == len(xlabels)
+            try:
+                assert len(gq) == len(xlabels)
+            except AssertionError:
+                _logger.logger.exception(f"There are {len(gq)} generated quantity variables to plot, but only {len(xlabels)} labels!", exc_info=True)
+                raise
         for i, (_gq, l) in enumerate(zip(gq, xlabels)):
             ys = self.sample_generated_quantity(_gq)
             try:
@@ -576,15 +600,16 @@ class StanModel:
         vars : list
             variables in the CmdStanMCMC object to print
         """
-        df = self._fit.summary(sig_figs=4)
+        df = self._fit.summary(sig_figs=4, percentiles=[5, 25, 50, 75, 95])
+        vars = vars.copy()
         vars.insert(0, "Variable")
         max_str_len = max([len(v) for v in vars]) + 1
-        head_str = f"\n{vars[0]:>{max_str_len}}       5%      50%     95%"
+        head_str = f"\n{vars[0]:>{max_str_len}}       5%      50%     95%     IQR"
         print(head_str)
         dashes = ["-" for _ in range(len(head_str))]
         print("".join(dashes))
         for v in vars[1:]:
-            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>6}  {df.loc[v,'50%']:>6}  {df.loc[v,'95%']:>6}")
+            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>6}  {df.loc[v,'50%']:>6}  {df.loc[v,'95%']:>6}  {(df.loc[v,'75%']-df.loc[v,'25%']):>6}")
         print()
 
     
@@ -619,7 +644,7 @@ class StanModel:
             random number generator, by default None (creates a new instance)
         """
         # initiate a class instance
-        C = cls(model_file=model_file, prior_file=None, figname_base=figname_base, rng=rng, random_select_obs=None)
+        C = cls(model_file=model_file, prior_file=None, figname_base=figname_base, rng=rng)
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
         C._fit = cmdstanpy.from_csv(fit_files)

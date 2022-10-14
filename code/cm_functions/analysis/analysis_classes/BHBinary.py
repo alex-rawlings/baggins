@@ -13,9 +13,11 @@ from ...general import xval_of_quantity
 from ...mathematics import iqr
 from ...plotting import binary_param_plot
 from ...utils import read_parameters, get_ketjubhs_in_dir, get_snapshots_in_dir
-from ...env_config import date_format, username, _logger
+from ...env_config import date_format, username, _cmlogger
 
 __all__ = ["myr", "BHBinary"]
+
+_logger = _cmlogger.copy(__file__)
 
 myr = ketjugw.units.yr * 1e6
 hubble_time = 13800

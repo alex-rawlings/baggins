@@ -11,7 +11,7 @@ rng = np.random.default_rng(42)
 CONST_G = 43007.1
 CONST_c = 2.99792458e5
 
-SL = cmf.CustomLogger("script", console_level="INFO")
+SL = cmf.ScriptLogger("script", console_level="INFO")
 
 subdirs = [f.path for f in os.scandir(datadir) if f.is_dir()]
 subdirs.sort()

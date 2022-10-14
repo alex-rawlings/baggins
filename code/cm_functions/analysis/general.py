@@ -3,10 +3,12 @@ import scipy.stats
 import pygad
 from ..general import convert_gadget_time
 from ..mathematics import get_histogram_bin_centres
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 
 __all__ = ["snap_num_for_time"]
+
+_logger = _cmlogger.copy(__file__)
 
 # TODO add option for a defined binning, and not only have it done internally
 def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):

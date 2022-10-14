@@ -10,7 +10,7 @@ parser.add_argument("-b", "--bound", help="Plot bound points", dest="bound", act
 parser.add_argument("-o", "--orbit", help="Plot orbital parameters", dest="orbparams", action="store_true")
 args = parser.parse_args()
 
-SL = cmf.CustomLogger("script", console_level="INFO")
+SL = cmf.ScriptLogger("script", console_level="INFO")
 
 #copy file so it can be read
 new_filename = cmf.utils.create_file_copy(args.file)

@@ -7,7 +7,7 @@ from datetime import datetime
 from ._backend import InternalLogger
 
 
-__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "figure_ext", "username", "git_hash", "_logger"]
+__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "figure_ext", "username", "git_hash", "_cmlogger"]
 
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -23,16 +23,16 @@ fig_ext = user_params["figure_ext"].lstrip(".")
 username = home_dir.rstrip("/").split("/")[-1]
 
 # create the logger
-_logger = InternalLogger("cm_funcs", user_params["logging"]["console_level"])
+_cmlogger = InternalLogger("cm_funcs", user_params["logging"]["console_level"])
 if user_params["logging"]["file_level"] not in ["", " "]:
     lf = f"{user_params['logging']['file'].rstrip('.log')}_{datetime.now():%Y-%m-%d}.log"
-    _logger.add_file_handler(os.path.join(this_dir, lf), user_params["logging"]["file_level"])
+    _cmlogger.add_file_handler(os.path.join(this_dir, lf), user_params["logging"]["file_level"])
 
 # ensure valid figure format
 try:
     assert fig_ext in ("pdf", "png")
 except AssertionError:
-    _logger.logger.exception("Invalid figure format given in env_params.json! Reverting to default format: png")
+    _cmlogger.logger.exception("Invalid figure format given in env_params.json! Reverting to default format: png")
     fig_ext = "png"
 
 # make the figure directory
@@ -53,7 +53,7 @@ if "collisionless-merger-sample" in os.getcwd():
     with open(env_params_file, "w") as f:
         yaml.safe_dump_all([user_params, internal_params], f, explicit_end=True, explicit_start=True)
 else:
-    _logger.logger.warning("Operating outside the git repo. Git hash read from file.")
+    _cmlogger.logger.warning("Operating outside the git repo. Git hash read from file.")
     git_hash = internal_params["git_hash"]
 
 

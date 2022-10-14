@@ -10,7 +10,7 @@ from . import plotting
 from . import utils
 from . import visualisation
 
-from ._backend import CustomLogger
+from ._backend import ScriptLogger
 
 #set up some global environment variables
 HOME = env_config.home_dir

@@ -16,9 +16,11 @@ from ...general import convert_gadget_time
 from ...literature import fit_Terzic05_profile
 from ...mathematics import get_histogram_bin_centres, spherical_components
 from ...utils import read_parameters
-from ...env_config import username, date_format, _logger
+from ...env_config import username, date_format, _cmlogger
 
 __all__ = ["ChildSim"]
+
+_logger = _cmlogger.copy(__file__)
 
 class ChildSim(BHBinary, ChildSimData):
     def __init__(self, paramfile, perturbID, apfile) -> None:

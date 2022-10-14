@@ -3,9 +3,11 @@ import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, sc
 import ketjugw
 from ..general import get_idx_in_array
 from ..mathematics import radial_separation
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 __all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan"]
+
+_logger = _cmlogger.copy(__file__)
 
 #common units
 myr = 1e6 * ketjugw.units.yr

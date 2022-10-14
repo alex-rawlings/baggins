@@ -4,10 +4,12 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from matplotlib import colors
 import itertools
-from ..env_config import _logger
+from ..env_config import _cmlogger
 
 
 __all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions"]
+
+_logger = _cmlogger.copy(__file__)
 
 
 def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert="base", remove_ticks=True):

@@ -4,11 +4,11 @@ import datetime
 import pygad
 
 from ...general import unit_as_str
-from ...env_config import _logger, date_format
+from ...env_config import _cmlogger, date_format
 
 __all__ = ["HDF5Base"]
 
-
+_logger = _cmlogger.copy(__file__)
 
 
 class HDF5Base:

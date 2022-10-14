@@ -29,4 +29,5 @@ stan:
   min_num_samples: 6
   sample_kwargs:
     adapt_delta: 0.99
+    max_treedepth: 13
 ...

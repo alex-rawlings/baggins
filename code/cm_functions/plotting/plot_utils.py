@@ -4,9 +4,11 @@ from matplotlib import rc_file, rcdefaults
 from matplotlib.pyplot import gcf
 from PIL import Image
 import os.path
-from ..env_config import _logger, git_hash, username, date_format, fig_ext
+from ..env_config import _cmlogger, git_hash, username, date_format, fig_ext
 
 __all__ = ["savefig", "get_meta", "set_publishing_style"]
+
+_logger = _cmlogger.copy(__file__)
 
 
 def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
