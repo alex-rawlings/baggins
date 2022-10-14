@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import rcParams
 from datetime import datetime
 import cmdstanpy
 import arviz as az
@@ -400,7 +401,7 @@ class StanModel:
         return self.generated_quantities.stan_variable(gq)
     
 
-    def parameter_plot(self, var_names, figsize=(9.0, 6.75), labeller=None, levels=[50, 90, 95, 99]):
+    def parameter_plot(self, var_names, figsize=None, labeller=None, levels=[50, 90, 95, 99]):
         """
         Plot key pair plots and diagnostics of a stan likelihood model.
 
@@ -413,6 +414,10 @@ class StanModel:
         levels : list, optional
             HDI intervals to plot, by default [50, 90, 95, 99]
         """
+        # TODO choose good figsize always, also labeller sometimes still not working...
+        if figsize is None:
+            max_dim = max(rcParams["figure.figsize"])
+            figsize = (max_dim, max_dim)
         assert len(var_names) > 1, "Pair plot requires at least two variables!"
         if len(var_names) > 4:
             _logger.logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
@@ -430,8 +435,8 @@ class StanModel:
 
         # plot pair
         levels = [l/100 for l in levels]
-        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller)
-        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller)
+        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"])
+        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"])
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
@@ -482,7 +487,7 @@ class StanModel:
             for i, c in enumerate(colvals):
                 col = cmapper(c)
                 mask = self.categorical_label==c
-                ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", capsize=5, label=("Obs" if i==ncols-1 else ""))
+                ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs" if i==ncols-1 else ""))
         ax.legend()
         savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
     
@@ -529,7 +534,7 @@ class StanModel:
             for i, c in enumerate(colvals):
                 col = cmapper(c)
                 mask = np.logical_and(self.categorical_label==c, self._observation_mask)
-                ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", capsize=5, label=("Obs." if i==ncols-1 else ""))
+                ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs." if i==ncols-1 else ""))
         ax.legend()
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
 
@@ -609,7 +614,8 @@ class StanModel:
         dashes = ["-" for _ in range(len(head_str))]
         print("".join(dashes))
         for v in vars[1:]:
-            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>6}  {df.loc[v,'50%']:>6}  {df.loc[v,'95%']:>6}  {(df.loc[v,'75%']-df.loc[v,'25%']):>6}")
+            _iqr = df.loc[v,'75%']-df.loc[v,'25%']
+            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>6}  {df.loc[v,'50%']:>6}  {df.loc[v,'95%']:>6}  {_iqr:>6}")
         print()
 
     

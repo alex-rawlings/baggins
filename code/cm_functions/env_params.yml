@@ -2,12 +2,12 @@
 data_dir: /scratch/pjohanss/arawling/collisionless_merger
 date_format: '%Y-%m-%d %H:%M:%S'
 figure_dir: figures
-figure_ext: .png
+figure_ext: .pdf
 logging:
   console_level: INFO
   file: logs/cm_funcs.log
   file_level: WARNING
 ...
 ---
-git_hash: heads/master-0-gf3d7c66
+git_hash: heads/master-0-g2f33ff9
 ...

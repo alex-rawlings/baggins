@@ -1,13 +1,14 @@
 from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from matplotlib import colors
 import itertools
 from ..env_config import _cmlogger
 
 
-__all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions"]
+__all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions", "create_odd_number_subplots"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -169,4 +170,41 @@ def shade_bool_regions(ax, xdata, mask, **kwargs):
     regions = [(group[0], group[-1]) for group in (list(group) for key, group in itertools.groupby(range(len(mask)), key=mask.__getitem__) if key)]
     for region in regions:
         ax.axvspan(xdata[region[0]], xdata[region[1]], **kwargs)
+
+
+def create_odd_number_subplots(nrow, ncol, fkwargs={}, gskwargs={}):
+    """
+    Create a set of subplots where the final row has an odd number of panels 
+    (1 less than the previous rows).
+
+    Parameters
+    ----------
+    nrow : int
+        number of rows
+    ncol : int
+        number of columns for all but the last row, which will have 1-ncol 
+        columns
+    fkwargs : dict, optional
+        kwargs dict to be parsed to plt.figure(), by default {}
+    gskwargs : dict, optional
+        kwargs dict to be parsed to GridSpec(), by default {}
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    fig = plt.figure(**fkwargs)
+    ax = []
+    if "top" not in gskwargs:
+        gskwargs["top"] = 0.95
+    gs = GridSpec(nrow, 2*ncol, figure=fig, **gskwargs)
+    # "normal" rows
+    for j in range(nrow-1):
+        for i in range(ncol):
+            ax.append(fig.add_subplot(gs[j, 2*i:2*(i+1)]))
+    # final row, with odd number of panels
+    for i in range(ncol-1):
+        ax.append(fig.add_subplot(gs[-1, 2*i+1:2*(i+1)+1]))
+    return fig, np.array(ax)
 

@@ -4,7 +4,7 @@ import pygad
 from ..general import sersic_b_param
 
 
-__all__ = ["Dehnen", "fit_Dehnen_profile", "halfMassDehnen", "Terzic05", "fit_Terzic05_profile"]
+__all__ = ["Dehnen", "fit_Dehnen_profile", "halfMassDehnen", "Terzic05", "fit_Terzic05_profile", "core_Sersic_profile"]
 
 
 def Dehnen(r, a, g, M):
@@ -77,6 +77,23 @@ def halfMassDehnen(a, g):
     return rhm, re
 
 
+def sersic_b_param_approx(n):
+    """
+    Approximate value of the Sersic b parameter
+
+    Parameters
+    ----------
+    n : _type_
+        _description_
+
+    Returns
+    -------
+    float
+        value of the b parameter
+    """
+    #assert n > 0.5 and n < 10
+    return 2*n - 0.333333333 + 0.009876/n
+
 def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
     """
     Define a density function for a cored system, with overall sersic profile
@@ -116,7 +133,7 @@ def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
             b = sersic_b_param(n)
         else:
             #use an approximation when fitting
-            b = 2*n - 0.33 + 0.009876/n
+            b = sersic_b_param_approx(n)
     if isinstance(Re, pygad.UnitArr):
         Re = Re.view(np.ndarray)
     p = 1.0 - 0.6097/n + 0.05563/n**2
@@ -145,3 +162,36 @@ def fit_Terzic05_profile(r, density, Re, p0=[1e2, 1, 4, 1, 1], **kwargs):
     popt, param_cov = scipy.optimize.curve_fit(f, r, density, bounds=bounds, p0=p0, **kwargs)
     param_best = {"rhob": popt[0], "rb": popt[1], "n":popt[2], "g": popt[3], "a":popt[4]}
     return param_best
+
+
+def core_Sersic_profile(r, Re, rb, Ib, n, gamma, alpha=10.0):
+    """
+    Core Sersic profile from Graham 2003. Note this is a projected (2D) profile!
+    Note that no unit-consistency checks are done.
+
+    Parameters
+    ----------
+    r : array-like
+        radial values to determine profile for
+    Re : float
+        effective radius
+    rb : float
+        core radius
+    Ib : float
+        normalising intensity
+    n : float
+        sersic index
+    gamma : float
+        inner core slope index
+    alpha : float, optional
+        transition index, by default 10
+
+    Returns
+    -------
+    : array-like
+        projected density profile
+    """
+    bn = sersic_b_param_approx(n)
+    Ib_ = Ib * 2**(-gamma/alpha) * np.exp(bn * (2**(1/alpha) * rb/Re))
+    return Ib_ * (1 + (rb/r)**alpha)**(gamma/alpha) * np.exp(-bn * ((r**alpha + rb**alpha)/Re**alpha)**(1/(alpha*n)))
+

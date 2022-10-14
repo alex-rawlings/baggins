@@ -2,12 +2,12 @@ import argparse
 from datetime import datetime
 import os.path
 import numpy as np
+import scipy.optimize
 import h5py
+from matplotlib import rcParams
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
 from arviz.labels import MapLabeller
 import cm_functions as cmf
-
 
 
 parser = argparse.ArgumentParser(description="Run stan model for Core-Sersic model.", allow_abbrev=False)
@@ -16,10 +16,19 @@ parser.add_argument(type=str, help="path to analysis parameter file", dest="apf"
 parser.add_argument("-p", "--prior", help="Plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="Load previous stan file", dest="load_file", default=None)
 parser.add_argument("-r", "--r", type=int, dest="random_sample", default=None, help="randomly sample x observations from each population member")
+parser.add_argument("-c", "--compare", help="Compare to naive statistics", action="store_true", dest="compare")
+parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
+
+if args.publish:
+    cmf.plotting.set_publishing_style()
+    full_figsize = rcParams["figure.figsize"]
+    full_figsize[0] *= 2
+else:
+    full_figsize = None
 
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
@@ -87,7 +96,7 @@ if args.prior:
     graham_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
     # prior predictive check
-    fig, ax = plt.subplots(1,1)
+    fig, ax = plt.subplots(1,1, figsize=full_figsize)
     ax.set_ylim(-1, 15.1)
     ax.set_xlabel("R/kpc")
     ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
@@ -133,7 +142,7 @@ else:
     graham_model.parameter_plot(["g_a", "g_b", "n_a", "n_b"], labeller=labeller)
 
     # posterior predictive check
-    fig, ax = plt.subplots(1,1)
+    fig, ax = plt.subplots(1,1, figsize=full_figsize)
     ax.set_xlabel(r"log($R$/kpc)")
     ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
     graham_model.posterior_plot("log10_R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax)
@@ -141,16 +150,33 @@ else:
     graham_model.print_parameter_percentiles(["r_b_a", "r_b_b", "Re_a", "Re_b", "I_b_a", "I_b_b", "g_a", "g_b", "n_a", "n_b"])
 
     # plot latent parameter distributions
-    fig = plt.figure()
-    ax = []
-    gs = GridSpec(2, 6, figure=fig)
-    for i in range(3):
-        ax.append(fig.add_subplot(gs[0, 2*i:2*(i+1)]))
-    for i in range(2):
-        ax.append(fig.add_subplot(gs[1, 2*i+1:2*(i+1)+1]))
-    ax = np.array(ax)
+    fig, ax = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
     latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior"]
     graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
+    if args.compare:
+        # compare to naive estimates of latent parameter distributions
+        all_optimal_pars = np.full((graham_model.obs_len, 5), np.nan)
+        # note the argument order here is different to the function 
+        # core_Sersic_profile
+        log_core_sersic = lambda x, rb, Re, Ib, gamma, n: np.log10(cmf.literature.core_Sersic_profile(x, Re=Re, rb=rb, Ib=Ib, n=n, gamma=gamma))
+        p_bounds = ([0, 0, 0, 0, 0], [np.inf, np.inf, np.inf, np.inf, np.inf])
+        for i, n in enumerate(set(graham_model.categorical_label)):
+            SL.logger.debug(f"Curve-fitting on sample {n}")
+            mask = graham_model.categorical_label == n
+            x = graham_model.obs["R"][mask]
+            y = graham_model.obs["log10_proj_density_mean"][mask]
+            yerr = graham_model.obs["log10_proj_density_mean"][mask]
+            popt, pcov = scipy.optimize.curve_fit(log_core_sersic, x, y, sigma=yerr, bounds=p_bounds, maxfev=2000*6)
+            SL.logger.debug(f"Optimal parameters are: {popt}")
+            all_optimal_pars[i,:] = popt
+        all_optimal_pars[:,2] /= 1e9
+        naive_mean = np.nanmean(all_optimal_pars, axis=0)
+        naive_std = np.nanmedian(all_optimal_pars, axis=0)
+        for axi, nm, ns in zip(ax, naive_mean, naive_std):
+            y = axi.get_ylim()[1]*1.1
+            axi.errorbar(nm, y, xerr=ns, c="k", capsize=2, fmt=".")
+        cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"{figname_base}_latentqty_compare.png"), fig=fig)
+    
     graham_model.print_parameter_percentiles(latent_qtys)
 
 plt.show()

@@ -1,22 +1,28 @@
 import argparse
-from cmath import log
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+from matplotlib import rcParams
 import yaml
 
 import cm_functions as cmf
 
-
 parser = argparse.ArgumentParser(description="Compare Graham density fits of different mergers", allow_abbrev=False)
 parser.add_argument(help=".yaml file of stan files to compare", type=str, dest="files")
 parser.add_argument(help="family to compare", type=str, dest="fam")
-parser.add_argument("-c", "--colour-var", type=str, choices=["rperi", "res", "generic"], default="rperi", dest="cvar", help="variable to colour samples by")
+parser.add_argument("-c", "--colour-var", type=str, choices=["rperi", "res", "generic"], default="generic", dest="cvar", help="variable to colour samples by")
+parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
+
+if args.publish:
+    cmf.plotting.set_publishing_style()
+    full_figsize = rcParams["figure.figsize"]
+    full_figsize[0] *= 2
+else:
+    full_figsize = None
 
 figname_base = f"hierarchical_models/density/compare"
 stan_model_file = "stan/graham.stan"
@@ -47,42 +53,38 @@ except KeyError:
     raise
 SL.logger.debug(f"Colour values are {colour_var}")
 
-fig = plt.figure()
-ax = []
-gs = GridSpec(2, 6, figure=fig, top=0.95)
-for i in range(3):
-    ax.append(fig.add_subplot(gs[0, 2*i:2*(i+1)]))
-for i in range(2):
-    ax.append(fig.add_subplot(gs[1, 2*i+1:2*(i+1)+1]))
-ax = np.array(ax)
+fig, ax = cmf.plotting.create_odd_number_subplots(2, 3, fkwargs={"figsize":full_figsize})
+fig2, ax2 = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
 ax[3].set_xscale("log")
+for axi in ax2: axi.set_xlabel("Resolution")
 
 # latent parameters to plot distributions of
 latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior"]
 xlabels = [r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"]
+for axi, xl in zip(ax2, xlabels):
+    axi.set_ylabel(xl)
+    axi.set_xscale("log")
 
-# choose a colour map appropriate to the quantity to colour code
-if args.cvar == "generic":
-    cols = cmf.plotting.mplColours()
-    cmapper = lambda x: cols[x]
-else:
-    cmapper, sm = cmf.plotting.create_normed_colours(min(colour_var)*0.9, max(colour_var)*2.1, normalisation="LogNorm")
+cols = cmf.plotting.mplColours()
 
 for i, (m, cv) in enumerate(zip(models, colour_var)):
-    m.plot_generated_quantity_dist(latent_qtys, xlabels=xlabels, ax=ax, plot_kwargs={"c":cmapper(cv)})
-    print(f"Model: {cv}")
-    m.print_parameter_percentiles(latent_qtys)
-
-if args.cvar != "generic":
-    # separate this from the above if-else so that axis spacing is nicer
-    cbar = plt.colorbar(sm, ax=ax[-1])
-    if args.cvar == "rperi":
-        cbar_label = r"$R_\mathrm{peri}/R_{\mathrm{vir},1}$"
-    elif args.cvar == "res":
-        cbar_label = r"$(M_\bullet/m_\star) / (M_\bullet/m_\star)|_\mathrm{fid}$"
-    cbar.set_label(cbar_label)
+    m.plot_generated_quantity_dist(latent_qtys, xlabels=xlabels, ax=ax, plot_kwargs={"c":cols[i], "label":cv})
+    for j, lq in enumerate(latent_qtys):
+        v = m.sample_generated_quantity(lq)
+        med = np.nanmedian(v)
+        ax2[j].errorbar(cv, med, yerr=np.atleast_2d([med-np.nanquantile(v, 0.25), np.nanquantile(v, 0.75)-med]).T, fmt="o", c="tab:blue", mec="k", mew=0.75)
+if args.cvar == "rperi":
+    #legend_title = r"$R_\mathrm{peri}/R_{\mathrm{vir},1}$"
+    legend_title = r"$r_\mathrm{peri}$"
+elif args.cvar == "res":
+    #legend_title = r"$(M_\bullet/m_\star) / (M_\bullet/m_\star)|_\mathrm{fid}$"
+    legend_title = "Resolution"
+else:
+    legend_title = ""
+ax[-1].legend(title=legend_title)
 
 cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"{figname_base}_{args.fam}_gqs_{args.cvar}.png"), fig=fig)
+cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"{figname_base}_{args.fam}_gqs_{args.cvar}_2d.png"), fig=fig2)
 
 if args.cvar == "rperi":
     # compare latent parameter distributions to observations
@@ -96,10 +98,10 @@ if args.cvar == "rperi":
         Re = m.sample_generated_quantity("Re_posterior")
         y = np.nanmedian(n)
         yerr = np.atleast_2d([y-np.nanquantile(n, 0.16), np.nanquantile(n, 0.84)-y]).T
-        ax[0].errorbar(np.log10(3.66e11), np.atleast_2d(y), yerr=yerr, c=cmapper(rp), **errbar_kwargs)
+        ax[0].errorbar(np.log10(3.66e11), np.atleast_2d(y), yerr=yerr, c=cols[i], **errbar_kwargs)
         y = np.nanmedian(Re)
         yerr = np.atleast_2d([y-np.nanquantile(Re, 0.16), np.nanquantile(Re, 0.84)-y]).T
-        ax[1].errorbar(np.log10(3.66e11), np.atleast_2d(y), yerr=yerr, c=cmapper(rp), **errbar_kwargs)
+        ax[1].errorbar(np.log10(3.66e11), np.atleast_2d(y), yerr=yerr, c=cols[i], **errbar_kwargs)
 
 
 plt.show()
