@@ -4,7 +4,6 @@
 Figures to do
 \begin{itemize}
 \item Example of forward-modelled semimajor axis and eccentricity
-\item Example of forward-modelled velocity dispersion profile
 \end{itemize}
 and maybe another one of BH merger remnant properties.
 }
@@ -79,9 +78,15 @@ As likelihood function, we use the lognormal distribution $\mathrm{Lognorm}(\Sig
 \drafting{Write explicitly the posterior distribution we are sampling from.}
 
 \begin{figure*}
-    \includegraphics[width=0.7\textwidth]{{graham_density-H-H-3.0-0.001_posterior_pred_log10_proj_density_mean}.png}
+    \includegraphics{{graham_density-H-H-3.0-0.001_posterior_pred_log10_proj_density_mean}.pdf}
     \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit for highest (fiducial) mass resolution. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid, and seen to lie well within the 50\% BCI. }}
     \label{fig:postpred}
+\end{figure*}
+
+\begin{figure*}
+    \includegraphics{{graham_density-H-H-3.0-0.001_latentqty_compare}.pdf}
+    \caption{\drafting{Latent params, and compare to naive estimates using Gaussian stats.}}
+    \label{fig:cs_compare_naive}
 \end{figure*}
 
 \subsection{Latent Parameter Posterior Distributions}
@@ -90,26 +95,50 @@ We first inspect how the posterior distribution appears visually by computing po
 We find that the data is well described by the 50\% BCI \drafting{introduce what BCI is} of the posterior distribution, as desired. 
 
 As part of the hierarchical modelling sampling process, we obtain in addition to the posterior distribution on $\Sigma(R)$ the latent parameter distributions from which $\Sigma(R)$ is determined. 
-For the AC progenitor class, we find the core radius to be $\sim 1.4\,\mathrm{kpc}$, effective radius $\sim 7.2\,\mathrm{kpc}$ (recall progenitor A had $R_\mathrm{e} \sim 4\,\mathrm{kpc}$), normalising density of $\sim 3.1\times10^9\,\Msun\,\mathrm{kpc}^{-2}$, core slope index of $\sim 0.05$, and S\'ersic index of $\sim 1.8$. 
+We show an example of these latent parameter distributions in \autoref{fig:cs_compare_naive}, where the PDF of the latent parameter distributions is given in blue. 
+For comparison, we also show the estimated uncertainty on each latent parameter determined using na\"ive Gaussian statistics.
+To do this, we fit each density profile in logarithm space using a Least-Squares method, and then determine the mean and standard deviation of the sample. 
+The mean value and spread for each latent parameter using this na\"ive method is shown above the corresponding posterior distribution estimate in \autoref{fig:cs_compare_naive}.
+The Gaussian statistics fail to capture the correct estimates for the latent parameter estimates: this is seen most clearly for the latent parameter $n$, whose Gaussian error estimate implies that by $2\sigma$, there is a non-zero probability of $n$ assuming a value less than 0, which is unphysical.
 
-\drafting{
-    \begin{itemize}
-        \item corner plot description
-        \item comparison between rperi values, maybe new section?
-    \end{itemize}
-}
+We show the latent parameter distributions for each mass resolution family in \autoref{fig:cs_mass_compare}, and compare the median and IQRs \drafting{ensure this acronym explained somewhere} in \autoref{fig:cs_mass_compare_2}. 
+We find first that the spread in the latent parameters (as quantified through their IQR) does not dramatically differ between mass resolutions.
+Secondly, we observe that not all latent parameters in the core-S\"ersic model display asymptotic convergence, and that in some cases, such as for the effective radius $R_\mathrm{e}$, all tested mass resolutions produce estimates that are consistent with each other.
+For other latent parameters, such as the core radius $r_\mathrm{b}$, there is a clear convergence of the median value with increasing mass resolution. \drafting{More particles --> core better resolved. Discuss here or in discussion?}
+
+Whilst we are unable to attribute the error in \autoref{fig:cs_mass_compare} to a particular phenomenon, we may at least rule out that the spread is due to post-processing analysis introduced from differing observation projections of the merger remnant. 
+We re-determine the mean and standard deviation of the logarithm of the projected density profile using a subset of the total 30 projections we have available to us for the H-1.00 merger family.
+Repeating this data-reduction process four times, we then rerun the HMC algorithm for each subsample.
+We compare the latent parameter distributions for each subsample to the latent parameter distributions for the H-1.00 family determined using the full projection sample, and find:
+\begin{enumerate}
+    \item The error in the latent parameters is the consistent when using a subsample of projections, or the full sample, implying
+    \item The error in the latent parameters is independent of the projection direction.
+\end{enumerate}
+Consequently, we may attribute the uncertainty in the latent parameter distributions to one of:
+\begin{itemize}
+    \item Intrinsic scatter inherent to the physical system, or 
+    \item Numerical noise arising from a source independent of mass resolution, or 
+    \item A combination of the two.
+\end{itemize}
+
+\begin{figure*}
+    \includegraphics{compare_HH_gqs_res.pdf}
+    \caption{\drafting{Comparison of core sersic fit for different mass resolutions. Note the scatter does not seem to decrease with increasing mass resolution, however the distribution modes seem to converge towards something.}}
+    \label{fig:cs_mass_compare}
+\end{figure*}
+
+\begin{figure*}
+    \includegraphics{compare_HH_gqs_res_2d.pdf}
+    \caption{\drafting{Same as \autoref{fig:cs_mass_compare}, but plotted as a function of mass resolution. Points correspond to the median estimate for the latent parameters, and error bars to the IQR.}}
+    \label{fig:cs_mass_compare_2}
+\end{figure*}
+
 
 \begin{figure}
     \includegraphics{compare_binaries.pdf}
     \caption{\drafting{Show an example of the scatter we get from perturbations. These are plotted with t=0 corresponding to when the child run started. Best way to show this, or should a time-shift be done? This way at least we see clearly that different sims become bound at different times.}}
     \label{fig:ketju_scatter}
 \end{figure}
-
-\begin{figure*}
-    \includegraphics{compare_HH_gqs_res.png}
-    \caption{\drafting{Comparison of core sersic fit for different mass resolutions. Note the scatter does not seem to decrease with increasing mass resolution, however the distribution modes seem to converge towards something. y-axes should read PDF}}
-    \label{fig:cs_mass_compare}
-\end{figure*}
 
 \subsection{Binary Properties}
 After considering the robustness of the projected density profile to SMBH Brownian motion, we turn our attention to a similar analysis of the orbital parameters of the SMBH binary, namely the semimajor axis $a$ and the eccentricity $e$. 
