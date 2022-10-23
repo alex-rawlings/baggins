@@ -17,7 +17,7 @@ and maybe another one of BH merger remnant properties.
     \end{enumerate}
 }
 
-\drafting{ENSURE CONSISTENCY WITH SIGMA AND I. AS WE ARE USING MASS DENSITY, SHOULD BE SIGMA, NOT I, OR ASSUME A M/L RATIO OF 1. NEED TO GO THROUGH AND ENSURE THIS}
+\drafting{ENSURE CONSISTENCY WITH BCI AND HDI. SAME THING, JUST DIFFERENT NAME}
 
 \subsection{Projected Mass Density Profiles}
 We use hierarchical modelling to recover the population parameter distributions of the core-S\'ersic model \autoref{eq:coresersic} for each simulation family. 
@@ -85,7 +85,7 @@ As likelihood function, we use the lognormal distribution $\mathrm{Lognorm}(\Sig
 
 \begin{figure*}
     \includegraphics{{graham_density-H-H-3.0-0.001_latentqty_compare}.pdf}
-    \caption{\drafting{Latent params, and compare to naive estimates using Gaussian stats.}}
+    \caption{\drafting{Latent params, and compare to naive estimates using Gaussian stats. Note error bars on black points are smaller than the point itself if not visible}}
     \label{fig:cs_compare_naive}
 \end{figure*}
 
@@ -97,13 +97,15 @@ We find that the data is well described by the 50\% BCI \drafting{introduce what
 As part of the hierarchical modelling sampling process, we obtain in addition to the posterior distribution on $\Sigma(R)$ the latent parameter distributions from which $\Sigma(R)$ is determined. 
 We show an example of these latent parameter distributions in \autoref{fig:cs_compare_naive}, where the PDF of the latent parameter distributions is given in blue. 
 For comparison, we also show the estimated uncertainty on each latent parameter determined using na\"ive Gaussian statistics.
-To do this, we fit each density profile in logarithm space using a Least-Squares method, and then determine the mean and standard deviation of the sample. 
-The mean value and spread for each latent parameter using this na\"ive method is shown above the corresponding posterior distribution estimate in \autoref{fig:cs_compare_naive}.
-The Gaussian statistics fail to capture the correct estimates for the latent parameter estimates: this is seen most clearly for the latent parameter $n$, whose Gaussian error estimate implies that by $2\sigma$, there is a non-zero probability of $n$ assuming a value less than 0, which is unphysical.
+To do this, we fit each density profile in logarithm space using a Least-Squares method, and then determine the median and IQR of the sample. 
+The median value and spread for each latent parameter using this na\"ive method is shown above the corresponding posterior distribution estimate in \autoref{fig:cs_compare_naive}.
+The Gaussian statistics fail to capture the correct estimates for the latent parameter estimates, with some parameters (e.g. $n$) converging to the boundary value we limit the Least Squares method to (for $n$, the bounds are $[0,20]$).
+We try successively relaxing and tightening the boundary values of each parameter to obtain a `physically-realistic' value for each optimal latent parameter value, with no success. 
+Henceforth, we abandon any attempt to use a Least Squares minimisation to recover the optimal latent parameter values, returning instead to our Bayesian approach.
 
 We show the latent parameter distributions for each mass resolution family in \autoref{fig:cs_mass_compare}, and compare the median and IQRs \drafting{ensure this acronym explained somewhere} in \autoref{fig:cs_mass_compare_2}. 
 We find first that the spread in the latent parameters (as quantified through their IQR) does not dramatically differ between mass resolutions.
-Secondly, we observe that not all latent parameters in the core-S\"ersic model display asymptotic convergence, and that in some cases, such as for the effective radius $R_\mathrm{e}$, all tested mass resolutions produce estimates that are consistent with each other.
+Secondly, we observe that not all latent parameters in the core-S\'ersic model display asymptotic convergence, and that in some cases, such as for the effective radius $R_\mathrm{e}$, all tested mass resolutions produce estimates that are consistent with each other.
 For other latent parameters, such as the core radius $r_\mathrm{b}$, there is a clear convergence of the median value with increasing mass resolution. \drafting{More particles --> core better resolved. Discuss here or in discussion?}
 
 Whilst we are unable to attribute the error in \autoref{fig:cs_mass_compare} to a particular phenomenon, we may at least rule out that the spread is due to post-processing analysis introduced from differing observation projections of the merger remnant. 
@@ -151,3 +153,11 @@ Out of the 50 simulations that we ran, we observe \drafting{XXX} systems that re
 
 Also of note is the rapid oscillation in eccentricity between $\sim100$--$300\,\mathrm{Myr}$. 
 This is contrasted by a relatively smooth evolution in semimajor axis, indicating that the SMBH binary orbit is highly sensitive to the surrounding stellar mass distribution.
+
+\drafting{
+    QUESTIONS FOR SIMON:\\
+    \begin{itemize}
+        \item Hierarchical models rely on the ability to model a set of observations as belonging to a \textit{population}. After the chaos talk, can a collection of BH-perturbed systems be described still as belonging to a population? I think yes (stellar mass distribution unchanged), but would be keen to hear thoughts.
+        \item In this paper we're perturbing the phase space coordinates of the BHs as opposed to a single field particle (we did this as another sensitivity test). Let's consider the case of perturbing a field particle. I find it still somehow curious that such a small displacement (a fraction of a softening length) still propagates the perturbation to such large scales, considering we are using a tree code for the particles not-near the BHs. I would have (na\"ively) thought that round off error from the tree algorithm would dominate the perturbation of a single particle (our code is deterministic given a specific hardware configuration, i.e. running the same ICs on the same CPU count will give identical results). Thoughts on this?
+    \end{itemize}
+}
