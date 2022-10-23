@@ -15,8 +15,9 @@
 - [x] Converter for parameter files to .yml or .json for portability  
 - [x] add metadata to figures produced  
 - [x] define a top-level data directory so not so many /scratch/pjohanss/ stuff in parameter files  
-- [x] check timestamp of copied keju_bhs file, copy only if necessary in get_ketjubhs_in_dir()
-- [x] implement logging statements instead of printing
+- [x] check timestamp of copied keju_bhs file, copy only if necessary in get_ketjubhs_in_dir()  
+- [x] implement logging statements instead of printing  
 - [x] parallelise certain serial code using DASK 
-    https://cosmiccoding.com.au/tutorials/multiprocessing
-- [] define behaviour in get_string_unique_part()
+    https://cosmiccoding.com.au/tutorials/multiprocessing  
+- [] define behaviour in get_string_unique_part()  
+- [] an analysis class A has a corresponding 'data class' AData, which may lead to the diamond problem when using multi-inheritance. Maybe combine the two classes, and methods in A which rely on variables not store in AData (i.e., not saved to HDF5 file) be restructured (typically to do with ketjugw orbital parameters -> maybe save the file name for future loading instead? What if the file has since been overwritten or updated?)

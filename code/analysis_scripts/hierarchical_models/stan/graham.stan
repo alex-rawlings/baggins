@@ -85,7 +85,7 @@ model{
     r_b_b ~ gamma(10.0, 8.0);
 
     Re_a ~ gamma(30.0, 2.0);
-    Re_b ~ gamma(40.0, 2.0);
+    Re_b ~ gamma(40.0, 20.0);
 
     I_b_a ~ gamma(20.0, 4.0);
     I_b_b ~ gamma(20.0, 2.0);
@@ -94,7 +94,7 @@ model{
     g_b ~ gamma(4.0, 2.0);
 
     n_a ~ gamma(16.0, 2.0);
-    n_b ~ gamma(4.0, 2.0);
+    n_b ~ gamma(4.0, 4.0);
 
     /****** connection to latent parameters for each child ******/
     r_b ~ gamma(r_b_a, r_b_b);

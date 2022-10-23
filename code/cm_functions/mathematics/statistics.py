@@ -3,12 +3,12 @@ import scipy.stats
 from ..env_config import _cmlogger
 
 
-__all__ = ["iqr", "smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
+__all__ = ["iqr", "quantiles_relative_to_median", "smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
 
 _logger = _cmlogger.copy(__file__)
 
 
-def iqr(x):
+def iqr(x, axis=-1):
     """
     Return the interquartile range of an array.
 
@@ -16,13 +16,50 @@ def iqr(x):
     ----------
     x : np.ndarray
         observations
+    axis : int, optional
+        axis to apply IQR over
 
     Returns
     -------
     : float
         interquartile range
     """
-    return np.nanquantile(x, 0.75, axis=-1) - np.nanquantile(x, 0.25, axis=-1)
+    return np.nanquantile(x, 0.75, axis=axis) - np.nanquantile(x, 0.25, axis=axis)
+
+
+def quantiles_relative_to_median(x, lower=0.25, upper=0.75, axis=-1):
+    """
+    Determine difference of an upper and lower quantile from the median, useful
+    for plotting quantile error bars with pyplot.
+
+    Parameters
+    ----------
+    x : array-like
+        array to determine quantiles of
+    lower : float, optional
+        lower quantile, by default 0.25
+    upper : float, optional
+        upper quantile, by default 0.75
+    axis : int, optional
+        axis to apply the operation over, by default -1
+
+    Returns
+    -------
+    m : array-like
+        array of median values
+    spread : array-like
+        array of shape (n,2) of lower, upper quantile pairs
+    """
+    m = np.nanmedian(x, axis=axis)
+    try:
+        assert lower < 0.5 and upper > 0.5
+    except AssertionError:
+        _logger.logger.exception(f"Lower quantile {lower} must be less than 0.5 Upper quantile {upper} must be greater than 0.5", exc_info=True)
+    l = m - np.nanquantile(x, lower, axis=axis)
+    u = np.nanquantile(x, upper, axis=axis) - m
+    # convert to shape convenient for plotting with pyplot.errorbar
+    spread = np.vstack((l,u)).T
+    return m, spread
 
 
 def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, rng=None):

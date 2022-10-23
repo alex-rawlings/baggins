@@ -56,7 +56,7 @@ generated quantities {
     r_b_b = gamma_rng(10.0, 8.0);
 
     Re_a = gamma_rng(30.0, 2.0);
-    Re_b = gamma_rng(40.0, 2.0);
+    Re_b = gamma_rng(40.0, 20.0);
 
     I_b_a = gamma_rng(20.0, 4.0);
     I_b_b = gamma_rng(20.0, 2.0);
@@ -65,7 +65,7 @@ generated quantities {
     g_b = gamma_rng(4.0, 2.0);
 
     n_a = gamma_rng(16.0, 2.0);
-    n_b = gamma_rng(4.0, 2.0);
+    n_b = gamma_rng(4.0, 4.0);
 
     
     /****** connection to latent parameters ******/

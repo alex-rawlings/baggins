@@ -200,6 +200,7 @@ TSWLatexianTemp*
 # stan stuff
 *.hpp
 code/misc/stats/stan/old/*
+!code/analysis_scripts/hierarchical_models/stan_reports/*.out
 
 # code logging
 code/cm_functions/logs

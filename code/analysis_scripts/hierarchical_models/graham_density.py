@@ -102,6 +102,14 @@ if args.prior:
     ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
     ax.set_xscale("log")
     graham_model.prior_plot("R", "log10_proj_density_mean", xmodel="R", ymodel="projected_density", yobs_err="log10_proj_density_std", ax=ax)
+
+    # plot latent parameter prior distributions
+    fig, ax = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
+    ax[0].set_xscale("log")
+    ax[3].set_xscale("log")
+    ax[4].set_xscale("log")
+    latent_qtys = ["r_b", "Re", "I_b", "g", "n"]
+    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
 else:
     # create the push-forward distribution for the posterior model
     stan_data.update(dict(
@@ -151,34 +159,35 @@ else:
 
     # plot latent parameter distributions
     fig, ax = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
+    ax[3].set_xscale("log")
     latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior"]
     graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
     if args.compare:
         # compare to naive estimates of latent parameter distributions
-        all_optimal_pars = np.full((graham_model.obs_len, 5), np.nan)
+        all_optimal_pars = np.full((len(np.unique(graham_model.categorical_label)), 5), np.nan)
         # note the argument order here is different to the function 
         # core_Sersic_profile
         log_core_sersic = lambda x, rb, Re, Ib, gamma, n: np.log10(cmf.literature.core_Sersic_profile(x, Re=Re, rb=rb, Ib=Ib, n=n, gamma=gamma))
-        p_bounds = ([0, 0, 0, 0, 0], [np.inf, np.inf, np.inf, np.inf, np.inf])
+        p_bounds = ([0, 0, 0, 0, 0], [30, 30, np.inf, 20, 20])
         for i, n in enumerate(set(graham_model.categorical_label)):
             SL.logger.debug(f"Curve-fitting on sample {n}")
             mask = graham_model.categorical_label == n
             x = graham_model.obs["R"][mask]
             y = graham_model.obs["log10_proj_density_mean"][mask]
-            yerr = graham_model.obs["log10_proj_density_mean"][mask]
+            yerr = graham_model.obs["log10_proj_density_std"][mask]
             popt, pcov = scipy.optimize.curve_fit(log_core_sersic, x, y, sigma=yerr, bounds=p_bounds, maxfev=2000*6)
             SL.logger.debug(f"Optimal parameters are: {popt}")
             all_optimal_pars[i,:] = popt
         all_optimal_pars[:,2] /= 1e9
-        naive_mean = np.nanmean(all_optimal_pars, axis=0)
-        naive_std = np.nanmedian(all_optimal_pars, axis=0)
-        for axi, nm, ns in zip(ax, naive_mean, naive_std):
+        SL.logger.debug(f"Least Squares optimal values:\n{all_optimal_pars}")
+        naive_median, naive_spread = cmf.mathematics.quantiles_relative_to_median(all_optimal_pars, axis=0)
+        for axi, nm, ns in zip(ax, naive_median, naive_spread):
             y = axi.get_ylim()[1]*1.1
-            axi.errorbar(nm, y, xerr=ns, c="k", capsize=2, fmt=".")
+            axi.errorbar(nm, y, xerr=ns[::,np.newaxis], c="k", capsize=2, fmt=".")
         cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"{figname_base}_latentqty_compare.png"), fig=fig)
     
     graham_model.print_parameter_percentiles(latent_qtys)
 
-plt.show()
+#plt.show()
 
 

@@ -43,19 +43,19 @@ family-DE:
 family-HH:
   H-H-3.0-0.001: &HH-fid
     cube: /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H-H-3.0-0.001/
-    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H-H-3.0-0.001/graham-20221013143806_*.csv
+    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H-H-3.0-0.001/graham-20221020221225_*.csv
   H0500-H0500-3.0-0.001:
     cube: /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0500-H0500-3.0-0.001/
-    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0500-H0500-3.0-0.001/graham-20221013165852_*.csv
+    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0500-H0500-3.0-0.001/graham-20221020224712_*.csv
   H0250-H0250-3.0-0.001:
     cube: /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0250-H0250-3.0-0.001/
-    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0250-H0250-3.0-0.001/graham-20221013174026_*.csv
+    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0250-H0250-3.0-0.001/graham-20221020232602_*.csv
   H0100-H0100-3.0-0.001:
     cube: /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0100-H0100-3.0-0.001/
-    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0100-H0100-3.0-0.001/graham-20221014114144_*.csv
+    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0100-H0100-3.0-0.001/graham-20221020234143_*.csv
   H0050-H0050-3.0-0.001:
     cube: /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0050-H0050-3.0-0.001/
-    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0050-H0050-3.0-0.001/graham-20221014111004_*.csv
+    stan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/H0050-H0050-3.0-0.001/graham-20221021000716_*.csv
 family-HH-subsample:
   H-H-3.0-0.001-20221012-170000: *HH-fid
   H-H-3.0-0.001-20221012-174633:

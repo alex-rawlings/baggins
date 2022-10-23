@@ -377,7 +377,7 @@ class StanModel:
 
     def sample_generated_quantity(self, gq, force_resample=False):
         """
-        Sample the 'generated quantities' block of a Stan model
+        Sample the 'generated quantities' block of a Stan model. If the model has had both the prior and posterior distributions sampled, the posterior sample will be used.
 
         Parameters
         ----------
@@ -392,12 +392,18 @@ class StanModel:
         np.ndarray
             set of draws for the variable gq
         """
+        if self._fit is None:
+            _fit = self._prior_fit
+            _logger.logger.debug("Generated quantities will be taken from the prior model")
+        else:
+            _fit = self._fit
+            _logger.logger.debug("Generated quantities will be taken from the posterior model")
         if self.generated_quantities is None or force_resample:
             if self._stan_data is None:
                 _logger.logger.warning(f"Required stan data does not exist, so generated quantities cannot be resampled! We will set the generated quantities to the values determined during sampling: this will be a static sample!")
-                self._generated_quantities = self._fit
+                self._generated_quantities = _fit
             else:
-                self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit)
+                self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=_fit)
         return self.generated_quantities.stan_variable(gq)
     
 
@@ -591,7 +597,8 @@ class StanModel:
             ax[i].set_ylabel("PDF")
         ax.reshape(ax_shape)
         if save:
-            savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
+            suffix = "prior" if self._fit is None else "posterior"
+            savefig(self._make_fig_name(self.figname_base, f"gqs_{suffix}"), fig=fig)
         return ax
     
 
@@ -657,7 +664,7 @@ class StanModel:
         fit_time = datetime.strptime(C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z")
         model_build_time = os.path.getmtime(C._model.exe_file)
         if model_build_time > fit_time.timestamp():
-            _logger.logger.warning(f"Stan executable has been recompiled since sampling was performed! Proceed with caution!")
+            _logger.logger.error(f"Stan executable has been recompiled since sampling was performed! Proceed with caution!\n  --> Compile time {model_build_time}\n  --> Sample time {fit_time.timestamp()}")
         C._loaded_from_file = True
         return C
 
