@@ -3,7 +3,7 @@ import scipy.stats
 from ..env_config import _cmlogger
 
 
-__all__ = ["iqr", "quantiles_relative_to_median", "smooth_bootstrap", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
+__all__ = ["iqr", "quantiles_relative_to_median", "smooth_bootstrap", "smooth_bootstrap_pval", "permutation_sample_test", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -58,8 +58,12 @@ def quantiles_relative_to_median(x, lower=0.25, upper=0.75, axis=-1):
     l = m - np.nanquantile(x, lower, axis=axis)
     u = np.nanquantile(x, upper, axis=axis) - m
     # convert to shape convenient for plotting with pyplot.errorbar
-    spread = np.vstack((l,u)).T
+    spread = np.vstack((l,u))
     return m, spread
+
+
+def _smooth_bootstrap_sigma(data):
+    return 2*np.nanstd(data, axis=0) / np.sqrt(data.shape[0])
 
 
 def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, rng=None):
@@ -78,7 +82,8 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
         where m is the number of rows and SE is the standard error of the 
         sample)
     statistic : function, optional
-        np function statistic to be estimated, by default np.std
+        np function statistic to be estimated (must accept an axis argument), 
+        by default np.std
     rng : np.random._generator.Generator, optional
         random number generator, by default None (creates a new instance)
 
@@ -92,7 +97,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     """
     number_resamples = int(number_resamples)
     if sigma is None:
-        sigma = 2*np.nanstd(data, axis=0) / np.sqrt(data.shape[0])
+        sigma = _smooth_bootstrap_sigma(data)
     bootstrap_stat = np.full((number_resamples, data.shape[-1]), np.nan)
     if rng is None:
         rng = np.random.default_rng()
@@ -104,6 +109,93 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
         bootstrap_stat[i, :] = statistic(bootstrap_data, axis=0)
     _logger.logger.info("Bootstrap complete                                ")
     return bootstrap_stat, np.nanmean(bootstrap_stat, axis=0)
+
+
+def smooth_bootstrap_pval(data, alpha=0.01, statistic=np.std, **kwargs):
+    """
+    Determine the p-value of some statistic of an observed sample compared to 
+    a smooth bootstrap sample.
+
+    Parameters
+    ----------
+    data : array-like
+        sample (can be multiple samples, sample sets must belong to the same 
+        column)
+    alpha : float, optional
+        significance level, by default 0.01
+    statistic : function, optional
+        statistic to test, must accept the 'axis' argument, by default np.std
+
+    Returns
+    -------
+    pval : array-like
+        p-value of the sample statistic
+    decision : list
+        which hypothesis to accept given the significance level
+    """
+    bootstrap_stat, bootstrap_stat_mean = smooth_bootstrap(data, statistic=statistic, **kwargs)
+    # define empirical cdf
+    data_stat = statistic(data, axis=0)
+    sqrt_n = np.sqrt(data.shape[0])
+    ecdf = lambda t: 1/bootstrap_stat.shape[0] * np.sum(sqrt_n * (bootstrap_stat-data_stat) < t, axis=0)
+    pval = np.full(data.shape[1], np.nan)
+    decision = ["" for _ in range(len(pval))]
+    ecdf_val = ecdf(alpha)
+    # determine equal tail p-value
+    for i in range(len(pval)):
+        pval[i] = 2 * min(ecdf_val[i], 1-ecdf_val[i])
+        decision[i] = "Ha" if pval[i] < alpha else "H0"
+    return pval, decision
+
+
+def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
+    """
+    Perform a two-sample permutation test to determine if the variance between 
+    two samples, and thus if the distributions from which the samples are 
+    drawn, are different. The algorithm is 15.1 from "An Introduction to the 
+    Bootstrap" by Efron & Tibshirani
+
+    Parameters
+    ----------
+    data1 : array-like
+        sample set 1
+    data2 : array-like
+        sample set 2
+    number_resamples : int, float, optional
+        number of bootstrap samples, by default 1e4
+    rng : np.random._generator.Generator, optional
+        random number generator, by default None (creates a new instance)
+
+    Returns
+    -------
+    : float
+        achieved significance level of the test
+    """
+    try:
+        assert len(data1.shape) == len(data2.shape) == 1
+    except AssertionError:
+        _logger.logger.exception(f"Data must be 1 dimensional!", exc_info=True)
+    number_resamples = int(number_resamples)
+    if rng is None:
+        rng = np.random.default_rng()
+    
+    n = len(data1)
+    m = len(data2)
+    data = np.concatenate((data1, data2))
+    # define the test statistic
+    tstatfun = lambda g: np.log10(np.nanvar(data[g])/np.nanvar(data[~g]))
+    group = np.full(n+m, 1, dtype=bool)
+    group[n:] = 0
+    tstat = tstatfun(group)
+    data.sort()
+    bootstrap_stat = np.full(number_resamples, np.nan)
+    
+    for i in range(number_resamples):
+        print(f"Shuffling {i/(number_resamples-1)*100:.1f}% complete           ", end="\r")
+        shuffled_groups = rng.choice(group, group.shape[0], replace=False)
+        bootstrap_stat[i] = tstatfun(shuffled_groups)
+    _logger.logger.info("Permutations complete                                ")
+    return 2 * min(np.nanmean(bootstrap_stat < tstat), np.nanmean(bootstrap_stat > tstat))
 
 
 def stat_interval(x, y, type="conf", conf_lev=0.68):

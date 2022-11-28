@@ -5,7 +5,7 @@ from ..general import get_idx_in_array
 from ..mathematics import radial_separation
 from ..env_config import _cmlogger
 
-__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -343,6 +343,59 @@ def get_hard_timespan(t, a, t_s, ah_s):
     bool_arr = a < f(t)
     return np.sum(bool_arr) * (t[1]-t[0]), get_idx_in_array(1, bool_arr)
 
+
+def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
+    """
+    Find the indices of a time series array corresponding to a given number of 
+    periods about a desired time. Note the periods are taken to go from 
+    pericentre to pericentre. Only odd-numbered num_periods values are 
+    implemented for symmetry reasons, thus an even value of num_periods is the 
+    same as calling the function with num_periods+1.
+
+    Parameters
+    ----------
+    tval : float
+        time value around which the number of periods will be determined
+    tarr : array-like
+        time array to search for tval within, must be of same units
+    sep : array-like
+        radial separation of BH binary as a time series
+    num_periods : int, optional
+        number of periods about tval to search for, by default 1
+
+    Returns
+    -------
+    idx : int
+        index of tval in tarr
+    end_idxs : list
+        start and end indices of the orbital periods centred about the period 
+        within which tval is
+    """
+    if num_periods%2 == 0:
+        _logger.logger.warning(f"Only odd values of <num_periods> implemented, we will search for {num_periods+1} periods.")
+    end_idxs = [0,0]
+    # find the index of the time we want in the time series
+    idx = get_idx_in_array(tval, tarr)
+    # convert time series so pericentre passages have a value of 2 (apocentre 
+    # have a value of -2)
+    y = np.diff(np.sign(np.diff(sep)))
+    found_peaks = False
+    multiplier = 1
+    max_idx = len(sep)-1
+    # gradually increase search bracket for efficiency
+    while not found_peaks:
+        idxs = np.r_[max(0, idx-10*multiplier):min(max_idx, idx+10*multiplier)]
+        peaks = np.where(y[idxs]==2)[0]
+        if len(peaks) > 2*num_periods: 
+            # have the number of orbits we want, return indices
+            found_peaks = True
+            peaks_rel = idxs[0]+peaks - idx
+            end_idxs[0] = peaks_rel[np.where(peaks_rel<0, peaks_rel, -np.inf).argmax()-num_periods//2] + idx
+            end_idxs[1] = peaks_rel[np.where(peaks_rel>=0, peaks_rel, np.inf).argmin()+num_periods//2] + idx
+        else:
+            # expand search bracket
+            multiplier *= 2
+    return idx, end_idxs
 
 
 #### CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT ####

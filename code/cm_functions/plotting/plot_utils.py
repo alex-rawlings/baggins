@@ -43,14 +43,17 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
         # save to the correct format
         if force_ext:
             fig.savefig(fname, metadata=meta_data, **save_kwargs)
+            figname = fname
         else:
             fname_name, fname_ext = os.path.splitext(fname)
             # protect against cases where no extension is specified, and the 
             # file name has a "." in it
             _fname = fname_name if fname_ext in (".png", ".pdf") else fname
-            fig.savefig(f"{_fname}.{fig_ext}", metadata=meta_data, **save_kwargs)
+            figname = f"{_fname}.{fig_ext}"
+            fig.savefig(figname, metadata=meta_data, **save_kwargs)
     finally:
         del f
+    _logger.logger.info(f"Saved image: {figname}")
 
 
 def get_meta(fname):

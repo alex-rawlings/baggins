@@ -270,7 +270,7 @@ class GalaxyIC(_GalaxyICBase):
             dists.append(bh_particle)
         
         # generate the galaxy
-        generated_galaxy = mg.SphericalSystem(*dists, rmax=self.maximum_radius, anisotropy_radius=self.stars.anisotropy_radius)
+        generated_galaxy = mg.SphericalSystem(*dists, rmax=self.maximum_radius, anisotropy_radius=self.stars.anisotropy_radius, rng=self._rng)
 
         # clean centre
         if self.bh is not None:

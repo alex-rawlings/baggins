@@ -50,7 +50,7 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
         ax.axes.yaxis.set_visible(False)
 
 
-def create_normed_colours(vmin, vmax, cmap="viridis", normalisation="Normalize"):
+def create_normed_colours(vmin, vmax, cmap="cividis", normalisation="Normalize"):
     """
     Convenience wrapper for creating colour normalisation and colourbar 
     requirements for pyplot.plot()

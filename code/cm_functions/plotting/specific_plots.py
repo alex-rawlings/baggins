@@ -1,16 +1,19 @@
 import warnings
 import numpy as np
+from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-import scipy.stats
 import seaborn as sns
 import copy
 import pygad
 import ketjugw
 from ..general import convert_gadget_time
+from ..env_config import _cmlogger
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "plot_parameter_contours", "binary_param_plot", "twin_axes_plot", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere"]
+
+_logger = _cmlogger.copy(__file__)
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
@@ -266,30 +269,49 @@ def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
     return ax
 
 
-class twin_axes_plot:
-    def __init__(self, ax, convert_func, share="y"):
-        """
-        Set up a shared axis for a plot. An example would be time and redshift
-        on the top and bottom x-axes.
-        TODO still under development
-        """
-        self.ax = ax
-        self.share = share
-        if share == "y":
-            self.twin_ax = ax.twiny()
-        else:
-            self.twin_ax = ax.twinx()
-        self.convert_func = convert_func
-        self.ax.callbacks.connect("ylim_changed", self.converter)
-    
-    def converter(self, ax):
-        if self.share == "x":
-            y1, y2 = ax.get_ylim()
-            self.twin_ax.set_ylim(self.convert_func(y1), self.convert_func(y2))
-        else:
-            x1, x2 = ax.get_xlim()
-            self.twin_ax.set_xlim(self.convert_func(x1), self.convert_func(x2))
-        self.twin_ax.figure.canvas.draw()
+def twin_axes_from_samples(ax, x1, x2, log=False):
+    """
+    Generate a twin axis for two discretely sampled quantities. Interpolation 
+    is done between the samples for the plot axes.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes._subplots.AxesSubplot
+        parent axis to put the twin axis on
+    y1 : array-like
+        independent dataset 1, the 'original' variable
+    y2 : array-like
+        independent dataset 2, the 'transformed' variable
+    log : bool, optional
+        log scale for secondary axis?, by default False
+
+    Returns
+    -------
+    ax2 : matplotlib.axes._subplots.AxesSubplot
+        twin axis
+    """
+    try:
+        assert np.all(np.diff(x1) > 0)
+        assert np.all(np.sign(np.diff(x2)) == np.sign(x2[1]-x2[0]))
+    except AssertionError:
+        _logger.logger.exception(f"Original x-datasets must be strictly increasing!", exc_info=True)
+        raise
+    # set up forward and inverse functions with masked array handling
+    def _forward(x):
+        if isinstance(x, np.ma.MaskedArray):
+            x = x.compressed()
+        f = interp1d(x1, x2, bounds_error=False, fill_value="extrapolate")
+        return f(x)
+    def _inverse(x):
+        if isinstance(x, np.ma.MaskedArray):
+            x = x.compressed()
+        f = interp1d(x2, x1, bounds_error=False, fill_value="extrapolate")
+        return f(x)
+    # set up secondary axis
+    ax2 = ax.secondary_xaxis("top", functions=(_forward, _inverse))
+    if log:
+        ax2.set_xscale("log")
+    return ax2
 
 
 def voronoi_plot(vdat):
@@ -383,70 +405,3 @@ def draw_unit_sphere(ax, points=100):
     #plot origin
     ax.scatter(0,0,0, color='k')
 
-
-###############################
-######## NEEDS UPDATING #######
-###############################
-def plot_parameter_contours(ax, fun, xvals, yvals, init_lims, data_err=None, args=(), numPoints=350, repeats=1, slope=1.2, sigma_level=3):
-    """
-    Plot 2D parameter contours from chi2 test.
-    # TODO: move chi2 calculation to mathematics submodule?
-
-    Parameters
-    ----------
-    ax: the matplotlib axis to plot to
-    fun: function to evaluate
-    xvals: x coordinates to evaluate the function at
-    yvals: y coordinates of data
-    args: other arguments to the function to be evaluated as *args
-    data_err: error in observed data
-    init_limits: tuple of 2 arrays, each array with the min/max of a parameter
-    numPoints: number of points to scan for each parameter
-    repeats: allow for reducing search interval by zeroing in this many times
-    slope: amount to decrease the search range by each repeat
-    sigma_level: number of sigma levels to plot
-
-    Returns
-    -------
-    None
-    """
-    assert(repeats > 0 and isinstance(repeats, int))
-    print("Creating parameter contours...")
-    if data_err is None:
-        data_err = 0.3*yvals+1e-4
-    for repeat in range(repeats):
-        print("  Level: {:d}".format(repeat+1))
-        print("    Parameter 1 Limits: {:.2e} - {:.2e}".format(init_lims[0][0], init_lims[0][1]))
-        print("    Parameter 2 Limits: {:.2e} - {:.2e}".format(init_lims[1][0], init_lims[1][1]))
-        param1_seq = np.linspace(init_lims[0][0], init_lims[0][1], numPoints)
-        param2_seq = np.linspace(init_lims[1][0], init_lims[1][1], numPoints)
-
-        #initialise chi2 array
-        chi_array = np.full((numPoints, numPoints), np.nan)
-
-        #scan the 2D parameter space
-        for ind1, param1 in enumerate(param1_seq):
-            for ind2, param2 in enumerate(param2_seq):
-                fun_val = fun(xvals, param1, param2, *args)
-                chi_array[ind1][ind2] = kfm.chi_square(yvals, fun_val, data_err)
-        chimin = chi_array.min()
-        pos_min = chi_array.argmin()
-        pos_min = np.unravel_index(pos_min, (numPoints, numPoints))
-        #reduce search range
-        init_lims[0][0] = (1 - 1/slope**(repeat+1)) * param1_seq[pos_min[0]]
-        init_lims[0][1] = (1 + 1/slope**(repeat+1)) * param1_seq[pos_min[0]]
-        init_lims[1][0] = (1 - 1/slope**(repeat+1)) * param2_seq[pos_min[1]]
-        init_lims[1][1] = (1 + 1/slope**(repeat+1)) * param2_seq[pos_min[1]]
-    param1_min = param1_seq[pos_min[0]]
-    param2_min = param2_seq[pos_min[1]]
-
-    #determine sigma levels
-    sigmas = np.full(sigma_level, np.nan)
-    for s in range(1, sigma_level+1):
-        ci = scipy.stats.chi2.cdf(s**2, 1)
-        sigmas[s-1] = scipy.stats.chi2.ppf(ci, 1)
-
-    #plot contour
-    levels = sigmas + chimin
-    ax.contourf(param2_seq, param1_seq, np.log10(chi_array), levels=50)
-    ax.legend(loc="upper left")

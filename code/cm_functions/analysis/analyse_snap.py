@@ -913,13 +913,17 @@ def angular_momentum_difference_gal_BH(snap, mask=None):
     return theta, L_bh, L_gal
 
 
-def loss_cone_angular_momentum(snap, a, e=0):
+def loss_cone_angular_momentum(snap, a, e=0, kappa=None):
     """
-    Calculate the approximate angular momentum of the loss cone, inspired from 
-    Gualandris et al. 2017, but multiplied by the stellar mass 
+    Calculate the approximate angular momentum of the loss cone, as per 
+    Bortolas 2016 or Gualandris 2017, but multiplied by the stellar mass 
+    https://ui.adsabs.harvard.edu/abs/2016MNRAS.461.1023B/abstract
+    or
     https://ui.adsabs.harvard.edu/abs/2017MNRAS.464.2301G/abstract 
-    Note this has been derived from Kepler orbit so eccentricity is accounted 
-    for
+    Note the first definition follows from the definition of the semimajor axis 
+    in Binney and Tremaine. The second definition requires a scaling parameter 
+    kappa, typically taken to be 1.
+
 
     Parameters
     ----------
@@ -929,18 +933,25 @@ def loss_cone_angular_momentum(snap, a, e=0):
         BH Binary semimajor axis [pc]
     e : float, optional
         BH Binary eccentricity
+    kappa : float, optional
+        dimensionless constant used to scale semimajor axis in Gualandris 
+        implementation, by default None (Bortolas implementation used)
 
     Returns
     -------
     J : pygad.UnitArr
-        Loss cone ang. mom.
+        loss cone ang. mom.
     """
     assert snap.phys_units_requested
     J_unit = snap["angmom"].units
     starmass = pygad.UnitScalar(snap.stars["mass"][0], snap.stars["mass"].units)
     Mbin = snap.bh["mass"].sum()
     const_G = const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
-    J = np.sqrt(const_G * Mbin * a * ((1-e)**2 + 2*(1-e))) * starmass
+    if kappa is None:
+        J = np.sqrt(const_G * Mbin * a * (1-e**2)) * starmass
+    else:
+        _logger.logger.info(f"Loss cone angular momentum determined without accounting for eccentricity.")
+        J = np.sqrt(2 * const_G * Mbin * kappa * a) * starmass
     return J.in_units_of(J_unit)
 
 
