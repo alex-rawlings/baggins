@@ -8,8 +8,9 @@ import ketjugw
 
 from .BHBinaryData import BHBinaryData
 from ..analyse_snap import *
+from ..general import snap_num_for_time
 from ..orbit import get_bound_binary, linear_fit_get_H, linear_fit_get_K, analytic_evolve_peters_quinlan
-from ...general import xval_of_quantity
+from ...general import xval_of_quantity, convert_gadget_time
 from ...mathematics import iqr
 from ...plotting import binary_param_plot
 from ...utils import read_parameters, get_ketjubhs_in_dir, get_snapshots_in_dir
@@ -46,7 +47,10 @@ class BHBinary(BHBinaryData):
         super().__init__()
         self.merger_pars = read_parameters(paramfile)
         self.analysis_pars = read_parameters(apfile)
-        data_path = os.path.join(self.merger_pars["calculated"]["full_save_location"], self.merger_pars["file_locations"]["perturb_sub_dir"], perturbID, "output")
+        if self.merger_pars["file_locations"]["perturb_sub_dir"] is None:
+            data_path = os.path.join(self.merger_pars["calculated"]["full_save_location"], "output")
+        else:
+            data_path = os.path.join(self.merger_pars["calculated"]["full_save_location"], self.merger_pars["file_locations"]["perturb_sub_dir"], perturbID, "output")
         if not os.path.isdir(data_path):
             raise ValueError("The data path does not exist!")
         self.merger_name = f"{self.merger_pars['calculated']['full_save_location'].rstrip('/').split('/')[-1]}-{perturbID}"
@@ -61,8 +65,9 @@ class BHBinary(BHBinaryData):
         self.param_estimate_e_quantiles = self.analysis_pars["bh_binary"]["eccentricity_quantiles_for_estimates"]
 
         #set the properties
+        snap_idx = snap_num_for_time(self.snaplist, self.orbit_params["t"][0]/myr+convert_gadget_time(pygad.Snapshot(self.snaplist[0], physical=True), "Myr"), method="ceil")
+        snap = pygad.Snapshot(self.snaplist[snap_idx], physical=True)
         #black hole mass
-        snap = pygad.Snapshot(self.snaplist[0], physical=True)
         self.bh_masses = snap.bh["mass"]
 
         # stellar mass
@@ -97,7 +102,17 @@ class BHBinary(BHBinaryData):
         self.binary_spin_flip = np.any(np.abs(np.diff(np.sign(self.orbit_params["plane_normal"][:,2])))>0)
 
         #influence radius
-        self.r_infl = list(influence_radius(snap).values())[0].in_units_of("pc") #in pc
+        #self.r_infl = list(influence_radius(snap).values())[0].in_units_of("pc") #in pc
+        _r_infl = []
+        for sfile in self.snaplist[snap_idx:]:
+            s = pygad.Snapshot(sfile, physical=True)
+            _r_infl.append(
+                list(influence_radius(snap).values())[0].in_units_of("pc") #in pc
+            )
+            s.delete_blocks()
+            del s
+        self.r_infl = pygad.UnitScalar(np.nanmedian(_r_infl), units=_r_infl[0].units)
+
 
         #influence radius time
         self.r_infl_time = self._get_time_for_r(self.r_infl, "r_infl")

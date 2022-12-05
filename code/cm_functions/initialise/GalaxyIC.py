@@ -211,16 +211,23 @@ class GalaxyIC(_GalaxyICBase):
         savefig(os.path.join(self.figure_location, f"{self.name}_nfwcut.png"))
 
 
-    def generate_galaxy(self):
+    def generate_galaxy(self, allow_overwrite=False):
         """
         Generate the initial conditions as a hdf5 file that can be used by 
         Gadget.
 
         Parameters
         ----------
-        update_file : bool, optional
-            Allow updates to parameters in parameter file, by default False
+        allow_overwrite : bool, optional
+            allow exisiting models to be overwritten, by default False
         """
+        try:
+            if os.path.exists(self.hdf5_file_name):
+                assert allow_overwrite
+        except AssertionError:
+            _logger.logger.exception(f"File {self.hdf5_file_name} already exists!", exc_info=True)
+            raise
+
         self.convert_to_gadget_mass_units()
         dists = []
         if self.stars is not None:

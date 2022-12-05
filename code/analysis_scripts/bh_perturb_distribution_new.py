@@ -138,6 +138,8 @@ if new_data:
                 else:
                     b.add_data(snap, xcom=xcom, vcom=vcom)
             snap.delete_blocks()
+            del snap
+            pygad.gc_full_collect()
     for b in brownian_objects:
         b.compute_offset_magnitude()
         b.save()

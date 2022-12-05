@@ -52,7 +52,7 @@ class _GalaxyICBase:
             raise
         self.cosmology = cosmology
         self.mass_units = "msol"
-        #make output directories if not already existing
+        # make output directories if not already existing
         os.makedirs(self.save_location, exist_ok=True)
         os.makedirs(self.figure_location, exist_ok=True)
 

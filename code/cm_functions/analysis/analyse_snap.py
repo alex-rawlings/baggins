@@ -950,7 +950,7 @@ def loss_cone_angular_momentum(snap, a, e=0, kappa=None):
     if kappa is None:
         J = np.sqrt(const_G * Mbin * a * (1-e**2)) * starmass
     else:
-        _logger.logger.info(f"Loss cone angular momentum determined without accounting for eccentricity.")
+        _logger.logger.debug(f"Loss cone angular momentum determined without accounting for eccentricity.")
         J = np.sqrt(2 * const_G * Mbin * kappa * a) * starmass
     return J.in_units_of(J_unit)
 

@@ -8,3 +8,5 @@ from .StanModel import StanModel
 
 from .HMQuantitiesData import HMQuantitiesData
 from .HMQuantities import HMQuantities
+
+from .BrownianData import BrownianData
