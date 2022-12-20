@@ -19,5 +19,5 @@
 - [x] implement logging statements instead of printing  
 - [x] parallelise certain serial code using DASK 
     https://cosmiccoding.com.au/tutorials/multiprocessing  
-- [] define behaviour in get_string_unique_part()  
+- [x] get_string_unique_part() doesn't seem to handle only two strings  
 - [] an analysis class A has a corresponding 'data class' AData, which may lead to the diamond problem when using multi-inheritance. Maybe combine the two classes, and methods in A which rely on variables not store in AData (i.e., not saved to HDF5 file) be restructured (typically to do with ketjugw orbital parameters -> maybe save the file name for future loading instead? What if the file has since been overwritten or updated?)

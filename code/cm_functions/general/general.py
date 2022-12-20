@@ -4,7 +4,7 @@ import scipy.optimize, scipy.special, scipy.interpolate
 from time import time
 from ..env_config import _cmlogger
 
-__all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity", "set_seed_time", "get_idx_in_array", "get_string_unique_part"]
+__all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity", "set_seed_time", "get_idx_in_array", "get_unique_path_part"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -149,42 +149,28 @@ def get_idx_in_array(t, tarr):
         raise
 
 
-def get_string_unique_part(str_list, sep="/", max_num_diff=2):
+def get_unique_path_part(path_list):
     """
-    Determine the unique part of each string in a list of strings, relative to the first string.
-    TODO not sure how to define behaviour for when the number of different elements per string pair exceeds max_num_diff??
+    Determine the parts of a path that are unique in a set of paths
 
     Parameters
     ----------
     str_list : list
-        list of strings to determine the unique part of. The first element is 
-        used as the reference element to which all other elements are compared 
-        to
-    sep : str, optional
-        separator to split strings by, by default "/"
-    max_num_diff : int, optional
-        maximum number of differences allowed between any two strings, by default 2
+        list of paths
 
     Returns
     -------
     unique_parts : list
-        list of the unique part of each element in str_list
+        list of unique parts of the paths
     """
-    sets = []
+    try:
+        assert len(path_list) > 1:
+    except AssertionError:
+        _logger.logger.exception(f"Path list must contain more than 1 path!", exc_info=True)
+        raise
+    common_path_len = len(os.path.commonpath(path_list))
     unique_parts = []
-    set_0 = set(str_list[0].lstrip(sep).split(sep))
-    for i, s_ in enumerate(str_list[1:]):
-        # determine the unique part of the string
-        sets.append(
-            set(s_.lstrip(sep).split(sep)) ^ set_0
-        )
-        if len(sets[i]) > max_num_diff:
-            _logger.logger.warning(f"There are more than {max_num_diff} differences detected in the set between element 0 and element {i+1}!")
-    # get the unique part belonging to the first element in str_list
-    S = sets[0].intersection(sets[1])
-    unique_parts.append(list(S)[0])
-    # now get the unique part beloning to all other elements in str_list
-    for s_ in sets:
-        unique_parts.append(list(s_.difference(S))[0])
+    for s in path_list:
+        unique_parts.append(s[common_path_len:].lstrip("/"))
     return unique_parts
 

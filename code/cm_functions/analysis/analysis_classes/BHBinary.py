@@ -48,13 +48,20 @@ class BHBinary(BHBinaryData):
         self.merger_pars = read_parameters(paramfile)
         self.analysis_pars = read_parameters(apfile)
         if self.merger_pars["file_locations"]["perturb_sub_dir"] is None:
-            data_path = os.path.join(self.merger_pars["calculated"]["full_save_location"], "output")
+            # we are dealing with a non-perturbed simulation set
+            data_path = os.path.join(self.merger_pars["file_locations"]["save_location"], perturbID, "output")
+            self.merger_name = f"{self.merger_pars['calculated']['full_save_location'].rstrip('/').split('/')[-2]}-{perturbID}"
         else:
+            # we are dealing with a perturbed simulation set
             data_path = os.path.join(self.merger_pars["calculated"]["full_save_location"], self.merger_pars["file_locations"]["perturb_sub_dir"], perturbID, "output")
+            self.merger_name = f"{self.merger_pars['calculated']['full_save_location'].rstrip('/').split('/')[-1]}-{perturbID}"
         if not os.path.isdir(data_path):
             raise ValueError("The data path does not exist!")
-        self.merger_name = f"{self.merger_pars['calculated']['full_save_location'].rstrip('/').split('/')[-1]}-{perturbID}"
-        self.bhfile = get_ketjubhs_in_dir(data_path)[0]
+        try:
+            self.bhfile = get_ketjubhs_in_dir(data_path)[0]
+        except IndexError:
+            _logger.logger.exception("No ketju_bhs.hdf5 file!")
+            raise
         self.snaplist = get_snapshots_in_dir(data_path)
         self.gr_safe_radius = self.analysis_pars["bh_binary"]["target_semimajor_axis"]["value"]
         bh1, bh2, self.merged = get_bound_binary(self.bhfile)

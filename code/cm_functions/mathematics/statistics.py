@@ -178,7 +178,9 @@ def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
     number_resamples = int(number_resamples)
     if rng is None:
         rng = np.random.default_rng()
-    
+    # clean data of NaNs
+    data1 = data1[~np.isnan(data1)]
+    data2 = data2[~np.isnan(data2)]
     n = len(data1)
     m = len(data2)
     data = np.concatenate((data1, data2))

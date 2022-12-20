@@ -27,17 +27,19 @@ ketju_dirs.append(args.path)
 if args.extra_dirs:
     ketju_dirs.extend(args.extra_dirs)
     SL.logger.debug(f"Directories are: {ketju_dirs}")
-    labels = cmf.general.get_string_unique_part(ketju_dirs)
+    labels = cmf.general.get_unique_path_part(ketju_dirs)
     SL.logger.debug(f"Labels are: {labels}")
 
 ax = None
 myr = ketjugw.units.yr * 1e6
 cols = cmf.plotting.mplColours()
+linestyles = list(cmf.plotting.mplLines().values())
 num_dirs = len(ketju_dirs)
 SL.logger.debug(f"We will be plotting {num_dirs} different families...")
 
 for j, d in enumerate(ketju_dirs):
     ketju_files = cmf.utils.get_ketjubhs_in_dir(d)
+    line_count = 0
     for i, k in enumerate(ketju_files):
         SL.logger.debug(f"Reading: {k}")
         bh1, bh2, merged = cmf.analysis.get_bound_binary(k)
@@ -48,9 +50,10 @@ for j, d in enumerate(ketju_dirs):
         else:
             op = ketjugw.orbital_parameters(bh1, bh2)
         if num_dirs == 1:
-            ax = cmf.plotting.binary_param_plot(op, ax=ax, label=f"{k.split('/')[-3]}")
+            ax = cmf.plotting.binary_param_plot(op, ax=ax, label=f"{k.split('/')[-3]}", ls=linestyles[line_count//len(cols)])
         else:
-            ax = cmf.plotting.binary_param_plot(op, ax=ax, label=(labels[j] if i==0 else ""), c=cols[j], alpha=0.6, markevery=1000)
+            ax = cmf.plotting.binary_param_plot(op, ax=ax, label=(labels[j] if i==0 else ""), c=cols[j], alpha=0.6, markevery=1000, ls=linestyles[line_count//len(cols)])
+        line_count += 1
 ax[0].legend(loc="upper right", **legend_kwargs)
 ax[0].set_xscale("log")
 if args.save:

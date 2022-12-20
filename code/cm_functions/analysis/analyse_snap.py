@@ -12,7 +12,7 @@ from ..general import convert_gadget_time, set_seed_time, unit_as_str
 from ..env_config import _cmlogger
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles", "velocity_anisotropy"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles", "velocity_anisotropy", "softened_inverse_r", "softened_acceleration"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -1055,4 +1055,75 @@ def velocity_anisotropy(snap, r_edges, xcom=[0,0,0], vcom=[0,0,0], qcut=1.0, eps
     # determine beta(r)
     beta = 1 - (standard_devs[1,:]**2 + standard_devs[2,:]**2) / (2 * standard_devs[0,:]**2+eps)
     return beta, bin_counts
+
+
+def softened_inverse_r(r, h):
+    """
+    Return the softened value of 1/r following the Gadget kernel
+
+    Parameters
+    ----------
+    r : array-like
+        radial distances of particles
+    h : float
+        softening value
+
+    Returns
+    -------
+    _inv_r_soft : array-like
+        softened inverse r array
+    """
+    if h is None or h <= 0:
+        return 1 / r
+    hinv = 1 / h
+    u = r * hinv
+    _inv_r_soft = np.full_like(r, np.nan)
+
+    # mask the different sections
+    mask = u >= 1
+    _inv_r_soft[mask] = 1 / r[mask]
+
+    mask = u < 0.5
+    _inv_r_soft[mask] = -hinv * (-2.8 + u[mask]**2 * (16/3 + u[mask]**2 * (6.4 * u[mask] - 9.6)))
+
+    mask = np.logical_not(np.logical_and(u>=1, u<0.5))
+    _inv_r_soft[mask] = -hinv * (-3.2 + 2/30 / u[mask] + u[mask]**2 * (32/3 + u[mask] * (-16 + u[mask] * (9.6 - 32/15 * u[mask]))))
+    return _inv_r_soft
+
+
+def softened_acceleration(snap, h={"stars":None, "dm":None, "bh":None}, centre=[0,0,0], exclude_id=[]):
+    """
+    Determine the Gadget-softened acceleration
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
+    h : dict, optional
+        particle family softenings, by default {"stars":None, "dm":None, "bh":None}
+    centre : array-like, optional
+        centre to determine r from, by default [0,0,0]
+    exclude_id : list, optional
+        particle IDs to exclude from the calculation, by default []
+
+    Returns
+    -------
+    accel : array-like
+        vector of accelerations evaluated at position `centre`
+    # TODO test this
+    """
+    accel = np.zeros(3)
+    if exclude_id:
+        id_mask = pygad.IDMask(exclude_id)
+    else:
+        id_mask = None
+    for family in ["stars", "dm", "bh"]:
+        _logger.logger.debug(f"Determining acceleration for family {family}")
+        subsnap = getattr(snap, family)
+        if id_mask is not None
+            subsnap = subsnap[~id_mask]
+        r = pygad.utils.geo.dist(subsnap["pos"], centre)
+        inv_r = softened_inverse_r(r, h[family])
+        accel += (subsnap["mass"] * inv_r**2)
+    return accel
 
