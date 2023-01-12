@@ -164,7 +164,7 @@ def get_unique_path_part(path_list):
         list of unique parts of the paths
     """
     try:
-        assert len(path_list) > 1:
+        assert len(path_list) > 1
     except AssertionError:
         _logger.logger.exception(f"Path list must contain more than 1 path!", exc_info=True)
         raise

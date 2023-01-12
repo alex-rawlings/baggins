@@ -1120,7 +1120,7 @@ def softened_acceleration(snap, h={"stars":None, "dm":None, "bh":None}, centre=[
     for family in ["stars", "dm", "bh"]:
         _logger.logger.debug(f"Determining acceleration for family {family}")
         subsnap = getattr(snap, family)
-        if id_mask is not None
+        if id_mask is not None:
             subsnap = subsnap[~id_mask]
         r = pygad.utils.geo.dist(subsnap["pos"], centre)
         inv_r = softened_inverse_r(r, h[family])

@@ -4,6 +4,7 @@ from matplotlib import rc_file, rcdefaults
 import subprocess
 import yaml
 from datetime import datetime
+from cmdstanpy import set_cmdstan_path
 from ._backend import InternalLogger
 
 
@@ -19,6 +20,8 @@ figure_dir = os.path.join(home_dir, user_params["figure_dir"])
 data_dir = user_params["data_dir"]
 date_format = user_params["date_format"]
 fig_ext = user_params["figure_ext"].lstrip(".")
+set_cmdstan_path(user_params["cmdstan"])
+
 
 username = home_dir.rstrip("/").split("/")[-1]
 
