@@ -1,4 +1,5 @@
 import os
+from operator import itemgetter
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
@@ -11,12 +12,12 @@ from ...plotting import savefig, create_normed_colours
 from ...utils import load_data
 from ...env_config import figure_dir, data_dir, _cmlogger
 
-__all__ = ["StanModel"]
+__all__ = ["StanModel_1D", "StanModel_2D"]
 
 _logger = _cmlogger.copy(__file__)
 
 
-class StanModel:
+class _StanModel:
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         """
         Class to set up, run, and plot key plots of a stan model.
@@ -52,10 +53,11 @@ class StanModel:
         self._prior_fit = None
         self._parameter_plot_counter = 0
         self._observation_mask = True
-        self._plot_obs_data_kwargs = {"marker":".", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
+        self._plot_obs_data_kwargs = {"marker":"o", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
         self._num_groups = 0
         self._loaded_from_file = False
         self._generated_quantities = None
+        self._obs_collapsed = {}
 
 
     @property
@@ -80,8 +82,21 @@ class StanModel:
     
     @obs.setter
     def obs(self, d):
-        self._check_observation_validity(d)
+        self._check_observation_validity(d, True)
+        # set categorical label
+        # access the first value of the dict
+        v = next(iter(d.values()))
+        self._num_groups = len(v)
+        _label = []
+        for j, vv in enumerate(v, start=1):
+            _label.append(np.repeat(j, vv.shape[-1]))
+        self._obs_len = sum(len(sublist) for sublist in _label)
+        d["label"] = _label
         self._obs = d
+    
+    @property
+    def obs_collapsed(self):
+        return self._obs_collapsed
     
     @property
     def obs_len(self):
@@ -90,18 +105,6 @@ class StanModel:
     @property
     def num_groups(self):
         return self._num_groups
-    
-    @property
-    def categorical_label(self):
-        return self._categorical_label
-    
-    @categorical_label.setter
-    def categorical_label(self, group):
-        self._categorical_label = np.full(self.obs_len, 0, dtype=int)
-        for i, g in enumerate(np.unique(self.obs[group])):
-            mask = self.obs[group] == g
-            self._categorical_label[mask] = i
-            self._num_groups += 1
     
     @property
     def generated_quantities(self):
@@ -147,7 +150,7 @@ class StanModel:
         return f"{fname_parts[0]}_{tag}{fname_parts[1]}"
 
 
-    def _check_observation_validity(self, d):
+    def _check_observation_validity(self, d, set_categorical=False):
         """
         Ensure that an observation is numerically valid: it is a dict, no NaN 
         values, and each member of the dict is mutable to the same shape
@@ -157,6 +160,8 @@ class StanModel:
         d : any
             proposed value to set the observations to. Should be a dict, but an
             error is thrown if it is not.
+        set_categorical : bool, optional
+            set the categorical variable to distinguish groups, by default False
         """
         try:
             assert isinstance(d, dict)
@@ -164,28 +169,31 @@ class StanModel:
             _logger.logger.exception(f"Observational data must be a dict! Current type is {type(d)}", exc_info=True)
             raise
         for i, (k,v) in enumerate(d.items()):
-            try:
-                assert not isinstance(v, dict)
-            except AssertionError:
-                _logger.logger.exception("Single-layer dictionary only for observation data!", exc_info=True)
-                raise
-            if isinstance(v, list):
-                d[k] = np.array(v)
-            try:
-                assert not np.any(np.isnan(v))
-            except AssertionError:
-                _logger.logger.exception("NaN values detected in observed variable {k}! This can lead to undefined behaviour.", exc_info=True)
-                raise
-            # data consistency checks
-            if i==0:
-                self._obs_len = d[k].shape[-1]
-            else:
+            if set_categorical:
                 try:
-                    assert d[k].shape[-1] == self.obs_len
+                    assert k != "label"
                 except AssertionError:
-                    _logger.logger.exception(f"Data must be of the same length! Length is {self.obs_len}, but variable {k} has length {d[k].shape[-1]}", exc_info=True)
+                    _logger.logger.exception(f"Keyword 'label' is reserved!", exc_info=True)
                     raise
-    
+            try:
+                assert isinstance(v, list)
+            except AssertionError:
+                _logger.logger.exception(f"Data format must be a list! Currently '{k}' type {type(v)}", exc_info=True)
+                raise
+            for j, vv in enumerate(v):
+                try:
+                    assert isinstance(vv, (list, np.ndarray))
+                    if isinstance(vv, list):
+                        d[k][j] = np.array(vv)
+                except AssertionError:
+                    _logger.logger.exception(f"Observed variable {k} element {j} is not list-like, but type {type(vv)}", exc_info=True)
+                    raise
+                try:
+                    assert not np.any(np.isnan(d[k][j]))
+                except AssertionError:
+                    _logger.logger.exception(f"NaN values detected in observed variable {k} item {j}! This can lead to undefined behaviour.", exc_info=True)
+                    raise
+
 
     def load_observations_from_pickle(self, obs_file):
         """
@@ -209,8 +217,10 @@ class StanModel:
 
         Parameters
         ----------
-        key : str
-            observation dictionary key
+        key : str, tuple, list
+            observation dictionary key for transformation of a single variable, 
+            or tuple-like for a transformation involving a number of 
+            independent observations
         newkey : str
             dictionary key for transformed quantity
         func : function
@@ -226,9 +236,95 @@ class StanModel:
                 _logger.logger.warning(f"Requested key {newkey} already exists! Transformation will not be reapplied --> Skipping.")
                 break
         else:
-            _logger.logger.info(f"Applying transformation designated by {newkey}")
-            self.obs[newkey] = func(self.obs[key])
+            _logger.logger.debug(f"Applying transformation designated by {newkey}")
+            self.obs[newkey] = []
+            if isinstance(key, str):
+                for v in self.obs[key]:
+                    self.obs[newkey].append(func(v))
+            else:
+                vs = list(map(self.obs.get, key))
+                try:
+                    dims = [o.shape for v in vs for o in v]
+                    assert len(np.unique(dims)) == 1
+                except AssertionError:
+                    _logger.logger.exception(f"Observation transformation failed for keys {key}: shapes differ!", exc_info=True)
+                    raise
+                extract = lambda i: list(map(itemgetter(i), vs))
+                for i in range(len(vs[0])):
+                    _vs = extract(i)
+                    self.obs[newkey].append(func(*_vs))
             self._check_observation_validity(self.obs)
+    
+
+    def print_obs_summary(self):
+        """
+        Print a shape summary of the observations in the model
+        """
+        print("Observations:")
+        for k, v in self.obs.items():
+            vv_shape = []
+            for vv in v:
+                vv_shape.append(vv.shape)
+            print(f"  {k}:  {len(v)}:  {vv_shape}")
+        print("Collapsed Observations:")
+        for k, v in self.obs_collapsed.items():
+            print(f"  {k}:  {v.shape}")
+
+
+    def collapse_observations(self, obs_names):
+        """
+        Collapse a 2D observed quantity to a 1D representation.
+
+        Parameters
+        ----------
+        obs_name : list
+            observation(s) to collapse
+        """
+        dim = []
+        for obs_name in obs_names:
+            dim.append(len(self.obs[obs_name][0].shape))
+        try:
+            assert len(np.unique(dim)) == 1
+        except AssertionError:
+            _logger.logger.exception(f"Collapsing multiple observations requires these to have the same dimensions! Current dimensions are {dim}", exc_info=True)
+            raise
+        dim = np.unique(dim)[0]
+        try:
+            assert dim < 3
+        except AssertionError:
+            _logger.logger.exception(f"Error collapsing observation {obs_name}: data cannot have more than 2 dimensions", exc_info=True)
+            raise
+        if "label" not in obs_names: obs_names.append("label")
+        if dim == 1:
+            for k, v in self.obs.items():
+                if len(v[0].shape) > 1 or k not in obs_names:
+                    _logger.logger.debug(f"Observation {k} will not be collapsed.")
+                    continue
+                self._obs_collapsed[k] = np.concatenate(v)
+                _logger.logger.debug(f"Collapsing variable {k}")
+        else:
+            # collapse the desired variable
+            for obs_name in obs_names:
+                self._obs_collapsed[obs_name] = np.concatenate([v.flatten() for v in self.obs[obs_name]])
+            reps = [vv.shape[0] for vv in self.obs[obs_names[0]]]
+            for k, v in self.obs.items():
+                if k in obs_names:
+                    continue
+                if len(v[0].shape) > 1:
+                    _logger.logger.debug(f"Observation {k} will not be collapsed.")
+                    continue
+                _logger.logger.debug(f"Collapsing variable {k}")
+                self._obs_collapsed[k] = []
+                for rep, vv in zip(reps, v):
+                    self._obs_collapsed[k].extend(np.tile(vv, rep))
+                self._obs_collapsed[k] = np.array(self._obs_collapsed[k])
+        # data consistency checks
+        try:
+            for k, v in self._obs_collapsed.items():
+                assert v.shape == self._obs_collapsed[obs_names[0]].shape
+        except AssertionError:
+            _logger.logger.exception(f"Data lengths are inconsistent in collapsed observations! Observation '{k}' has shape {v.shape}, must have shape {self._obs_collapsed[obs_names[0]].shape}", exc_info=True)
+            raise
 
 
     def random_obs_select(self, num, group):
@@ -248,6 +344,10 @@ class StanModel:
         group : str
             dataframe dictionary key that specifies the group
         """
+        # TODO update this method to reflect the changes made by ragged arrays
+        raise NotImplementedError
+        if len(self.obs[group].shape)>1:
+            _logger.logger.warning(f"The observation group has shape {self.obs[group].shape}. random_obs_select() is not well defined for multi-dimensional inputs. Proceed with caution")
         try:
             assert num < self._obs_len
         except AssertionError:
@@ -282,7 +382,7 @@ class StanModel:
             _logger.logger.exception(f"After random sampling, the number of observations is {self.obs_len}, however we are expecting {len(groups)*num}!", exc_info=True)
             raise
         _logger.logger.debug(f"Number of observations is now {self.obs_len}")
-    
+
 
     def _sampler(self, data, prior=False, sample_kwargs={}):
         """
@@ -310,6 +410,11 @@ class StanModel:
             default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "max_treedepth":12}
             if not prior:
                 default_sample_kwargs["output_dir"] = os.path.join(data_dir, "stan_files")
+            else:
+                # protect against inability to parallelise, for prior model
+                # this shouldn't be so expensive anyway
+                pass
+                #default_sample_kwargs["force_one_process_per_chain"] = True
             # update user given sample kwargs
             for k, v in sample_kwargs.items():
                 default_sample_kwargs[k] = v
@@ -318,7 +423,9 @@ class StanModel:
             if prior:
                 fit = self._prior_model.sample(data=data, **default_sample_kwargs)
             else:
+                _logger.logger.info(f"exe info: {self._model.exe_info()}")
                 fit = self._model.sample(data=data, **default_sample_kwargs)
+            _logger.logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
             self._sample_diagnosis = fit.diagnose()
             _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
             _logger.logger.info(f"\n{self.sample_diagnosis}")
@@ -337,7 +444,7 @@ class StanModel:
         if prior:
             self._prior_model = cmdstanpy.CmdStanModel(stan_file=self._prior_file)
         else:
-            self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)
+            self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)#, cpp_options={"STAN_THREADS":"true", "STAN_CPP_OPTIMS":"true"})
     
 
     def sample_model(self, data, sample_kwargs={}):
@@ -355,6 +462,7 @@ class StanModel:
         if self._model is None and not self._loaded_from_file:
             self.build_model()
         self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
+        # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(self._fit)
     
 
@@ -447,102 +555,6 @@ class StanModel:
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
         self._parameter_plot_counter += 1
-    
-
-    def prior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None):
-        """
-        Plot a prior predictive check for a regression stan model.
-
-        Parameters
-        ----------
-        xobs : str
-            dictionary key for observed independent variable 
-        yobs : str
-            dictionary key for observed dependent variable
-        xmodel : str
-            dictionary key for modelled independent variable
-        ymodel : str
-            dictionary key for modelled dependent variable
-        yobs_err : str, optional
-             dictionary key for observed dependent variable scatter, by default 
-             None
-        levels : list, optional
-            HDI intervals to plot, by default [50, 90, 95, 99]
-        ax : matplotlib.axes._subplots.AxesSubplot, optional
-            axis to plot to, by default None (creates new instance)
-        """
-        levels.sort(reverse=True)
-        if ax is None:
-            fig, ax = plt.subplots(1,1)
-        else:
-            fig = ax.get_figure()
-        ys = self._prior_fit.stan_variable(ymodel)
-        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
-        for l in levels:
-            _logger.logger.info(f"Fitting level {l}")
-            az.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI", "edgecolor":None}, smooth=False)
-        # overlay data
-        if self._num_groups < 2:
-            self._plot_obs_data_kwargs["cmap"] = "Set1"
-        if yobs_err is None:
-            ax.scatter(self.obs[xobs], self.obs[yobs], c=self.categorical_label, **self._plot_obs_data_kwargs)
-        else:
-            colvals = np.unique(self.categorical_label)
-            ncols = len(colvals)
-            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
-            for i, c in enumerate(colvals):
-                col = cmapper(c)
-                mask = self.categorical_label==c
-                ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs" if i==ncols-1 else ""))
-        ax.legend()
-        savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
-    
-
-    def posterior_plot(self, xobs, yobs, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None):
-        """
-        Plot a posterior predictive check for a regression stan model.
-
-        Parameters
-        ----------
-        xobs : str
-            dictionary key for observed independent variable
-        yobs : str
-            dictionary key for observed dependent variable
-        ymodel : str
-            dictionary key for modelled dependent variable
-        yobs_err : str, optional
-             dictionary key for observed dependent variable scatter, by default 
-             None
-        levels : list, optional
-            HDI intervals to plot, by default [50, 90, 95, 99]
-        ax : matplotlib.axes._subplots.AxesSubplot, optional
-            axis to plot to, by default None (creates new instance)
-        """
-        levels.sort(reverse=True)
-        if ax is None:
-            fig, ax = plt.subplots(1,1)
-        else:
-            fig = ax.get_figure()
-        ys = self._fit.stan_variable(ymodel)
-        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
-        for l in levels:
-            _logger.logger.info(f"Fitting level {l}")
-            az.plot_hdi(self.obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"}, smooth=False)
-        # overlay data
-        if self._num_groups < 2:
-            self._plot_obs_data_kwargs["cmap"] = "Set1"
-        if yobs_err is None:
-            ax.scatter(self.obs[xobs][self._observation_mask], self.obs[yobs][self._observation_mask], c=self.categorical_label, zorder=20, **self._plot_obs_data_kwargs)
-        else:
-            colvals = np.unique(self.categorical_label)
-            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
-            ncols = len(colvals)
-            for i, c in enumerate(colvals):
-                col = cmapper(c)
-                mask = np.logical_and(self.categorical_label==c, self._observation_mask)
-                ax.errorbar(self.obs[xobs][mask], self.obs[yobs][mask], yerr=self.obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs." if i==ncols-1 else ""))
-        ax.legend()
-        savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
 
 
     def plot_generated_quantity_dist(self, gq, ax=None, xlabels=None, save=True, plot_kwargs={}):
@@ -616,13 +628,13 @@ class StanModel:
         vars = vars.copy()
         vars.insert(0, "Variable")
         max_str_len = max([len(v) for v in vars]) + 1
-        head_str = f"\n{vars[0]:>{max_str_len}}       5%      50%     95%     IQR"
+        head_str = f"\n{vars[0]:>{max_str_len}}        5%       50%      95%      IQR  "
         print(head_str)
         dashes = ["-" for _ in range(len(head_str))]
         print("".join(dashes))
         for v in vars[1:]:
             _iqr = df.loc[v,'75%']-df.loc[v,'25%']
-            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>6}  {df.loc[v,'50%']:>6}  {df.loc[v,'95%']:>6}  {_iqr:>6}")
+            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>.2e}  {df.loc[v,'50%']:>.2e}  {df.loc[v,'95%']:>.2e}  {_iqr:>.2e}")
         print()
 
     
@@ -669,3 +681,145 @@ class StanModel:
         return C
 
 
+
+
+class StanModel_1D(_StanModel):
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
+    
+
+    def prior_plot(self, xobs, xmodel, ax=None, collapsed=True):
+        # TODO get az.plot_ppc() working, more informative
+        if ax is None:
+            fig, ax = plt.subplots(1,1)
+        else:
+            fig = ax.get_figure()
+        obs = self.obs_collapsed if collapsed else self.obs
+        x = az.from_cmdstanpy(prior=self._prior_fit, prior_predictive=xmodel, observed_data={xobs:obs[xobs]})
+        x1 = x.to_dataframe(groups=["prior", "prior_predictive", "sample_stats_prior", "observed_data"])
+        #print(x1)
+        #az.plot_ppc(x, ax=ax, group="prior", var_names=["angmom"])
+        az.plot_dist(self._prior_fit.stan_variable(xmodel))
+        # overlay data
+        colvals = np.unique(obs["label"])
+        ncols = len(colvals)
+        cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
+        for i, c in enumerate(colvals):
+            col = cmapper(c)
+            mask = obs["label"]==c
+            ax.scatter(obs[xobs][mask], 0, color=col, **self._plot_obs_data_kwargs)
+        #ax.legend()
+        #savefig(self._make_fig_name(self.figname_base, f"prior_pred_{xobs}"), fig=fig)
+    
+
+    def posterior_plot(self):
+        raise NotImplementedError
+
+
+
+
+class StanModel_2D(_StanModel):
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
+    
+
+    def prior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
+        """
+        Plot a prior predictive check for a regression stan model.
+
+        Parameters
+        ----------
+        xobs : str
+            dictionary key for observed independent variable 
+        yobs : str
+            dictionary key for observed dependent variable
+        xmodel : str
+            dictionary key for modelled independent variable
+        ymodel : str
+            dictionary key for modelled dependent variable
+        yobs_err : str, optional
+             dictionary key for observed dependent variable scatter, by default 
+             None
+        levels : list, optional
+            HDI intervals to plot, by default [50, 90, 95, 99]
+        ax : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to plot to, by default None (creates new instance)
+        collapsed : bool, optional
+            plotting collapsed observations?
+        """
+        levels.sort(reverse=True)
+        if ax is None:
+            fig, ax = plt.subplots(1,1)
+        else:
+            fig = ax.get_figure()
+        obs = self.obs_collapsed if collapsed else self.obs
+        ys = self._prior_fit.stan_variable(ymodel)
+        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
+        for l in levels:
+            _logger.logger.info(f"Fitting level {l}")
+            az.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI", "edgecolor":None}, smooth=False)
+        # overlay data
+        if self._num_groups < 2:
+            self._plot_obs_data_kwargs["cmap"] = "Set1"
+        if yobs_err is None:
+            ax.scatter(obs[xobs], obs[yobs], c=obs["label"], **self._plot_obs_data_kwargs)
+        else:
+            colvals = np.unique(obs["label"])
+            ncols = len(colvals)
+            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
+            for i, c in enumerate(colvals):
+                col = cmapper(c)
+                mask = obs["label"]==c
+                ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs" if i==ncols-1 else ""))
+        ax.legend()
+        savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
+    
+
+    def posterior_plot(self, xobs, yobs, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
+        """
+        Plot a posterior predictive check for a regression stan model.
+
+        Parameters
+        ----------
+        xobs : str
+            dictionary key for observed independent variable
+        yobs : str
+            dictionary key for observed dependent variable
+        ymodel : str
+            dictionary key for modelled dependent variable
+        yobs_err : str, optional
+             dictionary key for observed dependent variable scatter, by default 
+             None
+        levels : list, optional
+            HDI intervals to plot, by default [50, 90, 95, 99]
+        ax : matplotlib.axes._subplots.AxesSubplot, optional
+            axis to plot to, by default None (creates new instance)
+        collapsed : bool, optional
+            plotting collapsed observations?
+        """
+        levels.sort(reverse=True)
+        if ax is None:
+            fig, ax = plt.subplots(1,1)
+        else:
+            fig = ax.get_figure()
+        obs = self.obs_collapsed if collapsed else self.obs
+        ys = self._fit.stan_variable(ymodel)
+        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="PowerNorm", norm_kwargs={"gamma":2.0})
+        for l in levels:
+            _logger.logger.info(f"Fitting level {l}")
+            az.plot_hdi(obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"}, smooth=False)
+        # overlay data
+        if self._num_groups < 2:
+            self._plot_obs_data_kwargs["cmap"] = "Set1"
+        if yobs_err is None:
+            ax.scatter(obs[xobs][self._observation_mask], obs[yobs][self._observation_mask], c=obs["label"], zorder=20, **self._plot_obs_data_kwargs)
+        else:
+            colvals = np.unique(obs["label"])
+            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
+            ncols = len(colvals)
+            for i, c in enumerate(colvals):
+                col = cmapper(c)
+                mask = np.logical_and(obs["label"]==c, self._observation_mask)
+                ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs." if i==ncols-1 else ""))
+        ax.legend()
+        savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)

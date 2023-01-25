@@ -1076,8 +1076,8 @@ def softened_inverse_r(r, h):
     if h is None or h <= 0:
         return 1 / r
     hinv = 1 / h
-    u = r * hinv
-    _inv_r_soft = np.full_like(r, np.nan)
+    u = r.view(np.ndarray) * hinv
+    _inv_r_soft = np.full(r.shape, np.nan)
 
     # mask the different sections
     mask = u >= 1
@@ -1110,7 +1110,6 @@ def softened_acceleration(snap, h={"stars":None, "dm":None, "bh":None}, centre=[
     -------
     accel : array-like
         vector of accelerations evaluated at position `centre`
-    # TODO test this
     """
     accel = np.zeros(3)
     if exclude_id:
@@ -1124,6 +1123,6 @@ def softened_acceleration(snap, h={"stars":None, "dm":None, "bh":None}, centre=[
             subsnap = subsnap[~id_mask]
         r = pygad.utils.geo.dist(subsnap["pos"], centre)
         inv_r = softened_inverse_r(r, h[family])
-        accel += (subsnap["mass"] * inv_r**2)
+        accel += np.sum(np.atleast_2d(subsnap["mass"] * inv_r**3).T * subsnap["pos"], axis=0)
     return accel
 

@@ -211,7 +211,7 @@ class MergerIC:
                 for param, val in params.items():
                     line = re.search(r"^\b{}\b.*".format(param), contents, flags=re.MULTILINE)
                     if line is None:
-                        _logger.logger.warning(f"Parameter {param} not in file! Skipping...")
+                        _logger.logger.warning(f"Parameter {param} not in file! Parameter will not be updated.")
                         continue
                     if "%" in line.group(0):
                         comment = "  %" + "%".join(line.group(0).split("%")[1:])

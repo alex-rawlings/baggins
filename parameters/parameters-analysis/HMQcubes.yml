@@ -30,5 +30,6 @@ stan:
   sample_kwargs:
     adapt_delta: 0.99
     max_treedepth: 14
-    show_progress: False
+    show_progress: True
+    #threads_per_chain: 128
 ...

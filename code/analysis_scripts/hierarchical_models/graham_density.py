@@ -36,19 +36,19 @@ with h5py.File(HMQ_files[0], mode="r") as f:
 figname_base = f"hierarchical_models/density/{merger_id}/graham_density-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
-stan_model_file = "stan/graham.stan"
+stan_model_file = "stan/graham_new_3a.stan"
 
 if args.load_file is not None:
     # load a previous sample for improved performance: no need to resample the
     # likelihood function
-    graham_model = cmf.analysis.StanModel.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
+    graham_model = cmf.analysis.StanModel_2D.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
 else:
     # sample
-    graham_model = cmf.analysis.StanModel(model_file=stan_model_file, prior_file="stan/graham_prior.stan", figname_base=figname_base)
+    graham_model = cmf.analysis.StanModel_2D(model_file=stan_model_file, prior_file="stan/graham_prior.stan", figname_base=figname_base)
 
 # set up observations
-observations = {"R":[], "proj_density":[], "name":[]}
-i = 0
+observations = {"R":[], "proj_density":[]}
+
 for f in HMQ_files:
     SL.logger.info(f"Loading file: {f}")
     hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
@@ -61,15 +61,11 @@ for f in HMQ_files:
         SL.logger.warning(f"Trying to search for value {analysis_params['bh_binary']['target_semimajor_axis']['value']}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis_of_snapshot)} - {max(hmq.semimajor_axis_of_snapshot)}. This run will not form part of the analysis.")
         continue
     r = cmf.mathematics.get_histogram_bin_centres(hmq.radial_edges)
-    observations["R"].extend(r)
-    if i == 0:
-        observations["proj_density"] = list(hmq.projected_mass_density.values())[idx]
-    else:
-        observations["proj_density"] = np.hstack((observations["proj_density"], list(hmq.projected_mass_density.values())[idx]))
-    observations["name"].extend([i+1 for _ in range(len(r))])
-    i += 1
+    observations["R"].append(r)
+    observations["proj_density"].append(list(hmq.projected_mass_density.values())[idx])
+
 graham_model.obs = observations
-graham_model.categorical_label = "name"
+
 
 if args.random_sample is not None:
     graham_model.random_obs_select(args.random_sample, "name")
@@ -82,8 +78,10 @@ graham_model.transform_obs("proj_density", "log10_proj_density", lambda x: np.lo
 graham_model.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
 graham_model.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
 
-# set the transition index for the core sersic fit
-stan_data = {"a": 10.0}
+graham_model.collapse_observations(["log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
+
+# initialise the data dictionary
+stan_data = {}
 
 if args.prior:
     # create the push-forward distribution for the prior model
@@ -114,11 +112,11 @@ else:
     # create the push-forward distribution for the posterior model
     stan_data.update(dict(
                 N_tot = graham_model.obs_len,
-                R = graham_model.obs["R"],
-                N_child = len(np.unique(graham_model.obs["name"])),
-                child_id = graham_model.obs["name"],
-                log10_surf_rho = graham_model.obs["log10_proj_density_mean"],
-                log10_surf_rho_err = graham_model.obs["log10_proj_density_std"]
+                R = graham_model.obs_collapsed["R"],
+                N_child = len(np.unique(graham_model.obs_collapsed["label"])),
+                child_id = graham_model.obs_collapsed["label"],
+                log10_surf_rho = graham_model.obs_collapsed["log10_proj_density_mean"],
+                log10_surf_rho_err = graham_model.obs_collapsed["log10_proj_density_std"],
     ))
 
     if args.random_sample:
@@ -145,30 +143,39 @@ else:
         n_b = r"$n_\beta$"
     )
     labeller = MapLabeller(var_name_map)
-    graham_model.parameter_plot(["r_b_a", "r_b_b", "Re_a", "Re_b"], labeller=labeller)
-    graham_model.parameter_plot(["I_b_a", "I_b_b"], labeller=labeller)
-    graham_model.parameter_plot(["g_a", "g_b", "n_a", "n_b"], labeller=labeller)
+
+    '''
+    graham_model.parameter_plot(["r_b_mean", "r_b_var", "Re_mean", "Re_var"], labeller=labeller)
+    graham_model.parameter_plot(["I_b_mean", "I_b_var", "a_mean", "a_var"], labeller=labeller)
+    graham_model.parameter_plot(["g_mean", "g_var", "n_mean", "n_var"], labeller=labeller)
+    '''
+    #graham_model.parameter_plot(["r_b_a", "r_b_b", "Re_a", "Re_b"], labeller=labeller)
+    #graham_model.parameter_plot(["I_b_a", "I_b_b", "a_a", "a_b"], labeller=labeller)
+    #graham_model.parameter_plot(["g_a", "g_b", "n_a", "n_b"], labeller=labeller)
 
     # posterior predictive check
     fig, ax = plt.subplots(1,1, figsize=full_figsize)
     ax.set_xlabel(r"log($R$/kpc)")
     ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
     graham_model.posterior_plot("log10_R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax)
+    #graham_model.posterior_plot("log10_R", "log10_proj_density", "log10_surf_rho_posterior", ax=ax)
 
-    graham_model.print_parameter_percentiles(["r_b_a", "r_b_b", "Re_a", "Re_b", "I_b_a", "I_b_b", "g_a", "g_b", "n_a", "n_b"])
+    #graham_model.print_parameter_percentiles(["r_b_mean", "r_b_var", "Re_mean", "Re_var", "I_b_mean", "I_b_var", "g_mean", "g_var", "n_mean", "n_var", "a_mean", "a_var"])
 
     # plot latent parameter distributions
-    fig, ax = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
+    #fig, ax = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
+    fig, ax = plt.subplots(2,3, figsize=full_figsize)
+    ax = np.concatenate(ax).flatten()
     ax[3].set_xscale("log")
-    latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior"]
-    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
+    latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior", "a_posterior"]
+    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$", r"$a$"], ax=ax)
     if args.compare:
         # compare to naive estimates of latent parameter distributions
         all_optimal_pars = np.full((len(np.unique(graham_model.categorical_label)), 5), np.nan)
         # note the argument order here is different to the function 
         # core_Sersic_profile
-        log_core_sersic = lambda x, rb, Re, Ib, gamma, n: np.log10(cmf.literature.core_Sersic_profile(x, Re=Re, rb=rb, Ib=Ib, n=n, gamma=gamma))
-        p_bounds = ([0, 0, 0, 0, 0], [30, 30, np.inf, 20, 20])
+        log_core_sersic = lambda x, rb, Re, Ib, gamma, n, a: np.log10(cmf.literature.core_Sersic_profile(x, Re=Re, rb=rb, Ib=Ib, n=n, gamma=gamma, alpha=a))
+        p_bounds = ([0, 0, 0, 0, 0, 0], [30, 30, np.inf, 20, 20, 30])
         for i, n in enumerate(set(graham_model.categorical_label)):
             SL.logger.debug(f"Curve-fitting on sample {n}")
             mask = graham_model.categorical_label == n

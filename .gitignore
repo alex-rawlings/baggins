@@ -198,9 +198,11 @@ TSWLatexianTemp*
 *~[0-9]*
 
 # stan stuff
-*.hpp
 code/misc/stats/stan/old/*
 !code/analysis_scripts/hierarchical_models/stan_reports/*.out
+code/analysis_scripts/hierarchical_models/stan/*
+!code/analysis_scripts/hierarchical_models/stan/*.stan
+
 
 # code logging
 code/cm_functions/logs

@@ -3,12 +3,12 @@ cmdstan: /projappl/pjohanss/stan-env/cmdstan-2.31.0/
 data_dir: /scratch/pjohanss/arawling/collisionless_merger
 date_format: '%Y-%m-%d %H:%M:%S'
 figure_dir: figures
-figure_ext: .pdf
+figure_ext: .png
 logging:
   console_level: INFO
   file: logs/cm_funcs.log
   file_level: WARNING
 ...
 ---
-git_hash: heads/master-0-gf3ec711
+git_hash: heads/master-0-ge3dba2c
 ...

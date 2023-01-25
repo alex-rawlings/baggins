@@ -4,7 +4,7 @@ from .BHBinaryData import BHBinaryData
 from .BHBinary import *
 from .ChildSimData import ChildSimData
 from .ChildSim import ChildSim
-from .StanModel import StanModel
+from .StanModel import StanModel_1D, StanModel_2D
 
 from .HMQuantitiesData import HMQuantitiesData
 from .HMQuantities import HMQuantities
