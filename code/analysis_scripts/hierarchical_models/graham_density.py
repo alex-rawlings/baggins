@@ -13,6 +13,7 @@ import cm_functions as cmf
 parser = argparse.ArgumentParser(description="Run stan model for Core-Sersic model.", allow_abbrev=False)
 parser.add_argument(type=str, help="Directory to HMQuantity HDF5 files", dest="dir")
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
+parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
 parser.add_argument("-p", "--prior", help="Plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="Load previous stan file", dest="load_file", default=None)
 parser.add_argument("-r", "--r", type=int, dest="random_sample", default=None, help="randomly sample x observations from each population member")
@@ -33,10 +34,12 @@ else:
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
     merger_id = f["/meta"].attrs["merger_id"]
+
+# allow for comparing similar-ish models
 figname_base = f"hierarchical_models/density/{merger_id}/graham_density-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
-stan_model_file = "stan/graham_new_3a.stan"
+stan_model_file = "stan/graham_simple.stan"
 
 if args.load_file is not None:
     # load a previous sample for improved performance: no need to resample the
@@ -78,7 +81,7 @@ graham_model.transform_obs("proj_density", "log10_proj_density", lambda x: np.lo
 graham_model.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
 graham_model.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
 
-graham_model.collapse_observations(["log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
+graham_model.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
 
 # initialise the data dictionary
 stan_data = {}
@@ -149,9 +152,9 @@ else:
     graham_model.parameter_plot(["I_b_mean", "I_b_var", "a_mean", "a_var"], labeller=labeller)
     graham_model.parameter_plot(["g_mean", "g_var", "n_mean", "n_var"], labeller=labeller)
     '''
-    #graham_model.parameter_plot(["r_b_a", "r_b_b", "Re_a", "Re_b"], labeller=labeller)
-    #graham_model.parameter_plot(["I_b_a", "I_b_b", "a_a", "a_b"], labeller=labeller)
-    #graham_model.parameter_plot(["g_a", "g_b", "n_a", "n_b"], labeller=labeller)
+    '''graham_model.parameter_plot(["r_b_a", "r_b_b", "Re_a", "Re_b"], labeller=labeller)
+    graham_model.parameter_plot(["I_b_a", "I_b_b", "a_a", "a_b"], labeller=labeller)
+    graham_model.parameter_plot(["g_a", "g_b", "n_a", "n_b"], labeller=labeller)'''
 
     # posterior predictive check
     fig, ax = plt.subplots(1,1, figsize=full_figsize)

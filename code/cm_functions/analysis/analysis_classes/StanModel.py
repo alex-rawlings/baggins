@@ -245,9 +245,10 @@ class _StanModel:
                 vs = list(map(self.obs.get, key))
                 try:
                     dims = [o.shape for v in vs for o in v]
-                    assert len(np.unique(dims)) == 1
+                    dims = np.reshape(dims, (len(vs), self.num_groups))
+                    assert (dims == dims[0]).all()
                 except AssertionError:
-                    _logger.logger.exception(f"Observation transformation failed for keys {key}: shapes differ!", exc_info=True)
+                    _logger.logger.exception(f"Observation transformation failed for keys {key}: differing dimensions: {dims}", exc_info=True)
                     raise
                 extract = lambda i: list(map(itemgetter(i), vs))
                 for i in range(len(vs[0])):
@@ -707,6 +708,7 @@ class StanModel_1D(_StanModel):
         for i, c in enumerate(colvals):
             col = cmapper(c)
             mask = obs["label"]==c
+            # TODO y must be same length
             ax.scatter(obs[xobs][mask], 0, color=col, **self._plot_obs_data_kwargs)
         #ax.legend()
         #savefig(self._make_fig_name(self.figname_base, f"prior_pred_{xobs}"), fig=fig)
