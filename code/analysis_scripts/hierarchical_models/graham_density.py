@@ -6,7 +6,6 @@ import scipy.optimize
 import h5py
 from matplotlib import rcParams
 import matplotlib.pyplot as plt
-from arviz.labels import MapLabeller
 import cm_functions as cmf
 
 
@@ -35,53 +34,48 @@ HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
     merger_id = f["/meta"].attrs["merger_id"]
 
-# allow for comparing similar-ish models
 figname_base = f"hierarchical_models/density/{merger_id}/graham_density-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
-stan_model_file = "stan/graham_simple.stan"
 
-if args.load_file is not None:
-    # load a previous sample for improved performance: no need to resample the
-    # likelihood function
-    graham_model = cmf.analysis.StanModel_2D.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
+if args.model == "simple":
+    stan_model_file = "stan/graham_simple.stan"
+    if args.load_file is not None:
+        # load a previous sample for improved performance: no need to resample 
+        # the likelihood function
+        try:
+            assert "simple" in args.load_file
+        except AssertionError:
+            SL.logger.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
+            raise
+        graham_model = cmf.analysis.GrahamModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
+    else:
+        # sample
+        graham_model = cmf.analysis.GrahamModelSimple(model_file=stan_model_file, prior_file="stan/graham_prior_simple.stan", figname_base=figname_base)
 else:
-    # sample
-    graham_model = cmf.analysis.StanModel_2D(model_file=stan_model_file, prior_file="stan/graham_prior.stan", figname_base=figname_base)
+    stan_model_file = "stan/graham_hierarchy.stan"
+    if args.load_file is not None:
+        # load a previous sample for improved performance: no need to resample 
+        # the likelihood function
+        try:
+            assert "hierarchy" in args.load_file
+        except AssertionError:
+            SL.logger.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
+            raise
+        graham_model = cmf.analysis.GrahamModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
+    else:
+        # sample
+        graham_model = cmf.analysis.GrahamModelSimple(model_file=stan_model_file, prior_file="stan/graham_prior_hierarchy.stan", figname_base=figname_base)
 
-# set up observations
-observations = {"R":[], "proj_density":[]}
+# load the observational data
+graham_model.extract_data(HMQ_files, analysis_params)
 
-for f in HMQ_files:
-    SL.logger.info(f"Loading file: {f}")
-    hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
-    try:
-        idx = hmq.get_idx_in_vec(analysis_params["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis_of_snapshot)
-    except ValueError:
-        SL.logger.warning(f"No snapshot data prior to merger! The semimajor_axis_of_snapshot attribute is: {hmq.semimajor_axis_of_snapshot}. This run will not form part of the analysis.")
-        continue
-    except AssertionError:
-        SL.logger.warning(f"Trying to search for value {analysis_params['bh_binary']['target_semimajor_axis']['value']}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis_of_snapshot)} - {max(hmq.semimajor_axis_of_snapshot)}. This run will not form part of the analysis.")
-        continue
-    r = cmf.mathematics.get_histogram_bin_centres(hmq.radial_edges)
-    observations["R"].append(r)
-    observations["proj_density"].append(list(hmq.projected_mass_density.values())[idx])
-
-graham_model.obs = observations
-
-
+# maybe randomly select some data
 if args.random_sample is not None:
     graham_model.random_obs_select(args.random_sample, "name")
 
 SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
 assert graham_model.num_groups >= analysis_params["stan"]["min_num_samples"]
-
-graham_model.transform_obs("R", "log10_R", lambda x: np.log10(x))
-graham_model.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
-graham_model.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
-graham_model.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
-
-graham_model.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
 
 # initialise the data dictionary
 stan_data = {}
@@ -97,20 +91,7 @@ if args.prior:
     graham_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
     # prior predictive check
-    fig, ax = plt.subplots(1,1, figsize=full_figsize)
-    ax.set_ylim(-1, 15.1)
-    ax.set_xlabel("R/kpc")
-    ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
-    ax.set_xscale("log")
-    graham_model.prior_plot("R", "log10_proj_density_mean", xmodel="R", ymodel="projected_density", yobs_err="log10_proj_density_std", ax=ax)
-
-    # plot latent parameter prior distributions
-    fig, ax = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
-    ax[0].set_xscale("log")
-    ax[3].set_xscale("log")
-    ax[4].set_xscale("log")
-    latent_qtys = ["r_b", "Re", "I_b", "g", "n"]
-    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$"], ax=ax)
+    graham_model.all_prior_plots(full_figsize)
 else:
     # create the push-forward distribution for the posterior model
     stan_data.update(dict(
@@ -128,50 +109,14 @@ else:
         analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}-{now}")
     else:
         analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}")
+    # run the model
     graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
     graham_model.determine_loo("log10_surf_rho_posterior")
 
-    # parameter corner plots
-    var_name_map = dict(
-        r_b_a = r"$r_{\mathrm{b}, \alpha}$",
-        r_b_b = r"$r_{\mathrm{b}, \beta}$",
-        Re_a = r"$R_{\mathrm{e},\alpha}$",
-        Re_b = r"$R_{\mathrm{e}, \beta}$",
-        I_b_a = r"$\Sigma_{\mathrm{b}, \alpha}$",
-        I_b_b = r"$\Sigma_{\mathrm{b}, \beta}$",
-        g_a = r"$\gamma_\alpha$",
-        g_b = r"$\gamma_\beta$",
-        n_a = r"$n_\alpha$",
-        n_b = r"$n_\beta$"
-    )
-    labeller = MapLabeller(var_name_map)
+    ax = graham_model.all_posterior_plots(full_figsize)
+    fig = plt.gcf()
 
-    '''
-    graham_model.parameter_plot(["r_b_mean", "r_b_var", "Re_mean", "Re_var"], labeller=labeller)
-    graham_model.parameter_plot(["I_b_mean", "I_b_var", "a_mean", "a_var"], labeller=labeller)
-    graham_model.parameter_plot(["g_mean", "g_var", "n_mean", "n_var"], labeller=labeller)
-    '''
-    '''graham_model.parameter_plot(["r_b_a", "r_b_b", "Re_a", "Re_b"], labeller=labeller)
-    graham_model.parameter_plot(["I_b_a", "I_b_b", "a_a", "a_b"], labeller=labeller)
-    graham_model.parameter_plot(["g_a", "g_b", "n_a", "n_b"], labeller=labeller)'''
-
-    # posterior predictive check
-    fig, ax = plt.subplots(1,1, figsize=full_figsize)
-    ax.set_xlabel(r"log($R$/kpc)")
-    ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
-    graham_model.posterior_plot("log10_R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax)
-    #graham_model.posterior_plot("log10_R", "log10_proj_density", "log10_surf_rho_posterior", ax=ax)
-
-    #graham_model.print_parameter_percentiles(["r_b_mean", "r_b_var", "Re_mean", "Re_var", "I_b_mean", "I_b_var", "g_mean", "g_var", "n_mean", "n_var", "a_mean", "a_var"])
-
-    # plot latent parameter distributions
-    #fig, ax = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})
-    fig, ax = plt.subplots(2,3, figsize=full_figsize)
-    ax = np.concatenate(ax).flatten()
-    ax[3].set_xscale("log")
-    latent_qtys = ["r_b_posterior", "Re_posterior", "I_b_posterior", "g_posterior", "n_posterior", "a_posterior"]
-    graham_model.plot_generated_quantity_dist(latent_qtys, xlabels=[r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$", r"$a$"], ax=ax)
     if args.compare:
         # compare to naive estimates of latent parameter distributions
         all_optimal_pars = np.full((len(np.unique(graham_model.categorical_label)), 5), np.nan)
@@ -196,7 +141,7 @@ else:
             axi.errorbar(nm, y, xerr=ns[::,np.newaxis], c="k", capsize=2, fmt=".")
         cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"{figname_base}_latentqty_compare.png"), fig=fig)
     
-    graham_model.print_parameter_percentiles(latent_qtys)
+    graham_model.print_parameter_percentiles(graham_model.latent_qtys)
 
 #plt.show()
 

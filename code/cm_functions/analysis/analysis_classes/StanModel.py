@@ -533,7 +533,11 @@ class _StanModel:
         if figsize is None:
             max_dim = max(rcParams["figure.figsize"])
             figsize = (max_dim, max_dim)
-        assert len(var_names) > 1, "Pair plot requires at least two variables!"
+        try:
+            assert len(var_names) > 1
+        except AssertionError:
+            _logger.logger.exception("Pair plot requires at least two variables!", exc_info=True)
+            raise
         if len(var_names) > 4:
             _logger.logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
         # plot trace
@@ -551,7 +555,7 @@ class _StanModel:
         # plot pair
         levels = [l/100 for l in levels]
         ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"])
-        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"])
+        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"])
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
@@ -677,7 +681,9 @@ class _StanModel:
         fit_time = datetime.strptime(C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z")
         model_build_time = os.path.getmtime(C._model.exe_file)
         if model_build_time > fit_time.timestamp():
-            _logger.logger.error(f"Stan executable has been recompiled since sampling was performed! Proceed with caution!\n  --> Compile time {model_build_time}\n  --> Sample time {fit_time.timestamp()}")
+            print("==========================================")
+            _logger.logger.error(f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {datetime.fromtimestamp(model_build_time)}\n  --> Sample time:  {fit_time}")
+            print("==========================================")
         C._loaded_from_file = True
         return C
 
