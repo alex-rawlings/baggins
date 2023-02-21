@@ -18,10 +18,9 @@ softenings = {"stars":0.005, "dm":0.3, "bh":0.005}
 
 SL = cmf.ScriptLogger("script", console_level="DEBUG")
 
-fig, ax = plt.subplots(3,1)
 cols = cmf.plotting.mplColours()
 
-accel_dat = {"run":[], "x":[], "y":[], "z":[]}
+hamiltonian_dat = {"run":[], "H":[]}
 
 for i, (key, dir) in enumerate(runs.items()):
     subdirs = [d.path for d in os.scandir(dir) if os.path.isdir(d)]
@@ -40,17 +39,13 @@ for i, (key, dir) in enumerate(runs.items()):
         translation = pygad.Translation(-snap.bh[bhid_mask]["pos"].flatten())
         translation.apply(snap, total=True)
         # TODO is this being affected by some extreme value from DM or a BH?
-        accel = cmf.analysis.softened_acceleration(snap, h=softenings, exclude_id=[bhid])
-        SL.logger.debug(f"Accel:\n{accel}")
-        for k, kname in enumerate(["x", "y", "z"]):
-            accel_dat[kname].append(accel[k])
-        accel_dat["run"].append(key)
+        hamiltonian_dat["H"] = cmf.analysis.calculate_Hamiltonian(snap)
+        SL.logger.debug(f"Hamiltonian:\n{hamiltonian_dat['H'][-1]}")
+        hamiltonian_dat["run"].append(key)
         pygad.gc_full_collect()
         del snap
-accel_df = pd.DataFrame(accel_dat)
+accel_df = pd.DataFrame(hamiltonian_dat)
 
-for k, axi in zip(["x", "y", "z"], ax):
-    sns.violinplot(data=accel_df, x="run", y=k, hue="run", dodge=False, orient="v", ax=axi)
-    axi.get_legend().remove()
+sns.violinplot(data=hamiltonian_dat, x="run", y=k, hue="run", dodge=False, orient="v", ax=axi)
 
 plt.show()

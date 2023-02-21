@@ -32,7 +32,7 @@ Returns
 -------
 log10_I_arr: log10 of profile
 */
-array[] real log10_I(int N, array[] real R, real log_I_b, real g, real a, real r_b, real Re, real n){
+array[] real log10_I(int N, array[] real R, real log10_I_b, real g, real a, real r_b, real Re, real n){
     real temp_val;
     real b = sersic_b_parameter(n);
     real inv_n = inv(n);
@@ -40,14 +40,24 @@ array[] real log10_I(int N, array[] real R, real log_I_b, real g, real a, real r
     real denom = log(10.0);
     array[N] real log10_I_arr;
     //
-    real pre_term = log_I_b - g/a*log(2.0) + b * pow((pow(2.0, inv_a)*r_b/Re), inv_n);
+    real pre_term = - g/a*log(2.0) + b * pow((pow(2.0, inv_a)*r_b/Re), inv_n);
 
     for(i in 1:N){
         temp_val = pre_term + g/a*log(pow(R[i],a) + pow(r_b,a)) - a*log(R[i]) - b * pow(Re, -inv_n) * pow(pow(R[i],a) + pow(r_b,a), inv_a*inv_n);
         // change base to log10
-        log10_I_arr[i] = temp_val / denom;
+        log10_I_arr[i] = log10_I_b + temp_val / denom;
 
     }
     return log10_I_arr;
 }
 
+
+
+real graham_preterm(real g, real a, real n, real b, real r_b, real Re){
+    return - g/a*log(2.0) + b * pow((pow(2.0, inv(a))*r_b/Re), inv(n));
+}
+
+real graham_surf_density(real R, real preterm, real g, real a, real r_b, real n, real b, real Re, real log10_I_b){
+    real inv_n = inv(n);
+    return log10_I_b + (preterm + g/a*log(pow(R,a) + pow(r_b,a)) - a*log(R) - b * pow(Re, -inv_n) * pow((pow(R,a) + pow(r_b,a)), (inv(a)*inv_n))) / log(10.0);
+}

@@ -14,8 +14,8 @@ _logger = _cmlogger.copy(__file__)
 class _GrahamModelBase(StanModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
-        self._latent_qtys = ["r_b", "Re", "I_b", "g", "n", "a"]
-        self._latent_qtys_labs = [r"$r_\mathrm{b}$/kpc", r"$R_\mathrm{e}$/kpc", r"$\Sigma_\mathrm{b}/(10^{9}$M$_\odot$/kpc$^2)$", r"$\gamma$", r"$n$", r"$a$"]
+        self._latent_qtys = ["r_b", "Re", "log10_I_b", "g", "n", "a"]
+        self._latent_qtys_labs = [r"$r_\mathrm{b}/\mathrm{kpc}$", r"$R_\mathrm{e}/\mathrm{kpc}$", r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$", r"$\gamma$", r"$n$", r"$a$"]
         self._labeller_latent = MapLabeller(dict(zip(self._latent_qtys, self._latent_qtys_labs)))
     
 
@@ -94,7 +94,7 @@ class _GrahamModelBase(StanModel_2D):
         ax1.set_xlabel("R/kpc")
         ax1.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
         ax1.set_xscale("log")
-        self.prior_plot("R", "log10_proj_density_mean", xmodel="R", ymodel="projected_density", yobs_err="log10_proj_density_std", ax=ax1)
+        self.prior_plot("R", "log10_proj_density_mean", xmodel="R", ymodel="log10_surf_rho_prior", yobs_err="log10_proj_density_std", ax=ax1)
 
         # prior latent quantities
         self.plot_latent_distributions(figsize=figsize)
@@ -121,12 +121,13 @@ class GrahamModelSimple(_GrahamModelBase):
             plotting axis
         """
         # latent parameter plots (corners, chains, etc)
-        self.parameter_plot(["r_b", "Re", "I_b", "g", "n", "a"], labeller=self._labeller_latent)
+        self.parameter_plot(self.latent_qtys, labeller=self._labeller_latent)
 
         # posterior predictive check
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)
         ax1.set_xlabel(r"log($R$/kpc)")
         ax1.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
+        ax1.set_ylim(6, 10)
         self.posterior_plot("log10_R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax1)
 
         # latent parameter distributions
@@ -139,8 +140,8 @@ class GrahamModelHierarchy(_GrahamModelBase):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
         self.figname_base = f"{self.figname_base}-hierarchy"
-        self._hyper_qtys = ["r_b_mean", "r_b_std", "Re_mean", "Re_std", "I_b_mean", "I_b_std", "g_mean", "g_std", "n_mean", "n_std", "a_mean", "a_std"]
-        self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", r"$\mu_{\Sigma_\mathrm{b}}$", r"$\sigma_{\Sigma_\mathrm{b}}$", r"$\mu_{g}$", r"$\sigma_{g}$", r"$\mu_{n}$", r"$\sigma_{n}$", r"$\mu_{a}$", r"$\sigma_{a}$"]
+        self._hyper_qtys = ["r_b_mean", "r_b_std", "Re_mean", "Re_std", "log10_I_b_mean", "log10_I_b_std", "g_mean", "g_std", "n_mean", "n_std", "a_mean", "a_std"]
+        self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", r"$\mu_{g}$", r"$\sigma_{g}$", r"$\mu_{n}$", r"$\sigma_{n}$", r"$\mu_{a}$", r"$\sigma_{a}$"]
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
 
 
@@ -160,13 +161,14 @@ class GrahamModelHierarchy(_GrahamModelBase):
         """
         # latent parameter plots (corners, chains, etc)
         self.parameter_plot(["r_b_mean", "r_b_std", "Re_mean", "Re_std"], labeller=self._labeller_hyper)
-        self.parameter_plot(["I_b_mean", "I_b_std", "a_mean", "a_std"], labeller=self._labeller_hyper)
+        self.parameter_plot(["log10_I_b_mean", "log10_I_b_std", "a_mean", "a_std"], labeller=self._labeller_hyper)
         self.parameter_plot(["g_mean", "g_std", "n_mean", "n_std"], labeller=self._labeller_hyper)
 
         # posterior predictive check
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)
         ax1.set_xlabel(r"log($R$/kpc)")
         ax1.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
+        ax1.set_ylim(6, 10)
         self.posterior_plot("log10_R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax1)
 
         # latent parameter distributions

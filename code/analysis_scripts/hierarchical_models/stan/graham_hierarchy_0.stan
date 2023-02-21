@@ -8,8 +8,8 @@ data {
     int<lower=1> N_tot;
     // number of groups
     int<lower=1> N_groups;
-    // number of observations per group
-    array[N_groups] int<lower=1> N_per_group;
+    // which group each observation belongs to
+    array[N_tot] int<lower=1> group_id;
     // array of radial values
     array[N_tot] real<lower=0.0> R;
     // array of surface density values
@@ -66,12 +66,14 @@ transformed parameters {
     array[N_tot] real log10_surf_rho_calc;
 
     {
-        int start_idx = 1;
-        int end_idx;
+        array[N_groups] real pre_term;
+        array[N_groups] real b_param;
         for(i in 1:N_groups){
-            end_idx = start_idx + N_per_group[i] - 1;
-            log10_surf_rho_calc[start_idx:end_idx] = log10_I(N_per_group[i], R[start_idx:end_idx], log10_I_b[i], g[i], a[i], r_b[i], Re[i], n[i]);
-            start_idx = end_idx + 1;
+            b_param[i] = sersic_b_parameter(n[i]);
+            pre_term[i] = graham_preterm(g[i], a[i], n[i], b_param[i], r_b[i], Re[i]);
+        }
+        for(i in 1:N_tot){
+            log10_surf_rho_calc[i] = graham_surf_density(R[i], pre_term[group_id[i]], g[group_id[i]], a[group_id[i]], r_b[group_id[i]], n[group_id[i]], b_param[group_id[i]], Re[group_id[i]], log10_I_b[group_id[i]]);
         }
     }
 }
@@ -99,28 +101,60 @@ model {
 
 generated quantities {
     // posterior parameters
-    real r_b_posterior = normal_rng(r_b_mean, r_b_std);
-    real Re_posterior = normal_rng(Re_mean, Re_std);
-    real log10_I_b_posterior = normal_rng(log10_I_b_mean, log10_I_b_std);
-    real g_posterior = normal_rng(g_mean, g_std);
-    real n_posterior = normal_rng(n_mean, n_std);
-    real a_posterior = normal_rng(a_mean, a_std);
+    array[N_groups] real r_b_posterior;
+    array[N_groups] real Re_posterior;
+    array[N_groups] real log10_I_b_posterior;
+    array[N_groups] real g_posterior;
+    array[N_groups] real n_posterior;
+    array[N_groups] real a_posterior;
 
     // posterior predictive check
-    // note we need to use rejection sampling here
     array[N_tot] real log10_surf_rho_posterior;
-    array[1] real Ri;
-    array[1] real Ii;
-    for(i in 1:N_tot){
-        Ri[1] = R[i];
-        Ii = normal_rng(log10_I(1, Ri, log10_I_b_posterior, g_posterior, a_posterior, r_b_posterior, Re_posterior, n_posterior), err);
-        while(log10_surf_rho_posterior[i] < 0.0){
-            Ii = normal_rng(log10_I(1, Ri, log10_I_b_posterior, g_posterior, a_posterior, r_b_posterior, Re_posterior, n_posterior), err);
+
+    // derived posterior parameters
+    {
+        array[N_groups] real b_param_posterior;
+        array[N_groups] real pre_term_posterior;
+
+        // use rejection sampling to constrain to >0 values
+        for(i in 1:N_groups){
+            r_b_posterior[i] = normal_rng(r_b_mean, r_b_std);
+            while(r_b_posterior[i] < 0){
+                r_b_posterior[i] = normal_rng(r_b_mean, r_b_std);
+            }
+            Re_posterior[i] = normal_rng(Re_mean, Re_std);
+            while(Re_posterior[i] < 0){
+                Re_posterior[i] = normal_rng(Re_mean, Re_std);
+            }
+            log10_I_b_posterior[i] = normal_rng(log10_I_b_mean, log10_I_b_std);
+                while(log10_I_b_posterior[i] < 0){
+                    log10_I_b_posterior[i] = normal_rng(log10_I_b_mean, log10_I_b_std);
+                }
+            g_posterior[i] = normal_rng(g_mean, g_std);
+            while(g_posterior[i] < 0){
+                g_posterior[i] = normal_rng(g_mean, g_std);
+            }
+            n_posterior[i] = normal_rng(n_mean, n_std);
+            while(n_posterior[i] < 0){
+                n_posterior[i] = normal_rng(n_mean, n_std);
+            }
+            a_posterior[i] = normal_rng(a_mean, a_std);
+            while(a_posterior[i] < 0){
+                a_posterior[i] = normal_rng(a_mean, a_std);
+            }
+
+            b_param_posterior[i] = sersic_b_parameter(n_posterior[i]);
+            pre_term_posterior[i] = graham_preterm(g_posterior[i], a_posterior[i], n_posterior[i], b_param_posterior[i], r_b_posterior[i], Re_posterior[i]);
         }
-        log10_surf_rho_posterior[i] = Ii[1];
+
+        // sample posterior
+        for(i in 1:N_tot){
+            log10_surf_rho_posterior[i] = normal_rng(graham_surf_density(R[i], pre_term_posterior[group_id[i]], g_posterior[group_id[i]], a_posterior[group_id[i]], r_b_posterior[group_id[i]], n_posterior[group_id[i]], b_param_posterior[group_id[i]], Re_posterior[group_id[i]], log10_I_b_posterior[group_id[i]]), err);
+        }
     }
 
-    /****** determine log likelihood function ******/
+
+    // determine log likelihood function
     vector[N_tot] log_lik;
     for(i in 1:N_tot){
         log_lik[i] = normal_lpdf(log10_surf_rho[i] | log10_surf_rho_calc[i], err);

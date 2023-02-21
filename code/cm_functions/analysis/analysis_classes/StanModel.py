@@ -51,7 +51,9 @@ class _StanModel:
         self._prior_stan_data = None
         self._prior_model = None
         self._prior_fit = None
+        self._prior_fit_for_az = None
         self._parameter_plot_counter = 0
+        self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {"marker":"o", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
         self._num_groups = 0
@@ -464,7 +466,7 @@ class _StanModel:
             self.build_model()
         self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
         # TODO capture arviz warnings about NaN
-        self._fit_for_az = az.from_cmdstanpy(self._fit)
+        self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
     
 
     def sample_prior(self, data, sample_kwargs={}):
@@ -482,6 +484,8 @@ class _StanModel:
         if self._prior_model is None and not self._loaded_from_file:
             self.build_model(prior=True)
         self._prior_fit = self._sampler(data=self._prior_stan_data, sample_kwargs=sample_kwargs, prior=True)
+        self._prior_fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
+
 
 
     def sample_generated_quantity(self, gq, force_resample=False):
@@ -516,7 +520,7 @@ class _StanModel:
         return self.generated_quantities.stan_variable(gq)
     
 
-    def parameter_plot(self, var_names, figsize=None, labeller=None, levels=[50, 90, 95, 99]):
+    def parameter_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
         """
         Plot key pair plots and diagnostics of a stan likelihood model.
 
@@ -540,8 +544,13 @@ class _StanModel:
             raise
         if len(var_names) > 4:
             _logger.logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
+        
         # plot trace
-        ax = az.plot_trace(self._fit_for_az, var_names=var_names, figsize=figsize)
+        if self._parameter_plot_counter == 0:
+            vmax = len(self._fit_for_az.posterior["chain"])
+            cmapper, sm = create_normed_colours(-vmax/2,vmax, cmap="Blues")
+            self._trace_plot_cols = [cmapper(x) for x in self._fit_for_az.posterior["chain"]]
+        ax = az.plot_trace(self._fit_for_az, var_names=var_names, figsize=figsize, chain_prop={"color":self._trace_plot_cols}, trace_kwargs={"alpha":0.9})
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"trace_{self._parameter_plot_counter}"), fig=fig)
         plt.close(fig)
@@ -553,6 +562,7 @@ class _StanModel:
         plt.close(fig)
 
         # plot pair
+        # TODO make this a general method
         levels = [l/100 for l in levels]
         ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"])
         az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"])
@@ -629,7 +639,13 @@ class _StanModel:
         vars : list
             variables in the CmdStanMCMC object to print
         """
-        df = self._fit.summary(sig_figs=4, percentiles=[5, 25, 50, 75, 95])
+        quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
+        if self._fit_for_az is None:
+            qvals = self._prior_fit_for_az.quantile(quantiles)["prior"].to_dataframe()
+        else:
+            # NOTE for some reason to do with numpy subtract method, the above 
+            # method for the prior fit doesn't work here. Reorder the operations
+            qvals = self._fit_for_az["posterior"].to_dataframe().quantile(quantiles)
         vars = vars.copy()
         vars.insert(0, "Variable")
         max_str_len = max([len(v) for v in vars]) + 1
@@ -638,8 +654,8 @@ class _StanModel:
         dashes = ["-" for _ in range(len(head_str))]
         print("".join(dashes))
         for v in vars[1:]:
-            _iqr = df.loc[v,'75%']-df.loc[v,'25%']
-            print(f"{v:>{max_str_len}}:  {df.loc[v,'5%']:>.2e}  {df.loc[v,'50%']:>.2e}  {df.loc[v,'95%']:>.2e}  {_iqr:>.2e}")
+            _iqr = qvals.loc[0.75, v] - qvals.loc[0.25, v]
+            print(f"{v:>{max_str_len}}:  {qvals.loc[0.05,v]:>.2e}  {qvals.loc[0.50,v]:>.2e}  {qvals.loc[0.95,v]:>.2e}  {_iqr:>.2e}")
         print()
 
     
@@ -679,10 +695,10 @@ class _StanModel:
         C.build_model()
         C._fit = cmdstanpy.from_csv(fit_files)
         fit_time = datetime.strptime(C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z")
-        model_build_time = os.path.getmtime(C._model.exe_file)
-        if model_build_time > fit_time.timestamp():
+        model_build_time = datetime.utcfromtimestamp(os.path.getmtime(C._model.exe_file))
+        if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
-            _logger.logger.error(f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {datetime.fromtimestamp(model_build_time)}\n  --> Sample time:  {fit_time}")
+            _logger.logger.error(f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC")
             print("==========================================")
         C._loaded_from_file = True
         return C
@@ -693,35 +709,38 @@ class _StanModel:
 class StanModel_1D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
-    
 
-    def prior_plot(self, xobs, xmodel, ax=None, collapsed=True):
-        # TODO get az.plot_ppc() working, more informative
+    def _plot_predictive(self, xobs, xmodel, dataset, xobs_err=None, levels=None, ax=None, collapsed=True):
+        if levels is None:
+            levels = [50, 90, 95, 99]
+        quantiles = [0.5 - l/200 for l in levels]
+        quantiles.extend([0.5 + l/200 for l in levels])
+        quantiles.sort()
         if ax is None:
             fig, ax = plt.subplots(1,1)
         else:
             fig = ax.get_figure()
         obs = self.obs_collapsed if collapsed else self.obs
-        x = az.from_cmdstanpy(prior=self._prior_fit, prior_predictive=xmodel, observed_data={xobs:obs[xobs]})
-        x1 = x.to_dataframe(groups=["prior", "prior_predictive", "sample_stats_prior", "observed_data"])
-        #print(x1)
-        #az.plot_ppc(x, ax=ax, group="prior", var_names=["angmom"])
-        az.plot_dist(self._prior_fit.stan_variable(xmodel))
+        az.plot_dist(dataset.stan_variable(xmodel), quantiles=quantiles, ax=ax)
         # overlay data
         colvals = np.unique(obs["label"])
-        ncols = len(colvals)
         cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
         for i, c in enumerate(colvals):
             col = cmapper(c)
             mask = obs["label"]==c
-            # TODO y must be same length
-            ax.scatter(obs[xobs][mask], 0, color=col, **self._plot_obs_data_kwargs)
-        #ax.legend()
-        #savefig(self._make_fig_name(self.figname_base, f"prior_pred_{xobs}"), fig=fig)
+            ax.scatter(obs[xobs][mask], np.zeros(len(obs[xobs][mask])), color=col, **self._plot_obs_data_kwargs)
+        return ax
+
+    def prior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
+        ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, dataset=self._prior_fit, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        fig = ax.get_figure()
+        savefig(self._make_fig_name(self.figname_base, f"prior_pred_{xobs}"), fig=fig)
     
 
-    def posterior_plot(self):
-        raise NotImplementedError
+    def posterior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
+        ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, dataset=self._fit, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        fig = ax.get_figure()
+        savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{xobs}"), fig=fig)
 
 
 

@@ -37,7 +37,7 @@ with h5py.File(HMQ_files[0], mode="r") as f:
 figname_base = f"hierarchical_models/binary/{merger_id}/binary_properties-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
-stan_model_file = "stan/binary_properties.stan"
+stan_model_file = "stan/binary_simple.stan"
 
 if args.load_file is not None:
     # load a previous sample for improved performance: no need to resample the
@@ -45,7 +45,7 @@ if args.load_file is not None:
     kepler_model = cmf.analysis.StanModel_1D.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
 else:
     # sample
-    kepler_model = cmf.analysis.StanModel_1D(model_file=stan_model_file, prior_file="stan/binary_prior_2.stan", figname_base=figname_base)
+    kepler_model = cmf.analysis.StanModel_1D(model_file=stan_model_file, prior_file="stan/binary_prior.stan", figname_base=figname_base)
 
 # set up observations
 observations = {"angmom":[], "a":[], "e":[], "mass1":[], "mass2":[]}
@@ -83,11 +83,14 @@ except AssertionError:
     SL.logger.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {kepler_model.num_groups}!', exc_info=True)
     raise
 
+# TODO are units of a correct??
+SL.logger.debug(f"Median semimajor axis per group: {[np.nanmedian(g) for g in kepler_model.obs['a']]}")
+SL.logger.debug(f"Median eccentricity per group: {[np.nanmedian(g) for g in kepler_model.obs['e']]}")
+
 # transform observations
 G_in_Msun_pc_yr = unit_length_in_pc**3 / unit_time_in_years**2
 kepler_model.transform_obs(("mass1", "mass2"), "total_mass", lambda x,y: x+y)
 kepler_model.obs["total_mass_long"] = []
-offset_factor = np.linspace(1, 1.01, kepler_model.num_groups)
 for tm, am in zip(kepler_model.obs["total_mass"], kepler_model.obs["angmom"]):
     kepler_model.obs["total_mass_long"].append(np.repeat(tm, len(am)))
 kepler_model.transform_obs("angmom", "angmom_corr", lambda x: x*unit_length_in_pc**2/unit_time_in_years)
@@ -101,18 +104,35 @@ if args.verbose == "DEBUG":
     kepler_model.print_obs_summary()
 
 # initialise the data dictionary
-stan_data = {}
+stan_data = dict(
+    N_groups = len(np.unique(kepler_model.obs_collapsed["label"]))
+)
 
 if args.prior:
     # create the push-forward distribution for the prior model
     kepler_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
     fig, ax = plt.subplots(1,1, figsize=full_figsize)
+    ax.set_xlabel(r"$\log\left( \left(l/\sqrt{GM}\right)/\sqrt{\mathrm{pc}} \right)$")
+    ax.set_ylabel("PDF")
     kepler_model.prior_plot(xobs="log_angmom_corr_red", xmodel="log_angmom", ax=ax)
-    
-    plt.show()
+
 else:
     stan_data.update(dict(
-        N_child = kepler_model.obs_len,
-        M = kepler_model.obs["mass1"] + kepler_model.obs["mass2"],
-        M_reduced = kepler_model.obs["mass1"] * kepler_model.obs["mass2"] / (kepler_model.obs["mass1"] + kepler_model.obs["mass2"])
+        N_tot = len(kepler_model.obs_collapsed["log_angmom_corr_red"]),
+        log10_angmom = kepler_model.obs_collapsed["log_angmom_corr_red"]
     ))
+
+    analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/binary/{merger_id}")
+
+    kepler_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
+
+    #kepler_model.parameter_plot(["a_hard", "e_hard"], figsize=full_figsize)
+    # posterior predictive check
+    fig, ax = plt.subplots(1,1, figsize=full_figsize)
+    ax.set_xlabel(r"$\log\left( \left(l/\sqrt{GM}\right)/\sqrt{\mathrm{pc}} \right)$")
+    ax.set_ylabel("PDF")
+    #kepler_model.posterior_plot("log_angmom_corr_red", "log10_angmom_posterior", ax=ax)
+    kepler_model.print_parameter_percentiles(["a_hard", "e_hard"])
+
+
+plt.show()
