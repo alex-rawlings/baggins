@@ -21,7 +21,6 @@ and maybe another one of BH merger remnant properties.
 
 \subsection{Projected Mass Density Profiles}
 We use hierarchical modelling to recover the population parameter distributions of the core-S\'ersic model \autoref{eq:coresersic} for each simulation family. 
-We enforce a sharp transition from the core to outer galaxy regions by setting $\alpha$ in \autoref{eq:coresersic} to 10.0. 
 A probabilistic graphical model detailing the connection between hyperparameters, latent parameters, and observables is given in \autoref{fig:graphicalmodel}. 
 
 \begin{table}
@@ -30,18 +29,20 @@ A probabilistic graphical model detailing the connection between hyperparameters
     \label{tab:cshypers}
     \begin{tabular}{ccc}
         \hline
-        Hyperparameter & $\alpha$ & $\beta$ \\
+        Hyperparameter & $\mu$ & $\sigma$ \\
         \hline
-        $r_{\mathrm{b}, \alpha}$ & 3.0 & 2.0 \\
-        $r_{\mathrm{b}, \beta}$ & 10.0 & 8.0 \\
-        $R_{\mathrm{e}, \alpha}$ & 30.0 & 2.0 \\
-        $R_{\mathrm{e}, \beta}$ & 40.0 & 2.0 \\
-        $\tilde{\Sigma}_{\mathrm{b}, \alpha}$ & 20.0 & 4.0 \\
-        $\tilde{\Sigma}_{\mathrm{b}, \beta}$ & 20.0 & 2.0 \\
-        $\gamma_\alpha$ & 1.0 & 2.0 \\
-        $\gamma_\beta$ & 4.0 & 2.0 \\
-        $n_\alpha$ & 16.0 & 2.0 \\
-        $n_\beta$ & 4.0 & 2.0 \\
+        $r_{\mathrm{b}, \mu}$ & 0.0 & 2.0 \\
+        $r_{\mathrm{b}, \sigma}$ & 0.0 & 1.0 \\
+        $R_{\mathrm{e}, \mu}$ & 0.0 & 14.0 \\
+        $R_{\mathrm{e}, \sigma}$ & 0.0 & 6.0 \\
+        $\tilde{\Sigma}_{\mathrm{b}, \mu}$ & 0.0 & 20.0 \\
+        $\tilde{\Sigma}_{\mathrm{b}, \sigma}$ & 0.0 & 10.0 \\
+        $\gamma_\mu$ & 0.0 & 0.5 \\
+        $\gamma_\sigma$ & 0.0 & 1.0 \\
+        $n_\mu$ & 0.0 & 8.0 \\
+        $n_\sigma$ & 0.0 & 5.0 \\
+        $a_\mu$ & 0.0 & 20.0 \\
+        $a_\sigma$ & 0.0 & 10.0 \\
         \hline
     \end{tabular}
 \end{table}
@@ -78,13 +79,13 @@ As likelihood function, we use the lognormal distribution $\mathrm{Lognorm}(\Sig
 \drafting{Write explicitly the posterior distribution we are sampling from.}
 
 \begin{figure*}
-    \includegraphics{{graham_density-H-H-3.0-0.001_posterior_pred_log10_proj_density_mean}.pdf}
+    \includegraphics{{graham_density-H-H-3.0-0.001-hierarchy_posterior_pred_log10_proj_density_mean}.pdf}
     \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit for highest (fiducial) mass resolution. Darker shaded regions correspond to higher Bayesian Credible Intervals (BCIs). The observed data is overlaid, and seen to lie well within the 50\% BCI. }}
     \label{fig:postpred}
 \end{figure*}
 
 \begin{figure*}
-    \includegraphics{{graham_density-H-H-3.0-0.001_latentqty_compare}.pdf}
+    \includegraphics{{graham_density-H-H-3.0-0.001-hierarchy_latentqty_compare}.pdf}
     \caption{\drafting{Latent params, and compare to naive estimates using Gaussian stats. Note error bars on black points are smaller than the point itself if not visible}}
     \label{fig:cs_compare_naive}
 \end{figure*}

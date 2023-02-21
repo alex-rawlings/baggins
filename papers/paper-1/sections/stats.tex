@@ -3,29 +3,6 @@
 We perform full Bayesian Hierarchical Modelling for the projected mass density profiles of our simulated galaxies. 
 The modelling is performed using the statistical software \textsc{Stan}\footnote{https://mc-stan.org}, which itself implements Hamiltonian Monte Carlo (HMC).
 
-\subsection{Hamiltonian Monte Carlo}
-An excellent overview of HMC may be found in \citet{betancourt17}, with a brief description provided here. \drafting{Mention NUTS here somewhere?}
-
-In numerically sampling an arbitrary target distribution, we are required to sample from the \textit{typical set}, or those regions of the target distribution which provide the dominant contribution to an expectation value. 
-Simplistically, this may be achieved using any Markov generating process, such as the widely-used Metropolis-Hastings (MH) algorithm, albeit at the expense of inefficient and biased sampling. 
-The MH algorithm generates from a starting position $q$ a proposal for the next position $q'$, with proposals accepted with some probability $Q(q'|q)$, where $Q$ is often chosen to be the normal distribution. 
-Sampling with increased efficiency can be achieved by using information about the geometry of the typical set of the target distribution through a vector field aligned with the typical set, which may be estimated using the gradient of the target distribution. 
-To align the gradient vector field with the typical set vector field, we can introduce auxillary momenta variables $p$, promoting our $D$-dimensional target distribution to a projection of a $2D$-dimensional canonical distribution in some phase space:
-\begin{equation}\label{eq:hmc}
-    P(q,p) = P(p|q)P(q) = e^{-H(q,p)}
-\end{equation}
-where $H$ is an invariant Hamiltonian function. 
-The desired vector field may then be generated from the Hamiltonian $H$ using Hamilton's equations. 
-This formulation also lends itself to improved sampling efficiency by decomposing the Hamiltonian into a \textit{kinetic energy} term and a \textit{potential energy} term, with the latter equivalent to the logarithm of the target distribution. 
-\begin{align}
-    H(q,p) &= -\log P(q,p) \\
-    &= -\log \left( P(p|q)P(q) \right) \\
-    &= -\log P(p|q) -\log P(q)
-\end{align}
-As the Hamiltonian is phase space conserving, the Hamilton equations may be accurately integrated using a volume-preserving integration scheme, such as symplectic integrators. 
-Of these integrators, the leapfrog scheme offers both a simple implementation and high accuracy over long integration times. 
-
-
 \subsection{Hierarchical Models}
 In general, a model, whether empirical or physical, is a mathematical description of some observed data involving one or more model parameters. 
 There are a vast number of methods, such as least-squares fitting and $\chi^2$-minimisation, that aim to recover the optimal or `best-fit' parameters for a model given some data. 
@@ -82,12 +59,12 @@ Typically though, a sense of how well a posterior distribution captures the firs
     \item Does the posterior predictive distribution capture the \textit{scale} of the data generating process? \drafting{What does this imply??}
 \end{enumerate}
 
-To answer these questions, we define a test statistic $T$ from which we determine a Bayes-equivalent of the frequentist $p$-value \citep{gelman15}.
-\begin{align}
-    p_\mathrm{Bayes} &= \mathrm{Pr}\left( T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y \right) \\
-    &= \iint I_{T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y} p\left( y^\mathrm{rep}|\theta\right) p\left( \theta|y\right) \dd{y^\mathrm{rep}} \dd{\theta}
-\end{align}
-Here, $I$ is the indicator function. 
+%To answer these questions, we define a test statistic $T$ from which we determine a Bayes-equivalent of the frequentist $p$-value \citep{gelman15}.
+%\begin{align}
+%    p_\mathrm{Bayes} &= \mathrm{Pr}\left( T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y \right) \\
+%    &= \iint I_{T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y} p\left( y^\mathrm{rep}|\theta\right) p\left( \theta|y\right) \dd{y^\mathrm{rep}} \dd{\theta}
+%\end{align}
+%Here, $I$ is the indicator function. 
 
 
 \subsection{Assessing the HMC}

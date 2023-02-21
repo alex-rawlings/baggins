@@ -20,43 +20,49 @@
     \node[latent, below=of Re] (rb) {$r_\mathrm{b}$};
     \node[latent, above=of Sb] (g) {$\gamma$};
     \node[latent, above=of g] (n) {$n$};
+    \node[latent, above=of n] (a) {$a$};
 
     % define layer 3
-    \factor[left=of rb] {rb_f} {below:$\Gamma$} {} {};
-    \node[hyper, left=of rb_f, yshift=-1.2em] (rba) {$r_{\mathrm{b},\alpha}$};
-    \node[hyper, left=of rb_f, yshift=1.2em] (rbb) {$r_{\mathrm{b},\beta}$};
+    \factor[left=of rb] {rb_f} {below:$\mathcal{N}$} {} {};
+    \node[hyper, left=of rb_f, yshift=-1.2em] (rbs) {$r_{\mathrm{b},\sigma}$};
+    \node[hyper, left=of rb_f, yshift=1.2em] (rbm) {$r_{\mathrm{b},\mu}$};
 
-    \factor[left=of Re] {Re_f} {below:$\Gamma$} {} {};
-    \node[hyper, left=of Re_f, yshift=-1.2em] (Rea) {$R_{\mathrm{e},\alpha}$};
-    \node[hyper, left=of Re_f, yshift=1.2em] (Reb) {$R_{\mathrm{e},\beta}$};
+    \factor[left=of Re] {Re_f} {below:$\mathcal{N}$} {} {};
+    \node[hyper, left=of Re_f, yshift=-1.2em] (Res) {$R_{\mathrm{e},\sigma}$};
+    \node[hyper, left=of Re_f, yshift=1.2em] (Rem) {$R_{\mathrm{e},\mu}$};
 
-    \factor[left=of Sb] {Sb_f} {below:$\Gamma$} {} {};
-    \node[hyper, left=of Sb_f, yshift=-1.2em] (Sba) {$\tilde{\Sigma}_{\mathrm{b},\alpha}$};
-    \node[hyper, left=of Sb_f, yshift=1.2em] (Sbb) {$\tilde{\Sigma}_{\mathrm{b},\beta}$};
+    \factor[left=of Sb] {Sb_f} {below:$\mathcal{N}$} {} {};
+    \node[hyper, left=of Sb_f, yshift=-1.2em] (Sbs) {$\tilde{\Sigma}_{\mathrm{b},\sigma}$};
+    \node[hyper, left=of Sb_f, yshift=1.2em] (Sbm) {$\tilde{\Sigma}_{\mathrm{b},\mu}$};
 
-    \factor[left=of g] {g_f} {below:$\Gamma$} {} {};
-    \node[hyper, left=of g_f, yshift=-1.2em] (ga) {$\gamma_\alpha$};
-    \node[hyper, left=of g_f, yshift=1.2em] (gb) {$\gamma_\beta$};
+    \factor[left=of g] {g_f} {below:$\mathcal{N}$} {} {};
+    \node[hyper, left=of g_f, yshift=-1.2em] (gs) {$\gamma_\sigma$};
+    \node[hyper, left=of g_f, yshift=1.2em] (gm) {$\gamma_\mu$};
 
-    \factor[left=of n] {n_f} {below:$\Gamma$} {} {};
-    \node[hyper, left=of n_f, yshift=-1.2em] (na) {$n_\alpha$};
-    \node[hyper, left=of n_f, yshift=1.2em] (nb) {$n_\beta$};
+    \factor[left=of n] {n_f} {below:$\mathcal{N}$} {} {};
+    \node[hyper, left=of n_f, yshift=-1.2em] (ns) {$n_\sigma$};
+    \node[hyper, left=of n_f, yshift=1.2em] (nm) {$n_\mu$};
+
+    \factor[left=of a] {a_f} {below:$\mathcal{N}$} {} {};
+    \node[hyper, left=of a_f, yshift=-1.2em] (as) {$a_\sigma$};
+    \node[hyper, left=of a_f, yshift=1.2em] (am) {$a_\mu$};
 
 
     % connect the nodes
     \factoredge {sigma, S} {S_f} {Shat};
     
-    \edge {rb, Re, Sb, g, n, R} {S};
+    \edge {rb, Re, Sb, g, n, a, R} {S};
 
-    \factoredge {rba, rbb} {rb_f} {rb};
-    \factoredge {Rea, Reb} {Re_f} {Re};
-    \factoredge {Sba, Sbb} {Sb_f} {Sb};
-    \factoredge {ga, gb} {g_f} {g};
-    \factoredge {na, nb} {n_f} {n};
+    \factoredge {rbs, rbm} {rb_f} {rb};
+    \factoredge {Res, Rem} {Re_f} {Re};
+    \factoredge {Sbs, Sbm} {Sb_f} {Sb};
+    \factoredge {gs, gm} {g_f} {g};
+    \factoredge {ns, nm} {n_f} {n};
+    \factoredge {as, am} {a_f} {a};
     
     % plates
     \plate {rS} {(R)(S)(sigma)(Shat)} {$\forall R,\sigma_\Sigma^2$};
-    \plate {pars} {(R)(S)(sigma)(rb)(Re)(Sb)(g)(n)} {$\forall$ child};
+    \plate {pars} {(R)(S)(sigma)(rb)(Re)(Sb)(g)(n)(a)} {$\forall$ child};
 
     
 \end{tikzpicture}
