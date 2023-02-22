@@ -5,7 +5,6 @@ import numpy as np
 import scipy.optimize
 import h5py
 from matplotlib import rcParams
-import matplotlib.pyplot as plt
 import cm_functions as cmf
 
 
@@ -103,13 +102,13 @@ else:
     if args.random_sample:
         now = datetime.now()
         now = now.strftime("%Y%m%d-%H%M%S")
-        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}-{now}")
+        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{merger_id}-{now}")
     else:
-        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/{merger_id}")
+        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{merger_id}")
     # run the model
     graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
-    graham_model.determine_loo("log10_surf_rho_posterior")
+    graham_model.determine_loo()
 
     ax = graham_model.all_posterior_plots(full_figsize)
     fig = ax[0].get_figure()

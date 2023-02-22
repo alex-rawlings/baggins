@@ -121,7 +121,7 @@ class GrahamModelSimple(_GrahamModelBase):
             plotting axis
         """
         # latent parameter plots (corners, chains, etc)
-        self.parameter_plot(self.latent_qtys, labeller=self._labeller_latent)
+        self.parameter_diagnostic_plots(self.latent_qtys, labeller=self._labeller_latent)
 
         # posterior predictive check
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)
@@ -160,9 +160,9 @@ class GrahamModelHierarchy(_GrahamModelBase):
             plotting axis
         """
         # latent parameter plots (corners, chains, etc)
-        self.parameter_plot(["r_b_mean", "r_b_std", "Re_mean", "Re_std"], labeller=self._labeller_hyper)
-        self.parameter_plot(["log10_I_b_mean", "log10_I_b_std", "a_mean", "a_std"], labeller=self._labeller_hyper)
-        self.parameter_plot(["g_mean", "g_std", "n_mean", "n_std"], labeller=self._labeller_hyper)
+        self.parameter_diagnostic_plots(["r_b_mean", "r_b_std", "Re_mean", "Re_std"], labeller=self._labeller_hyper)
+        self.parameter_diagnostic_plots(["log10_I_b_mean", "log10_I_b_std", "a_mean", "a_std"], labeller=self._labeller_hyper)
+        self.parameter_diagnostic_plots(["g_mean", "g_std", "n_mean", "n_std"], labeller=self._labeller_hyper)
 
         # posterior predictive check
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)

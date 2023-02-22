@@ -52,7 +52,8 @@ class _StanModel:
         self._prior_model = None
         self._prior_fit = None
         self._prior_fit_for_az = None
-        self._parameter_plot_counter = 0
+        self._parameter_diagnostic_plots_counter = 0
+        self.__parameter_corner_plot_counter = 0
         self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {"marker":"o", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
@@ -520,7 +521,43 @@ class _StanModel:
         return self.generated_quantities.stan_variable(gq)
     
 
-    def parameter_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
+    def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
+        """
+        Base method to create parameter corner plots. This method should not be
+        called directly.
+
+        Parameters
+        ----------
+        var_names : list
+            variable names to plot
+        figsize : tuple, optional
+            figure size, by default None
+        labeller : arviz.MapLabeller, optional
+            mapping from variable names to labels, by default None
+        levels : list, optional
+            HDI intervals to plot, by default [25, 50, 90, 95, 99]
+
+        Returns
+        -------
+        ax : matplotlib.axes._subplots.AxesSubplot
+            corner plot
+        """
+        levels = [l/100 for l in levels]
+        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"])
+        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"])
+        return ax
+    
+
+    def parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
+        """
+        See docs for _parameter_corner_plot()
+        """
+        ax = self._parameter_corner_plot(var_names, figsize=figsize, labeller=labeller, levels=levels)
+        self._parameter_corner_plot_counter += 1
+        return ax
+
+
+    def parameter_diagnostic_plots(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
         """
         Plot key pair plots and diagnostics of a stan likelihood model.
 
@@ -530,6 +567,8 @@ class _StanModel:
             variable names to plot
         figsize : tuple, optional
             size of figures, by default (9.0, 6.75)
+        labeller : arviz.MapLabeller, optional
+            mapping from variable names to labels, by default None
         levels : list, optional
             HDI intervals to plot, by default [50, 90, 95, 99]
         """
@@ -546,30 +585,27 @@ class _StanModel:
             _logger.logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
         
         # plot trace
-        if self._parameter_plot_counter == 0:
+        if self._parameter_diagnostic_plots_counter == 0:
             vmax = len(self._fit_for_az.posterior["chain"])
             cmapper, sm = create_normed_colours(-vmax/2,vmax, cmap="Blues")
             self._trace_plot_cols = [cmapper(x) for x in self._fit_for_az.posterior["chain"]]
-        ax = az.plot_trace(self._fit_for_az, var_names=var_names, figsize=figsize, chain_prop={"color":self._trace_plot_cols}, trace_kwargs={"alpha":0.9})
+        ax = az.plot_trace(self._fit_for_az, var_names=var_names, figsize=figsize, chain_prop={"color":self._trace_plot_cols}, trace_kwargs={"alpha":0.9}, labeller=labeller)
         fig = ax.flatten()[0].get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"trace_{self._parameter_plot_counter}"), fig=fig)
+        savefig(self._make_fig_name(self.figname_base, f"trace_{self._parameter_diagnostic_plots_counter}"), fig=fig)
         plt.close(fig)
 
         # plot rank
-        ax = az.plot_rank(self._fit_for_az, var_names=var_names)
+        ax = az.plot_rank(self._fit_for_az, var_names=var_names, labeller=labeller)
         fig = ax.flatten()[0].get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"rank_{self._parameter_plot_counter}"), fig=fig)
+        savefig(self._make_fig_name(self.figname_base, f"rank_{self._parameter_diagnostic_plots_counter}"), fig=fig)
         plt.close(fig)
 
         # plot pair
-        # TODO make this a general method
-        levels = [l/100 for l in levels]
-        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"])
-        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"])
+        ax = self._parameter_corner_plot(var_names=var_names, figsize=figsize, labeller=labeller, levels=levels)
         fig = ax.flatten()[0].get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_plot_counter}"), fig=fig)
+        savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_diagnostic_plots_counter}"), fig=fig)
         plt.close(fig)
-        self._parameter_plot_counter += 1
+        self._parameter_diagnostic_plots_counter += 1
 
 
     def plot_generated_quantity_dist(self, gq, ax=None, xlabels=None, save=True, plot_kwargs={}):
@@ -641,21 +677,19 @@ class _StanModel:
         """
         quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
         if self._fit_for_az is None:
-            qvals = self._prior_fit_for_az.quantile(quantiles)["prior"].to_dataframe()
+            qvals = self._prior_fit_for_az["prior"][vars].quantile(quantiles).to_dataframe()
         else:
-            # NOTE for some reason to do with numpy subtract method, the above 
-            # method for the prior fit doesn't work here. Reorder the operations
-            qvals = self._fit_for_az["posterior"].to_dataframe().quantile(quantiles)
+            qvals = self._fit_for_az["posterior"][vars].quantile(quantiles).to_dataframe()
         vars = vars.copy()
         vars.insert(0, "Variable")
         max_str_len = max([len(v) for v in vars]) + 1
-        head_str = f"\n{vars[0]:>{max_str_len}}        5%       50%      95%      IQR  "
+        head_str = f"\n{vars[0]:>{max_str_len}}          5%        50%        95%        IQR  "
         print(head_str)
         dashes = ["-" for _ in range(len(head_str))]
         print("".join(dashes))
         for v in vars[1:]:
             _iqr = qvals.loc[0.75, v] - qvals.loc[0.25, v]
-            print(f"{v:>{max_str_len}}:  {qvals.loc[0.05,v]:>.2e}  {qvals.loc[0.50,v]:>.2e}  {qvals.loc[0.95,v]:>.2e}  {_iqr:>.2e}")
+            print(f"{v:>{max_str_len}}:  {qvals.loc[0.05,v]:>+.2e}  {qvals.loc[0.50,v]:>+.2e}  {qvals.loc[0.95,v]:>+.2e}  {_iqr:>+.2e}")
         print()
 
     
