@@ -30,7 +30,7 @@ transformed parameters {
 
 model {
     // density at model parameters
-    target += normal_lpdf(a_hard | 0, 0.2);
+    target += normal_lpdf(a_hard | 0, 100);
     //target += beta_lpdf(e_hard | 10, 10);
     target += normal_lpdf(e_hard | 0.5, 0.3);
 

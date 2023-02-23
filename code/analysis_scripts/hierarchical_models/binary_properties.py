@@ -66,7 +66,8 @@ for f in HMQ_files:
     SL.logger.debug(f"For observation {i} found target time between indices {delta_idxs[0]} and {delta_idxs[1]}")
     period_idxs = np.r_[delta_idxs[0]:delta_idxs[1]]
     observations["angmom"].append(hmq.binary_angular_momentum[period_idxs])
-    observations["a"].append(hmq.semimajor_axis[period_idxs])
+    # convert semimajor axis from kpc to pc here
+    observations["a"].append(hmq.semimajor_axis[period_idxs] * 1000)
     observations["e"].append(hmq.eccentricity[period_idxs])
     # TODO will need individual bh masses in general
     observations["mass1"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
@@ -83,7 +84,6 @@ except AssertionError:
     SL.logger.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {kepler_model.num_groups}!', exc_info=True)
     raise
 
-# TODO are units of a correct??
 SL.logger.debug(f"Median semimajor axis per group: {[np.nanmedian(g) for g in kepler_model.obs['a']]}")
 SL.logger.debug(f"Median eccentricity per group: {[np.nanmedian(g) for g in kepler_model.obs['e']]}")
 
@@ -126,12 +126,12 @@ else:
 
     kepler_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
 
-    #kepler_model.parameter_plot(["a_hard", "e_hard"], figsize=full_figsize)
+    kepler_model.parameter_diagnostic_plots(["a_hard", "e_hard"], figsize=full_figsize)
     # posterior predictive check
     fig, ax = plt.subplots(1,1, figsize=full_figsize)
     ax.set_xlabel(r"$\log\left( \left(l/\sqrt{GM}\right)/\sqrt{\mathrm{pc}} \right)$")
     ax.set_ylabel("PDF")
-    #kepler_model.posterior_plot("log_angmom_corr_red", "log10_angmom_posterior", ax=ax)
+    kepler_model.posterior_plot("log_angmom_corr_red", "log10_angmom_posterior", ax=ax)
     kepler_model.print_parameter_percentiles(["a_hard", "e_hard"])
 
 
