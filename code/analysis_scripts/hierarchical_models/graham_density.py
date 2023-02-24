@@ -74,7 +74,11 @@ if args.random_sample is not None:
     graham_model.random_obs_select(args.random_sample, "name")
 
 SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
-assert graham_model.num_groups >= analysis_params["stan"]["min_num_samples"]
+try:
+    assert graham_model.num_groups >= analysis_params["stan"]["min_num_samples"]
+except AssertionError:
+    SL.logger.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {graham_model.num_groups}!', exc_info=True)
+    raise
 
 # initialise the data dictionary
 stan_data = dict(
@@ -137,7 +141,4 @@ else:
         cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"{graham_model.figname_base}_latentqty_compare.png"), fig=fig)
     
 graham_model.print_parameter_percentiles(graham_model.latent_qtys)
-
-#plt.show()
-
 

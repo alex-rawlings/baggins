@@ -24,12 +24,17 @@ galaxy:
     args: [0.2, *gr, 51]
   num_projection_rotations: 10
 
+# some plotting parameters
+plotting:
+  kepler_model:
+    a_hard_lims: [10, 350]
+
 # info for stan settings
 stan:
   min_num_samples: 7
   sample_kwargs:
     adapt_delta: 0.99
-    max_treedepth: 16
+    max_treedepth: 14
     show_progress: False
     #threads_per_chain: 128
 ...

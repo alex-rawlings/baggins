@@ -12,7 +12,9 @@ module restore py393
 
 cd hierarchical_models
 
-python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H-H-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml -m "hierarchy"
+python binary_properties.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H-H-3.0-0.001/ /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml -m hierarchy
+
+#python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H-H-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml -m "hierarchy"
 
 #python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0500-H0500-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml 
 

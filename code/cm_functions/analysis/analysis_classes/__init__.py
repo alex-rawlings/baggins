@@ -12,3 +12,5 @@ from .HMQuantities import HMQuantities
 from .BrownianData import BrownianData
 
 from .GrahamModels import GrahamModelSimple, GrahamModelHierarchy
+
+from .KeplerModels import KeplerModelSimple, KeplerModelHierarchy

@@ -53,7 +53,7 @@ class _StanModel:
         self._prior_fit = None
         self._prior_fit_for_az = None
         self._parameter_diagnostic_plots_counter = 0
-        self.__parameter_corner_plot_counter = 0
+        self._parameter_corner_plot_counter = 0
         self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {"marker":"o", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
@@ -521,7 +521,7 @@ class _StanModel:
         return self.generated_quantities.stan_variable(gq)
     
 
-    def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
+    def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], combine_dims=None, ax_kwargs=None):
         """
         Base method to create parameter corner plots. This method should not be
         called directly.
@@ -543,16 +543,20 @@ class _StanModel:
             corner plot
         """
         levels = [l/100 for l in levels]
-        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"])
-        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=True, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"])
+        # show divergences on plots where no dimension combination has 
+        # occurred: combining dimensions changes the length of boolean mask 
+        # "diverging_mask" in arviz --> index mismatch error
+        divergences = True if combine_dims is None else False
+        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=ax_kwargs)
+        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=ax_kwargs)
         return ax
     
 
-    def parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
+    def parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], comine_dims=None, ax_kwargs=None):
         """
         See docs for _parameter_corner_plot()
         """
-        ax = self._parameter_corner_plot(var_names, figsize=figsize, labeller=labeller, levels=levels)
+        ax = self._parameter_corner_plot(var_names, figsize=figsize, labeller=labeller, levels=levels, combine_dims=comine_dims, ax_kwargs=ax_kwargs)
         self._parameter_corner_plot_counter += 1
         return ax
 
@@ -707,6 +711,13 @@ class _StanModel:
             self._fit_for_az.add_groups({"log_likelihood":self.generated_quantities.draws_xr(stan_log_lik)})
         l = az.loo(self._fit_for_az)
         print(l)
+
+
+    def rename_dimensions(self, dim_map):
+        if self._fit_for_az is not None:
+            self._fit_for_az.rename_dims(dim_map, inplace=True)
+        else:
+            self._prior_fit_for_az.rename_dims(dim_map, inplace=True)
 
 
     @classmethod
