@@ -24,7 +24,7 @@ In this work, we opt for weakly-informative priors: from the literature, we know
 
 Additionally, we must also consider the shape of each parameter's prior distribution, as parameters are generally constrained by some physical condition. 
 For example, a normalising radius $a$ cannot take a value less than 0, so a normal distribution, which has an unbounded domain, is an inappropriate choice for the prior distribution of this variable.
-Choosing a log-normal or gamma distribution with support on $[0,\infty)$ would represent a physically-motivated choice for the prior distribution here. 
+Choosing a truncated normal or gamma distribution with support on $[0,\infty)$ would represent a physically-motivated choice for the prior distribution here. 
 
 \subsection{Predictive Checks}
 \drafting{Check names: forward fold, push forward}

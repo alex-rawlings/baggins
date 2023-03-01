@@ -8,44 +8,44 @@
     
     % define nodes
     % define layer 1
-    \node[obs] (Shat) {$\hat{\Sigma}$};
-    \factor[below=of Shat] {S_f} {right:Lognorm} {} {};
-    \node[det, below=of S_f] (S) {$\Sigma$};
+    \node[obs] (Shat) {$\log_{10}\hat{\Sigma}$};
+    \factor[below=of Shat] {S_f} {right:Norm} {} {};
+    \node[det, below=of S_f] (S) {$\log_{10}\Sigma$};
     \node[obs, below=of S] (R) {$\hat{R}$};
     \node[obs, right=of S] (sigma) {$\hat{\sigma_\Sigma}^2$};
 
     % define layer 2
-    \node[latent, left=of S] (Sb) {$\tilde{\Sigma}_\mathrm{b}$};
+    \node[latent, left=of S] (Sb) {$\log_{10}{\Sigma}_\mathrm{b}$};
     \node[latent, below=of Sb] (Re) {$R_\mathrm{e}$};
     \node[latent, below=of Re] (rb) {$r_\mathrm{b}$};
     \node[latent, above=of Sb] (g) {$\gamma$};
     \node[latent, above=of g] (n) {$n$};
-    \node[latent, above=of n] (a) {$a$};
+    \node[latent, above=of n] (a) {$\alpha$};
 
     % define layer 3
-    \factor[left=of rb] {rb_f} {below:$\mathcal{N}$} {} {};
+    \factor[left=of rb, xshift=-0.5em] {rb_f} {below:$\mathcal{N}_\mathrm{T}$} {} {};
     \node[hyper, left=of rb_f, yshift=-1.2em] (rbs) {$r_{\mathrm{b},\sigma}$};
     \node[hyper, left=of rb_f, yshift=1.2em] (rbm) {$r_{\mathrm{b},\mu}$};
 
-    \factor[left=of Re] {Re_f} {below:$\mathcal{N}$} {} {};
+    \factor[left=of Re, xshift=-0.5em] {Re_f} {below:$\mathcal{N}_\mathrm{T}$} {} {};
     \node[hyper, left=of Re_f, yshift=-1.2em] (Res) {$R_{\mathrm{e},\sigma}$};
     \node[hyper, left=of Re_f, yshift=1.2em] (Rem) {$R_{\mathrm{e},\mu}$};
 
-    \factor[left=of Sb] {Sb_f} {below:$\mathcal{N}$} {} {};
-    \node[hyper, left=of Sb_f, yshift=-1.2em] (Sbs) {$\tilde{\Sigma}_{\mathrm{b},\sigma}$};
-    \node[hyper, left=of Sb_f, yshift=1.2em] (Sbm) {$\tilde{\Sigma}_{\mathrm{b},\mu}$};
+    \factor[left=of Sb, xshift=-0.5em] {Sb_f} {below:$\mathcal{N}$} {} {};
+    \node[hyper, left=of Sb_f, yshift=-2.5em, xshift=-1em] (Sbs) {$\log_{10} \Sigma_{\mathrm{b},\sigma}$};
+    \node[hyper, left=of Sb_f, yshift=2.5em, xshift=-1em] (Sbm) {$\log_{10}  \Sigma_{\mathrm{b},\mu}$};
 
-    \factor[left=of g] {g_f} {below:$\mathcal{N}$} {} {};
+    \factor[left=of g, xshift=-0.5em] {g_f} {below:$\mathcal{N}_\mathrm{T}$} {} {};
     \node[hyper, left=of g_f, yshift=-1.2em] (gs) {$\gamma_\sigma$};
     \node[hyper, left=of g_f, yshift=1.2em] (gm) {$\gamma_\mu$};
 
-    \factor[left=of n] {n_f} {below:$\mathcal{N}$} {} {};
+    \factor[left=of n, xshift=-0.5em] {n_f} {below:$\mathcal{N}_\mathrm{T}$} {} {};
     \node[hyper, left=of n_f, yshift=-1.2em] (ns) {$n_\sigma$};
     \node[hyper, left=of n_f, yshift=1.2em] (nm) {$n_\mu$};
 
-    \factor[left=of a] {a_f} {below:$\mathcal{N}$} {} {};
-    \node[hyper, left=of a_f, yshift=-1.2em] (as) {$a_\sigma$};
-    \node[hyper, left=of a_f, yshift=1.2em] (am) {$a_\mu$};
+    \factor[left=of a, xshift=-0.5em] {a_f} {below:$\mathcal{N}_\mathrm{T}$} {} {};
+    \node[hyper, left=of a_f, yshift=-1.2em] (as) {$\alpha_\sigma$};
+    \node[hyper, left=of a_f, yshift=1.2em] (am) {$\alpha_\mu$};
 
 
     % connect the nodes
@@ -61,7 +61,7 @@
     \factoredge {as, am} {a_f} {a};
     
     % plates
-    \plate {rS} {(R)(S)(sigma)(Shat)} {$\forall R,\sigma_\Sigma^2$};
+    \plate {rS} {(R)(S)(sigma)(Shat)} {$\forall \hat{R},\hat{\sigma}_\Sigma^2$};
     \plate {pars} {(R)(S)(sigma)(rb)(Re)(Sb)(g)(n)(a)} {$\forall$ child};
 
     
