@@ -32,9 +32,19 @@ plotting:
 # info for stan settings
 stan:
   min_num_samples: 7
-  sample_kwargs:
-    adapt_delta: 0.99
-    max_treedepth: 14
-    show_progress: False
+  general_sample_kwargs:
+    show_progress: &ssp True
     #threads_per_chain: 128
+  binary_sample_kwargs:
+    adapt_delta: 0.99
+    max_treedepth: 15
+    show_progress: *ssp
+  hardening_sample_kwargs:
+    adapt_delta: 0.995
+    max_treedepth: 15
+    show_progress: *ssp
+  density_sample_kwargs:
+    adapt_delta: 0.99
+    max_treedepth: 15
+    show_progress: *ssp
 ...

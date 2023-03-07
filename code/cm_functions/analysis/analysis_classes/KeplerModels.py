@@ -46,9 +46,10 @@ class _KeplerModelBase(StanModel_1D):
                 _logger.logger.warning(f"No data prior to merger! The requested semimajor axis value is {np.nanmedian(hmq.hardening_radius)}, semimajor_axis attribute is: {hmq.semimajor_axis}. This run will not form part of the analysis.")
                 continue
             except AssertionError:
-                _logger.logger.warning(f"Trying to search for value {pars['bh_binary']['target_semimajor_axis']['value']}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis)} - {max(hmq.semimajor_axis)}. This run will not form part of the analysis.")
+                _logger.logger.warning(f"Trying to search for value {np.nanmedian(hmq.hardening_radius)}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis)} - {max(hmq.semimajor_axis)}. This run will not form part of the analysis.")
                 continue
             t_target = hmq.binary_time[idx]
+            _logger.logger.debug(f"Target time: {t_target} Myr")
             target_idx, delta_idxs = find_idxs_of_n_periods(t_target, hmq.binary_time, hmq.binary_separation)
             _logger.logger.debug(f"For observation {i} found target time between indices {delta_idxs[0]} and {delta_idxs[1]}")
             period_idxs = np.r_[delta_idxs[0]:delta_idxs[1]]
@@ -120,7 +121,7 @@ class KeplerModelSimple(_KeplerModelBase):
         self.figname_base = f"{self.figname_base}-simple"
 
 
-    def all_posterior_plots(self, figsize=None, corner_ax_kwargs=None):
+    def all_posterior_plots(self, figsize=None):
         """
         Posterior plots generally required for predictive checks and parameter convergence
 
@@ -145,9 +146,6 @@ class KeplerModelSimple(_KeplerModelBase):
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)
-        if corner_ax_kwargs is None:
-            corner_ax_kwargs = {}
-        corner_ax_kwargs.update({"subplot_kw":{"ylim":(0,1)}})
         
         ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent)
         fig = ax.flatten()[0].get_figure()
@@ -166,7 +164,7 @@ class KeplerModelHierarchy(_KeplerModelBase):
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qtys_labs)))
 
 
-    def all_posterior_plots(self, figsize=None, corner_ax_kwargs=None):
+    def all_posterior_plots(self, figsize=None):
         """
         Posterior plots generally required for predictive checks and parameter convergence
 
@@ -194,11 +192,9 @@ class KeplerModelHierarchy(_KeplerModelBase):
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)
-        if corner_ax_kwargs is None:
-            # TODO plot_plair() can't accept axis kwargs
-            corner_ax_kwargs = {}
-        corner_ax_kwargs.update({"ylim":(0,1)})
-        ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent, comine_dims={"group"})
+        # append a boundary value of e to data? Ensures 
+        ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent, combine_dims={"group"})
+        #ax[1,0].set_ylim(0,1)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"corner_{self._parameter_corner_plot_counter}"), fig=fig)
         return ax

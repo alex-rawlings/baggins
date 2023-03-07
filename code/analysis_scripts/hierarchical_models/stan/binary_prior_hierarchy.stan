@@ -32,9 +32,8 @@ generated quantities {
     // semimajor axis
     a_hard_mu = normal_rng(0, 200);
     while(a_hard_mu < 0){
-        a_hard_mu_kpc = normal_rng(0, 200);
+        a_hard_mu = normal_rng(0, 200);
     }
-    //a_hard_mu = a_hard_mu_kpc * 1000;
     a_hard_sigma = normal_rng(0, 10);
     while(a_hard_sigma < 0){
         a_hard_sigma = normal_rng(0, 10);

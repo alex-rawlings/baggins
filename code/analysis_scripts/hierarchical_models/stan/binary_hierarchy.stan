@@ -35,27 +35,24 @@ parameters {
 
 transformed parameters {
     // prior information for sensitivity analysis
-    array[4] real lprior;
+    array[5] real lprior;
     lprior[1] = normal_lpdf(a_hard_mu | 0, 150);
     lprior[2] = normal_lpdf(a_hard_sigma | 0, 10);
     lprior[3] = normal_lpdf(e_hard_mu | e_0, 0.3);
     lprior[4] = normal_lpdf(e_hard_sigma | 0, 0.3);
+    lprior[5] =  normal_lpdf(err | 0, 0.5);
 
     // deterministic quantity
     array[N_tot] real log10_angmom_calc;
     for(i in 1:N_tot){
         log10_angmom_calc[i] = binary_log10_angmom(a_hard[group_id[i]], e_hard[group_id[i]]);
     }
-
 }
 
 
 model {
     // density at hyperparameters
     target += sum(lprior);
-
-    // density at error
-    target += normal_lpdf(err | 0, 0.5);
 
     // connect to latent parameters
     target += normal_lpdf(a_hard | a_hard_mu, a_hard_sigma);

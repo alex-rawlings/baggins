@@ -43,7 +43,7 @@ class _StanModel:
             self._rng = np.random.default_rng()
         else:
             self._rng = rng
-        self._obs_len = None
+        self._num_obs = None
         self._stan_data = None
         self._model = None
         self._fit = None
@@ -53,10 +53,11 @@ class _StanModel:
         self._prior_fit = None
         self._prior_fit_for_az = None
         self._parameter_diagnostic_plots_counter = 0
-        self._parameter_corner_plot_counter = 0
+        # corner plot method doesn't save figure --> ensures first plot index 0
+        self._parameter_corner_plot_counter = -1 
         self._trace_plot_cols = None
         self._observation_mask = True
-        self._plot_obs_data_kwargs = {"marker":"o", "linewidth":0.5, "edgecolor":"k", "label":"Obs.", "cmap":"PuRd"}
+        self._plot_obs_data_kwargs = {"marker":"o", "linewidth":0.5, "edgecolor":"k", "label":"Sims.", "cmap":"PuRd"}
         self._num_groups = 0
         self._loaded_from_file = False
         self._generated_quantities = None
@@ -93,7 +94,7 @@ class _StanModel:
         _label = []
         for j, vv in enumerate(v, start=1):
             _label.append(np.repeat(j, vv.shape[-1]))
-        self._obs_len = sum(len(sublist) for sublist in _label)
+        self._num_obs = sum(len(sublist) for sublist in _label)
         d["label"] = _label
         self._obs = d
     
@@ -102,8 +103,8 @@ class _StanModel:
         return self._obs_collapsed
     
     @property
-    def obs_len(self):
-        return self._obs_len
+    def num_obs(self):
+        return self._num_obs
     
     @property
     def num_groups(self):
@@ -126,7 +127,7 @@ class _StanModel:
     @property
     def sample_diagnosis(self):
         return self._sample_diagnosis
-    
+
 
     def _make_fig_name(self, fname, tag):
         """
@@ -211,8 +212,8 @@ class _StanModel:
             self.obs = load_data(obs_file)
         else:
             raise NotImplementedError("Only .pickle files currently supported!")
-    
-    
+
+
     def transform_obs(self, key, newkey, func):
         """
         Apply a transformation to an observed quantity, saving the result to the
@@ -258,7 +259,7 @@ class _StanModel:
                     _vs = extract(i)
                     self.obs[newkey].append(func(*_vs))
             self._check_observation_validity(self.obs)
-    
+
 
     def print_obs_summary(self):
         """
@@ -331,61 +332,33 @@ class _StanModel:
             raise
 
 
-    def random_obs_select(self, num, group):
+    def thin_observations(self, spacing):
         """
-        Randomly select a subset of observed quantity data. Data that is not
-        selected will be dropped from the data frame of observed quantities. 
-        To ensure fair representation between all data series, <num>
-        observations are taken for each member specified by <group>. E.g., if 
-        there are 1000 observations, with each observation belonging to 1 of 10 
-        groups, choosing num=20 will result in 20 selected points from group G, 
-        giving a total of 20 selections/group * 10 groups = 200 observations.
+        Thin the observations for large datasets. Requires that a obs_collapsed 
+        object exists and is not None.
 
         Parameters
         ----------
-        num : int
-            number of quantities per group to include in subset 
-        group : str
-            dataframe dictionary key that specifies the group
+        spacing : int
+            Spacing between successive observations per group
         """
-        # TODO update this method to reflect the changes made by ragged arrays
-        raise NotImplementedError
-        if len(self.obs[group].shape)>1:
-            _logger.logger.warning(f"The observation group has shape {self.obs[group].shape}. random_obs_select() is not well defined for multi-dimensional inputs. Proceed with caution")
         try:
-            assert num < self._obs_len
+            assert bool(self.obs_collapsed)
         except AssertionError:
-            _logger.logger.exception(f"Cannot randomly sample {num} samples from {self._obs_len} observations without replacement!", exc_info=True)
+            _logger.logger.exception(f"Thinning observations required the observations to be collapsed!", exc_info=True)
             raise
-        i_s = []
-        groups = np.unique(self.obs[group])
-        for kk in groups:
-            _mask = self.obs[group] == kk
-            ids = np.arange(self._obs_len)[_mask]
-            _i_s = self._rng.choice(ids, size=num, replace=False)
-            i_s.extend(_i_s)
-        idxs = np.r_[i_s]
-        try:
-            assert assert_all_unique(idxs)
-        except AssertionError:
-            _logger.logger.exception(f"Duplicate elements detected in array 'idxs'.", exc_info=True)
-            raise
-        # delete unselected rows
-        keep_mask = np.full(self._obs_len, 0, dtype=bool)
-        keep_mask[idxs] = True
-        for k, v in self.obs.items():
-            _logger.logger.debug(f"Updating StanModel observed variable {k}")
-            if len(v.shape) == 1:
-                self.obs[k] = v[keep_mask]
-            else:
-                self.obs[k] = v[:,keep_mask]
-        self._obs_len = self.obs[group].shape[-1]
-        try:
-            assert self.obs_len == len(groups) * num
-        except AssertionError:
-            _logger.logger.exception(f"After random sampling, the number of observations is {self.obs_len}, however we are expecting {len(groups)*num}!", exc_info=True)
-            raise
-        _logger.logger.debug(f"Number of observations is now {self.obs_len}")
+        idx_list = []
+        end_idx = 0
+        for i in range(self.num_groups):
+            n = len(self.obs["label"][i])
+            idx_list.append(np.arange(end_idx, end_idx+n+1, spacing, dtype=int))
+            end_idx += n
+        idxs = np.r_[np.concatenate(idx_list)]
+        # thin the observations of each item in collapsed observations
+        # redetermine number of observations
+        self._num_obs = len(idxs)
+        for k, v in self.obs_collapsed.items():
+            self.obs_collapsed[k] = v[idxs]
 
 
     def _sampler(self, data, prior=False, sample_kwargs={}):
@@ -434,7 +407,7 @@ class _StanModel:
             _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
             _logger.logger.info(f"\n{self.sample_diagnosis}")
             return fit
-    
+
 
     def build_model(self, prior=False):
         """
@@ -449,7 +422,7 @@ class _StanModel:
             self._prior_model = cmdstanpy.CmdStanModel(stan_file=self._prior_file)
         else:
             self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)#, cpp_options={"STAN_THREADS":"true", "STAN_CPP_OPTIMS":"true"})
-    
+
 
     def sample_model(self, data, sample_kwargs={}):
         """
@@ -468,7 +441,7 @@ class _StanModel:
         self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
         # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
-    
+
 
     def sample_prior(self, data, sample_kwargs={}):
         """
@@ -521,7 +494,7 @@ class _StanModel:
         return self.generated_quantities.stan_variable(gq)
     
 
-    def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], combine_dims=None, ax_kwargs=None):
+    def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], combine_dims=None, backend_kwargs=None):
         """
         Base method to create parameter corner plots. This method should not be
         called directly.
@@ -536,6 +509,12 @@ class _StanModel:
             mapping from variable names to labels, by default None
         levels : list, optional
             HDI intervals to plot, by default [25, 50, 90, 95, 99]
+        combine_dims : set-like, optional
+            dimensions to reduce, by default None
+        backend_kwargs : dict
+            keyword arguments to be passed to pyplot.subplots() as per arviz 
+            docs, by default None
+
 
         Returns
         -------
@@ -546,17 +525,19 @@ class _StanModel:
         # show divergences on plots where no dimension combination has 
         # occurred: combining dimensions changes the length of boolean mask 
         # "diverging_mask" in arviz --> index mismatch error
+        # first lay down the markers
         divergences = True if combine_dims is None else False
-        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=ax_kwargs)
-        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, point_estimate="mode", marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=ax_kwargs)
+        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+        # then add the KDE
+        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
         return ax
     
 
-    def parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], comine_dims=None, ax_kwargs=None):
+    def parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], combine_dims=None, backend_kwargs=None):
         """
         See docs for _parameter_corner_plot()
         """
-        ax = self._parameter_corner_plot(var_names, figsize=figsize, labeller=labeller, levels=levels, combine_dims=comine_dims, ax_kwargs=ax_kwargs)
+        ax = self._parameter_corner_plot(var_names, figsize=figsize, labeller=labeller, levels=levels, combine_dims=combine_dims, backend_kwargs=backend_kwargs)
         self._parameter_corner_plot_counter += 1
         return ax
 
@@ -829,7 +810,7 @@ class StanModel_2D(_StanModel):
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            az.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% CI", "edgecolor":None}, smooth=False)
+            az.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False)
         # overlay data
         if self._num_groups < 2:
             self._plot_obs_data_kwargs["cmap"] = "Set1"
@@ -879,7 +860,7 @@ class StanModel_2D(_StanModel):
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="PowerNorm", norm_kwargs={"gamma":2.0})
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            az.plot_hdi(obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}%"}, smooth=False)
+            az.plot_hdi(obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}% HDI"}, smooth=False)
         # overlay data
         if self._num_groups < 2:
             self._plot_obs_data_kwargs["cmap"] = "Set1"

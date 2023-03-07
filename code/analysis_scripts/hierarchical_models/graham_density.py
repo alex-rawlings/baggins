@@ -9,13 +9,12 @@ import cm_functions as cmf
 
 
 parser = argparse.ArgumentParser(description="Run stan model for Core-Sersic model.", allow_abbrev=False)
-parser.add_argument(type=str, help="Directory to HMQuantity HDF5 files", dest="dir")
+parser.add_argument(type=str, help="directory to HMQuantity HDF5 files", dest="dir")
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
-parser.add_argument("-p", "--prior", help="Plot for prior", action="store_true", dest="prior")
-parser.add_argument("-l", "--load", type=str, help="Load previous stan file", dest="load_file", default=None)
-parser.add_argument("-r", "--random", type=int, dest="random_sample", default=None, help="randomly sample x observations from each population member")
-parser.add_argument("-c", "--compare", help="Compare to naive statistics", action="store_true", dest="compare")
+parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
+parser.add_argument("-l", "--load", type=str, help="load previous stan file", dest="load_file", default=None)
+parser.add_argument("-c", "--compare", help="compare to naive statistics", action="store_true", dest="compare")
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
@@ -69,10 +68,6 @@ else:
 # load the observational data
 graham_model.extract_data(HMQ_files, analysis_params)
 
-# maybe randomly select some data
-if args.random_sample is not None:
-    graham_model.random_obs_select(args.random_sample, "name")
-
 SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
 try:
     assert graham_model.num_groups >= analysis_params["stan"]["min_num_samples"]
@@ -91,7 +86,7 @@ stan_data = dict(
 if args.prior:
     # create the push-forward distribution for the prior model
 
-    graham_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
+    graham_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
 
     # prior predictive check
     graham_model.all_prior_plots(full_figsize)
@@ -103,14 +98,9 @@ else:
                 log10_surf_rho_err = graham_model.obs_collapsed["log10_proj_density_std"],
     ))
 
-    if args.random_sample:
-        now = datetime.now()
-        now = now.strftime("%Y%m%d-%H%M%S")
-        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{merger_id}-{now}")
-    else:
-        analysis_params["stan"]["sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{merger_id}")
+    analysis_params["stan"]["density_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{merger_id}")
     # run the model
-    graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["sample_kwargs"])
+    graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
 
     graham_model.determine_loo()
 
