@@ -39,7 +39,7 @@ transformed parameters {
     array[5] real lprior;
     lprior[1] = normal_lpdf(HGp_s_mean | 0, 0.1);
     lprior[2] = normal_lpdf(HGp_s_std | 0, 0.1);
-    lprior[3] = normal_lpdf(inv_a_0_mean | 0, 10);
+    lprior[3] = normal_lpdf(inv_a_0_mean | 0, 20);
     lprior[4] = normal_lpdf(inv_a_0_std | 0, 5);
     lprior[5] = normal_lpdf(err | 0, 0.2);
 

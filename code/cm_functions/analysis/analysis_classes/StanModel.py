@@ -461,7 +461,6 @@ class _StanModel:
         self._prior_fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
 
 
-
     def sample_generated_quantity(self, gq, force_resample=False):
         """
         Sample the 'generated quantities' block of a Stan model. If the model has had both the prior and posterior distributions sampled, the posterior sample will be used.
@@ -492,7 +491,7 @@ class _StanModel:
             else:
                 self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=_fit)
         return self.generated_quantities.stan_variable(gq)
-    
+
 
     def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], combine_dims=None, backend_kwargs=None):
         """
@@ -687,6 +686,8 @@ class _StanModel:
         stan_log_lik : str, optional
             name of log-likelihood variable in stan code, by default "log_lik"
         """
+        if self.generated_quantities is None:
+            self.sample_generated_quantity(stan_log_lik)
         if "log_likelihood" not in self._fit_for_az:
             self.sample_generated_quantity(stan_log_lik)
             self._fit_for_az.add_groups({"log_likelihood":self.generated_quantities.draws_xr(stan_log_lik)})
@@ -736,35 +737,44 @@ class StanModel_1D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
 
-    def _plot_predictive(self, xobs, xmodel, dataset, xobs_err=None, levels=None, ax=None, collapsed=True):
+    def _plot_predictive(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
         if levels is None:
             levels = [50, 90, 95, 99]
         quantiles = [0.5 - l/200 for l in levels]
         quantiles.extend([0.5 + l/200 for l in levels])
         quantiles.sort()
         if ax is None:
-            fig, ax = plt.subplots(1,1)
+            fig, ax = plt.subplots(1,1, squeeze=False)
         else:
+            # TODO assert 2d axes?
             fig = ax.get_figure()
         obs = self.obs_collapsed if collapsed else self.obs
-        az.plot_dist(dataset.stan_variable(xmodel), quantiles=quantiles, ax=ax)
+        xs = self.sample_generated_quantity(xmodel)
+        #az.plot_dist(xs, quantiles=quantiles, ax=ax)
+        az.plot_density(self._fit_for_az, group="posterior", var_names=[xmodel], shade=1, ax=ax)
         # overlay data
-        colvals = np.unique(obs["label"])
-        cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
-        for i, c in enumerate(colvals):
-            col = cmapper(c)
-            mask = obs["label"]==c
-            ax.scatter(obs[xobs][mask], np.zeros(len(obs[xobs][mask])), color=col, **self._plot_obs_data_kwargs)
+        if xobs_err is None:
+            ax.scatter(obs[xobs], np.zeros(len(obs[xobs])), c=obs["label"], **self._plot_obs_data_kwargs)
+        else:
+            colvals = np.unique(obs["label"])
+            ncols = len(colvals)
+            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
+            for i, c in enumerate(colvals):
+                col = cmapper(c)
+                mask = obs["label"]==c
+                ys = np.zeros(len(obs[xobs][mask]))
+                ax.scatter(obs[xobs][mask], np.zeros(len(obs[xobs][mask])), color=col, **self._plot_obs_data_kwargs)
+                ax.errorbar(obs[xobs][mask], ys, xerr=obs[xobs_err][mask], c=col, zorder=20, fmt=".", label=("Sims." if i==ncols-1 else ""))
         return ax
 
     def prior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
-        ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, dataset=self._prior_fit, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
         fig = ax.get_figure()
         savefig(self._make_fig_name(self.figname_base, f"prior_pred_{xobs}"), fig=fig)
-    
+
 
     def posterior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
-        ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, dataset=self._fit, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
         fig = ax.get_figure()
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{xobs}"), fig=fig)
 
@@ -774,18 +784,20 @@ class StanModel_1D(_StanModel):
 class StanModel_2D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
-    
 
-    def prior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
+
+    def _plot_predictive(self, xobs, yobs, dataset, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True):
         """
-        Plot a prior predictive check for a regression stan model.
+        Plot a predictive check for a regression stan model.
 
         Parameters
         ----------
         xobs : str
-            dictionary key for observed independent variable 
+            dictionary key for observed independent variable
         yobs : str
             dictionary key for observed dependent variable
+        dataset : dict
+            dictionary containing observed data points
         xmodel : str
             dictionary key for modelled independent variable
         ymodel : str
@@ -800,17 +812,19 @@ class StanModel_2D(_StanModel):
         collapsed : bool, optional
             plotting collapsed observations?
         """
+        if levels is None:
+            levels = [50, 90, 95, 99]
         levels.sort(reverse=True)
         if ax is None:
             fig, ax = plt.subplots(1,1)
         else:
             fig = ax.get_figure()
         obs = self.obs_collapsed if collapsed else self.obs
-        ys = self._prior_fit.stan_variable(ymodel)
+        ys = self.sample_generated_quantity(ymodel)
         cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            az.plot_hdi(self._prior_stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False)
+            az.plot_hdi(dataset[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False)
         # overlay data
         if self._num_groups < 2:
             self._plot_obs_data_kwargs["cmap"] = "Set1"
@@ -823,56 +837,24 @@ class StanModel_2D(_StanModel):
             for i, c in enumerate(colvals):
                 col = cmapper(c)
                 mask = obs["label"]==c
-                ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs" if i==ncols-1 else ""))
+                ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Sims." if i==ncols-1 else ""))
         ax.legend()
+        return ax
+
+
+    def prior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
+        """
+        See docs for _plot_predictive()
+        """
+        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._prior_stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        fig = ax.get_figure()
         savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
     
 
-    def posterior_plot(self, xobs, yobs, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
+    def posterior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
         """
-        Plot a posterior predictive check for a regression stan model.
-
-        Parameters
-        ----------
-        xobs : str
-            dictionary key for observed independent variable
-        yobs : str
-            dictionary key for observed dependent variable
-        ymodel : str
-            dictionary key for modelled dependent variable
-        yobs_err : str, optional
-             dictionary key for observed dependent variable scatter, by default 
-             None
-        levels : list, optional
-            HDI intervals to plot, by default [50, 90, 95, 99]
-        ax : matplotlib.axes._subplots.AxesSubplot, optional
-            axis to plot to, by default None (creates new instance)
-        collapsed : bool, optional
-            plotting collapsed observations?
+        See docs for _plot_predictive()
         """
-        levels.sort(reverse=True)
-        if ax is None:
-            fig, ax = plt.subplots(1,1)
-        else:
-            fig = ax.get_figure()
-        obs = self.obs_collapsed if collapsed else self.obs
-        ys = self._fit.stan_variable(ymodel)
-        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="PowerNorm", norm_kwargs={"gamma":2.0})
-        for l in levels:
-            _logger.logger.info(f"Fitting level {l}")
-            az.plot_hdi(obs[xobs][self._observation_mask].flatten(), ys[self._observation_mask], hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.9, "label":f"{l}% HDI"}, smooth=False)
-        # overlay data
-        if self._num_groups < 2:
-            self._plot_obs_data_kwargs["cmap"] = "Set1"
-        if yobs_err is None:
-            ax.scatter(obs[xobs][self._observation_mask], obs[yobs][self._observation_mask], c=obs["label"], zorder=20, **self._plot_obs_data_kwargs)
-        else:
-            colvals = np.unique(obs["label"])
-            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
-            ncols = len(colvals)
-            for i, c in enumerate(colvals):
-                col = cmapper(c)
-                mask = np.logical_and(obs["label"]==c, self._observation_mask)
-                ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Obs." if i==ncols-1 else ""))
-        ax.legend()
+        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        fig = ax.get_figure()
         savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)

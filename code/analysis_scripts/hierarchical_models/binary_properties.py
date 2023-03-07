@@ -13,6 +13,7 @@ parser.add_argument(type=str, help="path to analysis parameter file", dest="apf"
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
 parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="load previous stan file", dest="load_file", default=None)
+parser.add_argument("-t", "--thin", type=int, help="thin data", dest="thin", default=10)
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
@@ -71,6 +72,11 @@ try:
 except AssertionError:
     SL.logger.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {kepler_model.num_groups}!', exc_info=True)
     raise
+
+# thin data
+SL.logger.debug(f"{kepler_model.num_obs} data points before thinning")
+kepler_model.thin_observations(args.thin)
+SL.logger.debug(f"{kepler_model.num_obs} data points after thinning")
 
 SL.logger.debug(f"Median semimajor axis per group: {[np.nanmedian(g) for g in kepler_model.obs['a']]}")
 SL.logger.debug(f"Median eccentricity per group: {[np.nanmedian(g) for g in kepler_model.obs['e']]}")

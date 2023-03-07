@@ -33,7 +33,7 @@ plotting:
 stan:
   min_num_samples: 7
   general_sample_kwargs:
-    show_progress: &ssp True
+    show_progress: &ssp False
     #threads_per_chain: 128
   binary_sample_kwargs:
     adapt_delta: 0.99

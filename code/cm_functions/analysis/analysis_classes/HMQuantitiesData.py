@@ -68,6 +68,15 @@ class HMQuantitiesData(HDF5Base):
     @binary_separation.setter
     def binary_separation(self, v):
         self._binary_separation = v
+    
+    # BH masses
+    @property
+    def binary_masses(self):
+        return self._binary_masses
+
+    @binary_masses.setter
+    def binary_masses(self, v):
+        self._binary_masses = v
 
     ##--------------------- Merger Quantities ---------------------##
 
@@ -135,6 +144,15 @@ class HMQuantitiesData(HDF5Base):
     @hardening_radius.setter
     def hardening_radius(self, v):
         self._hardening_radius = v
+
+    # G*rho/sigma as a function of time
+    @property
+    def G_rho_per_sigma(self):
+        return self._G_rho_per_sigma
+    
+    @G_rho_per_sigma.setter
+    def G_rho_per_sigma(self, v):
+        self._G_rho_per_sigma = v
 
     # projected mass density as a function of time
     @property

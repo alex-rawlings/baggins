@@ -62,7 +62,7 @@ else:
         quinlan_model = cmf.analysis.QuinlanModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
         # sample
-        quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/quinlan_hierarchy_prior.stan", figname_base=figname_base)
+        quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/quinlan_hierarchy_prior1.stan", figname_base=figname_base)
 
 quinlan_model.extract_data(HMQ_files, analysis_params)
 
@@ -74,10 +74,9 @@ except AssertionError:
     raise
 
 # thin data
-if args.thin is not None:
-    SL.logger.debug(f"{quinlan_model.num_obs} data points before thinning")
-    quinlan_model.thin_observations(args.thin)
-    SL.logger.debug(f"{quinlan_model.num_obs} data points after thinning")
+SL.logger.debug(f"{quinlan_model.num_obs} data points before thinning")
+quinlan_model.thin_observations(args.thin)
+SL.logger.debug(f"{quinlan_model.num_obs} data points after thinning")
 
 # initialise the data dictionary
 stan_data = dict(

@@ -46,9 +46,9 @@ generated quantities {
     }
 
     // intercept
-    inv_a_0_mean = normal_rng(0, 10);
+    inv_a_0_mean = normal_rng(0, 20);
     while(inv_a_0_mean < 0){
-        inv_a_0_mean = normal_rng(0, 10);
+        inv_a_0_mean = normal_rng(0, 20);
     }
     inv_a_0_std = normal_rng(0, 5);
     while(inv_a_0_std < 0){

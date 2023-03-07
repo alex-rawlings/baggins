@@ -177,7 +177,7 @@ class QuinlanModelHierarchy(_QuinlanModelBase):
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)
         ax1.set_xlabel(r"$t/\mathrm{Myr}$")
         ax1.set_ylabel(r"$\mathrm{pc}/a$")
-        self.posterior_plot(xobs="t", yobs="inva", ymodel="inv_a_posterior", ax=ax1)
+        self.posterior_plot(xobs="t", yobs="inva", xmodel="t", ymodel="inv_a_posterior", ax=ax1)
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)

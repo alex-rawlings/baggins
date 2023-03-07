@@ -7,7 +7,7 @@ import ketjugw
 import pygad
 
 from . import HMQuantitiesData
-from ..analyse_snap import get_com_velocity_of_each_galaxy, influence_radius, hardening_radius, projected_quantities, get_com_of_each_galaxy, inner_DM_fraction, determine_if_merged, velocity_anisotropy, get_massive_bh_ID
+from ..analyse_snap import get_com_velocity_of_each_galaxy, influence_radius, hardening_radius, projected_quantities, get_com_of_each_galaxy, inner_DM_fraction, determine_if_merged, velocity_anisotropy, get_massive_bh_ID, get_G_rho_per_sigma
 from ..orbit import get_bound_binary
 from ...env_config import _cmlogger, date_format, username
 from ...general import convert_gadget_time
@@ -75,6 +75,9 @@ class HMQuantities(HMQuantitiesData):
         # period of binary
         self.binary_period = 2*np.pi / orbit_pars["n"] / myr
 
+        # masses of binaries
+        self.binary_masses = [bh1.m[0], bh2.m[0]]
+
         ##------------------- Determine merger properties -------------------##
 
         self.merger_remnant = {"merged":False, "mass":None, "spin":None, "kick":None}
@@ -92,6 +95,7 @@ class HMQuantities(HMQuantitiesData):
         self.semimajor_axis_of_snapshot = []
         self.influence_radius = []
         self.hardening_radius = []
+        self.G_rho_per_sigma = []
         self.half_mass_radius = []
         self.virial_mass = []
         self.virial_radius = []
@@ -153,6 +157,11 @@ class HMQuantities(HMQuantitiesData):
             )
             self.half_mass_radius.append(
                 pygad.analysis.half_mass_radius(snap.stars[ball_mask], center=xcom)
+            )
+
+            # inner density and dispersion
+            self.G_rho_per_sigma.append(
+                get_G_rho_per_sigma(self.snaplist, t, self.influence_radius[-1])
             )
 
             # virial info
@@ -243,7 +252,8 @@ class HMQuantities(HMQuantitiesData):
                         "eccentricity",
                         "binary_angular_momentum",
                         "binary_separation",
-                        "binary_period"
+                        "binary_period",
+                        "binary_masses"
             ]
             self._saver(bhb, _bhb_dl)
             _logger.logger.info(f"BH binary quantities saved to {fname}")
@@ -261,6 +271,7 @@ class HMQuantities(HMQuantitiesData):
                        "semimajor_axis_of_snapshot",
                        "influence_radius",
                        "hardening_radius",
+                       "G_rho_per_sigma",
                        "projected_mass_density",
                        "projected_vel_dispersion_2",
                        "effective_radius",
