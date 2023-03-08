@@ -1,0 +1,140 @@
+# always assume units of:
+# mass: solar masses
+# distance: kpc
+# time: Gyr
+# velocity: km/s
+# unless otherwise stated
+
+---
+# general info about the galaxy
+general:
+  galaxy_name: 'hernquist_0-010-a'
+  simulation_start_time:
+    unit: 'Gyr'
+    # set to -1 to use redshift 0
+    value: -1
+  random_seed: 42
+  minimum_radius: 
+    unit: 'kpc'
+    value: 1.5e-3
+  maximum_radius: 
+    unit: 'kpc'
+    value: 8000
+
+# info about file locations
+file_locations:
+  save_location: '/scratch/pjohanss/arawling/gadget4-ketju/hardening_convergence/isolated'
+  # relative to save_location/
+  figure_location: 'figures'
+  data_location: 'output'
+
+# info about the stars
+stars:
+  use_cored: false
+  particle_mass:
+    unit: 'Msol'
+    value: 5.e+6
+  anisotropy_radius:
+    unit: 'kpc'
+    value:
+  softening:
+    unit: 'kpc'
+    value: 10.e-3
+  # parameters specific to cored profiles
+  cored:
+    distance_modulus:
+    sersic_n:
+    effective_radius:
+      unit: 'arcsec'
+      value:
+    log_core_density:
+      unit: 'mag/arcsec^2'
+      value:
+    core_radius:
+      unit: 'arcsec'
+      value: 
+    core_slope:
+    transition_index:
+    mass_light_ratio: 4.0
+  # parameters specific to cuspy profiles
+  cuspy:
+    log_total_mass: 11.4
+    scale_radius:
+      unit: 'kpc'
+      value: 3.0
+    gamma: 1.0
+
+# info about DM
+dm:
+  use_NFW: false
+  particle_mass:
+    unit: 'Msol'
+    value: 1.e+9
+  softening:
+    unit: 'kpc'
+    value: 0.2
+  mass_relation: 'Behroozi'
+  # parameters specific to NFW profiles
+  NFW:
+    cut_pars:
+      slope: 4.0
+      approx0: 1.0e-5
+      scaled_max_radius: 7
+  # parameters specific to Dehnen profiles
+  Dehnen:
+    gamma: 1.0
+    scale_radius:
+      unit: 'kpc'
+      value: 300
+
+bh:
+  softening:
+    unit: 'kpc'
+    value: 3.0e-3
+  set_spin: 'random'
+  spin_relation: 'zlochower_dry'
+...
+
+---
+bh:
+  mass: 3.04220233e+09
+  particle_count: 1.0
+  spin:
+  - 0.37460396657689726
+  - -0.05783078223139425
+  - -0.5266575805127018
+dm:
+  particle_count: 4.54150000e+04
+  peak_mass: 4.88851456e+13
+kinematics:
+  LOS_velocity_dispersion:
+    unit: km/s
+    value: 196.20325411192218
+  half_mass_radius_analytic:
+    unit: kpc
+    value: 7.242640687119284
+  half_mass_radius_true:
+    unit: kpc
+    value: 7.176273572121007
+  inner_DM_frac: 0.14752888679504395
+  ketju_particles: 1
+  projected_half_mass_radius:
+    unit: kpc
+    value: 5.384518407280897
+  virial_info:
+    mass:
+      unit: Msol
+      value: 1.66466622e+13
+    radius:
+      unit: kpc
+      value: 415.3788476494551
+last_update: '2022-12-01 14:29:41'
+redshift: 0
+stars:
+  particle_count: 5.02000000e+04
+  radius_to:
+    inner_100: 1.75379297070591
+    inner_1000: 3.558549350503767
+    unit: kpc
+...
+
