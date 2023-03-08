@@ -55,12 +55,15 @@ class BHBinary(BHBinaryData):
             # we are dealing with a perturbed simulation set
             data_path = os.path.join(self.merger_pars["calculated"]["full_save_location"], self.merger_pars["file_locations"]["perturb_sub_dir"], perturbID, "output")
             self.merger_name = f"{self.merger_pars['calculated']['full_save_location'].rstrip('/').split('/')[-1]}-{perturbID}"
-        if not os.path.isdir(data_path):
-            raise ValueError("The data path does not exist!")
+        try:
+            assert os.path.isdir(data_path)
+        except AssertionError:
+            _logger.logger.exception("The data path does not exist!", exc_info=True)
+            raise
         try:
             self.bhfile = get_ketjubhs_in_dir(data_path)[0]
         except IndexError:
-            _logger.logger.exception("No ketju_bhs.hdf5 file!")
+            _logger.logger.exception("No ketju_bhs.hdf5 file!", exc_info=True)
             raise
         self.snaplist = get_snapshots_in_dir(data_path)
         self.gr_safe_radius = self.analysis_pars["bh_binary"]["target_semimajor_axis"]["value"]

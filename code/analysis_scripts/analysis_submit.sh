@@ -10,18 +10,20 @@
 module purge
 module restore py393
 
-python extract_HM_quantities.py "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists/H-H-030-0001.yml" "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml" -o
+#python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_1-000/ -m mc
 
-#python quinlan_hardening.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H-H-3.0-0.001/ /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-500/ -m mc
 
-#python binary_properties.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H-H-3.0-0.001/ /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml -m hierarchy
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-250/ -m mc
 
-#python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H-H-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml -m "hierarchy"
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-100/ -m mc
 
-#python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0500-H0500-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml 
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-050/ -m mc
 
-#python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0250-H0250-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml 
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-025/ -m mc
 
-#python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0100-H0100-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml 
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-010/ -m mc
 
-#python graham_density.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/H0050-H0050-3.0-0.001 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml 
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-005/ -m mc
+
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-001/ -m mc
