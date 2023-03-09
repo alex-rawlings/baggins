@@ -248,7 +248,7 @@ class HMQuantitiesData(HDF5Base):
     def particle_masses(self):
         return self._particle_masses
     
-    @ particle_masses.setter
+    @particle_masses.setter
     def particle_masses(self, v):
         self._particle_masses = v
 

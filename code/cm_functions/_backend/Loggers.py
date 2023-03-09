@@ -25,6 +25,7 @@ class InternalLogger:
         self._console_level = console_level
         self._capture_warnings = capture_warnings
         self._base_name = self.logger.name
+        self._is_copy = False
         self.logger.setLevel("DEBUG")
         self._ch_format = "%(name)s: %(levelname)s: %(message)s"
         self._fh_format = "%(asctime)s: %(name)s: %(levelname)s: %(message)s"
@@ -93,8 +94,9 @@ class InternalLogger:
         """
         self._logfile = logfile
         self._file_level = file_level
-        with open(logfile, "a") as f:
-            f.write(f"Logger created at {datetime.now()}\n")
+        if not self._is_copy:
+            with open(logfile, "a") as f:
+                f.write(f"{datetime.now()}: parent logger <{self.name}> created\n")
         self._f_handler = logging.FileHandler(filename=logfile)
         self._set_handler(self._f_handler, file_level, fmt=self._fh_format)
 
@@ -118,6 +120,7 @@ class InternalLogger:
         else:
             name = f"{self.name}:{os.path.splitext(os.path.basename(n))[0]}"
         c = InternalLogger(name=name, console_level=self._console_level, capture_warnings=self._capture_warnings)
+        c._is_copy = True
         if self._logfile is not None:
             c.add_file_handler(self._logfile, self._file_level)
         return c

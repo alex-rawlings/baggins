@@ -141,7 +141,7 @@ if __name__ == "__main__":
             extractor = ExtractorMCS(args.apf, [args.mpf], args.overwrite)
         elif os.path.isdir(args.mpf):
             mpfs = cmf.utils.get_files_in_dir(args.mpf, ext=".yml")
-            extractor = ExtractorMCS(args.apf, mpfs)
+            extractor = ExtractorMCS(args.apf, mpfs, args.overwrite)
         else:
             try:
                 assert 0

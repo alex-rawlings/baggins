@@ -45,7 +45,7 @@ class HMQuantities(HMQuantitiesData):
         try:
             assert len(kf) == 1
         except AssertionError:
-            _logger.logger.exception(f"Multiple Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantities object.")
+            _logger.logger.exception(f"Multiple Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantities object.", exc_info=True)
             raise
         self.ketju_file = kf[0]
         self.snaplist = get_snapshots_in_dir(self.data_directory)
@@ -75,7 +75,7 @@ class HMQuantities(HMQuantitiesData):
         # period of binary
         self.binary_period = 2*np.pi / orbit_pars["n"] / myr
 
-        # masses of binaries
+        # masses of BHs
         self.binary_masses = [bh1.m[0], bh2.m[0]]
 
         ##------------------- Determine merger properties -------------------##
@@ -113,6 +113,7 @@ class HMQuantities(HMQuantitiesData):
         # set counter here so that those rejected snapshots don't affect 
         # ordering
         i = 0
+        N = len(self.snaplist)
         for snapfile in self.snaplist:
             snap = pygad.Snapshot(snapfile, physical=True)
             t = convert_gadget_time(snap, new_unit="Myr")
@@ -126,6 +127,7 @@ class HMQuantities(HMQuantitiesData):
                 snap.delete_blocks()
                 pygad.gc_full_collect()
                 del snap
+                N -= 1
                 continue
             self.analysed_snapshots.append(snapfile)
             _logger.logger.debug(f"Reading: {snapfile}")
@@ -160,9 +162,12 @@ class HMQuantities(HMQuantitiesData):
             )
 
             # inner density and dispersion
-            self.G_rho_per_sigma.append(
-                get_G_rho_per_sigma(self.snaplist, t, self.influence_radius[-1])
-            )
+            # method interpolates between snapshot i and snapshot i+1: protect 
+            # against the case of the final snapshot
+            if i<N-1:
+                self.G_rho_per_sigma.append(
+                    get_G_rho_per_sigma(self.snaplist, t, self.influence_radius[-1])
+                )
 
             # virial info
             _vr, _vm = pygad.analysis.virial_info(snap, center=xcom)
@@ -204,7 +209,8 @@ class HMQuantities(HMQuantitiesData):
             del snap
             # increment counter
             i += 1
-    
+            _logger.logger.debug(f"Analysed {i} from {N} snapshots.")
+
 
     @property
     def snaplist(self):

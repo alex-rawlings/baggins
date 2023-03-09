@@ -351,7 +351,7 @@ class _StanModel:
         end_idx = 0
         for i in range(self.num_groups):
             n = len(self.obs["label"][i])
-            idx_list.append(np.arange(end_idx, end_idx+n+1, spacing, dtype=int))
+            idx_list.append(np.arange(end_idx, end_idx+n, spacing, dtype=int))
             end_idx += n
         idxs = np.r_[np.concatenate(idx_list)]
         # thin the observations of each item in collapsed observations
@@ -750,8 +750,8 @@ class StanModel_1D(_StanModel):
             fig = ax.get_figure()
         obs = self.obs_collapsed if collapsed else self.obs
         xs = self.sample_generated_quantity(xmodel)
-        #az.plot_dist(xs, quantiles=quantiles, ax=ax)
-        az.plot_density(self._fit_for_az, group="posterior", var_names=[xmodel], shade=1, ax=ax)
+        az.plot_dist(xs, quantiles=quantiles, ax=ax)
+        #az.plot_density(self._fit_for_az, group="posterior", var_names=[xmodel], shade=1, ax=ax)
         # overlay data
         if xobs_err is None:
             ax.scatter(obs[xobs], np.zeros(len(obs[xobs])), c=obs["label"], **self._plot_obs_data_kwargs)
