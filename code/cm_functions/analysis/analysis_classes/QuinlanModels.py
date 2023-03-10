@@ -95,7 +95,7 @@ class _QuinlanModelBase(StanModel_2D):
         """
         fig, ax = plt.subplots(1,1, figsize=figsize)
         ax.set_xlabel(r"$t/\mathrm{Myr}$")
-        ax.set_ylabel(r"$pc/a$")
+        ax.set_ylabel(r"$\mathrm{pc}/a$")
         self.prior_plot(xobs="t", yobs="inva", xmodel="t", ymodel="inv_a_prior", ax=ax)
         
         # prior latent quantities

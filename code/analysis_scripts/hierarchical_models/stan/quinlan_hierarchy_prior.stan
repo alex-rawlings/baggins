@@ -15,6 +15,13 @@ data {
 }
 
 
+transformed data {
+    real t_mean = mean(t);
+    real t_std = sd(t);
+    array[N_tot] real t_transformed = (t - mean(t)) / t_std;
+}
+
+
 generated quantities {
     /****** parameters of the parent distributions ******/
     // slope
@@ -36,13 +43,13 @@ generated quantities {
 
     /****** sample parameters ******/
     // slope
-    HGp_s_mean = normal_rng(0, 0.1);
+    HGp_s_mean = normal_rng(0, 0.3);
     while(HGp_s_mean < 0){
-        HGp_s_mean = normal_rng(0, 0.1);
+        HGp_s_mean = normal_rng(0, 0.3);
     }
-    HGp_s_std = normal_rng(0, 0.1);
+    HGp_s_std = normal_rng(0, 0.3);
     while(HGp_s_std < 0){
-        HGp_s_std = normal_rng(0, 0.1);
+        HGp_s_std = normal_rng(0, 0.3);
     }
 
     // intercept

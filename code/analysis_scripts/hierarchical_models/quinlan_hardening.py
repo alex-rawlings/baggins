@@ -3,7 +3,6 @@ import os.path
 import numpy as np
 import h5py
 from matplotlib import rcParams
-import matplotlib.pyplot as plt
 import cm_functions as cmf
 
 
@@ -14,6 +13,7 @@ parser.add_argument("-m", "--model", help="model to run", type=str, choices=["si
 parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="load previous stan file", dest="load_file", default=None)
 parser.add_argument("-t", "--thin", type=int, help="thin data", dest="thin", default=2000)
+parser.add_argument("-s", "--sample", help="sample set", type=str, dest="sample", choices=["mcs", "perturb"], default="mcs")
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
@@ -30,8 +30,10 @@ else:
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
     merger_id = f["/meta"].attrs["merger_id"]
+    if args.sample:
+        merger_id = "-".join(merger_id.split("-")[:2])
 
-figname_base = f"hierarchical_models/hardening/{merger_id}/quinlan_hardening-{merger_id}"
+figname_base = f"hierarchical_models/hardening/{args.sample}/{merger_id}/quinlan_hardening-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
 
@@ -62,7 +64,7 @@ else:
         quinlan_model = cmf.analysis.QuinlanModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
         # sample
-        quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/quinlan_hierarchy_prior1.stan", figname_base=figname_base)
+        quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/quinlan_hierarchy_prior.stan", figname_base=figname_base)
 
 quinlan_model.extract_data(HMQ_files, analysis_params)
 
@@ -97,7 +99,7 @@ else:
         inv_a = quinlan_model.obs_collapsed["inva"]
     ))
 
-    analysis_params["stan"]["hardening_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/hardening/{merger_id}")
+    analysis_params["stan"]["hardening_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/hardening/{args.sample}/{merger_id}")
 
     # run the model
     quinlan_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"])
@@ -108,5 +110,3 @@ else:
 
 quinlan_model.print_parameter_percentiles(["HGp_s", "inv_a_0"])
 
-if args.prior:
-    plt.show()

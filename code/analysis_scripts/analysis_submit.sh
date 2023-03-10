@@ -25,5 +25,3 @@ python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sa
 python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-010/ -m mc -o
 
 python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-005/ -m mc -o
-
-python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_0-001/ -m mc -o

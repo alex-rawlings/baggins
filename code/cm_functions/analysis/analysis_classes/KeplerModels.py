@@ -51,7 +51,7 @@ class _KeplerModelBase(StanModel_1D):
             t_target = hmq.binary_time[idx]
             _logger.logger.debug(f"Target time: {t_target} Myr")
             try:
-                target_idx, delta_idxs = find_idxs_of_n_periods(t_target, hmq.binary_time, hmq.binary_separation)
+                target_idx, delta_idxs = find_idxs_of_n_periods(t_target, hmq.binary_time, hmq.binary_separation, 7)
             except IndexError:
                 _logger.logger.warning(f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis.")
                 continue
@@ -61,9 +61,13 @@ class _KeplerModelBase(StanModel_1D):
             # convert semimajor axis from kpc to pc here
             obs["a"].append(hmq.semimajor_axis[period_idxs] * 1000)
             obs["e"].append(hmq.eccentricity[period_idxs])
-            # TODO will need individual bh masses in general
-            obs["mass1"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
-            obs["mass2"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
+            try:
+                obs["mass1"].append([hmq.binary_masses[0]])
+                obs["mass2"].append([hmq.binary_masses[1]])
+            except AttributeError:
+                _logger.logger.error(f"Attribute 'particle_masses' does not exist for {f}! Will assume equal-mass BHs!")
+                obs["mass1"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
+                obs["mass2"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
             i += 1
         self.obs = obs
 

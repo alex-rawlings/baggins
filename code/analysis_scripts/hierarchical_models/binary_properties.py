@@ -3,7 +3,6 @@ import os.path
 import numpy as np
 import h5py
 from matplotlib import rcParams
-import matplotlib.pyplot as plt
 import cm_functions as cmf
 
 
@@ -14,6 +13,7 @@ parser.add_argument("-m", "--model", help="model to run", type=str, choices=["si
 parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="load previous stan file", dest="load_file", default=None)
 parser.add_argument("-t", "--thin", type=int, help="thin data", dest="thin", default=10)
+parser.add_argument("-s", "--sample", help="sample set", type=str, dest="sample", choices=["mcs", "perturb"], default="mcs")
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
@@ -30,8 +30,11 @@ else:
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
     merger_id = f["/meta"].attrs["merger_id"]
+    e0 = cmf.initialise.e_from_rperi(float(merger_id.split("-")[-1]))
+    if args.sample:
+        merger_id = "-".join(merger_id.split("-")[:2])
 
-figname_base = f"hierarchical_models/binary/{merger_id}/binary_properties-{merger_id}"
+figname_base = f"hierarchical_models/binary/{args.sample}/{merger_id}/binary_properties-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
 
@@ -89,7 +92,7 @@ if args.verbose == "DEBUG":
 # merger ID
 stan_data = dict(
     N_groups = len(kepler_model.obs["label"]),
-    e_0 = cmf.initialise.e_from_rperi(float(merger_id.split("-")[-1]))
+    e_0 = e0
 )
 
 if args.prior:
@@ -106,7 +109,7 @@ else:
         log10_angmom = kepler_model.obs_collapsed["log10_angmom_corr_red"]
     ))
 
-    analysis_params["stan"]["binary_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/binary/{merger_id}")
+    analysis_params["stan"]["binary_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/binary/{args.sample}/{merger_id}")
 
     # run the model
     kepler_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["binary_sample_kwargs"])
@@ -116,4 +119,3 @@ else:
     ax = kepler_model.all_posterior_plots(full_figsize)
 
 kepler_model.print_parameter_percentiles(["a_hard", "e_hard"])
-
