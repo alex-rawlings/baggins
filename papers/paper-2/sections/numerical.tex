@@ -108,6 +108,16 @@ Consequently, we investigate 36 `families' of merger configurations.
 The integration of the system is conducted in two phases: a \textit{parent phase} and a \textit{child phase}. 
 The former is done to capture the large-scale dynamics when the SMBHs are at large separation, and the latter when the SMBH interactions become of primary interest.
 
+In typical N-body simulations, one tests the sensitivity of the model by Monte Carlo sampling the phase space distribution function given by \autoref{eq:eddington} a number of times with different random seeds.
+This is done to quantify the uncertainty in the model due to the discrete sampling of the phase space of field particles, which induce a Brownian motion to the orbit of the more massive SMBH particle. 
+We observe that resampling \autoref{eq:eddington} is in effect displacing the centre of mass (CoM) of the system with the respect to the SMBH.
+To avoid the need to run a large number of simulations from the large $3.0\Rvir$ initial separation, we instead \textit{displace the SMBH} with respect to the CoM of the system at a time $t_\mathrm{perturb}$ after the simulation has begun. 
+This is done by measuring the Brownian-motion induced displacement in position and velocity space of the SMBH from the CoM for a galaxy in isolation.
+After identifying the displacement along each axis to be Gaussian-distributed, we use the variance of this distribution to reposition the SMBH relative to the CoM. 
+We thus `recentre' the SMBH on the CoM with a perturbation of $\mathcal{N}_\text{pos}(\mu=0\,\text{pc}, \sigma^2=100\,\text{pc}^2)$ for each position axis, and $\mathcal{N}_\text{vel}(\mu=0\,\text{km\,s}^{-1}, \sigma^2=100\,\text{km}^2\text{\,s}^{-2})$ for each velocity axis. 
+In this way, we mimic the effect of Brownian motion for a single run beginning at large separation (the \parent{} run) to generate an arbitrary number of perturbed \child{} runs. 
+The perturbation is applied no later than the second-to-last pericentre passage before the SMBH particles form a bound binary system, and ensure the separation of the SMBHs at the time of the perturbation is of the order 1000 larger than the perturbation applied. 
+
 The progenitors are evolved through the \textit{parent phase} from $t(r_0)=0$ with \gadget until the SMBHs form a bound binary at $t_\text{stop}$, with a stellar softening of $\epsilon_\star=10\,\text{pc}$ and \gadget integration tolerances \texttt{ErrTolIntAccuracy}=$0.02$ and \texttt{ErrTolForceAcc}=$0.005$.
 We then initialise the \textit{child phase} by restarting from a snapshot sometime before $t_\text{stop}$.
 We apply a small perturbation to each SMBH position and velocity vector to mimic the effect of Brownian motion due to discrete sampling of the DF, thus negating the need to run many simulations from $r_0=3\,R_\text{vir,1}$. 

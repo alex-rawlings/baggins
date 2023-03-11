@@ -11,138 +11,49 @@ and maybe another one of BH merger remnant properties.
 \drafting{
     WHAT ARE THE MAIN OBSERVATIONS WE SEE and WHAT CONCLUSIONS CAN WE DRAW?
     \begin{enumerate}
+        \item compare to \citet{nasim20}
         \item stability of hardening rate -> semimajor axis can be robustly predicted
         \item wide variance of eccentricity -> N-body models offer no quantitative prediction on likelihood of merger, can only comment on what merger looks like \textit{IF} it happens
-        \item variance in observables: trends between observable properties and what observers can actually make use of (don't have this yet), e.g. signatures of SMBH scouring in velocity profile?
+        \item sample posterior to determine merger timescale
     \end{enumerate}
 }
 
-\subsection{Projected Mass Density Profiles}
-We use hierarchical modelling to recover the population parameter distributions of the core-S\'ersic model \autoref{eq:coresersic} for each simulation family. 
-A probabilistic graphical model detailing the connection between hyperparameters, latent parameters, and observables is given in \autoref{fig:graphicalmodel}. 
 
-\begin{table}
-    \centering
-    \caption{The parameters for each hyperparameter distribution for the core-S\'ersic model, where each distribution is a normal distribution.}
-    \label{tab:cshypers}
-    \begin{tabular}{ccc}
-        \hline
-        Hyperparameter & $\mu$ & $\sigma$ \\
-        \hline
-        $r_{\mathrm{b}, \mu}$ & 0.0 & 2.0 \\
-        $r_{\mathrm{b}, \sigma}$ & 0.0 & 1.0 \\
-        $R_{\mathrm{e}, \mu}$ & 0.0 & 14.0 \\
-        $R_{\mathrm{e}, \sigma}$ & 0.0 & 6.0 \\
-        $\log_{10}\Sigma_{\mathrm{b}, \mu}$ & 0.0 & 20.0 \\
-        $\log_{10}\Sigma_{\mathrm{b}, \sigma}$ & 0.0 & 10.0 \\
-        $\gamma_\mu$ & 0.0 & 0.5 \\
-        $\gamma_\sigma$ & 0.0 & 1.0 \\
-        $n_\mu$ & 0.0 & 8.0 \\
-        $n_\sigma$ & 0.0 & 5.0 \\
-        $a_\mu$ & 0.0 & 20.0 \\
-        $a_\sigma$ & 0.0 & 10.0 \\
-        \hline
-    \end{tabular}
-\end{table}
+\subsection{Comparison to Previous Work}
+\begin{enumerate}
+    \item \citet{nasim20} show convergence of eccentricity to follow $\sigma_\mathrm{ecc} \propto 1/\sqrt{N_\star}$
+    \item Perform same analysis
+    \item Results disagree $\rightarrow$ because of highly radial orbit?? 
+\end{enumerate}
 
 
-\begin{figure}
-    \includegraphics{hm_coresersic.pdf}
-    \caption{Probabilistic graphical model for the likelihood of the core-S\'ersic model. Probabilistic parameters and observable quantities (hatted variables) are shown as circles, whereas deterministic quantities are represented by diamonds. Hyperparameters are represented by purple circles, latent parameters in blue, and observable quantities as red circles. The nodes indicate the distribution used in constructing the prior distributions (for latent parameters) and likelihood function (for $\hat{\Sigma}$). The radial box represents observed and latent variables for each radial bin for a \child{}, and the child box represents latent parameters for each \child{} simulation in a family. }
-    \label{fig:graphicalmodel}
-\end{figure}
+\subsection{Hardening Rate}
+\begin{enumerate}
+    \item Introduce HM for hardening rate
+    \item Corner plots of latent parameters, forward folded PPC
+    \item Discussion uncertainty on $HG\rho/\sigma$
+\end{enumerate}
 
-\subsubsection{Observable Quantities}
-The hierarchical model takes three observable quantities, denoted by hat-variables in circles in \autoref{fig:graphicalmodel}. 
-These variables are the radius $\hat{R}$, and the mean projected mass density $\hat{\Sigma}$, and the standard deviation of the projected mass density $\hat{\sigma}_\Sigma$ measured in the radial bins centred on $\hat{R}$.
-For each \child{} simulation, we choose to `observe' the first snapshot where the binary semimajor axis is \textit{at most} $10\,\mathrm{pc}$. 
-In the event that there is no snapshot satisfying the above requirement (due to, for example, rapid merging of the SMBH binary in a time period shorter than the snapshot output frequency), the \child{} simulation is not included in the analysis.
-We enforce a minimum of six \child{} simulations per family for that family to be analysed with our hierarchical modelling technique. 
-For those \child{} simulations which pass our selection criteria, we take 30 random projections of the merger remnant, and determine the projected mass density in 50 radial bins evenly-spaced in logarithm space, with a minimum value of $0.2\,\mathrm{kpc}$ and a maximum value of $20.0\,\mathrm{kpc}$.
-This allows us to build up a distribution of projected mass densities per radial bin, from which $\hat{\Sigma}$ and $\hat{\sigma}_\Sigma$ are determined. 
-
-\subsubsection{Latent Parameters for Observables}
-There are six latent parameters ($r_\mathrm{b}$, $R_\mathrm{e}$, $\log_{10}\Sigma_\mathrm{b}$, $\gamma$, $n$, and $\alpha$, the set of which we denote as $\kappa$) that describe each \child{} simulation in a family. 
-These latent parameters, depicted as non-hatted variables in circles in \autoref{fig:graphicalmodel}, are sampled to obtain a latent estimate on the projected mass density, $\Sigma$.
-The latent parameters in the set $\kappa$ are strictly non-negative, with the exception of $\log_{10}\Sigma_\mathrm{b}$. 
+We enforce a minimum of six simulations per mass resolution for that mass resolution to be analysed with our hierarchical modelling technique. 
 For these five positive-constrained latent parameters, we model the latent distribution as a half normal distribution. 
 Each location hyperparameter for each of these latent parameters is also drawn from a truncated normal distribution, as a negative expectation value may be excluded on physical grounds.
 For $\log_{10}\Sigma_\mathrm{b}$, we assume a normal distribution, with a location hyperparameter centred at $\log_{10}\Sigma_{\mathrm{b}, \mu}=10$. 
 For all scale hyperparameters, we use a half normal distribution (as the scale of a distribution must of course always be positive).
 To ensure our hyperparameter prior distributions are weakly-informative, the hyperparameters are drawn from the distributions in \autoref{tab:cshypers} for all simulation families. 
-The sampled hyperparameter distributions are shown as corner plots in Figures \ref{fig:corner_params_1}-\ref{fig:corner_params_3}. \drafting{Corner plots maybe not so informative here, do we really expect correlations? Maybe 1D distributions better for the hyperpriors.}
+The sampled hyperparameter distributions are shown as corner plots in Figures
 
 We ensure our hyperparameter and latent parameter distributions are representative of our observed data by performing prior predictive checks, an example of which is shown for the H-1.00 family in \autoref{fig:priorpred}. 
 Critically, both the range of values spanned by the prior distributions and the general shape of the distribution suggests that the data is well represented by the model and the prior distributions on the hyper and latent parameters. \drafting{Not yet, but will be. Some issue with the sampler.} 
 
-For each radial bin, we backwards-model and na\"ively bin our thirty observations of $\log_{10}\hat{\Sigma}$ for that radial bin to assess the likely distribution.
-We find that the different projections of the mass density profile in a given radial bin are well-described by a normal distribution in logarithm space. 
-Thus, as likelihood function, we use the normal distribution $\mathrm{Lognorm}(\Sigma, \hat{\sigma}_\Sigma^2)$.
-
-\drafting{Write explicitly the posterior distribution we are sampling from.}
-
-\begin{figure*}
-    \includegraphics{{graham_density-H-H-3.0-0.001-hierarchy_posterior_pred_log10_proj_density_mean}.pdf}
-    \caption{\drafting{Posterior predictive estimate for the core-S\'ersic fit for highest (fiducial) mass resolution. Darker shaded regions correspond to greater Highest Density Intervals (HDIs). The observed data is overlaid, and seen to lie well within the 50\% HDIs. }}
-    \label{fig:postpred}
-\end{figure*}
-
-\begin{figure*}
-    \includegraphics{{graham_density-H-H-3.0-0.001-hierarchy_latentqty_compare}.pdf}
-    \caption{\drafting{Latent params, and compare to naive estimates using Gaussian stats. Note error bars on black points are smaller than the point itself if not visible}}
-    \label{fig:cs_compare_naive}
-\end{figure*}
-
-\subsection{Latent Parameter Posterior Distributions}
 We compute the posterior distribution using \textsc{Stan}, ensuring that the sampler exits without encountering any divergences, and that all \drafting{R-hat (is a summary stat, but how to draw? Don't want to confuse with observed radius)} values are within the range \drafting{$[0.99, 1.01]$}.
 We first inspect how the posterior distribution appears visually by computing posterior predictive checks, an example of which is shown in \autoref{fig:postpred} for the family H-1.00. 
 We find that the data is well described by the 50\% HDI \drafting{introduce what HDI is} of the posterior distribution, as desired. 
 
-As part of the hierarchical modelling sampling process, we can obtain in addition to the posterior distribution on $\Sigma(R)$ the latent parameter distributions from which $\Sigma(R)$ is determined by marginalising out the other parameters. 
-We show an example of these latent parameter distributions in \autoref{fig:cs_compare_naive}, where the PDF of the latent parameter distributions is given in blue. 
-For comparison, we also show the estimated uncertainty on each latent parameter determined using na\"ive $\chi^2$ minimisation techniques.
-To do this, we fit each density profile in logarithm space using a Least-Squares method, and then determine the median and IQR of the sample. 
-The median value and spread for each latent parameter using this na\"ive method is shown above the corresponding posterior distribution estimate in \autoref{fig:cs_compare_naive}.
-The $\chi^2$ minimisation fails to capture the correct estimates for the latent parameter estimates, with some parameters (e.g. $n$) converging to the boundary value we limit the Least Squares method to (for $n$, the bounds are $[0,20]$).
-We try successively relaxing and tightening the boundary values of each parameter to obtain a `physically-realistic' value for each optimal latent parameter value, with no success. 
-Henceforth, we abandon any attempt to use a Least Squares minimisation to recover the optimal latent parameter values, returning instead to our Bayesian approach.
+As part of the hierarchical modelling sampling process, we can obtain in addition to the posterior distribution on $\Sigma(R)$ the latent parameter distributions from which $\Sigma(R)$ is determined by marginalising out the other parameters.
 
-We show the latent parameter distributions for each mass resolution family in \autoref{fig:cs_mass_compare}, and compare the median and IQRs \drafting{ensure this acronym explained somewhere} in \autoref{fig:cs_mass_compare_2}. 
-We find first that the spread in the latent parameters (as quantified through their IQR) does not dramatically differ between mass resolutions.
-Secondly, we observe that not all latent parameters in the core-S\'ersic model display asymptotic convergence, and that in some cases, such as for the effective radius $R_\mathrm{e}$, all tested mass resolutions produce estimates that are consistent with each other.
-For other latent parameters, such as the core radius $r_\mathrm{b}$, there is a clear convergence of the median value with increasing mass resolution. \drafting{More particles --> core better resolved. Discuss here or in discussion?}
-
-Whilst we are unable to attribute the error in \autoref{fig:cs_mass_compare} to a particular phenomenon, we may at least rule out that the spread is due to post-processing analysis introduced from differing observation projections of the merger remnant. 
-We re-determine the mean and standard deviation of the logarithm of the projected density profile using a subset of the total 30 projections we have available to us for the H-1.00 merger family.
-Repeating this data-reduction process four times, we then rerun the HMC algorithm for each subsample.
-We compare the latent parameter distributions for each subsample to the latent parameter distributions for the H-1.00 family determined using the full projection sample, and find:
-\begin{enumerate}
-    \item The error in the latent parameters is the consistent when using a subsample of projections, or the full sample, implying
-    \item The error in the latent parameters is independent of the projection direction.
-\end{enumerate}
-Consequently, we may attribute the uncertainty in the latent parameter distributions to one of:
-\begin{itemize}
-    \item Intrinsic scatter inherent to the physical system, or 
-    \item Numerical noise arising from a source independent of mass resolution, or 
-    \item A combination of the two.
-\end{itemize}
-
-\begin{figure*}
-    \includegraphics{compare_HH_gqs_res.pdf}
-    \caption{\drafting{Comparison of core sersic fit for different mass resolutions. Note the scatter does not seem to decrease with increasing mass resolution, however the distribution modes seem to converge towards something.}}
-    \label{fig:cs_mass_compare}
-\end{figure*}
-
-\begin{figure*}
-    \includegraphics{compare_HH_gqs_res_2d.pdf}
-    \caption{\drafting{Same as \autoref{fig:cs_mass_compare}, but plotted as a function of mass resolution. Points correspond to the median estimate for the latent parameters, and error bars to the IQR.}}
-    \label{fig:cs_mass_compare_2}
-\end{figure*}
-
-\subsection{Hardening Rate}
 After considering the robustness of the projected density profile to SMBH Brownian motion, we turn our attention to a similar analysis of the hardening rate of the SMBH binary. 
 The hardening rate $H$ in \autoref{eq:quinlan_H} connects the evolution of the inverse semimajor axis of the binary system to the surrounding stellar mass distribution. 
-To extract the data for our hierarchical model for hardening rate, we take for each \child{} simulation the semimajor axis values between $a=a_\mathrm{h}$ and $a/\mathrm{pc}=10$.
+To extract the data for our hierarchical model for hardening rate, we take for each simulation the semimajor axis values between $a=a_\mathrm{h}$ and $a/\mathrm{pc}=10$.
 We then fit the differential equation give in \autoref{eq:quinlan_H} to obtain a parameter estimate of the combined quantity $HG\rho/\sigma$.
 We fit for the combined property in preference to just $H$ as the temporal-resolution of the semimajor axis $a$ is \drafting{check} $10^4$ times more frequent than the temporal resolution of the snapshots, requiring linear (or higher order) interpolation to be done between snapshots to obtain a continuous function of $G\rho/\sigma$ that can be mapped to the temporal resolution of $a$. 
 To avoid these assumptions, we estimate the combined quantity $HG\rho/\sigma$.
@@ -155,6 +66,13 @@ To avoid these assumptions, we estimate the combined quantity $HG\rho/\sigma$.
 
 
 \subsection{Binary Properties}
+\begin{enumerate}
+    \item introduce HM for binary quantities 
+    \item corner plots $a$, $e$, discuss generacy
+    \item forward folded PPC for $l$
+    \item demonstrate $e$ cannot be robustly predicted (e.g. multimodal marginal distribution)
+\end{enumerate}
+
 \begin{figure}
     \includegraphics{compare_binaries.pdf}
     \caption{\drafting{Show an example of the scatter we get from perturbations. These are plotted with t=0 corresponding to when the child run started. Best way to show this, or should a time-shift be done? This way at least we see clearly that different sims become bound at different times.}}
@@ -164,17 +82,18 @@ To avoid these assumptions, we estimate the combined quantity $HG\rho/\sigma$.
 It is instructive to first consider the raw data of a particular simulation family, shown in \autoref{fig:ketju_scatter} for the case of H-1.00. 
 Immediately apparent is the scatter in eccentricity between different realisations, with some runs (e.g. 006) having $e<0.2$ for the majority of the integration time, whilst other realisations (e.g. 002) have $e>0.9$ for the same time period.
 As discussed in \drafting{section}, the efficiency of GW as a hardening mechanism is directly related to the binary eccentricity, and is highly non-linear. 
-This is observed in those \child{} realisations that merged, and the timescale within which they merged.
+
 As seen in \autoref{fig:ketju_scatter}, a higher eccentricity leads to more rapid BH binary mergers as opposed to a lower eccentricity. 
 Out of the 50 simulations that we ran, we observe \drafting{XXX} systems that resulted in SMBH binary coalescence. 
 
 Also of note is the rapid oscillation in eccentricity between $\sim100$--$300\,\mathrm{Myr}$. 
 This is contrasted by a relatively smooth evolution in semimajor axis, indicating that the SMBH binary orbit is highly sensitive to the surrounding stellar mass distribution.
 
-\drafting{
-    QUESTIONS FOR SIMON:\\
-    \begin{itemize}
-        \item Hierarchical models rely on the ability to model a set of observations as belonging to a \textit{population}. After the chaos talk, can a collection of BH-perturbed systems be described still as belonging to a population? I think yes (stellar mass distribution unchanged), but would be keen to hear thoughts.
-        \item In this paper we're perturbing the phase space coordinates of the BHs as opposed to a single field particle (we did this as another sensitivity test). Let's consider the case of perturbing a field particle. I find it still somehow curious that such a small displacement (a fraction of a softening length) still propagates the perturbation to such large scales, considering we are using a tree code for the particles not-near the BHs. I would have (na\"ively) thought that round off error from the tree algorithm would dominate the perturbation of a single particle (our code is deterministic given a specific hardware configuration, i.e. running the same ICs on the same CPU count will give identical results). Thoughts on this?
-    \end{itemize}
-}
+
+\subsection{Merger Timescale}
+\begin{enumerate}
+    \item Sample from marginal distributions $HG\rho/\sigma$, $a_\mathrm{h}$, $e_\mathrm{h}$
+    \item Plug in to Quinlan-Peter analytical formula (write this explicitly)
+    \item Posterior estimate on $t_\mathrm{merge}$
+    \item discuss uncertainty
+\end{enumerate}
