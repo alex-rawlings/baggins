@@ -8,7 +8,7 @@ import itertools
 from ..env_config import _cmlogger
 
 
-__all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions", "create_odd_number_subplots"]
+__all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions", "create_odd_number_subplots", "nice_log10_scale"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -210,3 +210,18 @@ def create_odd_number_subplots(nrow, ncol, fkwargs={}, gskwargs={}):
         ax.append(fig.add_subplot(gs[-1, 2*i+1:2*(i+1)+1]))
     return fig, np.array(ax)
 
+
+def nice_log10_scale(ax):
+    """
+    Ensure nice log scaling on an axis
+
+    Parameters
+    ----------
+    ax : matplotlib.axes._subplots.AxesSubplot
+        axis to plot to
+    """
+    ylims = ax.get_ylim()
+    ax.set_ylim(
+        10**np.floor(np.log10(ylims[0])),
+        10**np.ceil(np.log10(ylims[1]))
+    )

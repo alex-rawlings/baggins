@@ -11,6 +11,7 @@ bh_binary:
   target_semimajor_axis:
     unit: 'kpc'
     value: 0.01
+  num_orbital_periods: 5
 
 # info on galaxy properties and quantities needed to determine those properties
 galaxy:

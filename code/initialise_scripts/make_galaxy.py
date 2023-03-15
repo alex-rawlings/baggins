@@ -9,6 +9,9 @@ args = parser.parse_args()
 
 
 galaxy = cmf.initialise.GalaxyIC(parameter_file=args.pf)
-galaxy.plot_mass_scaling_relations()
+plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
+if plot_flag:
+    galaxy.plot_mass_scaling_relations()
 galaxy.generate_galaxy()
-galaxy.plot_ic_kinematics(num_rots=args.nrot)
+if plot_flag:
+    galaxy.plot_ic_kinematics(num_rots=args.nrot)

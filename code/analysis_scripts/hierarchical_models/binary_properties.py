@@ -39,7 +39,7 @@ figname_base = f"hierarchical_models/binary/{args.sample}/{merger_id}/binary_pro
 analysis_params = cmf.utils.read_parameters(args.apf)
 
 if args.model == "simple":
-    stan_model_file = "stan/binary_simple.stan"
+    stan_model_file = "stan/binary/binary_simple.stan"
     if args.load_file is not None:
         # load a previous sample for improved performance: no need to resample 
         # the likelihood function
@@ -51,9 +51,9 @@ if args.model == "simple":
         kepler_model = cmf.analysis.KeplerModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
         # sample
-        kepler_model = cmf.analysis.KeplerModelSimple(model_file=stan_model_file, prior_file="stan/binary_prior_simple.stan", figname_base=figname_base)
+        kepler_model = cmf.analysis.KeplerModelSimple(model_file=stan_model_file, prior_file="stan/binary/binary_prior_simple.stan", figname_base=figname_base)
 else:
-    stan_model_file = "stan/binary_hierarchy.stan"
+    stan_model_file = "stan/binary/binary_hierarchy.stan"
     if args.load_file is not None:
         # load a previous sample for improved performance: no need to resample 
         # the likelihood function
@@ -65,7 +65,7 @@ else:
         kepler_model = cmf.analysis.KeplerModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
         # sample
-        kepler_model = cmf.analysis.KeplerModelHierarchy(model_file=stan_model_file, prior_file="stan/binary_prior_hierarchy.stan", figname_base=figname_base)
+        kepler_model = cmf.analysis.KeplerModelHierarchy(model_file=stan_model_file, prior_file="stan/binary/binary_prior_hierarchy.stan", figname_base=figname_base)
 
 kepler_model.extract_data(HMQ_files, analysis_params)
 

@@ -25,7 +25,7 @@ else:
     full_figsize = None
 
 figname_base = f"hierarchical_models/density/compare"
-stan_model_file = "stan/graham.stan"
+stan_model_file = "stan/density/graham.stan"
 models = []
 colour_var = []
 

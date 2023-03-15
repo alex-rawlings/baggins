@@ -37,7 +37,7 @@ figname_base = f"hierarchical_models/density/{merger_id}/graham_density-{merger_
 analysis_params = cmf.utils.read_parameters(args.apf)
 
 if args.model == "simple":
-    stan_model_file = "stan/graham_simple.stan"
+    stan_model_file = "stan/density/graham_simple.stan"
     if args.load_file is not None:
         # load a previous sample for improved performance: no need to resample 
         # the likelihood function
@@ -49,9 +49,9 @@ if args.model == "simple":
         graham_model = cmf.analysis.GrahamModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
         # sample
-        graham_model = cmf.analysis.GrahamModelSimple(model_file=stan_model_file, prior_file="stan/graham_prior_simple.stan", figname_base=figname_base)
+        graham_model = cmf.analysis.GrahamModelSimple(model_file=stan_model_file, prior_file="stan/density/graham_prior_simple.stan", figname_base=figname_base)
 else:
-    stan_model_file = "stan/graham_hierarchy_0.stan"
+    stan_model_file = "stan/density/graham_hierarchy_0.stan"
     if args.load_file is not None:
         # load a previous sample for improved performance: no need to resample 
         # the likelihood function
@@ -63,7 +63,7 @@ else:
         graham_model = cmf.analysis.GrahamModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
         # sample
-        graham_model = cmf.analysis.GrahamModelHierarchy(model_file=stan_model_file, prior_file="stan/graham_prior_hierarchy_0.stan", figname_base=figname_base)
+        graham_model = cmf.analysis.GrahamModelHierarchy(model_file=stan_model_file, prior_file="stan/density/graham_prior_hierarchy_0.stan", figname_base=figname_base)
 
 # load the observational data
 graham_model.extract_data(HMQ_files, analysis_params)

@@ -51,7 +51,7 @@ class _KeplerModelBase(StanModel_1D):
             t_target = hmq.binary_time[idx]
             _logger.logger.debug(f"Target time: {t_target} Myr")
             try:
-                target_idx, delta_idxs = find_idxs_of_n_periods(t_target, hmq.binary_time, hmq.binary_separation, 7)
+                target_idx, delta_idxs = find_idxs_of_n_periods(t_target, hmq.binary_time, hmq.binary_separation, num_periods=pars["bh_binary"]["num_orbital_periods"])
             except IndexError:
                 _logger.logger.warning(f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis.")
                 continue

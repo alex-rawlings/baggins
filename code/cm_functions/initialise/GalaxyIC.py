@@ -62,6 +62,8 @@ class GalaxyIC(_GalaxyICBase):
                 self._calc_quants["input_core_radius"] = {"value":self.stars.core_radius, "unit":self.stars.stellar_distance_units}
             else:
                 self.stars = _StellarCusp(parameter_file=parameter_file)
+        else:
+            _logger.logger.warning(f"No stellar component generated!")
         # set up DM
         dm_pars = self.parameters["dm"]
         if dm_pars["particle_mass"]["value"] is not None:
@@ -79,6 +81,8 @@ class GalaxyIC(_GalaxyICBase):
             else:
                 self.dm = _DMHaloDehnen(stellar_mass=_star_mass, parameter_file=parameter_file)
             self._calc_quants["dm"]["peak_mass"] = self.dm.peak_mass
+        else:
+            _logger.logger.warning(f"No DM component generated!")
         # set up SMBH
         bh_pars = self.parameters["bh"]
         if bh_pars["set_spin"] is not None:
@@ -92,9 +96,14 @@ class GalaxyIC(_GalaxyICBase):
                 else:
                     _star_mass = stellar_mass
             self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file)
+            # manually set BH mass if desired
+            if bh_pars["mass"]["value"] is not None:
+                self.bh.mass = bh_pars["mass"]["value"]
             self._calc_quants["bh"]["mass"] = self.bh.mass
             #save the new spin value
             self._calc_quants["bh"]["spin"] = self.bh.spin
+        else:
+            _logger.logger.warning(f"No SMBH component generated!")
         self.hdf5_file_name = os.path.join(self.save_location, f"{self.name}.hdf5")
     
 
@@ -103,7 +112,7 @@ class GalaxyIC(_GalaxyICBase):
         Convert all masses from default units of Msol to 1e10 Msol, the Gadget
         standard.
         """
-        _logger.logger.info("Converting mass units to Gadget default (1e10 Msol)")
+        _logger.logger.warning("Converting mass units to Gadget default (1e10 Msol)")
         _logger.logger.debug("Masses of galaxy components")
         assert self.mass_units == "msol"
         try:
@@ -126,7 +135,7 @@ class GalaxyIC(_GalaxyICBase):
         except AttributeError:
             pass
         self.mass_units = "gadget"
-        _logger.logger.info(f"Mass units are now in {self.mass_units} standard.")
+        _logger.logger.warning(f"Mass units are now in {self.mass_units} standard.")
     
 
     def write_calculated_parameters(self):
