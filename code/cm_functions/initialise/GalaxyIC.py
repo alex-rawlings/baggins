@@ -98,6 +98,7 @@ class GalaxyIC(_GalaxyICBase):
             self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file)
             # manually set BH mass if desired
             if bh_pars["mass"]["value"] is not None:
+                _logger.logger.warning(f"Setting BH mass to user defined value!")
                 self.bh.mass = bh_pars["mass"]["value"]
             self._calc_quants["bh"]["mass"] = self.bh.mass
             #save the new spin value

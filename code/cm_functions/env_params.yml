@@ -10,5 +10,5 @@ logging:
   file_level: WARNING
 ...
 ---
-git_hash: heads/master-0-geb8e907
+git_hash: heads/master-0-ga28382a
 ...

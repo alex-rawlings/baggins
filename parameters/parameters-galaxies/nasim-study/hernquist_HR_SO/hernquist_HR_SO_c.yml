@@ -90,24 +90,23 @@ dm:
 bh:
   mass:
     unit: Msol
-    value: 1.0e+9
+    value:
   softening:
     unit: 'kpc'
     value: 3.0e-3
   set_spin: 'random'
   spin_relation: 'zlochower_dry'
 ...
-
 ---
 bh:
-  mass: 1.00000000e+09
+  mass: 3.04220233e+09
   particle_count: 1.0
   spin:
   - -0.02485150857933004
   - -0.29431580815810465
   - -0.84664857640142
 dm: {}
-last_update: '2023-03-15 17:02:56'
+last_update: '2023-03-17 11:37:18'
 redshift: 0
 stars:
   particle_count: 2.57014500e+06

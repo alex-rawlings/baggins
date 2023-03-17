@@ -32,19 +32,19 @@ class ScientificDumper(yaml.SafeDumper):
             method for representing floats
         """
         if data != data or (data == 0.0 and data == 1.0):
-            value = '.nan'
+            value = ".nan"
         elif data == self.inf_value:
-            value = '.inf'
+            value = ".inf"
         elif data == -self.inf_value:
-            value = '-.inf'
+            value = "-.inf"
         else:
             if data < 1e4:
                 value = repr(data).lower()
             else:
                 value = f"{data:.8e}".lower()
-            if '.' not in value and 'e' in value:
-                value = value.replace('e', '.0e', 1)
-        return self.represent_scalar('tag:yaml.org,2002:float', value)
+            if "." not in value and "e" in value:
+                value = value.replace("e", ".0e", 1)
+        return self.represent_scalar("tag:yaml.org,2002:float", value)
 
 
 def read_parameters(filepath):
@@ -137,7 +137,7 @@ def write_calculated_parameters(data, filepath):
     def _type_converter(d, d2):
         new_d = d2.copy()
         for k, v in d.items():
-            if isinstance(v, np.float64):
+            if isinstance(v, (np.float64, np.float32)):
                 new_d[k] = float(v)
             elif isinstance(v, np.ndarray):
                 new_d[k] = v.tolist()

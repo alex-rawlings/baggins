@@ -1,0 +1,79 @@
+# always assume units of:
+# mass: solar masses
+# distance: kpc
+# time: Gyr
+# velocity: km/s
+# unless otherwise stated
+
+---
+# general info about the merger
+general:
+  galaxy_name_1: 'H_MR-c' 
+  galaxy_name_2: 'H_MR-c'
+  random_seed: 6519951
+
+# info about where files are to be read from and saved to
+file_locations:
+  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only/hernquist_MR_SO_c/hernquist_MR_SO_c.hdf5
+  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only/hernquist_MR_SO_c/hernquist_MR_SO_c.hdf5
+  # file will be saved to 
+  # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
+  save_location: '/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only/MR'
+  perturb_sub_dir:
+
+# info about the original orbit of the merger
+orbital_properties:
+  r0:
+    # initial separation of systems
+    unit: "kpc"
+    value: 11
+    # distance at first pericentre passage
+  rperi:
+    unit: "kpc"
+    value: 0.825
+  e0: 0.9
+
+# info about how the system should be perturbed
+perturb_properties:
+  # when to apply the perturbation
+  perturb_time:
+    unit: "Gyr"
+    value: 0.172
+  number_perturbs: 10
+  # perturb BH particles with a Gaussian distribution
+  perturb_chs:
+    perturb_position:
+      unit: "kpc"
+      # Gaussian standard deviation
+      value: 0.01
+    perturb_velocity:
+      unit: "km/s"
+      # Gaussian standard deviation
+      value: 10.0
+  perturb_field_particles:
+    family: "stars"
+    perturb_position:
+      unit: "kpc"
+      value: [0.001, 0.0, 0.0]
+    radial_counds:
+      unit: 'kpc'
+      value: [1.0, 10.0]
+  gadget_parameters_to_update:
+  # create a copy of a gadget paramfile with changes made to these vars
+  # "InitCondFile", "SnapshotFileBase" are always updated
+    SofteningStars:
+    ketju_disable_integration:
+    ErrTolIntAccuracy:
+...
+
+---
+e0: 0.9
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only/MR/H_MR-c-H_MR-c-11-0.825
+last_update: '2023-03-17 14:30:38'
+mass_resolution: 7788.5361328125
+r0_physical: 11
+rperi_physical: 0.825
+time_to_pericentre: 0.02738739479294537
+virial_radius_large: 101.06508544999437
+...
+

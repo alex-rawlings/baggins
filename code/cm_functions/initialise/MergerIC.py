@@ -2,7 +2,6 @@ import os
 import shutil
 import re
 from datetime import datetime
-from cm_functions.analysis.analyse_snap import get_virial_info_of_each_galaxy
 import h5py
 import numpy as np
 import pygad
@@ -10,7 +9,7 @@ import merger_ic_generator as mg
 
 from ..env_config import _cmlogger, date_format
 from ..utils import read_parameters, write_calculated_parameters, get_snapshots_in_dir
-from ..analysis import snap_num_for_time, get_com_of_each_galaxy, get_com_velocity_of_each_galaxy
+from ..analysis import snap_num_for_time, get_com_of_each_galaxy, get_com_velocity_of_each_galaxy, get_virial_info_of_each_galaxy
 from ..mathematics import radial_separation
 from ..analysis.masks import *
 
@@ -150,8 +149,26 @@ class MergerIC:
         else:
             raise NotImplementedError
 
+        # determine mass resolution
+        mass_resolution = []
+        for i in range(1,3):
+            with h5py.File(self.parameters["file_locations"][f"galaxy_file_{i}"], "r") as f:
+                mstar = np.unique(f["/PartType4/Masses"][:])
+                try:
+                    assert len(mstar) == 1
+                except AssertionError:
+                    _logger.logger.exception(f"Non-unique stellar particle mass! {len(mstar)} masses present!", exc_info=True)
+                    raise
+                mbh = min(f["/PartType5/Masses"][:])
+                mass_resolution.append(mbh/mstar[0])
+        self._calc_quants["mass_resolution"] = min(mass_resolution)
+
         # determine eccentricity
-        self._calc_quants["e0"] = self.e_from_rperi(self._calc_quants["rperi_physical"] / self._calc_quants["virial_radius_large"])
+        if oppars["e0"] is None:
+            _logger.logger.info(f"Initial orbital eccentricity set from pericentre distance")
+            self._calc_quants["e0"] = self.e_from_rperi(self._calc_quants["rperi_physical"] / self._calc_quants["virial_radius_large"])
+        else:
+            self._calc_quants["e0"] = oppars["e0"]
 
         merger = mg.Merger(galaxy1, galaxy2, r0=self._calc_quants["r0_physical"], rperi=self._calc_quants["rperi_physical"], e=self._calc_quants["e0"])
         self._calc_quants["time_to_pericentre"] = merger.time_to_pericenter
@@ -164,6 +181,7 @@ class MergerIC:
             _logger.logger.exception(f"File {file_name} already exists!", exc_info=True)
             raise
         mg.write_hdf5_ic_file(filename=file_name, system=merger, save_plots=False)
+        _logger.logger.info(f"Merger IC file written to {file_name}")
         # save parameters
         self.write_calculated_parameters()
     

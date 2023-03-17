@@ -90,7 +90,7 @@ dm:
 bh:
   mass:
     unit: Msol
-    value: 1.0e+9
+    value:
   softening:
     unit: 'kpc'
     value: 3.0e-3
@@ -100,14 +100,14 @@ bh:
 
 ---
 bh:
-  mass: 1.00000000e+09
+  mass: 3.04220233e+09
   particle_count: 1.0
   spin:
   - 0.37460396657689726
   - -0.05783078223139425
   - -0.5266575805127018
 dm: {}
-last_update: '2023-03-15 16:56:47'
+last_update: '2023-03-17 11:30:20'
 redshift: 0
 stars:
   particle_count: 2.57014500e+06
