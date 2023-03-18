@@ -1,12 +1,12 @@
 from datetime import datetime
 import inspect
-from matplotlib import rc_file, rcdefaults
+from matplotlib import rc_file, rcdefaults, rcParams
 from matplotlib.pyplot import gcf
 from PIL import Image
 import os.path
 from ..env_config import _cmlogger, git_hash, username, date_format, fig_ext
 
-__all__ = ["savefig", "get_meta", "set_publishing_style"]
+__all__ = ["savefig", "get_meta", "set_publishing_style", "get_figure_size"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -79,4 +79,27 @@ def set_publishing_style():
     rcdefaults()
     rc_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "matplotlibrc_publish"))
     _logger.logger.info("Publishing Matplotlib style set")
+
+
+
+def get_figure_size(publishing=False):
+    """
+    Determine the figure size appropriate for publishing mode or normal mode
+
+    Parameters
+    ----------
+    publishing : bool, optional
+        set publihsing style, by default False
+
+    Returns
+    -------
+    figsize : tuple
+        figure dimensions
+    """
+    figsize = None
+    if publishing:
+        set_publishing_style()
+        figsize = rcParams["figure.figsize"]
+        figsize[0] *= 2
+    return figsize
 

@@ -135,19 +135,25 @@ class MergerIC:
 
         self._calc_quants["virial_radius_large"] = _get_virial_radius()
         # determine initial separation
+        try:
+            assert oppars["r0"]["unit"] in ("virial", "kpc")
+        except AssertionError:
+            _logger.logger.exception(f"Initial separation unit {oppars['r0']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
+            raise
         if oppars["r0"]["unit"] == "virial":
             self._calc_quants["r0_physical"] = self._calc_quants["virial_radius_large"] * oppars["r0"]["value"]
-        elif oppars["r0"]["unit"] == "kpc":
-            self._calc_quants["r0_physical"] = oppars["r0"]["value"]
         else:
-            raise NotImplementedError
+            self._calc_quants["r0_physical"] = oppars["r0"]["value"]
         # determine first pericentre distance
+        try:
+            assert oppars["rperi"]["unit"] in ("virial", "kpc")
+        except AssertionError:
+            _logger.logger.exception(f"Pericentre distance unit {oppars['rperi']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
+            raise
         if oppars["rperi"]["unit"] == "virial":
             self._calc_quants["rperi_physical"] = self._calc_quants["virial_radius_large"] * oppars["rperi"]["value"]
-        elif oppars["rperi"]["unit"] == "kpc":
-            self._calc_quants["rperi_physical"] = oppars["rperi"]["value"]
         else:
-            raise NotImplementedError
+            self._calc_quants["rperi_physical"] = oppars["rperi"]["value"]
 
         # determine mass resolution
         mass_resolution = []

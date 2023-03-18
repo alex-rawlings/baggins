@@ -821,10 +821,10 @@ class StanModel_2D(_StanModel):
             fig = ax.get_figure()
         obs = self.obs_collapsed if collapsed else self.obs
         ys = self.sample_generated_quantity(ymodel)
-        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), max(levels), cmap="Blues", normalisation="LogNorm")
+        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), 110, cmap="Blues_r", normalisation="PowerNorm", norm_kwargs={"gamma":2})
         for l in levels:
             _logger.logger.info(f"Fitting level {l}")
-            az.plot_hdi(dataset[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False)
+            az.plot_hdi(dataset[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
         # overlay data
         if self._num_groups < 2:
             self._plot_obs_data_kwargs["cmap"] = "Set1"

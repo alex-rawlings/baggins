@@ -20,12 +20,7 @@ args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
-if args.publish:
-    cmf.plotting.set_publishing_style()
-    full_figsize = rcParams["figure.figsize"]
-    full_figsize[0] *= 2
-else:
-    full_figsize = None
+full_figsize = cmf.plotting.get_figure_size(args.publish)
 
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
@@ -33,7 +28,7 @@ with h5py.File(HMQ_files[0], mode="r") as f:
     if args.sample:
         merger_id = "-".join(merger_id.split("-")[:2])
 
-figname_base = f"hierarchical_models/hardening/{args.sample}/{merger_id}/quinlan_hardening-{merger_id}-LOG"
+figname_base = f"hierarchical_models/hardening/{args.sample}/{merger_id}/quinlan_hardening-{merger_id}"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
 

@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_1D
-from . import HMQuantitiesData
+from . import StanModel_1D, HMQuantitiesData
 from ..orbit import find_idxs_of_n_periods
 from ...env_config import _cmlogger
 from ...plotting import savefig
