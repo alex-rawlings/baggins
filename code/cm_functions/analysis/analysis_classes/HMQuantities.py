@@ -25,7 +25,7 @@ kpc = ketjugw.units.pc * 1e3
 
 
 class HMQuantities(HMQuantitiesData):
-    def __init__(self, parameter_file, data_directory, merger_id) -> None:
+    def __init__(self, parameter_file, merger_file, data_directory, merger_id) -> None:
         """
         Class to extract and save key quantities that may be useful for hierarchical modelling.
 
@@ -50,7 +50,11 @@ class HMQuantities(HMQuantitiesData):
         self.ketju_file = kf[0]
         self.snaplist = get_snapshots_in_dir(self.data_directory)
         self._analysis_params = read_parameters(parameter_file)
+        self._merger_params = read_parameters(merger_file)
         self.radial_edges = copy.copy(self._analysis_params["galaxy"]["radial_edges"]["value"])
+        self.initial_galaxy_orbit = {}
+        for k in ("e0", "r0_physical", "rperi_physical"):
+            self.initial_galaxy_orbit[k] = copy.copy(self._merger_params["calculated"][k])
 
         ##------------------- Determine binary quantities -------------------##
 
@@ -152,7 +156,7 @@ class HMQuantities(HMQuantitiesData):
 
             # some important radii
             self.influence_radius.append(
-                list(influence_radius(snap).values())[0]
+                max(list(influence_radius(snap).values()))
             )
             self.hardening_radius.append(
                 hardening_radius(snap.bh["mass"], self.influence_radius[i])
@@ -288,7 +292,8 @@ class HMQuantities(HMQuantitiesData):
                        "inner_DM_fraction",
                        "velocity_anisotropy",
                        "masses_in_galaxy_radius",
-                       "particle_masses"
+                       "particle_masses",
+                       "initial_galaxy_orbit"
             ]
             self._saver(gp, _gp_dl)
             _logger.logger.info(f"Galaxy property quantities saved to {fname}")

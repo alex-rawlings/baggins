@@ -244,6 +244,7 @@ class HMQuantitiesData(HDF5Base):
     def masses_in_galaxy_radius(self, v):
         self._masses_in_galaxy_radius = v
     
+    # particles masses of components
     @property
     def particle_masses(self):
         return self._particle_masses
@@ -251,6 +252,15 @@ class HMQuantitiesData(HDF5Base):
     @particle_masses.setter
     def particle_masses(self, v):
         self._particle_masses = v
+    
+    # initial orbital parameters
+    @property
+    def initial_galaxy_orbit(self):
+        return self._initial_galaxy_orbit
+    
+    @initial_galaxy_orbit.setter
+    def initial_galaxy_orbit(self, v):
+        self._initial_galaxy_orbit = v
 
     ##--------------------- Some General Functions ---------------------##
     def get_idx_in_vec(self, t, tarr):

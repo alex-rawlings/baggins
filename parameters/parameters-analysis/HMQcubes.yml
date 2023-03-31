@@ -3,7 +3,7 @@
 ---
 # info on file locations
 file_locations:
-  cube_dir: '/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/MC_sample'
+  cube_dir: '/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/MC_sample'
 
 # info on BH Binary properties
 bh_binary:

@@ -3,6 +3,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
+from matplotlib.ticker import StrMethodFormatter
 import seaborn as sns
 import copy
 import pygad
@@ -11,7 +12,7 @@ from ..general import convert_gadget_time
 from ..env_config import _cmlogger
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere"]
+__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere", "heatmap", "annotate_heatmap"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -404,4 +405,136 @@ def draw_unit_sphere(ax, points=100):
     ax.plot_wireframe(x, y, z, alpha=0.2, color='k')
     #plot origin
     ax.scatter(0,0,0, color='k')
+
+
+def heatmap(data, row_labels, col_labels, ax=None, cmap="cividis", show_cbar=True, cbar_kw=None, cbarlabel="w", bad_colour="w", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels, taken from:
+    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html 
+
+    Parameters
+    ----------
+    data : np.ndarraay
+        array of shape (M, N)
+    row_labels : list-like
+        list or array of length M with the labels for the rows
+    col_labels : list-like
+        list or array of length N with the labels for the columns
+    ax : matplotlib.axes.Axes, optional
+        axis to which the heatmap is plotted, by default None
+    cbar_kw : dict, optional
+        arguments to `matplotlib.Figure.colorbar`, by default None
+    cbarlabel : str, optional
+        label for the colorbar, by default ""
+    **kwargs
+        All other arguments are forwarded to `imshow`
+    
+    Returns
+    -------
+    im : matplotlib.image.AxesImage
+        image of data
+    ax : matplotlib.axes.Axes
+        plotting axes
+    cbar : matplotlib.colorbar
+        colourbar
+    """
+
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
+    if cbar_kw is None:
+        cbar_kw = {}
+    try:
+        cmapv = getattr(plt.cm, cmap)
+    except AttributeError:
+        _logger.logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
+        cmapv = plt.cm.cividis
+    # set bad grids to a specified colour
+    cmapv.set_bad(color=bad_colour)
+    # plot the heatmap
+    im = ax.imshow(data, cmap=cmapv, **kwargs)
+    cbar = None
+    if show_cbar:
+        # create colorbar
+        cbar = plt.colorbar(im, ax=ax, **cbar_kw)
+        cbar.ax.set_ylabel(cbarlabel, rotation=90)
+
+    # show all ticks and label them with the respective list entries
+    ax.set_xticks(np.arange(data.shape[1]), labels=col_labels)
+    ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
+
+    # rotate the tick labels and set their alignment
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="left", va="top", rotation_mode="anchor")
+
+    # turn spines off and create white grid
+    ax.spines[:].set_visible(False)
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle='-', linewidth=0.5)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    return im, ax, cbar
+
+
+def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "white"), threshold=None, **textkw):
+    """
+    A function to annotate a heatmap, taken from:
+    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html  
+
+    Parameters
+    ----------
+    im : matplotlib.image.AxesImage
+        AxesImage to be labeled
+    data : array-like, optional
+        data used to annotate (if None, the image's data is used), by default 
+        None
+    valfmt : str, optional
+        format of the annotations inside the heatmap, should either
+        use the string format method, e.g. "$ {x:.2f}", or be a
+        `matplotlib.ticker.Formatter`, by default "{x:.2f}"
+    textcolors : list-like, optional
+        pair of colors, with the first used for values below a threshold,
+        the second for those above, by default ("black", "white")
+    threshold : float, optional
+        value in data units according to which the colors from textcolors are
+        applied, by default None (uses the middle of the colormap as
+        separation)
+    **kwargs
+        all other arguments are forwarded to each call to `text` used to create
+        the text labels
+    
+    Returns
+    texts : list
+        text in each pixel
+    """
+
+    if not isinstance(data, (list, np.ndarray)):
+        data = im.get_array()
+
+    # normalize the threshold to the images color range.
+    if threshold is not None:
+        threshold = im.norm(threshold)
+    else:
+        threshold = im.norm(np.nanmax(data))/2.
+
+    # set default alignment to center, but allow it to be
+    # overwritten by textkw.
+    kw = dict(horizontalalignment="center",
+              verticalalignment="center")
+    kw.update(textkw)
+
+    # get the formatter in case a string is supplied
+    if isinstance(valfmt, str):
+        valfmt = StrMethodFormatter(valfmt)
+
+    # loop over the data and create a `Text` for each "pixel".
+    # change the text's color depending on the data.
+    texts = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            if isinstance(data[i,j], np.ma.core.MaskedConstant):
+                continue
+            kw.update(color=textcolors[int(im.norm(data[i, j]) < threshold)])
+            text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+            texts.append(text)
+
+    return texts
 

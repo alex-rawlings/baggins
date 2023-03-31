@@ -20,11 +20,13 @@ args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(args.publish)
+full_figsize = cmf.plotting.get_figure_size(args.publish, full=True)
+full_figsize[1] *= 1.2
 
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
     merger_id = f["/meta"].attrs["merger_id"]
+    e_ini = cmf.initialise.e_from_rperi(float(merger_id.split("-")[-1]))
     if args.sample:
         merger_id = "-".join(merger_id.split("-")[:2])
 
@@ -62,6 +64,10 @@ else:
         quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/hardening/quinlan_hierarchy_prior.stan", figname_base=figname_base)
 
 quinlan_model.extract_data(HMQ_files, analysis_params)
+if "e_ini" in quinlan_model.obs:
+    e_ini = np.nanmedian([v for v in quinlan_model.obs["e_ini"]])
+else:
+    SL.logger.warning(f"Initial eccentricity has been determined from the file name, and has value: {e_ini:.3f}")
 
 SL.logger.info(f"Number of simulations with usable data: {quinlan_model.num_groups}")
 try:
@@ -80,7 +86,8 @@ stan_data = dict(
     N_tot = quinlan_model.num_obs,
     N_groups = quinlan_model.num_groups,
     group_id = quinlan_model.obs_collapsed["label"],
-    t = quinlan_model.obs_collapsed["t"]
+    t = quinlan_model.obs_collapsed["t_shift"],
+    e_ini = e_ini
 )
 
 if args.prior:
@@ -91,7 +98,8 @@ if args.prior:
     quinlan_model.all_prior_plots(full_figsize)
 else:
     stan_data.update(dict(
-        inv_a = quinlan_model.obs_collapsed["inva"]
+        inv_a = quinlan_model.obs_collapsed["inva"], 
+        ecc = quinlan_model.obs_collapsed["e"]
     ))
 
     analysis_params["stan"]["hardening_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/hardening/{args.sample}/{merger_id}")
@@ -103,5 +111,5 @@ else:
 
     ax = quinlan_model.all_posterior_plots(full_figsize)
 
-quinlan_model.print_parameter_percentiles(["HGp_s", "inv_a_0"])
+quinlan_model.print_parameter_percentiles(quinlan_model.latent_qtys)
 

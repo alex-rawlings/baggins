@@ -27,5 +27,7 @@
 - [x] parallelise certain serial code using DASK 
     https://cosmiccoding.com.au/tutorials/multiprocessing  
 - [x] get_string_unique_part() doesn't seem to handle only two strings  
-- [-] an analysis class A has a corresponding 'data class' AData, which may lead to the diamond problem when using multi-inheritance. Maybe combine the two classes, and methods in A which rely on variables not store in AData (i.e., not saved to HDF5 file) be restructured (typically to do with ketjugw orbital parameters -> maybe save the file name for future loading instead? What if the file has since been overwritten or updated?)
-- [ ] apply perturbation as a total magnitude projected along different axes
+- [-] an analysis class A has a corresponding 'data class' AData, which may lead to the diamond problem when using multi-inheritance. Maybe combine the two classes, and methods in A which rely on variables not store in AData (i.e., not saved to HDF5 file) be restructured (typically to do with ketjugw orbital parameters -> maybe save the file name for future loading instead? What if the file has since been overwritten or updated?)  
+- [ ] apply perturbation as a total magnitude projected along different axes  
+- [ ] in StanModel, have obs attribute as an `xarray` dataset, makes working with multi-dimensional (potentially) easier  
+- [ ] influence radius for more massive BH, combined BH, or less massive BH?  

@@ -66,7 +66,7 @@ class _Extractor:
     
     def extract(self, i):
         try:
-            hmq = cmf.analysis.HMQuantities(self.analysis_params_file, self.child_dirs[i], self.merger_ids[i])
+            hmq = cmf.analysis.HMQuantities(self.analysis_params_file, self.merger_params_files[i], self.child_dirs[i], self.merger_ids[i])
             hmq.make_hdf5(self.cube_files[i], self.overwrite)
         except:
             SL.logger.exception(f"\nWARNING: ERROR IN EXTRACTING FROM CHILD {self.child_dirs[i]}\n{hmq.analysed_snapshots}", exc_info=True)

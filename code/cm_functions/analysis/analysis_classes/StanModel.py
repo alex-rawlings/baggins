@@ -58,10 +58,12 @@ class _StanModel:
         self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {"marker":"o", "linewidth":0.5, "edgecolor":"k", "label":"Sims.", "cmap":"PuRd"}
+        self._default_hdi_levels = [99, 75, 50, 25]
         self._num_groups = 0
         self._loaded_from_file = False
         self._generated_quantities = None
         self._obs_collapsed = {}
+        self._obs_collapsed_names = []
 
 
     @property
@@ -109,6 +111,10 @@ class _StanModel:
     @property
     def num_groups(self):
         return self._num_groups
+    
+    @property
+    def points_per_group(self):
+        return [len(o) for o in self.obs["label"]]
     
     @property
     def generated_quantities(self):
@@ -265,7 +271,9 @@ class _StanModel:
         """
         Print a shape summary of the observations in the model
         """
-        print("Observations:")
+        print("General:")
+        print(f"  Total observations: {self.num_obs}")
+        print("Observations  [groups]  [points/group]:")
         for k, v in self.obs.items():
             vv_shape = []
             for vv in v:
@@ -287,7 +295,13 @@ class _StanModel:
         """
         dim = []
         for obs_name in obs_names:
-            dim.append(len(self.obs[obs_name][0].shape))
+            try:
+                assert obs_name not in self._obs_collapsed_names
+                self._obs_collapsed_names.append(obs_name)
+                dim.append(len(self.obs[obs_name][0].shape))
+            except AssertionError:
+                _logger.logger.exception(f"Observation {obs_name} has already been collapsed! Cannot collapse again!", exc_info=True)
+                raise
         try:
             assert len(np.unique(dim)) == 1
         except AssertionError:
@@ -334,31 +348,23 @@ class _StanModel:
 
     def thin_observations(self, spacing):
         """
-        Thin the observations for large datasets. Requires that a obs_collapsed 
-        object exists and is not None.
+        Thin the observations for large datasets
 
         Parameters
         ----------
         spacing : int
             Spacing between successive observations per group
         """
-        try:
-            assert bool(self.obs_collapsed)
-        except AssertionError:
-            _logger.logger.exception(f"Thinning observations required the observations to be collapsed!", exc_info=True)
-            raise
-        idx_list = []
-        end_idx = 0
-        for i in range(self.num_groups):
-            n = len(self.obs["label"][i])
-            idx_list.append(np.arange(end_idx, end_idx+n, spacing, dtype=int))
-            end_idx += n
-        idxs = np.r_[np.concatenate(idx_list)]
-        # thin the observations of each item in collapsed observations
-        # redetermine number of observations
-        self._num_obs = len(idxs)
-        for k, v in self.obs_collapsed.items():
-            self.obs_collapsed[k] = v[idxs]
+        for k,v in self.obs.items():
+            for i in range(len(v)):
+                idxs = np.r_[np.arange(0, len(v[i]), spacing, dtype=int)]
+                self.obs[k][i] = v[i][idxs]
+        self._num_obs = sum(self.points_per_group)
+        # need to re-collapse observations that have been previously collapsed
+        self._obs_collapsed = {}
+        obs_names = self._obs_collapsed_names
+        self._obs_collapsed_names = []
+        self.collapse_observations(obs_names)
 
 
     def _sampler(self, data, prior=False, sample_kwargs={}):
@@ -493,7 +499,7 @@ class _StanModel:
         return self.generated_quantities.stan_variable(gq)
 
 
-    def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], combine_dims=None, backend_kwargs=None):
+    def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=None, combine_dims=None, backend_kwargs=None):
         """
         Base method to create parameter corner plots. This method should not be
         called directly.
@@ -507,10 +513,10 @@ class _StanModel:
         labeller : arviz.MapLabeller, optional
             mapping from variable names to labels, by default None
         levels : list, optional
-            HDI intervals to plot, by default [25, 50, 90, 95, 99]
+            HDI intervals to plot, by default None
         combine_dims : set-like, optional
             dimensions to reduce, by default None
-        backend_kwargs : dict
+        backend_kwargs : dict, optional
             keyword arguments to be passed to pyplot.subplots() as per arviz 
             docs, by default None
 
@@ -520,19 +526,28 @@ class _StanModel:
         ax : matplotlib.axes._subplots.AxesSubplot
             corner plot
         """
+        if levels is None:
+            levels = self._default_hdi_levels
         levels = [l/100 for l in levels]
         # show divergences on plots where no dimension combination has 
         # occurred: combining dimensions changes the length of boolean mask 
         # "diverging_mask" in arviz --> index mismatch error
-        # first lay down the markers
         divergences = True if combine_dims is None else False
-        ax = az.plot_pair(self._fit_for_az, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+        if self._fit_for_az is None:
+            data = self._prior_fit_for_az
+            group = "prior"
+            divergences = False
+        else:
+            data = self._fit_for_az
+            group = "posterior"
+        # first lay down the markers
+        ax = az.plot_pair(data, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
         # then add the KDE
-        az.plot_pair(self._fit_for_az, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+        az.plot_pair(data, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
         return ax
     
 
-    def parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99], combine_dims=None, backend_kwargs=None):
+    def parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=None, combine_dims=None, backend_kwargs=None):
         """
         See docs for _parameter_corner_plot()
         """
@@ -541,7 +556,7 @@ class _StanModel:
         return ax
 
 
-    def parameter_diagnostic_plots(self, var_names, figsize=None, labeller=None, levels=[25, 50, 90, 95, 99]):
+    def parameter_diagnostic_plots(self, var_names, figsize=None, labeller=None, levels=None):
         """
         Plot key pair plots and diagnostics of a stan likelihood model.
 
@@ -554,7 +569,7 @@ class _StanModel:
         labeller : arviz.MapLabeller, optional
             mapping from variable names to labels, by default None
         levels : list, optional
-            HDI intervals to plot, by default [50, 90, 95, 99]
+            HDI intervals to plot, by default None
         """
         # TODO choose good figsize always, also labeller sometimes still not working...
         if figsize is None:
@@ -696,6 +711,14 @@ class _StanModel:
 
 
     def rename_dimensions(self, dim_map):
+        """
+        Rename dimensions of arviz InferenceData object
+
+        Parameters
+        ----------
+        dim_map : dict
+            mapping of old dimension names to new names
+        """
         if self._fit_for_az is not None:
             self._fit_for_az.rename_dims(dim_map, inplace=True)
         else:
@@ -739,7 +762,7 @@ class StanModel_1D(_StanModel):
 
     def _plot_predictive(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
         if levels is None:
-            levels = [50, 90, 95, 99]
+            levels = self._default_hdi_levels
         quantiles = [0.5 - l/200 for l in levels]
         quantiles.extend([0.5 + l/200 for l in levels])
         quantiles.sort()
@@ -786,7 +809,7 @@ class StanModel_2D(_StanModel):
         super().__init__(model_file, prior_file, figname_base, rng)
 
 
-    def _plot_predictive(self, xobs, yobs, dataset, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True):
+    def _plot_predictive(self, xobs, yobs, dataset, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True):
         """
         Plot a predictive check for a regression stan model.
 
@@ -806,14 +829,16 @@ class StanModel_2D(_StanModel):
              dictionary key for observed dependent variable scatter, by default 
              None
         levels : list, optional
-            HDI intervals to plot, by default [50, 90, 95, 99]
+            HDI intervals to plot, by default None
         ax : matplotlib.axes._subplots.AxesSubplot, optional
             axis to plot to, by default None (creates new instance)
         collapsed : bool, optional
             plotting collapsed observations?
+        show_legend : bool
+            create legend, by default True
         """
         if levels is None:
-            levels = [50, 90, 95, 99]
+            levels = self._default_hdi_levels
         levels.sort(reverse=True)
         if ax is None:
             fig, ax = plt.subplots(1,1)
@@ -821,9 +846,9 @@ class StanModel_2D(_StanModel):
             fig = ax.get_figure()
         obs = self.obs_collapsed if collapsed else self.obs
         ys = self.sample_generated_quantity(ymodel)
-        cmapper, sm = create_normed_colours(max(0, 0.8*min(levels)), 110, cmap="Blues_r", normalisation="PowerNorm", norm_kwargs={"gamma":2})
+        cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", normalisation="LogNorm")
         for l in levels:
-            _logger.logger.info(f"Fitting level {l}")
+            _logger.logger.debug(f"Fitting level {l}")
             az.plot_hdi(dataset[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
         # overlay data
         if self._num_groups < 2:
@@ -838,23 +863,26 @@ class StanModel_2D(_StanModel):
                 col = cmapper(c)
                 mask = obs["label"]==c
                 ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Sims." if i==ncols-1 else ""))
-        ax.legend()
+        if show_legend:
+            ax.legend()
         return ax
 
 
-    def prior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
+    def prior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
         """
         See docs for _plot_predictive()
         """
-        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._prior_stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._prior_stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
         fig = ax.get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
+        if save:
+            savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
     
 
-    def posterior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=[50, 90, 95, 99], ax=None, collapsed=True):
+    def posterior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
         """
         See docs for _plot_predictive()
         """
-        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed)
+        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
         fig = ax.get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
+        if save:
+            savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
