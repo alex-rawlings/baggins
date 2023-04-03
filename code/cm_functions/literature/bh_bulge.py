@@ -41,34 +41,22 @@ def Magorrian98(logMstar):
     return -1.79 + 0.96 * logMstar
 
 
-def Sahu19(logmstar, u="Ks"):
+def Sahu19(logmstar):
     """
     define the Sahu+19 bulge mass - BH mass relation
     https://ui.adsabs.harvard.edu/abs/2019ApJ...876..155S/abstract
-    # TODO: define the other two u values
 
     Parameters
     ----------
     logmstar : np.ndarray
         logarithm of bulge mass [log(M/Msol)]
-    u : str, optional
-        scaling factor, by default 'Ks'
 
     Returns
     -------
     : np.ndarray
         predicted log of bh mass [log(M/Msol)]
-
-    Raises
-    ------
-    NotImplementedError
-        u not "Ks"
     """
-    if u == 'Ks':
-        uval = 10**(-0.06 * (logmstar-10) - 0.06)
-    else:
-        raise NotImplementedError('Only Ks currently implemented')
-    return 1.27 * (logmstar - np.log10(uval * 5e10)) + 8.41
+    return 1.27 * (logmstar - np.log10(5e10)) + 8.41
 
 
 def Scott13(logmstar, cored=False):

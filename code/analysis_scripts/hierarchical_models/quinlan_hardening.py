@@ -2,7 +2,6 @@ import argparse
 import os.path
 import numpy as np
 import h5py
-from matplotlib import rcParams
 import cm_functions as cmf
 
 
@@ -21,7 +20,6 @@ args = parser.parse_args()
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
 full_figsize = cmf.plotting.get_figure_size(args.publish, full=True)
-full_figsize[1] *= 1.2
 
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
