@@ -30,7 +30,7 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
         fig = gcf()
     f = inspect.stack()[-1] # get outermost caller on stack
     now = datetime.now()
-    if fig_ext == "png" and not force_ext:
+    if fig_ext == "png":
         now = now.strftime(date_format)
     # ensure things are deterministic
     try:
@@ -59,13 +59,18 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
 def get_meta(fname):
     """
     Return the meta data of an image
-    TODO is this only working for png's or also other file types?
 
     Parameters
     ----------
     fname : str, path-like
         image to print meta data for
     """
+    try:
+        ext = os.path.splitext(fname)[1]
+        assert ext == ".png"
+    except AssertionError:
+        _logger.logger.exception(f"`get_meta()` only available for .png files, not type {ext}", exc_info=True)
+        raise
     with Image.open(fname) as img:
         for k,v in img.text.items():
             print(f"{k}: {v}")

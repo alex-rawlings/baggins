@@ -158,7 +158,7 @@ def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
     return bh_files
 
 
-def create_file_copy(f, suffix="_cp"):
+def create_file_copy(f, suffix="_cp", exist_ok=True):
     """
     Create a copy of a file by appending <suffix> to the file name.
 
@@ -168,6 +168,8 @@ def create_file_copy(f, suffix="_cp"):
         file to copy
     suffix : str, optional
         add a suffix to the copy, by default "_cp"
+    exist_ok : bool, optional
+        allow overwriting of existing files, by default True
 
     Returns
     -------
@@ -176,6 +178,12 @@ def create_file_copy(f, suffix="_cp"):
     """
     fname, fext = os.path.splitext(f)
     new_f = f"{fname}{suffix}{fext}"
+    if not exist_ok:
+        try:
+            assert not os.path.exists(new_f)
+        except AssertionError:
+            _logger.logger.exception(f"File '{new_f}' already exists: a new copy cannot be made!", exc_info=True)
+            raise
     # only copy file if the modification timestamp is more recent than an 
     # already existing copy
     if not os.path.exists(new_f) or (os.path.getmtime(new_f) < os.path.getmtime(f)):

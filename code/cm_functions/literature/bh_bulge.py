@@ -1,6 +1,10 @@
 import numpy as np
+from ..env_config import _cmlogger
 
 __all__ = ["Haring04", "Magorrian98", "Sahu19", "Scott13"]
+
+
+_logger = _cmlogger.copy(__file__)
 
 
 def Haring04(logMstar):
@@ -41,7 +45,7 @@ def Magorrian98(logMstar):
     return -1.79 + 0.96 * logMstar
 
 
-def Sahu19(logmstar):
+def Sahu19(logmstar, old_method=True):
     """
     define the Sahu+19 bulge mass - BH mass relation
     https://ui.adsabs.harvard.edu/abs/2019ApJ...876..155S/abstract
@@ -56,7 +60,12 @@ def Sahu19(logmstar):
     : np.ndarray
         predicted log of bh mass [log(M/Msol)]
     """
-    return 1.27 * (logmstar - np.log10(5e10)) + 8.41
+    if old_method:
+        _logger.logger.warning(f"BH mass generated using an incorrect calculation in the scaling! This method should only be used to generate BH masses when consistency with previously-run simulations is desired!")
+        uval = 10**(-0.06 * (logmstar-10) - 0.06)
+        return 1.27 * (logmstar - np.log10(uval * 5e10)) + 8.41
+    else:
+        return 1.27 * (logmstar - np.log10(5e10)) + 8.41
 
 
 def Scott13(logmstar, cored=False):

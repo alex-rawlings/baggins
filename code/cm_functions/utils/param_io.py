@@ -12,7 +12,7 @@ from ..env_config import _cmlogger
 _logger = _cmlogger.copy(__file__)
 
 
-__all__ = ["read_parameters", "write_calculated_parameters", "to_json"]
+__all__ = ["read_parameters", "write_calculated_parameters", "overwrite_parameter_file", "to_json"]
 
 
 class ScientificDumper(yaml.SafeDumper):
@@ -170,6 +170,36 @@ def write_calculated_parameters(data, filepath):
         f.write(s)
         f.write("\n")
         f.truncate()
+
+
+def overwrite_parameter_file(f, contents):
+    """
+    Overwrite a .yml parameter file, with only the first document being written 
+    if there are multiple .yml documents in the file. Explicit endings ('...') 
+    are always printed.
+
+    Parameters
+    ----------
+    f : TextIOWrapper
+        file pointer to the file to overwrite
+    contents : str
+        contents to write to file
+    """
+    # write the new contents
+    f.seek(0)
+    f.write(contents)
+    f.truncate()
+    # remove calculated quantities
+    f.seek(0)
+    lines = f.readlines()
+    f.seek(0)
+    f.truncate()
+    for l in lines:
+        f.write(l)
+        if l == "...\n":
+            break
+    else:
+        f.write("...\n")
 
 
 def read_parameters_py(filepath):
