@@ -8,17 +8,17 @@
 ---
 # general info about the merger
 general:
-  galaxy_name_1: H_HR_b
-  galaxy_name_2: H_HR_b
-  random_seed: 25107
+  galaxy_name_1: H_LR_a
+  galaxy_name_2: H_LR_c
+  random_seed: 69212
 
 # info about where files are to be read from and saved to
 file_locations:
-  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only/hernquist_HR_SO_b/hernquist_HR_SO_b.hdf5
-  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only/hernquist_HR_SO_b/hernquist_HR_SO_b.hdf5
+  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only/hernquist_LR_SO_a/hernquist_LR_SO_a.hdf5
+  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only/hernquist_LR_SO_c/hernquist_LR_SO_c.hdf5
   # file will be saved to 
   # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
-  save_location: '/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only_high_e/HR'
+  save_location: '/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only_low_e/LR'
   perturb_sub_dir:
 
 # info about the original orbit of the merger
@@ -31,7 +31,7 @@ orbital_properties:
   rperi:
     unit: "kpc"
     value: 0.825
-  e0:
+  e0: 0.9
 
 # info about how the system should be perturbed
 perturb_properties:
@@ -67,13 +67,13 @@ perturb_properties:
 ...
 
 ---
-e0: 0.9995538863278118
-full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only_high_e/HR/H_HR_b-H_HR_b-11-0.825
-last_update: '2023-04-14 21:46:13'
-mass_resolution: 3.11509531e+04
+e0: 0.9
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only_low_e/LR/H_LR_a-H_LR_c-11-0.825
+last_update: '2023-04-14 21:27:02'
+mass_resolution: 3100.491455078125
 r0_physical: 11
 rperi_physical: 0.825
-time_to_pericentre: 0.019732163953921435
-virial_radius_large: 101.05629910116005
+time_to_pericentre: 0.027375820923150145
+virial_radius_large: 101.06608935521776
 ...
 
