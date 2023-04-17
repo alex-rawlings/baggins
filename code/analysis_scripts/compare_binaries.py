@@ -1,5 +1,6 @@
 import argparse
 import os.path
+from datetime import datetime
 import matplotlib.pyplot as plt
 import cm_functions as cmf
 import ketjugw
@@ -51,7 +52,11 @@ for j, d in enumerate(ketju_dirs):
     line_count = 0
     for i, k in enumerate(ketju_files):
         SL.logger.debug(f"Reading: {k}")
-        bh1, bh2, merged = cmf.analysis.get_bound_binary(k)
+        try:
+            bh1, bh2, merged = cmf.analysis.get_bound_binary(k)
+        except:
+            SL.logger.warning(f"No binaries found in: {k} --> skipping...")
+            continue
         if args.mask is not None:
             bh1 = bh1[bh1.t/myr < args.mask]
             bh2 = bh2[bh2.t/myr < args.mask]
@@ -72,5 +77,6 @@ for j, d in enumerate(ketju_dirs):
 ax[0].legend(loc="upper right", **legend_kwargs)
 ax[0].set_xscale("log")
 if args.save:
-    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries.png"))
+    now = datetime.now().strftime("%Y%m%d_%H%M%S")
+    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"))
 plt.show()

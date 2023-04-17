@@ -32,7 +32,11 @@ else:
         raise
     for s in suffixes[:args.batch]:
         # create a new parameter file for each realisation
-        new_filename = cmf.utils.create_file_copy(args.pf, suffix=f"_{s}", exist_ok=False)
+        try:
+            new_filename = cmf.utils.create_file_copy(args.pf, suffix=f"_{s}", exist_ok=False)
+        except AssertionError:
+            SL.logger.warning(f"Model realisation {s} already exists, skipping...")
+            continue
         with open(new_filename, "r+") as f:
             contents = f.read()
             match = re.search("  galaxy_name:.*", contents, flags=re.MULTILINE)

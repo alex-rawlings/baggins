@@ -73,10 +73,16 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
     ax[0,0].set_title("Stars")
     ax[0,1].set_title("DM Halo")
     for i, proj in enumerate(("xz", "xy")):
-        _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"][proj], ax=ax[i,0], **kwargs)
-        _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"][proj], ax=ax[i,1], **kwargs)
-        ims.append(imstars)
-        ims.append(imdm)
+        try:
+            _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"][proj], ax=ax[i,0], **kwargs)
+            ims.append(imstars)
+        except AttributeError:
+            _logger.logger.error("No stars in snapshot!")
+        try:
+            _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"][proj], ax=ax[i,1], **kwargs)
+            ims.append(imdm)
+        except AttributeError:
+            _logger.logger.error("No DM in snapshot!")
     if return_ims:
         return fig, ax, ims
     else:

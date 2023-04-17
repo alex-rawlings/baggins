@@ -7,7 +7,6 @@ from datetime import datetime
 import cmdstanpy
 import arviz as az
 
-from ...mathematics import assert_all_unique
 from ...plotting import savefig, create_normed_colours
 from ...utils import load_data
 from ...env_config import figure_dir, data_dir, _cmlogger
@@ -32,9 +31,6 @@ class _StanModel:
             path-like base name that all plots will share
         rng :  np.random._generator.Generator, optional
             random number generator, by default None (creates a new instance)
-        random_select_obs : dict, optional
-            dictionary specifying how to randomly select observations for 
-            fitting (keys: num, group), by default None (all observations used)
         """
         self._model_file = model_file
         self._prior_file = prior_file

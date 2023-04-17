@@ -1,3 +1,4 @@
+import os.path
 import matplotlib.pyplot as plt
 import pygad
 import cm_functions as cmf
@@ -8,18 +9,20 @@ parser.add_argument("-V", "--View", help="view the snapshot", action="store_true
 parser.add_argument("-o", "--orientate", help="orientate the galaxy", dest="orientate", choices=["ri", "L"], default=None)
 parser.add_argument("-SE", "--StarExtent", type=float, help="extent of the stellar plot", dest="starextent", default=600)
 parser.add_argument("-HE", "--HaloExtent", type=float, help="extent of the dm halo plot", dest="haloextent", default=8000)
+parser.add_argument("-v", "--verbosity", type=str, default="INFO", choices=cmf.VERBOSITY, dest="verbosity", help="set verbosity level")
 args = parser.parse_args()
 
 print('\nRunning view_gal.py\n')
 
+SL = cmf.ScriptLogger("script", args.verbosity)
+
 if args.snapview:
     #load the snapshot
-    if args.verbose:
-        print("Reading from a user-defined snapshot...")
+    SL.logger.info("Reading from a user-defined snapshot...")
     snap = pygad.Snapshot(args.paramFile)
 else:
     #get the parameter file
-    print("Reading from a parameter file...")
+    SL.logger.info("Reading from a parameter file...")
     pfv = cmf.utils.read_parameters(args.paramFile)
     fig_loc = pfv.saveLocation + '/' + pfv.galaxyName + '/' + pfv.figureLocation
     snap = pygad.Snapshot(pfv.saveLocation + '/' + pfv.galaxyName + '/' + pfv.galaxyName + '.hdf5')
@@ -39,6 +42,6 @@ extent = dict(
 )
 cmf.plotting.plot_galaxies_with_pygad(snap, extent=extent, orientate=orientate_snap)
 if not args.snapview:
-    plt.savefig('{}/{}_view.png'.format(fig_loc, pfv.galaxyName), dpi=300)
+    cmf.plotting.savefig(os.path.join(fig_loc, pfv.galaxyName))
 if args.view:
     plt.show()

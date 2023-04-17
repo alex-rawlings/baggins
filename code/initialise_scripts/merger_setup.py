@@ -36,7 +36,11 @@ if args.method == "new":
         for i, s1 in enumerate(suffixes[:args.batch]):
             for s2 in suffixes[i:args.batch]:
                 # create a new parameter file for each realisation
-                new_filename = cmf.utils.create_file_copy(args.paramfile, suffix=f"_{s1}{s2}", exist_ok=False)
+                try:
+                    new_filename = cmf.utils.create_file_copy(args.paramfile, suffix=f"_{s1}{s2}", exist_ok=False)
+                except AssertionError:
+                    SL.logger.warning(f"Merger realisation {s1}-{s2} already exists, skipping...")
+                    continue
                 with open(new_filename, "r+") as f:
                     contents = f.read()
                     # update the random seed
