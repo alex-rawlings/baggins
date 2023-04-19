@@ -25,6 +25,21 @@ and maybe another one of BH merger remnant properties.
     \item Perform same analysis
     \item Results disagree $\rightarrow$ because of highly radial orbit?? 
 \end{enumerate}
+We begin our analysis by confirming the previous result of \citet{nasim20}, that \textit{intra-}simulation eccentricity variance decreases as a function of mass resolution between the SMBH and stellar particles.
+For each simulation at a given mass resolution, we take the variance of the eccentricity $\sigma^2_e$ across five orbital periods centred on when the SMBH binary becomes hard, $a=a_\mathrm{h}$. 
+We then determine the mean of the variances, and take the square-root of this value, to determine our expected intra-simulation eccentricity spread $\bar{\sigma}_e$.
+We fit the same functional form as \citet{nasim20} between $\bar{\sigma}_e$ and $N_\star$, namely:
+\begin{equation}
+    \bar{\sigma}_e(N_\star;k) = \frac{k}{\sqrt{N_\star + k^2}},
+\end{equation}
+and find the fit is optimised with a choice of $k=5.31$. 
+This is shown in \autoref{fig:nasim}.
+
+\begin{figure}
+    \includegraphics[width=0.5\textwidth]{nasim_plot.pdf}
+    \caption{\drafting{Intra-simulation binary ecccentricity standard deviation as a function of mass resolution, where the variation is seen to decrease as $\propto 1/\sqrt{N_\star}$. Error bars indicate the $1-\sigma$ spread in $\bar{\sigma}_e$ (note the error bars pertain to the $y$-axis, and not the $x$-axis.)}}
+    \label{fig:nasim}
+\end{figure}
 
 
 \subsection{Hardening Rate}
