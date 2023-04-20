@@ -3,7 +3,7 @@
 ---
 # info on file locations
 file_locations:
-  cube_dir: '/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/MC_sample'
+  cube_dir: '/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/nasim/stars_only_e_high'
 
 # info on BH Binary properties
 bh_binary:
@@ -32,7 +32,7 @@ plotting:
 
 # info for stan settings
 stan:
-  min_num_samples: 6
+  min_num_samples: 5
   general_sample_kwargs:
     show_progress: &ssp False
     #threads_per_chain: 128

@@ -17,7 +17,7 @@ __all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot"
 _logger = _cmlogger.copy(__file__)
 
 
-def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False):
+def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False, black_background=True):
     """
     Convenience routine for plotting a system with pygad, both stars and DM
 
@@ -42,6 +42,8 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
         other keyword arguments for the pygad plotting routine, by default None
     append_kwargs : bool, optional
         append given kwargs to default kwargs, by default False
+    black_background : bool, optional
+        set background colour to black, by default False
 
     Returns
     -------
@@ -76,13 +78,16 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
         try:
             _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"][proj], ax=ax[i,0], **kwargs)
             ims.append(imstars)
-        except AttributeError:
+        except RuntimeError:
             _logger.logger.error("No stars in snapshot!")
         try:
             _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"][proj], ax=ax[i,1], **kwargs)
             ims.append(imdm)
-        except AttributeError:
+        except RuntimeError:
             _logger.logger.error("No DM in snapshot!")
+    if black_background:
+        _logger.logger.debug("Setting black background")
+        for axi in np.concatenate(ax): axi.set_facecolor("k")
     if return_ims:
         return fig, ax, ims
     else:

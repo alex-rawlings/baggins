@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 import pygad
 import merger_ic_generator as mg
+from ketjugw.units import km_per_s
 
 from ..env_config import _cmlogger, date_format
 from ..utils import read_parameters, write_calculated_parameters, get_snapshots_in_dir
@@ -132,8 +133,13 @@ class MergerIC:
                 vr,*_ = get_virial_info_of_each_galaxy(snap, xcom=xcom)
                 vr_list.append(vr)
             return float(max(vr_list))
-
+        
+        # determine mass radius "fudge" factor
+        if oppars["mass_radius_fac"] is None:
+            oppars["mass_radius_fac"] = 0.5
+        
         self._calc_quants["virial_radius_large"] = _get_virial_radius()
+
         # determine initial separation
         try:
             assert oppars["r0"]["unit"] in ("virial", "kpc")
@@ -144,16 +150,31 @@ class MergerIC:
             self._calc_quants["r0_physical"] = self._calc_quants["virial_radius_large"] * oppars["r0"]["value"]
         else:
             self._calc_quants["r0_physical"] = oppars["r0"]["value"]
+        
         # determine first pericentre distance
-        try:
-            assert oppars["rperi"]["unit"] in ("virial", "kpc")
-        except AssertionError:
-            _logger.logger.exception(f"Pericentre distance unit {oppars['rperi']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
-            raise
-        if oppars["rperi"]["unit"] == "virial":
-            self._calc_quants["rperi_physical"] = self._calc_quants["virial_radius_large"] * oppars["rperi"]["value"]
+        if oppars["rperi"]["value"] is not None:
+            try:
+                assert oppars["rperi"]["unit"] in ("virial", "kpc")
+            except AssertionError:
+                _logger.logger.exception(f"Pericentre distance unit {oppars['rperi']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
+                raise
+            if oppars["rperi"]["unit"] == "virial":
+                self._calc_quants["rperi_physical"] = self._calc_quants["virial_radius_large"] * oppars["rperi"]["value"]
+            else:
+                self._calc_quants["rperi_physical"] = oppars["rperi"]["value"]
         else:
-            self._calc_quants["rperi_physical"] = oppars["rperi"]["value"]
+            try:
+                assert oppars["a0"]["value"] is not None
+                assert oppars["a0"]["unit"] in ("virial", "kpc")
+                assert oppars["e0"]["value"] is not None
+            except AssertionError:
+                _logger.logger.exception(f"'a0' (in units of virial or kpc) and 'e0' must be specified if 'rperi' is not!", exc_info=True)
+                raise
+            _logger.logger.info("Determining 'rperi' from initial semimajor axis and eccentricity")
+            if oppars["a0"]["unit"] == "virial":
+                self._calc_quants["rperi_physical"] = self._calc_quants["virial_radius_large"] * oppars["a0"]["value"] * (1-oppars["e0"])
+            else:
+                self._calc_quants["rperi_physical"] = oppars["a0"]["value"] * (1-oppars["e0"])
 
         # determine mass resolution
         mass_resolution = []
@@ -176,7 +197,7 @@ class MergerIC:
         else:
             self._calc_quants["e0"] = oppars["e0"]
 
-        merger = mg.Merger(galaxy1, galaxy2, r0=self._calc_quants["r0_physical"], rperi=self._calc_quants["rperi_physical"], e=self._calc_quants["e0"])
+        merger = mg.Merger(galaxy1, galaxy2, r0=self._calc_quants["r0_physical"], rperi=self._calc_quants["rperi_physical"], e=self._calc_quants["e0"], mass_radius_fac=oppars["mass_radius_fac"])
         self._calc_quants["time_to_pericentre"] = merger.time_to_pericenter
 
         os.makedirs(os.path.join(self.save_location, "output"), exist_ok=self.exist_ok)
@@ -190,6 +211,11 @@ class MergerIC:
         _logger.logger.info(f"Merger IC file written to {file_name}")
         # save parameters
         self.write_calculated_parameters()
+        # print some velocity information about merger
+        _logger.logger.info("Initial merger velocities")
+        for k in ("tangential", "radial"):
+            # TODO check velocity unit
+            _logger.logger.info(f"- {k}: {merger.initial_velocities[k]:.3f} km/s")
     
 
     def create_perturbation_directories(self, file_to_copy, paramfile="paramfile"):

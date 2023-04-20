@@ -42,6 +42,8 @@ class HMQuantities(HMQuantitiesData):
         self.data_directory = data_directory
         self.merger_id = merger_id
         kf = get_ketjubhs_in_dir(self.data_directory)
+        # flag to skip DM methods if non-existent
+        has_dm = True
         try:
             assert len(kf) == 1
         except AssertionError:
@@ -123,7 +125,11 @@ class HMQuantities(HMQuantitiesData):
             t = convert_gadget_time(snap, new_unit="Myr")
             if i==0:
                 self.particle_masses["stars"] = max(np.unique(snap.stars["mass"]))
-                self.particle_masses["dm"] = max(np.unique(snap.dm["mass"]))
+                try:
+                    self.particle_masses["dm"] = max(np.unique(snap.dm["mass"]))
+                except ValueError:
+                    _logger.logger.warning("DM particles do not exist for this run")
+                    has_dm = False
                 self.particle_masses["bh"] = min(np.unique(snap.bh["mass"]))
             if t < self.binary_time[0]:
                 # snapshot is from before binary is bound, let's skip
@@ -188,10 +194,11 @@ class HMQuantities(HMQuantitiesData):
 
             # inner DM fraction
             self.inner_DM_fraction[k] = []
-            for j, _re in enumerate(self.effective_radius[k]):
-                self.inner_DM_fraction[k].append(
-                    inner_DM_fraction(snap[ball_mask], Re=_re, centre=xcom)
-                )
+            if has_dm:
+                for j, _re in enumerate(self.effective_radius[k]):
+                    self.inner_DM_fraction[k].append(
+                        inner_DM_fraction(snap[ball_mask], Re=_re, centre=xcom)
+                    )
 
             # beta profile
             self.velocity_anisotropy[k], *_ = velocity_anisotropy(snap.stars[ball_mask], r_edges=self.radial_edges, xcom=xcom, vcom=vcom)
@@ -200,9 +207,10 @@ class HMQuantities(HMQuantitiesData):
             self.masses_in_galaxy_radius["stars"].append(
                         np.sum(snap.stars[ball_mask]["mass"])
             )
-            self.masses_in_galaxy_radius["dm"].append(
-                        np.sum(snap.dm[ball_mask]["mass"])
-            )
+            if has_dm:
+                self.masses_in_galaxy_radius["dm"].append(
+                            np.sum(snap.dm[ball_mask]["mass"])
+                )
             self.masses_in_galaxy_radius["bh"].append(
                         np.sum(snap.bh[ball_mask]["mass"])
             )

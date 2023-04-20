@@ -18,7 +18,7 @@ file_locations:
   galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only/hernquist_MR_SO_a/hernquist_MR_SO_a.hdf5
   # file will be saved to 
   # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
-  save_location: '/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only/MR'
+  save_location: '/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only_low_e/MR'
   perturb_sub_dir:
 
 # info about the original orbit of the merger
@@ -68,7 +68,7 @@ perturb_properties:
 
 ---
 e0: 0.9
-full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only/MR/H_MR-a-H_MR-a-11-0.825
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only_low_e/MR/H_MR-a-H_MR-a-11-0.825
 last_update: '2023-03-17 14:27:46'
 mass_resolution: 7788.5361328125
 r0_physical: 11

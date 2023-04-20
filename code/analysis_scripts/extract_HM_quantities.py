@@ -69,8 +69,7 @@ class _Extractor:
             hmq = cmf.analysis.HMQuantities(self.analysis_params_file, self.merger_params_files[i], self.child_dirs[i], self.merger_ids[i])
             hmq.make_hdf5(self.cube_files[i], self.overwrite)
         except:
-            SL.logger.exception(f"\nWARNING: ERROR IN EXTRACTING FROM CHILD {self.child_dirs[i]}\n{hmq.analysed_snapshots}", exc_info=True)
-            raise
+            SL.logger.exception(f"UNABLE TO EXTRACT FROM CHILD {self.child_dirs[i]}", exc_info=True)
 
 
 
@@ -146,7 +145,8 @@ if __name__ == "__main__":
             try:
                 assert 0
             except AssertionError:
-                SL.logger.exception("")
+                SL.logger.exception("A merger parameter file or a directory of merger parameter files must be specified", exc_info=True)
+                raise
     else:
         extractor = ExtractorPS(args.apf, [args.mpf], args.overwrite, args.pnum)
 
