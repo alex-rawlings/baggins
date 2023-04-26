@@ -2,7 +2,6 @@ import os.path
 from datetime import datetime
 import numpy as np
 import scipy.stats
-import pandas as pd
 import matplotlib.pyplot as plt
 import merger_ic_generator as mg
 import pygad
@@ -13,7 +12,7 @@ from ..env_config import _cmlogger, date_format
 from ..literature import *
 from ..mathematics import get_histogram_bin_centres
 from ..plotting import mplColours, savefig
-from ..utils import to_json, write_calculated_parameters
+from ..utils import write_calculated_parameters
 
 __all__ = ["GalaxyIC"]
 

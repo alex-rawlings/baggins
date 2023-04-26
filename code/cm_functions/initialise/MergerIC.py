@@ -6,8 +6,8 @@ import h5py
 import numpy as np
 import pygad
 import merger_ic_generator as mg
-from ketjugw.units import km_per_s
 
+from .mergers import e_from_rperi
 from ..env_config import _cmlogger, date_format
 from ..utils import read_parameters, write_calculated_parameters, get_snapshots_in_dir
 from ..analysis import snap_num_for_time, get_com_of_each_galaxy, get_com_velocity_of_each_galaxy, get_virial_info_of_each_galaxy
@@ -41,17 +41,37 @@ class MergerIC:
             self.rng = rng
         self.exist_ok = exist_ok
         self._snaplist = None
-        self.save_location = os.path.join(self.parameters["file_locations"]["save_location"], f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self.parameters['orbital_properties']['r0']['value']}-{self.parameters['orbital_properties']['rperi']['value']}")
+        try:
+            self.save_location = self.parameters["calculated"]["full_save_location"]
+        except KeyError:
+            if self.parameters['orbital_properties']['rperi']['value'] is None:
+                self.save_location = None
+            else:
+                self.save_location = self._make_saveloc()
         self._calc_quants = {}
         self.perturb_directories = []
         self._ic_file_names = []
-        write_calculated_parameters({"full_save_location":self.save_location}, self.paramfile)
-    
+
 
     @property
     def snaplist(self):
         return self._snaplist
-    
+
+
+    def _make_saveloc(self):
+        """
+        Convenience method to construct save location from parameter file
+
+        Returns
+        -------
+        : str
+            save location
+        """
+        self._calc_quants["full_save_location"] = os.path.join(self.parameters["file_locations"]["save_location"], f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['r0_physical']:.3f}-{self._calc_quants['rperi_physical']:.3f}")
+        return self._calc_quants["full_save_location"]
+
+
+
     def write_calculated_parameters(self):
         """
         Write calculated parameters to the parameter file
@@ -84,32 +104,7 @@ class MergerIC:
             _logger.logger.exception(f"BH separation {bhsep[0]:.2f} is less than the perturbation scale {ppars['perturb_bhs']['perturb_position']['value']:.2f}!", exc_info=True)
             raise
         return snapfile
-    
 
-    def e_from_rperi(self, x, a=0.320, b=1.629, c=0.176):
-        """
-        Determine eccentricity from r/Rvir using fit to Khochfar & Burkett 2006
-        Fig. 6
-
-        Parameters
-        ----------
-        x : np.ndarray
-            normalised rperi values (normalised to the virial radius of the 
-            larger progenitor)
-        a : float, optional
-            shape parameter, by default 0.320
-        b : float, optional
-            shape parameter, by default 1.629
-        c : float, optional
-            shape parameter, by default 0.176
-
-        Returns
-        -------
-        : np.ndarray
-            eccentricity of approach
-        """
-        return (1 + (x/a)**b)**(-c)
-    
 
     def setup(self):
         """
@@ -166,7 +161,7 @@ class MergerIC:
             try:
                 assert oppars["a0"]["value"] is not None
                 assert oppars["a0"]["unit"] in ("virial", "kpc")
-                assert oppars["e0"]["value"] is not None
+                assert oppars["e0"] is not None
             except AssertionError:
                 _logger.logger.exception(f"'a0' (in units of virial or kpc) and 'e0' must be specified if 'rperi' is not!", exc_info=True)
                 raise
@@ -193,15 +188,17 @@ class MergerIC:
         # determine eccentricity
         if oppars["e0"] is None:
             _logger.logger.info(f"Initial orbital eccentricity set from pericentre distance")
-            self._calc_quants["e0"] = self.e_from_rperi(self._calc_quants["rperi_physical"] / self._calc_quants["virial_radius_large"])
+            self._calc_quants["e0"] = e_from_rperi(self._calc_quants["rperi_physical"] / self._calc_quants["virial_radius_large"])
         else:
             self._calc_quants["e0"] = oppars["e0"]
 
         merger = mg.Merger(galaxy1, galaxy2, r0=self._calc_quants["r0_physical"], rperi=self._calc_quants["rperi_physical"], e=self._calc_quants["e0"], mass_radius_fac=oppars["mass_radius_fac"])
         self._calc_quants["time_to_pericentre"] = merger.time_to_pericenter
 
+        if self.save_location is None:
+            self.save_location = self._make_saveloc()
         os.makedirs(os.path.join(self.save_location, "output"), exist_ok=self.exist_ok)
-        file_name = os.path.join(self.save_location, f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{oppars['r0']['value']}-{oppars['rperi']['value']}.hdf5")
+        file_name = os.path.join(self.save_location, f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['r0_physical']:.3f}-{self._calc_quants['rperi_physical']:.3f}.hdf5")
         try:
             assert not os.path.exists(file_name)
         except AssertionError:
@@ -214,7 +211,6 @@ class MergerIC:
         # print some velocity information about merger
         _logger.logger.info("Initial merger velocities")
         for k in ("tangential", "radial"):
-            # TODO check velocity unit
             _logger.logger.info(f"- {k}: {merger.initial_velocities[k]:.3f} km/s")
     
 

@@ -1,0 +1,83 @@
+# always assume units of:
+# mass: solar masses
+# distance: kpc
+# time: Gyr
+# velocity: km/s
+# unless otherwise stated
+
+---
+# general info about the merger
+general:
+  galaxy_name_1: D_2M_a
+  galaxy_name_2: D_2M_b
+  random_seed: 41087
+
+# info about where files are to be read from and saved to
+file_locations:
+  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/dehnen/dehnen_2M/dehnen_2M_a/dehnen_2M_a.hdf5
+  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/dehnen/dehnen_2M/dehnen_2M_b/dehnen_2M_b.hdf5
+  # file will be saved to 
+  # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
+  save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-070/2M/
+  perturb_sub_dir:
+
+# info about the original orbit of the merger
+orbital_properties:
+  mass_radius_fac: 10000.
+  r0:
+    # initial separation of systems
+    unit: kpc
+    value: 3.72
+    # distance at first pericentre passage
+  rperi:
+    unit: kpc
+    value:
+  a0:
+    unit: kpc
+    value: 2.79
+  e0: 0.7
+
+# info about how the system should be perturbed
+perturb_properties:
+  # when to apply the perturbation
+  perturb_time:
+    unit: Gyr
+    value:
+  number_perturbs: 10
+  # perturb BH particles with a Gaussian distribution
+  perturb_bhs:
+    perturb_position:
+      unit: kpc
+      # Gaussian standard deviation
+      value:
+    perturb_velocity:
+      unit: km/s
+      # Gaussian standard deviation
+      value:
+  perturb_field_particles:
+    family: stars
+    perturb_position:
+      unit: kpc
+      value:
+    radial_bounds:
+      unit: kpc
+      value:
+  gadget_parameters_to_update:
+  # create a copy of a gadget paramfile with changes made to these vars
+  # InitCondFile, SnapshotFileBase are always updated
+    SofteningStars:
+    ketju_disable_integration:
+    ErrTolIntAccuracy:
+...
+
+---
+e0: 0.7
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-070/2M/D_2M_a-D_2M_b-3.720-0.837
+last_update: '2023-04-26 14:46:58'
+mass_resolution: 2.00000000e+04
+r0_physical: 3.72
+rperi_physical: 0.8370000000000002
+time_to_pericentre: 0.022951700841371853
+virial_radius_large: 35.00645127450932
+...
+

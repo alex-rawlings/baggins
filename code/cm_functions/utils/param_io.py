@@ -125,7 +125,7 @@ def write_calculated_parameters(data, filepath):
     block located within the .yml file (by using the --- separators) 
     corresponding to the system that was created. Parameters in the "main" 
     block are never overwritten. Previously-calculated values may be 
-    overwritten. New values will be added to the second block block.
+    overwritten. New values will be added to the second block.
 
     Parameters
     ----------
