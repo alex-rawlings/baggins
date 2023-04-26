@@ -75,6 +75,9 @@ class HMQuantities(HMQuantitiesData):
         # angular momentum of binary
         self.binary_angular_momentum = radial_separation(ketjugw.orbital_angular_momentum(bh1, bh2))
 
+        # energy of binary
+        self.binary_energy = ketjugw.orbital_energy(bh1, bh2)
+
         # radial separation of binary
         self.binary_separation = radial_separation(bh1.x / kpc, bh2.x / kpc)
 
@@ -269,6 +272,7 @@ class HMQuantities(HMQuantitiesData):
                         "semimajor_axis",
                         "eccentricity",
                         "binary_angular_momentum",
+                        "binary_energy",
                         "binary_separation",
                         "binary_period",
                         "binary_masses"

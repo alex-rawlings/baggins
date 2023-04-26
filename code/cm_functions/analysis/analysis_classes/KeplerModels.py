@@ -34,7 +34,7 @@ class _KeplerModelBase(StanModel_1D):
         pars : dict
             analysis parameters
         """
-        obs = {"angmom":[], "a":[], "e":[], "mass1":[], "mass2":[]}
+        obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[]}
         i = 0
         for f in dir:
             _logger.logger.info(f"Loading file: {f}")
@@ -57,6 +57,7 @@ class _KeplerModelBase(StanModel_1D):
             _logger.logger.debug(f"For observation {i} found target time between indices {delta_idxs[0]} and {delta_idxs[1]}")
             period_idxs = np.r_[delta_idxs[0]:delta_idxs[1]]
             obs["angmom"].append(hmq.binary_angular_momentum[period_idxs])
+            obs["energy"].append(-hmq.binary_energy[period_idxs])
             # convert semimajor axis from kpc to pc here
             obs["a"].append(hmq.semimajor_axis[period_idxs] * 1000)
             obs["e"].append(hmq.eccentricity[period_idxs])
@@ -71,16 +72,27 @@ class _KeplerModelBase(StanModel_1D):
         self.obs = obs
 
         # some transformations we need
+        # G in correct units
         G_in_Msun_pc_yr = unit_length_in_pc**3 / unit_time_in_years**2
+        # mass transforms
         self.transform_obs(("mass1", "mass2"), "total_mass", lambda x,y: x+y)
+        self.transform_obs(("mass1", "mass2"), "mass_product", lambda x,y: x*y)
         self.obs["total_mass_long"] = []
-        for tm, am in zip(self.obs["total_mass"], self.obs["angmom"]):
+        self.obs["mass_product_long"] = []
+        for tm, mp, am in zip(self.obs["total_mass"], self.obs["mass_product"], self.obs["angmom"]):
             self.obs["total_mass_long"].append(np.repeat(tm, len(am)))
+            self.obs["mass_product_long"].append(np.repeat(mp, len(am)))
+        self.transform_obs("total_mass_long", "log10_total_mass_long", lambda x: np.log10(x))
+        # angular momentum transformations
         self.transform_obs("angmom", "angmom_corr", lambda x: x*unit_length_in_pc**2/unit_time_in_years)
         self.transform_obs(("angmom_corr", "total_mass_long"), "angmom_corr_red", lambda l, m: l/np.sqrt(G_in_Msun_pc_yr * m))
         self.transform_obs("angmom_corr_red", "log10_angmom_corr_red", lambda x: np.log10(x))
-        self.transform_obs("total_mass_long", "log10_total_mass_long", lambda x: np.log10(x))
-        self.collapse_observations(["log10_angmom_corr_red", "a", "e", "total_mass_long", "log10_total_mass_long"])
+        # energy transformations
+        self.transform_obs("energy", "energy_corr", lambda x: x*unit_length_in_pc**2/unit_time_in_years**2)
+        self.transform_obs(("energy_corr", "mass_product_long"), "energy_corr_red", lambda e,m: e/(G_in_Msun_pc_yr*m))
+        self.transform_obs("energy_corr_red", "log10_energy_corr_red", lambda x: np.log10(x))
+        # collapse observations
+        self.collapse_observations(["log10_angmom_corr_red", "log10_energy_corr_red", "a", "e", "total_mass_long", "log10_total_mass_long"])
 
 
     def plot_latent_distributions(self, figsize=None):
@@ -192,10 +204,12 @@ class KeplerModelHierarchy(_KeplerModelBase):
         self.parameter_diagnostic_plots(self._hyper_qtys, labeller=self._labeller_hyper)
 
         # posterior predictive checks
-        fig1, ax1 = plt.subplots(1,1, figsize=figsize)
-        ax1.set_xlabel(r"$\log\left( \left(l/\sqrt{GM}\right)/\sqrt{\mathrm{pc}} \right)$")
-        ax1.set_ylabel("PDF")
-        self.posterior_plot(xobs="log10_angmom_corr_red", xmodel="log10_angmom_posterior", ax=ax1)
+        fig1, ax1 = plt.subplots(2,1, figsize=figsize)
+        ax1[0].set_xlabel(r"$\log_{10}\left( \left(l/\sqrt{GM}\right)/\sqrt{\mathrm{pc}} \right)$")
+        ax1[0].set_ylabel("PDF")
+        self.posterior_plot(xobs="log10_angmom_corr_red", xmodel="log10_angmom_posterior", ax=ax1[0], save=False)
+        ax1[1].set_xlabel(r"$\log_{10}\left(\left(|E|/\left(GM_1M_2 \right)\right)/\left( \mathrm{M}_\odot \mathrm{pc}^2\mathrm{yr}^{-2} \right) \right)$")
+        self.posterior_plot(xobs="log10_energy_corr_red", xmodel="log10_energy_posterior", ax=ax1[1])
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)

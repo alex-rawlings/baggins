@@ -10,8 +10,25 @@ import cm_functions as cmf
 __all__ = ["OverviewAnimation", "SMBHtrajectory"]
 
 
+class SMBHAnimation:
+    def __init__(self, ax, show_axis_labels=True, stepping={"start":110000, "step":500}) -> None:
+        # TODO "parent" animation that takes a series of potential trajectories to animate across potentially multiple plotting axes
+        # TODO take most of the methodology from SMBHtrajectory, and wrap those attributes into this class
+        # TODO this class should construct the step_gen function and the __call__ function 
+        self.ax = ax
+        if isinstance(self.ax, np.ndarray):
+            self.ax = np.concatenate(self.ax).flatten()
+        self.show_axis_labels = show_axis_labels
+        self.stepping = stepping
+
+
+
+
+
+
+
 class SMBHtrajectory:
-    def __init__(self, bhdata, ax, centre=1, axes=[0,2], axis_offset=1, trails=5000, show_axis_labels=True, stepping={"start":110000, "step":500}, only_bound=False):
+    def __init__(self, bhdata, ax, centre=1, axes=[0,2], axis_offset=1, trails=5000, show_axis_labels=True, stepping={"start":110000, "step":500}, only_bound=False, fix_centre=None):
         """
         Create an animation of the BH motions
 
@@ -44,13 +61,15 @@ class SMBHtrajectory:
             bh1, bh2, merged = cmf.analysis.get_bound_binary(bhdata)
         else:
             bh1, bh2, merged = cmf.analysis.get_bh_particles(bhdata)
+        self.com = (bh1.m[:,np.newaxis]*bh1.x + bh2.m[:,np.newaxis]*bh2.x)/(bh1.m+bh2.m)[:,np.newaxis]
+        self.com /= kpc
         self.length = len(bh1.t)
         self.stepping = stepping
         self.save_count = int((self.length - stepping["start"])/stepping["step"])-1
         self.ax = ax
         self.centre = centre
-        self.bh1x = bh1.x/kpc
-        self.bh2x = bh2.x/kpc
+        self.bh1x = bh1.x/kpc-self.com
+        self.bh2x = bh2.x/kpc-self.com
         self.time = bh1.t/myr
         self.axes = axes
         if show_axis_labels:
@@ -59,15 +78,19 @@ class SMBHtrajectory:
             ax.set_ylabel(axlabels[axes[1]])
         self.axis_offset = axis_offset
         self.trails = trails
+        self.fix_centre = fix_centre
         self.traj1, = self.ax.plot([], [], markevery=[-1], marker="o")
         self.traj2, = self.ax.plot([], [], markevery=[-1], marker="o")
     
     def __call__(self, i):
         """Update the figure with the ith frame number"""
-        if self.centre == 1:
-            centre = self.bh1x[i, self.axes]
+        centre_idx = i if self.fix_centre is None else self.fix_centre
+        if self.centre == -1:
+            centre = self.com[centre_idx, self.axes]
+        elif self.centre == 1:
+            centre = self.bh1x[centre_idx, self.axes]
         else:
-            centre = self.bh2x[i, self.axes]
+            centre = self.bh2x[centre_idx, self.axes]
         self.ax.set_xlim(
             centre[0] - self.axis_offset, 
             centre[0] + self.axis_offset

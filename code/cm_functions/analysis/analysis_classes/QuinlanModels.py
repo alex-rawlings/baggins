@@ -190,7 +190,8 @@ class QuinlanModelHierarchy(_QuinlanModelBase):
         super().__init__(model_file, prior_file, figname_base, rng)
         self.figname_base = f"{self.figname_base}-hierarchy"
         self._hyper_qtys = ["HGp_s_mean", "HGp_s_std", "inv_a_0_mean", "inv_a_0_std", "K_mean", "K_std", "e0_mean", "e0_std"]
-        self._hyper_qtys_labs = [r"$\mu_{HG\rho/\sigma} / (\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\sigma_{HG\rho/\sigma} / (\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\mu_{1/a_0} / \mathrm{kpc}^{-1}$", r"$\sigma_{1/a_0} / \mathrm{kpc}^{-1}$", r"$\mu_K$", r"$\sigma_K$", r"$\mu_{e_0}$", r"$\sigma_{e_0}$"]
+        #self._hyper_qtys_labs = [r"$\mu_{HG\rho/\sigma} / (\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\sigma_{HG\rho/\sigma} / (\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\mu_{1/a_0} / \mathrm{kpc}^{-1}$", r"$\sigma_{1/a_0} / \mathrm{kpc}^{-1}$", r"$\mu_K$", r"$\sigma_K$", r"$\mu_{e_0}$", r"$\sigma_{e_0}$"]
+        self._hyper_qtys_labs = [r"$\mu_{H'}$", r"$\sigma_{H'}$", r"$\mu_{1/a_0}$", r"$\sigma_{1/a_0}$", r"$\mu_K$", r"$\sigma_K$", r"$\mu_{e_0}$", r"$\sigma_{e_0}$"]
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qtys_labs)))
 
 

@@ -12,7 +12,7 @@ parser.add_argument(type=str, help="path to analysis parameter file", dest="apf"
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
 parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
 parser.add_argument("-l", "--load", type=str, help="load previous stan file", dest="load_file", default=None)
-parser.add_argument("-t", "--thin", type=int, help="thin data", dest="thin", default=10)
+parser.add_argument("-t", "--thin", type=int, help="thin data", dest="thin", default=None)
 parser.add_argument("-s", "--sample", help="sample set", type=str, dest="sample", choices=["mcs", "perturb"], default="mcs")
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
@@ -20,12 +20,7 @@ args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
-if args.publish:
-    cmf.plotting.set_publishing_style()
-    full_figsize = rcParams["figure.figsize"]
-    full_figsize[0] *= 2
-else:
-    full_figsize = None
+full_figsize = cmf.plotting.get_figure_size(args.publish, full=True)
 
 HMQ_files = cmf.utils.get_files_in_dir(args.dir)
 with h5py.File(HMQ_files[0], mode="r") as f:
@@ -53,7 +48,7 @@ if args.model == "simple":
         # sample
         kepler_model = cmf.analysis.KeplerModelSimple(model_file=stan_model_file, prior_file="stan/binary/binary_prior_simple.stan", figname_base=figname_base)
 else:
-    stan_model_file = "stan/binary/binary_hierarchy.stan"
+    stan_model_file = "stan/binary/binary_hierarchy_2.stan"
     if args.load_file is not None:
         # load a previous sample for improved performance: no need to resample 
         # the likelihood function
@@ -106,7 +101,8 @@ else:
     stan_data.update(dict(
         N_tot = len(kepler_model.obs_collapsed["log10_angmom_corr_red"]),
         group_id = kepler_model.obs_collapsed["label"],
-        log10_angmom = kepler_model.obs_collapsed["log10_angmom_corr_red"]
+        log10_angmom = kepler_model.obs_collapsed["log10_angmom_corr_red"], 
+        log10_energy = kepler_model.obs_collapsed["log10_energy_corr_red"]
     ))
 
     analysis_params["stan"]["binary_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/binary/{args.sample}/{merger_id}")

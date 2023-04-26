@@ -10,14 +10,10 @@
 module purge
 module restore py393
 
-#python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/nasim/SO_e_high/hernquist_HR_SO/ -m mc
+#python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/hernquists_mcs/H_1-000 -m mc
 
 cd hierarchical_models
 
-python quinlan_hardening.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/nasim/stars_only_e_high/HR /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml
+#python quinlan_hardening.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/nasim/stars_only_e_high/HR /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml
 
-python quinlan_hardening.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/nasim/stars_only_e_high/MR /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml
-
-python quinlan_hardening.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/nasim/stars_only_e_high/LR /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml
-
-python quinlan_hardening.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/nasim/stars_only_e_high/PR /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml
+python binary_properties.py /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/MC_sample/with_energy/H_1-000 /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml

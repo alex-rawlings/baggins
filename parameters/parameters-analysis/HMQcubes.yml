@@ -3,7 +3,7 @@
 ---
 # info on file locations
 file_locations:
-  cube_dir: '/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/nasim/stars_only_e_high'
+  cube_dir: '/scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes_new/MC_sample/with_energy'
 
 # info on BH Binary properties
 bh_binary:
@@ -37,7 +37,7 @@ stan:
     show_progress: &ssp False
     #threads_per_chain: 128
   binary_sample_kwargs:
-    adapt_delta: 0.995
+    adapt_delta: 0.999
     max_treedepth: 15
     show_progress: *ssp
   hardening_sample_kwargs:

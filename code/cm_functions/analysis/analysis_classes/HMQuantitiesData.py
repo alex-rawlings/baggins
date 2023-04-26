@@ -51,6 +51,15 @@ class HMQuantitiesData(HDF5Base):
     def binary_angular_momentum(self, v):
         self._binary_angular_momentum = v
     
+    # energy of binary
+    @property
+    def binary_energy(self):
+        return self._binary_energy
+    
+    @binary_energy.setter
+    def binary_energy(self, v):
+        self._binary_energy = v
+    
     # period of binary
     @property
     def binary_period(self):

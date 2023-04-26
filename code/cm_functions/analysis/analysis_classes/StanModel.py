@@ -786,16 +786,18 @@ class StanModel_1D(_StanModel):
                 ax.errorbar(obs[xobs][mask], ys, xerr=obs[xobs_err][mask], c=col, zorder=20, fmt=".", label=("Sims." if i==ncols-1 else ""))
         return ax
 
-    def prior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
+    def prior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True, save=True):
         ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
         fig = ax.get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"prior_pred_{xobs}"), fig=fig)
+        if save:
+            savefig(self._make_fig_name(self.figname_base, f"prior_pred_{xobs}"), fig=fig)
 
 
-    def posterior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True):
+    def posterior_plot(self, xobs, xmodel, xobs_err=None, levels=None, ax=None, collapsed=True, save=True):
         ax = self._plot_predictive(xobs=xobs, xmodel=xmodel, xobs_err=xobs_err, levels=levels, ax=ax, collapsed=collapsed)
         fig = ax.get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{xobs}"), fig=fig)
+        if save:
+            savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{xobs}"), fig=fig)
 
 
 
