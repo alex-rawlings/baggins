@@ -50,10 +50,12 @@ SL.logger.debug(f"We will be plotting {num_dirs} different families...")
 for j, d in enumerate(ketju_dirs):
     ketju_files = cmf.utils.get_ketjubhs_in_dir(d)
     line_count = 0
+    bound_bhs_present = False
     for i, k in enumerate(ketju_files):
         SL.logger.debug(f"Reading: {k}")
         try:
             bh1, bh2, merged = cmf.analysis.get_bound_binary(k)
+            bound_bhs_present = True
         except:
             SL.logger.warning(f"No binaries found in: {k} --> skipping...")
             continue
@@ -74,9 +76,15 @@ for j, d in enumerate(ketju_dirs):
                     ax2[0].plot((bh.x[:,0]-op["x_CM"][:,0])/kpc, (bh.x[:,2]-op["x_CM"][:,2])/kpc, alpha=0.7, c=cols[j])
                     ax2[1].plot((bh.x[:,0]-op["x_CM"][:,0])/kpc, (bh.x[:,1]-op["x_CM"][:,1])/kpc, c=cols[j], alpha=0.7)
         line_count += 1
-ax[0].legend(loc="upper right", **legend_kwargs)
-ax[0].set_xscale("log")
-if args.save:
-    now = datetime.now().strftime("%Y%m%d_%H%M%S")
-    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"))
-plt.show()
+    if not bound_bhs_present:
+        SL.logger.warning(f"No bound BHs present in {d}")
+
+try:
+    ax[0].legend(loc="upper right", **legend_kwargs)
+    ax[0].set_xscale("log")
+    if args.save:
+        now = datetime.now().strftime("%Y%m%d_%H%M%S")
+        cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"))
+    plt.show()
+except (IndexError, TypeError):
+    SL.logger.error("No bound BHs found!")

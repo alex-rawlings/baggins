@@ -5,7 +5,7 @@ from ..general import get_idx_in_array
 from ..mathematics import radial_separation
 from ..env_config import _cmlogger
 
-__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -38,7 +38,7 @@ def find_pericentre_time(bh1, bh2, height=-10, return_sep=False, **kwargs):
     peak_idxs : np.ndarray
         index position of pericentre passage in BH Particle attribute arrays
     sep : np.ndarray, optional
-        separation between the BHs as a function of time
+        separation between the BHs as a function of time [kpc]
     """
     sep = radial_separation(bh1.x/kpc, bh2.x/kpc)
     #pericentre is found by negating the separation, and identifying those 
@@ -396,6 +396,59 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
             # expand search bracket
             multiplier *= 2
     return idx, end_idxs
+
+
+def impact_parameter(bh1, bh2):
+    """
+    Determine the impact parameter as a function of time for two BHs
+
+    Parameters
+    ----------
+    bh1 : ketjugw.Particle
+        BH 1
+    bh2 : ketjugw.Particle
+        BH 2
+
+    Returns
+    -------
+    : array-like
+        impact parameter
+    """
+    x = bh1.x - bh2.x
+    v = bh1.v - bh2.v
+    v_hat = v / radial_separation(v)[:,np.newaxis]
+    b = x - v_hat * np.sum(x*v, axis=-1)[:,np.newaxis]
+    return b
+
+
+def move_to_centre_of_mass(bh1, bh2):
+    """
+    Determine centre of mass of two BHs. This implementation is taken from the
+    ketjugw package.
+
+    Parameters
+    ----------
+    bh1 : ketjugw.Particle
+        BH 1
+    bh2 : ketjugw.Particle
+        BH 2
+
+    Returns
+    -------
+    bh1 : ketjugw.Particle
+        BH 1 in CoM frame
+    bh2 : ketjugw.Particle
+        BH 2 in CoM frame 
+    """
+    M = bh1.m + bh2.m
+    x_CM = (bh1.m[:,np.newaxis]*bh1.x + bh2.m[:,np.newaxis]*bh2.x)/M[:,np.newaxis]
+    v_CM = (bh1.m[:,np.newaxis]*bh1.v + bh2.m[:,np.newaxis]*bh2.v)/M[:,np.newaxis]
+    bh1.x -= x_CM
+    bh1.v -= v_CM
+    bh2.x -= x_CM
+    bh2.v -= v_CM
+    # TODO way to edit in place?
+    return bh1, bh2
 
 
 #### CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT ####
