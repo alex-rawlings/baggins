@@ -6,8 +6,8 @@ Phase 2.1: different mass resolutions for select orbits
 
 |phase|# particles/galaxy | e  | # runs| completed|
 |-----|-------------------|----|-------|----------|
-| 1.1 | 2 M               |0.90|    10 |          |
-| 1.1 | 2 M               |0.99|    10 |          |
+| 1.1 | 2 M               |0.90|    10 |       x  |
+| 1.1 | 2 M               |0.99|    10 |       x  |
 | 1.2 | 2 M               |0.50|    10 |          |
 | 1.2 | 2 M               |0.70|    10 |          |
 | 1.2 | 2 M               |0.95|    10 |          |

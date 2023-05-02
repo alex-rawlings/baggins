@@ -12,7 +12,7 @@ from ..general import convert_gadget_time, set_seed_time, unit_as_str
 from ..env_config import _cmlogger
 
 
-__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles", "velocity_anisotropy", "softened_inverse_r", "softened_acceleration"]
+__all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles", "velocity_anisotropy", "softened_inverse_r", "softened_acceleration", "add_to_loss_cone_refill"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -1124,4 +1124,29 @@ def softened_acceleration(snap, h={"stars":None, "dm":None, "bh":None}, centre=[
         inv_r = softened_inverse_r(r, h[family])
         accel += np.sum(np.atleast_2d(subsnap["mass"] * inv_r**3).T * subsnap["pos"], axis=0)
     return accel
+
+
+def add_to_loss_cone_refill(snap, J_lc, prev):
+    """
+    Determine the new particles in the binary loss cone. Note this method is designed to be called within a construct that loops over snapshots.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse, potentially a masked subsnapshot
+    J_lc : float, pygad.UnitQty
+        loss cone angular momentum of binary
+    prev : set
+        particles in loss cone in previous snapshots
+
+    Returns
+    -------
+    : set
+        updated set of particles IDs that have been in binary loss cone
+    """
+    in_cone_ids = set(snap["ID"][
+        pygad.utils.geo.dist(snap["angmom"]) < J_lc
+        ])
+    return prev.union(in_cone_ids)
+
 
