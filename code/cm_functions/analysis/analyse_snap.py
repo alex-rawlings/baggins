@@ -945,7 +945,7 @@ def loss_cone_angular_momentum(snap, a, e=0, kappa=None):
     J_unit = snap["angmom"].units
     starmass = pygad.UnitScalar(snap.stars["mass"][0], snap.stars["mass"].units)
     Mbin = snap.bh["mass"].sum()
-    const_G = const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
+    const_G = pygad.physics.G.in_units_of("pc/Msol*km**2/s**2")
     if kappa is None:
         J = np.sqrt(const_G * Mbin * a * (1-e**2)) * starmass
     else:

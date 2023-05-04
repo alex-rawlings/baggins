@@ -270,14 +270,17 @@ def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
         plotting axis
     """
     if ax is None:
-        fig, ax = plt.subplots(2,1,sharex="col")
+        fig, ax = plt.subplots(3,1,sharex="col")
     ax[0].set_ylabel("a/pc")
     ax[1].set_ylabel("e")
-    ax[1].set_xlabel("t/Myr")
+    ax[2].set_ylabel("1-e")
+    ax[-1].set_xlabel("t/Myr")
     ax[1].set_ylim(0,1)
+    ax[2].set_ylim(0,1)
     myr = ketjugw.units.yr * 1e6
     ax[0].semilogy(orbit_pars["t"]/myr + toffset, orbit_pars["a_R"]/ketjugw.units.pc, **kwargs)
     ax[1].plot(orbit_pars["t"]/myr + toffset, orbit_pars["e_t"], **kwargs)
+    ax[2].semilogy(orbit_pars["t"]/myr + toffset, 1-orbit_pars["e_t"], **kwargs)
     return ax
 
 

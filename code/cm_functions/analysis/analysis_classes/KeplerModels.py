@@ -34,11 +34,12 @@ class _KeplerModelBase(StanModel_1D):
         pars : dict
             analysis parameters
         """
-        obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[]}
+        obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[]}
         i = 0
         for f in dir:
             _logger.logger.info(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
+            obs["star_mass"] = hmq.particle_masses["stars"]
             try:
                 idx = hmq.get_idx_in_vec(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             except ValueError:
@@ -68,6 +69,10 @@ class _KeplerModelBase(StanModel_1D):
                 _logger.logger.error(f"Attribute 'particle_masses' does not exist for {f}! Will assume equal-mass BHs!")
                 obs["mass1"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
                 obs["mass2"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
+            try:
+                obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
+            except AttributeError:
+                _logger.logger.warning(f"File {f} is missing the 'initial_galaxy_orbit' attribute. Ideally, re-run HMQ extraction process.")
             i += 1
         self.obs = obs
 

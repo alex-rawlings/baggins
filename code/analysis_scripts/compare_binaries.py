@@ -21,8 +21,10 @@ SL = cmf.ScriptLogger("script", args.verbosity)
 if args.publish:
     cmf.plotting.set_publishing_style()
     legend_kwargs = {"ncol":2, "fontsize":"x-small"}
+    fig_kwargs = {"transparent":True}
 else:
     legend_kwargs = {}
+    fig_kwargs = {}
 
 ketju_dirs = []
 ketju_dirs.append(args.path)
@@ -84,7 +86,7 @@ try:
     ax[0].set_xscale("log")
     if args.save:
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"))
+        cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"), save_kwargs=fig_kwargs)
     plt.show()
 except (IndexError, TypeError):
     SL.logger.error("No bound BHs found!")
