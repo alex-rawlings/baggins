@@ -2,10 +2,10 @@ import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
 from ..general import get_idx_in_array
-from ..mathematics import radial_separation
+from ..mathematics import radial_separation, angle_between_vectors, project_orthogonal
 from ..env_config import _cmlogger
 
-__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -34,20 +34,20 @@ def find_pericentre_time(bh1, bh2, height=-10, return_sep=False, **kwargs):
     Returns
     -------
     : float
-        time of pericentre passages [Myr]
+        time of pericentre passages
     peak_idxs : np.ndarray
         index position of pericentre passage in BH Particle attribute arrays
     sep : np.ndarray, optional
-        separation between the BHs as a function of time [kpc]
+        separation between the BHs as a function of time
     """
     sep = radial_separation(bh1.x/kpc, bh2.x/kpc)
     #pericentre is found by negating the separation, and identifying those 
     #peaks close to 0
     peak_idxs = scipy.signal.find_peaks(-sep, height=height, **kwargs)[0]
     if return_sep:
-        return bh1.t[peak_idxs]/myr, peak_idxs, sep
+        return bh1.t[peak_idxs], peak_idxs, sep*kpc
     else:
-        return bh1.t[peak_idxs]/myr, peak_idxs
+        return bh1.t[peak_idxs], peak_idxs
 
 
 def interpolate_particle_data(p_old, t):
@@ -108,7 +108,7 @@ def get_bh_particles(ketju_file, tol=1e-15):
     len1, len2 = len(bh1), len(bh2)
     min_len = min(len1, len2)
     merged = MergerInfo()
-    #first need to determine if time series are consistent between particles
+    # first need to determine if time series are consistent between particles
     if np.any(np.abs(bh1.t[:min_len] - bh2.t[:min_len])>tol):
         # particle time series are not in sync, need to interpolate
         # merger only occurs if Ketju is activated, in which case the time
@@ -162,6 +162,43 @@ def get_bound_binary(ketju_file, tol=1e-15):
         _logger.logger.exception("No binaries found!", exc_info=True)
         raise
     return bh1, bh2, merged
+
+
+def get_binary_before_bound(ketju_file, tol=1e-15):
+    """
+    Return the data from the ketju_bhs.hdf5 file corresponding to before when 
+    the binary becomes (and remains) bound. 
+
+    Parameters
+    ----------
+    ketju_file : str
+        path to ketju_bhs.hdf5 file to analyse
+    tol : float, optional
+        tolerance for equality testing, by default 1e-15
+
+    Returns
+    -------
+    bh1 : ketjugw.Particle
+        object for bh1, where the particle has the same time domain as bh2
+    bh2 : ketjugw.Particle
+        same as bh1, but for bh2
+    """
+    bh1, bh2, merged = get_bh_particles(ketju_file, tol)
+    energy_mask = ketjugw.orbital_energy(bh1, bh2) > 0
+    try:
+        bound_idx = len(energy_mask) - get_idx_in_array(1, energy_mask[::-1])
+    except AssertionError:
+        if np.all(energy_mask == 1):
+            _logger.logger.warning("Binary system has not become bound! We will use all data from the BH particles.")
+            bound_idx = -1
+        elif np.all(energy_mask == 0):
+            _logger.logger.exception("Binary system is never unbound!", exc_info=True)
+            raise
+        else:
+            _logger.logger.exception(f"This instance should not be reachable.", exc_info=True)
+            raise
+    return bh1[:bound_idx], bh2[:bound_idx]
+
 
 
 def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
@@ -416,9 +453,11 @@ def impact_parameter(bh1, bh2):
     """
     x = bh1.x - bh2.x
     v = bh1.v - bh2.v
-    v_hat = v / radial_separation(v)[:,np.newaxis]
-    b = x - v_hat * np.sum(x*v, axis=-1)[:,np.newaxis]
-    return b
+    #v_hat = v / radial_separation(v)[:,np.newaxis]
+    #b = x - v_hat * np.sum(x*v_hat, axis=-1)[:,np.newaxis]
+    b = project_orthogonal(x,v)
+    theta = angle_between_vectors(x,b)
+    return b, theta
 
 
 def move_to_centre_of_mass(bh1, bh2):
