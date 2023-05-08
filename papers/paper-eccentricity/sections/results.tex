@@ -49,7 +49,7 @@ For simplicity, we consider only symmetrical 1:1 mergers, and take the BH orbits
 to lie in the $xz$-plane.
 In this case the relative motion of the BHs can be treated as a one-body problem,
 with the equation of motion
-\begin{equation}
+\begin{equation} \label{eq:toy_model_eom}
 \ddot{\vb{x}} = -\frac{2 G M_\bullet}{|\vb{x}|^3} \vb{x} + \vb{a}_\mathrm{bg} + \vb{a}_\mathrm{DF},
 \end{equation}
 where $\vb{x}$ is the separation vector of the BHs, $M_\bullet$ the mass of a single BH,
@@ -92,37 +92,71 @@ assumed here and the more complex system that is present in the simulations
 we additionally multiply the acceleration given by Eq. \eqref{eq:chandra_df}
 with a scaling and cut-off function
 \begin{equation}
-f(r) = \frac{\alpha}{1 + \exp[(r_\mathrm{c}-r)/d_\mathrm{c}]},
+f(a) = \frac{\alpha}{1 + \exp[(a_\mathrm{c}-a)/d_\mathrm{c}]},
 \end{equation}
 which serves to remove the effect of dynamical friction when the BH binary has become
 hard in addition to allowing the strength of dynamical friction to be scaled to
 achieve similar behaviour as observed in the simulations.
-We set the scaling factor $\alpha=0.5$, and use cut-off scales $r_\mathrm{c}=2 a_\mathrm{h}$
+Here $a$ is the semi-major axis of a bound binary, and for unbound binaries we set $f=\alpha$.
+We set the scaling factor $\alpha=0.5$, and use cut-off scales $a_\mathrm{c}=2 a_\mathrm{h}$
 and $d_\mathrm{c} = 0.5 a_\mathrm{h}$,
 with $a_\mathrm{h}$ being the semimajor-axis of a hard BH binary.
 The total dynamical friction term is then
 \begin{equation}
-\vb{a}_{\mathrm{DF}} = 2 f(|\vb{x}|) \vb{a}_{1,\mathrm{DF}}.
+\vb{a}_{\mathrm{DF}} = 2 f(a) \vb{a}_{1,\mathrm{DF}}.
 \end{equation}
+
+After specifying the initial position and velocity, as well as the other parameters of the model,
+the equation of motion can be solved using standard numerical integration techniques.
+We use the error controlled 8th order Runge--Kutta method DOP853 included in the SciPy library \citep{scipy}
+for this purpose.
+To mimic the nearly linearly plunging orbit in the high-eccentricity merger orbit simulations,
+we specify the initial conditions confined to the $xz$-plane as 
+\begin{gather}
+\vb{x}_0 = (r_0, b)\\
+\dot{\vb{x}}_0 = (-v_0, 0).
+\end{gather}
+We fix $r_0 = 100\,\mathrm{pc}$,
+and use model parameters
+$\rho = 400 \,\Msun\,\mathrm{pc}^{-3}$,
+$\sigma=200\,\mathrm{km\,s^{-1}}$,
+$M_\bullet=10^8\,\Msun$,
+and
+$e_\mathrm{s}=0.85$,
+which match fairly well with the central properties of the merging galaxy when
+the SMBHs are becoming bound in the $e=0.99$ merger orbit simulations.
+\drafting{(Check the params)}
 
 
 \drafting{
-Description of the model
+Figures to do:
 \begin{itemize}
-\item scaling of the model?
-\item initial condition: specify impact parameter, initial velocity and separation. Like the radial trajectories in the sims.
-\item solving numerically
+\item $b$-$e$ curve at a few different $v_0$ values, shows minima in $e$.
+      Also plot data points from high-e simulations, we can hopefully match the curve shape at least roughly.
+      Possibly also deflection angle plot.
+\item Plot of the minimum possible eccentricity at different initial velocities, and the corresponding $b$, deflection angles.
 \end{itemize}
+}
 
+\drafting{
 Findings
 \begin{itemize}
 \item Final $e$ varies with impact parameter for given $v_0$, two minima on small scales at $b$s that are likely to occur in simulations. 
 \item location and depth of minima varies with $v_0$, for some values possible to span the full range of $e$ for different impact params.
+\item Minimum $e$ for deflection angles $\sim 60^\circ, 120^\circ$.
 \end{itemize}
+}
 
+\drafting{
 Interpretation:
-Impact param differences seeded by the brownian motion in sims,
-but few pc differences small enough that you can't measure them from large scale merger orbits anyway.
-So the scatter is physically relevant.
-
+\begin{itemize}
+\item Realistic merger orbits generally result in linearly plunging orbits just before binary formation,
+        with fairly small impact parameters.
+\item Often the relative velocities are in the range that leads to deflections around $90^\circ$
+      (some reason for this from energy considerations, since $b_{90}=GM_\mathrm{tot}/v^2$?),
+      small changes in impact param around that point hit the eccentricity minima in this model.
+\item Impact param differences seeded by the Brownian motion in sims,
+      but few pc differences small enough that you can't measure them from large scale merger orbits anyway.
+\item Conclusion: the scatter is physically relevant, not pure numerics.
+\end{itemize}
 }

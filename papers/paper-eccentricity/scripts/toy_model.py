@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 from scipy.special import erf
 from scipy.interpolate import interp1d
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize_scalar, shgo
 
 # units Gyr, 1e10 Msol, kpc
 G = 44900
@@ -58,18 +58,19 @@ class System:
 
         return 2*df_single * self.df_fudge_factor
 
-    def df_decoupling_factor(self, x):
-        r = np.linalg.norm(x,axis=0)
+    def df_decoupling_factor(self, x, v):
+        a = self.semimajor_axis(x,v)
+        a[a<0] = np.inf
         cutoff_point = self.a_hard * 2
         cutoff_scale = self.a_hard * 0.5
-        return 1/(1+np.exp(-(r-cutoff_point)/cutoff_scale))
+        return 1/(1+np.exp(-(a-cutoff_point)/cutoff_scale))
 
 
 # x is the relative distance vector between BHs
     def accel(self, x, v):
         return (-G * 2 * self.M_BH/np.linalg.norm(x,axis=0)**3 * x 
                 + 2 * self.ellipsoid_accel(x/2)
-                + self.dynamical_friction(x,v)*self.df_decoupling_factor(x)
+                + self.dynamical_friction(x,v)*self.df_decoupling_factor(x,v)
                 )
         
 
@@ -113,7 +114,7 @@ def compute_res(args):
     sys, b, v, r = args
     x0 = [r,b]
     v0 = [-v,0]
-    tmax = 200 * r/v
+    tmax = 100 * r/v
     ts = np.linspace(0,tmax, 500)
 
     x,v,t = sys.integrate(x0,v0,ts)
@@ -135,11 +136,13 @@ def main_plots():
     M_BH_ref = 1e-2 # single BH mass
     rho_ref = 40 # stellar density
     sigma_ref = 200*km_per_s # stellar velocity dispersion
-    gal_e = 0.9
+    gal_e = 0.89
 
-    v0_per_sigma = 2.5 # initial BH velocity / stellar sigma
-    r0_per_rinfl = 3 # initial BH separation/single BH influence radius
-    bmin_per_r0,bmax_per_r0 = 1e-3, 2e-1 # impact parameter limits / initial separation
+    v0_per_sigma = 2.3 # initial BH velocity / stellar sigma
+    r0_per_rinfl = 1 # initial BH separation/single BH influence radius
+    #v0_per_sigma = 2.2 # initial BH velocity / stellar sigma
+    #r0_per_rinfl = 2 # initial BH separation/single BH influence radius
+    bmin_per_r0,bmax_per_r0 = 1e-3, 1e-1 # impact parameter limits / initial separation
 
     Mscale = 1 # free scale parameter for BH mass
     vscale = 1 # free scale parameter for velocities
@@ -151,15 +154,16 @@ def main_plots():
                  rho=rho_ref*rhoscale,
                  e_spheroid=gal_e,
                  stellar_sigma=sigma_ref*vscale,
-                 df_fudge_factor=0.5)
+                 df_fudge_factor=0.35)
 
 
     v0 = v0_per_sigma * sigma_ref * vscale
     r0 = r0_per_rinfl * sys.r_infl
+    print(r0*1e3, v0/km_per_s, 2*sys.a_hard)
 
     efin = []
     deflection_angle = []
-    bs = np.linspace(bmin_per_r0,bmax_per_r0, 30)*r0
+    bs = np.linspace(bmin_per_r0, bmax_per_r0, 40)*r0
 
     with multiprocessing.Pool() as pool:
         for b,(x,v,t) in zip(bs, 
@@ -176,7 +180,7 @@ def main_plots():
             e = sys. eccentricity(x,v)
             axes[2].plot(t, e,color=color)
             efin.append(e[-1])
-            #deflection_angle.append(compute_deflection_angle(x,v,sys.r_infl*4))
+            deflection_angle.append(compute_deflection_angle(x,v,sys.r_infl))
             print(b, "done")
 
     axes[0].set_ylabel("R/kpc")
@@ -195,15 +199,32 @@ def main_plots():
     plt.xlabel('Impact parameter/pc')
     plt.ylabel('Final e')
 
-    #plt.figure()
-    #plt.plot(np.degrees(deflection_angle), efin, '-')
-    #plt.xlabel('Deflection angle/deg')
-    #plt.ylabel('Final e')
+    plt.figure()
+    plt.plot(np.degrees(deflection_angle), efin, '-')
+    plt.xlabel('Deflection angle/deg')
+    plt.ylabel('Final e')
 
     plt.show()
 
-# TODO use some global optimization algo (shgo?) to find all the local minima in
-# a single pass
+
+# XXX not working right
+def find_all_e_min(args):
+    sys, v0, r0, bounds = args
+    def f(b):
+        x,v,t = compute_res((sys, b[0], v0, r0))
+        return sys.eccentricity(x,v)[-1]
+
+    res = shgo(f, bounds=[bounds], options=dict(ftol=1e-3))
+    bs = res.xl[:,0]
+    es = res.funl
+    angles = []
+    for b in bs:
+        x,v,t = compute_res((sys, b, v0, r0))
+        angles.append( compute_deflection_angle(x,v,sys.r_infl))
+    angles = np.array(angles)
+    return bs, angles, es
+
+
 def find_e_min(args):
     sys, v0, b0, r0, minimum_index = args
     def f(b):
@@ -227,10 +248,10 @@ def ecc_minimum_plot():
     M_BH_ref = 1e-2 # single BH mass
     rho_ref = 40 # stellar density
     sigma_ref = 200*km_per_s # stellar velocity dispersion
-    gal_e = 0.9
+    gal_e = 0.85
 
     v0_per_sigma = 2.5 # initial BH velocity / stellar sigma
-    r0_per_rinfl = 3 # initial BH separation/single BH influence radius
+    r0_per_rinfl = 1.5 # initial BH separation/single BH influence radius
 
     Mscale = 1 # free scale parameter for BH mass
     vscale = 1 # free scale parameter for velocities
@@ -247,9 +268,9 @@ def ecc_minimum_plot():
     v0 = v0_per_sigma * sigma_ref * vscale
     r0 = r0_per_rinfl * sys.r_infl
 
-    v0s = v0*(1 + np.linspace(-.2,.25,50))
+    v0s = v0*(1 + np.linspace(-.2,.15,4))
     
-    for b_index,b_guess in enumerate([5e-3*rscale, 15e-3*rscale]):
+    for b_index,b_guess in enumerate([1e-3*rscale, 25e-3*rscale]):
         bs, angles, emins = [],[],[]
         with multiprocessing.Pool() as pool:
             for v0, (b, angle, emin) in zip(v0s,
@@ -265,10 +286,30 @@ def ecc_minimum_plot():
                 emins.append(emin)
                 print(v0, "done")
 
-
-        axes[0].plot(v0s/km_per_s, emins, marker='.')
+        axes[0].plot(v0s/km_per_s, np.array(emins), marker='.')
         axes[1].plot(v0s/km_per_s, np.array(bs)*1e3, marker='.')
         axes[2].plot(v0s/km_per_s, np.degrees(angles), marker='.')
+
+    """
+    bs, angles, emins = [],[],[]
+    with multiprocessing.Pool() as pool:
+        for v0, (b, angle, emin) in zip(v0s,
+                                        pool.imap(find_all_e_min, 
+                                                  zip(itertools.repeat(sys),
+                                                      v0s,
+                                                      itertools.repeat(r0),
+                                                      itertools.repeat((0, 0.2))))
+                                        ):
+            bs.append(b)
+            angles.append(angle)
+            emins.append(emin)
+            print(v0, "done")
+
+    
+    axes[0].plot(v0s/km_per_s, np.array(emins), marker='.')
+    axes[1].plot(v0s/km_per_s, np.array(bs)*1e3, marker='.')
+    axes[2].plot(v0s/km_per_s, np.degrees(angles), marker='.')
+    """
 
     axes[0].set_ylabel('Min e')
     axes[1].set_ylabel('Min e impact parameter/pc')
