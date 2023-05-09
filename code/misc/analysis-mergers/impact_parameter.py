@@ -1,7 +1,9 @@
 import os.path
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import ketjugw
+import pygad
 import cm_functions as cmf
 
 
@@ -18,8 +20,9 @@ datadirs = [
 ]
 
 bound_idxs = 20
-myr = 1e6 * ketjugw.units.yr
-rv_crit = -200
+myr = cmf.general.units.Myr
+kpc = cmf.general.units.kpc
+rv_crit = -300
 datadir_num = -2
 
 bhfiles = cmf.utils.get_ketjubhs_in_dir(datadirs[datadir_num])
@@ -28,6 +31,9 @@ median_b = np.full(len(bhfiles), np.nan)
 iqr_b = np.full((2,(len(bhfiles))), np.nan)
 median_eccs = np.full(len(bhfiles), np.nan)
 iqr_eccs = np.full((2,(len(bhfiles))), np.nan)
+
+# set up a Data frame to store values to
+dataframe = pd.DataFrame(index=range(len(bhfiles)), columns=["b_med", "b_low", "b_up", "e_med", "e_low", "e_up", "a_hard", "sep", "vx", "vy", "vz"])
 
 for i, bhfile in enumerate(bhfiles):
     #bh1, bh2, _ = cmf.analysis.get_bh_particles(bhfile)
@@ -138,7 +144,8 @@ for i, bhfile in enumerate(bhfiles):
         bh1v_t = np.sqrt(bh1v_s[:,1]**2 + bh1v_s[:,2]**2)
         bh2v_t = np.sqrt(bh2v_s[:,1]**2 + bh2v_s[:,2]**2)
         for bhvr, bhvt, bh in zip((bh1v_s[:,0], bh2v_s[:,0]), (bh1v_t, bh2v_t), (bh1, bh2)):
-            hundred_kms_idx = cmf.general.get_idx_in_array(rv_crit, bhvr[apo_idxs[0]:idxs[2]])+apo_idxs[0]
+            #hundred_kms_idx = cmf.general.get_idx_in_array(rv_crit, bhvr[apo_idxs[0]:idxs[2]])+apo_idxs[0]
+            hundred_kms_idx = idxs[1]-100
             print(f"{rv_crit}km/s idx: {hundred_kms_idx}")
             ax3.plot(bh1.t/myr, bhvr, markevery=[idxs], marker="x")
             ax3.scatter(bh1.t[apo_idxs]/myr, bhvr[apo_idxs], marker="o")
@@ -149,13 +156,48 @@ for i, bhfile in enumerate(bhfiles):
             ax1.scatter(bh.t[hundred_kms_idx]/myr, sep[hundred_kms_idx]/ketjugw.units.pc)
         ax5.scatter(bh1.t[hundred_kms_idx]/myr, bmag[hundred_kms_idx]/ketjugw.units.pc, marker="^")
         m, iqr = cmf.mathematics.quantiles_relative_to_median(bmag[hundred_kms_idx-100:hundred_kms_idx+100]/ketjugw.units.pc)
-        median_b[i] = m
-        iqr_b[0,i], iqr_b[1,i] = iqr
+        median_b[i] = np.sqrt(
+            sep[idxs[1]]**2 * (1 + 
+                               2*(bh1.m[0]+bh2.m[0]) / 
+                               (sep[idxs[1]] * 0.5*(np.linalg.norm(
+                                bh1.v[apo_idxs[0]])**2 + np.linalg.norm(
+                                bh1.v[idxs[1]])**2))
+            )) / ketjugw.units.pc
+        #median_b[i] = m
+        '''iqr_b[0,i], iqr_b[1,i] = iqr
+        dataframe.loc[i,"b_med"] = m
+        dataframe.loc[i,"b_low"] = iqr[0][0]
+        dataframe.loc[i,"b_up"] = iqr[1][0]'''
+        dataframe.loc[i,"b_med"] = median_b[i]
+
         op = ketjugw.orbital_parameters(bh1_bound, bh2_bound)
-        m, iqr = cmf.mathematics.quantiles_relative_to_median(op["e_t"])
+        snapfiles = cmf.utils.get_snapshots_in_dir(os.path.dirname(bhfile))
+        snap = pygad.Snapshot(snapfiles[int(len(snapfiles)/2)], physical=True)
+        rinfl = max(list(cmf.analysis.influence_radius(snap).values()))
+        print(f"Influence radius: {rinfl}")
+        ahard = cmf.analysis.hardening_radius(snap.bh["mass"], rinfl)
+        print(f"Hardening radius: {ahard} kpc")
+        dataframe.loc[i, "a_hard"] = ahard.view(np.ndarray)*1e3
+        '''plt.figure()
+        plt.semilogy(op["a_R"]/kpc)
+        plt.axhline(ahard, c="r")
+        plt.show()'''
+        ahard_idx = cmf.general.get_idx_in_array(ahard, op["a_R"]/kpc)
+        print(f"Hardening index: {ahard_idx} / {len(op['a_R'])}")
+        _, period_idxs = cmf.analysis.find_idxs_of_n_periods(op["t"][ahard_idx], op["t"], cmf.mathematics.radial_separation(bh1_bound.x, bh2_bound.x), num_periods=10)
+        print(f"Period idxs: {period_idxs}")
+        m, iqr = cmf.mathematics.quantiles_relative_to_median(op["e_t"][period_idxs[0]:period_idxs[1]])
         median_eccs[i] = m
         iqr_eccs[0,i], iqr_eccs[1,i] = iqr
-        plt.close()
+        dataframe.loc[i,"e_med"] = m
+        dataframe.loc[i,"e_low"] = iqr[0][0]
+        dataframe.loc[i,"e_up"] = iqr[1][0]
+        dataframe.loc[i,"sep"] = sep[hundred_kms_idx]/ketjugw.units.pc
+        dataframe.loc[i, "vx"], dataframe.loc[i, "vy"], dataframe.loc[i, "vz"] = (bh1.v[hundred_kms_idx] - bh2.v[hundred_kms_idx])/ketjugw.units.km_per_s
+        if i==0:
+            plt.close()
+        else:
+            plt.close()
 
     print("b values: ")
     for j in idxs:
@@ -163,10 +205,10 @@ for i, bhfile in enumerate(bhfiles):
     print(f"  -> {rv_crit}km/s idx {hundred_kms_idx}: {bmag[hundred_kms_idx]/ketjugw.units.pc:.3f}")
     #plt.show()
 
-print(iqr_b.shape)
-print(iqr_b)
+print(dataframe)
+dataframe.to_csv(f"dataframe_{datadirs[datadir_num].split('/')[-2]}.csv")
 
-plt.errorbar(median_b, median_eccs, xerr=iqr_b, yerr=iqr_eccs, fmt=".")
+plt.errorbar(median_b, median_eccs, xerr=None, yerr=iqr_eccs, fmt=".")
 plt.xlabel("b/pc")
 plt.ylabel("e")
 plt.ylim(0,1)

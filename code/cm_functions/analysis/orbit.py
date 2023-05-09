@@ -408,6 +408,7 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
         start and end indices of the orbital periods centred about the period 
         within which tval is
     """
+    num_periods = int(num_periods)
     if num_periods%2 == 0:
         _logger.logger.warning(f"Only odd values of <num_periods> implemented, we will search for {num_periods+1} periods.")
     end_idxs = [0,0]
@@ -418,7 +419,7 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
     y = np.diff(np.sign(np.diff(sep)))
     found_peaks = False
     multiplier = 1
-    max_idx = len(sep)-1
+    max_idx = len(sep)-2
     # gradually increase search bracket for efficiency
     while not found_peaks:
         idxs = np.r_[max(0, idx-10*multiplier):min(max_idx, idx+10*multiplier)]
@@ -429,6 +430,12 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
             peaks_rel = idxs[0]+peaks - idx
             end_idxs[0] = peaks_rel[np.where(peaks_rel<0, peaks_rel, -np.inf).argmax()-num_periods//2] + idx
             end_idxs[1] = peaks_rel[np.where(peaks_rel>=0, peaks_rel, np.inf).argmin()+num_periods//2] + idx
+            try:
+                assert np.abs(np.diff(end_idxs)>1e-15)
+            except AssertionError:
+                _logger.logger.exception(f"End indices of the period are the same: {end_idxs}. An error has occurred in the calculation! Search mutlitplier was {multiplier}, central index was {idx}, and {len(peaks)} peaks have been identified.", 
+                exc_info=True)
+                raise
         else:
             # expand search bracket
             multiplier *= 2
@@ -448,8 +455,10 @@ def impact_parameter(bh1, bh2):
 
     Returns
     -------
-    : array-like
+    b : array-like
         impact parameter
+    theta : array-like
+        angle between position vector and impact parameter vector
     """
     x = bh1.x - bh2.x
     v = bh1.v - bh2.v

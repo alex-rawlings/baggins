@@ -10,6 +10,7 @@ __pycache__
 
 # Personal code testing directory
 #code/misc
+code/misc/**/*.csv
 
 # Compiled Python bytecode
 *.py[cod]
