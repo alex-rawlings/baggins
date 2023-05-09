@@ -38,7 +38,7 @@ Thumbs.db
 *.hdf5
 
 # Latex pdf
-paper.pdf
+paper*.pdf
 paper-diff*
 
 # Latex auxiliary files

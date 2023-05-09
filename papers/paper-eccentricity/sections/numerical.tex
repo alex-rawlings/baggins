@@ -1,0 +1,30 @@
+\section{Numerical Simulations}
+
+\begin{itemize}
+    \item describe toy model
+    \item describe galaxy ICs: 0.5 Dehnen spheres
+    \item describe merger orbit: low and high e
+\end{itemize}
+
+\subsection{Galaxy ICs}
+We construct our galaxy models to match those of \citet{gualandris22}.
+Each galaxy is represented as a stellar-only Dehnen sphere \citep{dehnen93} with shape parameter $\gamma=0.5$ and scale radius $a=186\,\mathrm{pc}$, where the Dehnen profile is given by:
+\begin{equation}\label{eq:dehnen}
+    \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
+\end{equation}
+The total stellar mass is $M_\star=10^{10}\,\Msun$, and at the centre of the model galaxy a SMBH of mass $M_\bullet=10^8\,\Msun$ is placed with zero initial velocity.
+We test \drafting{X} different mass resolutions by sampling the stellar phase space distribution with varying number of stellar particles: \drafting{list resolutions here}.
+
+\subsection{Merger ICs}
+We construct isolated merger initial conditions by placing two galaxies on an elliptical orbit with varying values of eccentricity, at a fixed initial separation of $D=3.72\,\mathrm{kpc}$ and semimajor axis $a_0=2.79\,\mathrm{kpc}$.
+We follow the same orbital configurations as \citet{gualandris22}, with one additional orbit. 
+The chosen eccentricities $e$ are 0.5, 0.7, 0.9, and 0.99.
+We ensure that the radial and tangential velocities of the initial merger setup are consistent with the values reported in \citet{gualandris22}.
+An example of each orbital configuration is shown in \autoref{fig:orbits}.
+For each orbital configuration, we run \drafting{X} realisations, to account for Brownian motion effects of the SMBH binary caused by the discretised phase space. 
+
+\begin{figure*}
+    \includegraphics{orbits}
+    \caption{\drafting{Orbits of the different merger systems, colour coded according to the initial orbital eccentricity. Note that the duration shown for each orbit is not currently consistent: probably should cut the plot to when the binary semimajor axis reaches some set value}}
+    \label{fig:orbits}
+\end{figure*}

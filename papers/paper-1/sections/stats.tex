@@ -1,0 +1,82 @@
+\section{Statistical Analysis}
+
+We perform full Bayesian Hierarchical Modelling for the projected mass density profiles of our simulated galaxies. 
+The modelling is performed using the statistical software \textsc{Stan}\footnote{https://mc-stan.org}, which itself implements Hamiltonian Monte Carlo (HMC).
+
+\subsection{Hierarchical Models}
+In general, a model, whether empirical or physical, is a mathematical description of some observed data involving one or more model parameters. 
+There are a vast number of methods, such as least-squares fitting and $\chi^2$-minimisation, that aim to recover the optimal or `best-fit' parameters for a model given some data. 
+Hierarchical models extend this concept by generalising parameters as realisations of an underlying multi-dimensional population distribution with some given shape parameters, or \textit{hyperparameters}.
+Given a sample of observations that may be reasonably assumed to be drawn from some larger population, we are able to use Bayesian analysis to recover the optimal latent parameters, constrained by prior information we have on the hyperparameters.
+
+In this work, we have eight mass resolution families, with each family containing ten realisations of the same initial state. 
+Thus, we are able to employ hierarchical modelling to recover latent parameter distributions for various observable quantities of the merger remnant. 
+
+Robust Bayesian analysis relies on a well-informed choice of the (hyper-) parameter prior distributions. 
+Broadly speaking, there are three categories of prior distributions used:
+\begin{enumerate}
+    \item \textit{Uninformative} priors: no prior information is given to the prior distribution, and thus all physically-allowed values are equally likely. A uniform distribution over the parameter domain is used.
+    \item \textit{Weakly-informative} priors: a small amount of prior information is encoded into the prior distribution, however the distribution is chosen to have a large variance. This generally ensures parameter values close to the expected order of magnitude are favoured over values that are `insensibly' extreme. An example is a normal distribution $\mathcal{N}(\mu=0, \sigma^2=100)$ for a parameter than is expected to be in the range $[-1,1]$. 
+    \item \textit{Strongly-informative} priors: a large amount of prior information is encoded into the prior distribution, with small variance. This can lead to severely-biased parameter estimates from Bayesian analysis due to excessive `weight' given to the prior distribution over the data. An example is a normal distribution $\mathcal{N}(\mu=0, \sigma^2=0.5)$ for a parameter than is expected to be in the range $[-1,1]$. 
+\end{enumerate}
+In this work, we opt for weakly-informative priors: from the literature, we know the approximate range of `sensible' values that our model parameters may take, but ensure that the prior distribution variance is wide so as to not excessively weight our priors relative to our data.
+
+Additionally, we must also consider the shape of each parameter's prior distribution, as parameters are generally constrained by some physical condition. 
+For example, a normalising radius $a$ cannot take a value less than 0, so a normal distribution, which has an unbounded domain, is an inappropriate choice for the prior distribution of this variable.
+Choosing a truncated normal or gamma distribution with support on $[0,\infty)$ would represent a physically-motivated choice for the prior distribution here. 
+
+\subsection{Predictive Checks}
+\drafting{Check names: forward fold, push forward}
+To ensure consistency between the (hyper-) parameter prior distributions and the observed data, we perform both prior-predictive and posterior-predictive checks of our modelling process.
+
+Prior predictive checks involve sampling model parameters directly from the model prior distributions, and ensuring that the observed dependent variable can be reasonably explained by those prior distributions given the observed independent variable as input \citep{gabry19}.
+If a model is described by a set of parameters $\theta$ which are drawn from a prior distribution $P$, then the model parameters are sampled according to $\theta^\mathrm{sim} \sim P(\theta)$. 
+Simulated data $y^\mathrm{sim}$ may then be sampled from the sampling distribution $Q$ given the set $\theta^\mathrm{sim}$, so that $y^\mathrm{sim} \sim Q(y | \theta^\mathrm{sim})$.
+
+
+Posterior predictive checks are similar to prior predictive checks, except that the posterior distributions that are recovered from the Bayesian analysis are sampled instead of the prior distributions of the model, and are thus conditioned on the data \citep{gelman15}.
+For some data dependent $y$, new dependent data $y^\mathrm{rep}$ \textit{using the original independent data} is predicted following:
+\begin{equation}
+    P(y^\mathrm{rep} | y) = \int_\Omega P(y^\mathrm{rep} | \theta) P(\theta | y) \dd{\theta}
+\end{equation}
+
+Ideally, the the observed dataset $y$ should appear somehow typical of those datasets $r^\mathrm{rep}$ that are predicted.
+In this work, we visually classify a `good' fit as one where the data falls within the 50\% highest density interval (HDI, also referred to as the posterior density region). 
+The $\alpha$\% HDI region is defined \citep[e.g.][]{gelman15} as the region containing:
+\begin{enumerate}
+    \item $100(1-\alpha)$\% of the probability, and
+    \item the density within the HDI region is always greater than the density outside the region.
+\end{enumerate}   
+The HDI differs from a regular confidence interval in that a confidence interval does not impose condition (ii), making it unsuitable for describing distributions other than those that are unimodal and symmetric.
+
+\drafting{Now using LOO method. Which section should this go in? Relation to HDI?}
+In addition to visual inspection of the posterior predictive distribution, we wish to quantitatively assess the statistical ability of our model to capture the key features we are interested in.
+Critically, the exact form of such a test will depend on which features we define as being `important' for the model to capture.
+Typically though, a sense of how well a posterior distribution captures the first and second moments of a distribution (i.e., the mean and variance) are metrics we will be guided by.
+\begin{enumerate}
+    \item Does the posterior predictive distribution capture the \textit{location} of the data generating process? If our model predicts data $y^\mathrm{sim}$ significantly offset from our observed data $y$, then the model is not very useful in predicting future observations generated from the same data generating process as $y$.
+    \item Does the posterior predictive distribution capture the \textit{scale} of the data generating process? \drafting{What does this imply??}
+\end{enumerate}
+
+%To answer these questions, we define a test statistic $T$ from which we determine a Bayes-equivalent of the frequentist $p$-value \citep{gelman15}.
+%\begin{align}
+%    p_\mathrm{Bayes} &= \mathrm{Pr}\left( T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y \right) \\
+%    &= \iint I_{T(y^\mathrm{rep}, \theta) \geq T(y, \theta)|y} p\left( y^\mathrm{rep}|\theta\right) p\left( \theta|y\right) \dd{y^\mathrm{rep}} \dd{\theta}
+%\end{align}
+%Here, $I$ is the indicator function. 
+
+
+\subsection{Assessing the HMC}
+\drafting{Probably cite \citet{betancourt17} here, maybe others. Is this section necessary, or saying `default stan exit conditions' sufficient? Don't want to just be rewording stan docs, but also want to be transparent}.
+
+In determining whether or not the multi-dimensional distribution described by a hierarchical model has been well sampled, a number of checks are performed by \textsc{Stan}, which we describe briefly here.
+
+\drafting{
+    \begin{itemize}
+        \item sampler tree depth
+        \item divergences
+        \item potential energy
+        \item effective sample size
+        \item split R-hat values
+    \end{itemize}
+}

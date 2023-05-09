@@ -1,0 +1,167 @@
+\subsection{The KETJU Code}
+\drafting{Basic overview and updates, refer to previous papers}
+
+\begin{table*}
+    \centering
+    \caption{Properties of progenitor galaxies}
+    \label{tab:ics}
+    \begin{tabular}{ccccccccccc}
+        \hline
+        Name & Stellar Profile & $r_a/\text{kpc}$ & $M_\star/(10^{11}\,\Msun)$ & $N_\star$ & $M_\text{DM}/(10^{13}\,\Msun)$ & $c_\text{DM}$ & $N_\text{DM}$ & $M_\bullet/(10^{9}\,\Msun)$ & $R_\text{vir}/\mathrm{kpc}$ & $R_\mathrm{e}/\mathrm{kpc}$ \\
+        \hline
+        A & Dehnen & 0.4 & 2.51 & $2.5\times10^6$ & 9.65 & 7.55 & $3.22\times10^6$ & 3.04 & 554 & 4.40 \\
+        C & Terzi\'c & 1.5 & 2.57 & $2.6\times10^6$ & 5.13 & 7.51 & $3.38\times10^6$ & 3.14 & 562 & 4.05 \\
+        D & Dehnen & 0.3 & 1.58 & $1.58\times10^6$ & 2.00 & 8.23 & $1.29\times10^6$ & 1.64 & 412 & 3.16 \\
+        E & Terzi\'c & 0.5 & 1.46 & $1.46\times10^6$ & 3.29 & 8.36 & $1.10\times10^6$ & 1.46 & 392 & 2.79 \\
+        \hline
+    \end{tabular}
+\end{table*}
+
+\subsection{Initial Conditions}
+
+\begin{figure*}
+    \centering
+    \includegraphics{compic.pdf}
+    \caption{\drafting{Comparison of progenitor galaxies to key observables. \textit{Left:} The simulated galaxies have a SMBH mass determined from the \citet{sahu19} relation. Cored galaxies are shown as circles, and cuspy galaxies as squares. Note the progenitor galaxies A and C overlap. \textit{Centre}: The stellar velocity dispersion within $1\,R_\mathrm{e}$ is computed for the progenitor galaxies, and compared to observational data collated in \citet{bosch16}. \textit{Right:} The dark matter fraction within $1\,R_\mathrm{e}$ is computed for the progenitor galaxies, and compared to Schwarzschild-modelling results from \citet{jin20}.}}
+    \label{fig:ics}
+\end{figure*}
+
+We create four\footnote{A fifth galaxy, model B, was created with much higher mass than the four presented here. As the merger system did not result in a bound SMBH binary within some $10\,\text{Gyr}$, we exclude discussion of this galaxy.} unique progenitor galaxies, motivated by analogues observed in the real Universe. 
+Each galaxy is modelled as a multi-component system: a stellar component embedded within a DM halo, and a single SMBH at rest at the centre of the galaxy. 
+Two galaxies, A and D, have a stellar density profile given by the `cuspy' \citet{dehnen93} profile:
+\begin{equation}\label{eq:dehnen}
+    \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}
+\end{equation}
+and two galaxies, C and E, by the `cored' \citet{terzic05} profile:
+\begin{align}\label{eq:terzic}
+    \rho_\star(r) &= \rho' \left[ 1+\left(\frac{r_b}{r} \right)^\alpha \right]^{\gamma/\alpha} \\
+    &\times \left\{ \left[ \frac{r^\alpha+r_b^\alpha}{R_\text{e}^\alpha} \right]^{-p/\alpha} \text{e}^{-b \left[ \left(r^\alpha+r_b^\alpha\right)/R_\text{e}^\alpha \right]^{1/n\alpha}} \right\}, \nonumber
+\end{align}
+where
+\begin{equation}
+    \rho' = \rho_b 2^{(p-\gamma)/\alpha} \left(\frac{r_b}{r} \right)^p \text{e}^{b\left(2^{1/\alpha r_b/R_\text{e}}\right)^{1/n}}.
+\end{equation}
+
+The stellar component, whilst having a spherically-symmetric density distribution, employs the anisotropic Osipkov-Merritt distribution function (DF), from which the phase space is Monte-Carlo sampled using a minimum of $\sim10^6$ particles with a mass of $10^5\,\text{M}_\odot$. 
+The Osipkov-Merritt DF has a free parameter $r_a$, termed the anisotropy radius, which determines the degree of radial anisotropy. 
+The DF is near-ergodic in the inner regions $r<r_a$, and becomes increasingly radially-biased at larger $r$.
+It has the form:
+\begin{equation}\label{eq:om}
+    f(Q) = \frac{1}{\sqrt{8}\pi^2} \left[ \int_0^Q \dv{\Psi}{\sqrt{Q-\Psi}} \dv{^2\nu_Q}{\Psi^2} + \frac{1}{\sqrt{Q}} \left(\dv{\nu_Q}{\Psi}\right)_{\Psi=0}\right],
+\end{equation}
+where
+\begin{equation*}
+    \nu_Q(r) \equiv \left(1+\frac{r^2}{r_a^2}\right) \nu(r)
+\end{equation*}
+and
+\begin{equation*}
+    Q \equiv \mathcal{E} - \frac{L^2}{2r_a^2}.
+\end{equation*}
+The parameter $r_a$ is chosen so as to reproduce observed kinematic relations, most notably the $M_\bullet\text{--}\sigma_\star$ relation (see \drafting{figure}), whilst maintaining a positive DF. 
+
+Conversely, the DM halo of all galaxies is modelled as an ergodic Navarro-Frenk-White (NFW) profile \citep{navarro97}, with expected virial mass taken from the \citet{behroozi19} peak halo mass -- stellar mass relation. 
+\begin{equation}\label{eq:nfw}
+    \rho_\text{DM}(r) = \frac{\rho_0}{(r/a)(1+r/a)^2}
+\end{equation}
+We do not incorporate a redshift-dependent halo mass, instead opting to model our haloes as if they were taken at $z=0$. 
+The NFW concentration parameter $c\equiv r_\text{vir}/a$, where $a$ is the scale radius, is taken from the \citet{dutton14} relation.
+To prevent the radially-divergent mass distribution associated with the NFW profile, we multiply the density profile \autoref{eq:nfw} with a sigmoid function, and demand that the ratio of the actual DM density to the theoretical NFW density satisfies
+\begin{equation*}
+    \frac{\rho_\text{true}(r)}{\rho_\text{NFW}(r)} < 10^{-5}
+\end{equation*}
+by $7\,R_\text{vir}$, with significant departure from the NFW profile already by $3\,R_\text{vir}$. 
+With this modified NFW profile, the phase space is Monte Carlo sampled using the approach of \autoref{eq:om} and a minimum of $\sim10^6$ particles with a mass of $3.0\times10^7\,\text{M}_\odot$, assuming $L=0$ and $r_a\rightarrow\infty$. 
+The virial radius of the system is then re-determined numerically, to ensure it is in close agreement with the expected value from \citet{behroozi19}.
+
+The final component of the model galaxies, the SMBH, is represented as a point mass at rest at the origin. 
+The SMBH mass is taken from the $M_\text{bulge}\text{--}M_\bullet$ relation of \citet{sahu19}, and by definition lies on this relation, shown in the left panel of \autoref{fig:ics}. 
+The SMBH is also given an initial spin $\chi$ from the \citet{lousto10} distribution, so that we may also investigate GW-induced recoil kicks in our merger remnants. 
+
+We compare the progenitor systems to key constraining observables in \autoref{fig:ics}.
+In the centre panel, we overlay our progenitor galaxies on data used to fit the black hole mass - central stellar velocity dispersion relation of \citet{bosch16}. 
+The progenitor galaxies lie within the spread of the data, and have velocity dispersions indistinguishable from observational data. 
+Similarly, we find that the fraction of dark matter within $1\,R_\mathrm{e}$ is comparable to the dark matter fraction determined with Schwarzschild modelling of central and satellite galaxies in the MaNGA survey \citep{jin20}, shown in the right panel of \autoref{fig:ics}.
+Our progenitor galaxies are consistently slightly below the median relation (the median $f_\mathrm{DM}$ value is shown as crosses in stellar mass bins), but still well within the scatter of \citet{jin20}. 
+We conclude that our progenitor galaxy models, whilst neglecting the inclusion of gas, plausibly represent observable massive galaxies, particularly at the mass range of $M_\star/\Msun > 10^{11}$ that we are interested in.  
+
+After creating and assessing the multicomponent ICs, the galaxies are evolved in isolation using \gadget for at least \drafting{$8\,\text{Gyr}$}, to ensure the systems are fully-relaxed and any potential effects arising from radial instabilities are mitigated. 
+We then extract the evolved systems, and align each system with its reduced inertia tensor.
+We use these as the progenitor galaxies for all subsequent merger configurations. 
+
+\subsection{Simulations}
+
+We simulate all six different progenitor combinations, namely AC, AD, AE, CD, CE, DE. 
+This allows us to sample a vast range of progenitor configurations: each of equal and unequal mass, for each combination of cuspy and cored profiles. 
+Herein, we refer to a particular progenitor combination as a \textit{progenitor class}.
+
+In keeping with our theme of realistic initial conditions, we set all galaxy merger orbits to an initial separation of $r_0=3\,R_\text{vir,1}$, where $R_\text{vir,1}$ is the virial radius of the larger of the two progenitors. 
+The progenitor galaxies are then set on a quasi-Keplerian orbit, assuming each galaxy is a point-mass containing half its total mass. 
+The eccentricity of the initial orbit is chosen as a function of the initial pericentre distance $r_\text{peri}$, motivated from cosmological simulations, using the data presented in \citet{khochfar06}.
+By fitting a functional form to the median eccentricity value in logarithmically-spaced bins, we arrive at the relation
+\begin{equation}\label{eq:rperi-e}
+    e(r_\text{peri}/R_\text{vir,1}) = \left[ 1 + \left( \frac{r_\text{peri}/R_\text{vir,1}}{0.320} \right)^{1.629} \right]^{-0.176}
+\end{equation}
+from which we set the initial eccentricity of all our merger orbits.
+For each progenitor class, we sample six different pericentre distances, and thus six different eccentricities, in the range $10^{-3} \leq r_\text{peri}/R_\text{vir,1} \leq 1.0$. 
+Consequently, we investigate 36 `families' of merger configurations.
+
+The integration of the system is conducted in two phases: a \textit{parent phase} and a \textit{child phase}. 
+The former is done to capture the large-scale dynamics when the SMBHs are at large separation, and the latter when the SMBH interactions become of primary interest.
+
+In typical N-body simulations, one tests the sensitivity of the model by Monte Carlo sampling the phase space distribution function given by \autoref{eq:eddington} a number of times with different random seeds.
+This is done to quantify the uncertainty in the model due to the discrete sampling of the phase space of field particles, which induce a Brownian motion to the orbit of the more massive SMBH particle. 
+We observe that resampling \autoref{eq:eddington} is in effect displacing the centre of mass (CoM) of the system with the respect to the SMBH.
+To avoid the need to run a large number of simulations from the large $3.0\Rvir$ initial separation, we instead \textit{displace the SMBH} with respect to the CoM of the system at a time $t_\mathrm{perturb}$ after the simulation has begun. 
+This is done by measuring the Brownian-motion induced displacement in position and velocity space of the SMBH from the CoM for a galaxy in isolation.
+After identifying the displacement along each axis to be Gaussian-distributed, we use the variance of this distribution to reposition the SMBH relative to the CoM. 
+We thus `recentre' the SMBH on the CoM with a perturbation of $\mathcal{N}_\text{pos}(\mu=0\,\text{pc}, \sigma^2=100\,\text{pc}^2)$ for each position axis, and $\mathcal{N}_\text{vel}(\mu=0\,\text{km\,s}^{-1}, \sigma^2=100\,\text{km}^2\text{\,s}^{-2})$ for each velocity axis. 
+In this way, we mimic the effect of Brownian motion for a single run beginning at large separation (the \parent{} run) to generate an arbitrary number of perturbed \child{} runs. 
+The perturbation is applied no later than the second-to-last pericentre passage before the SMBH particles form a bound binary system, and ensure the separation of the SMBHs at the time of the perturbation is of the order 1000 larger than the perturbation applied. 
+
+The progenitors are evolved through the \textit{parent phase} from $t(r_0)=0$ with \gadget until the SMBHs form a bound binary at $t_\text{stop}$, with a stellar softening of $\epsilon_\star=10\,\text{pc}$ and \gadget integration tolerances \texttt{ErrTolIntAccuracy}=$0.02$ and \texttt{ErrTolForceAcc}=$0.005$.
+We then initialise the \textit{child phase} by restarting from a snapshot sometime before $t_\text{stop}$.
+We apply a small perturbation to each SMBH position and velocity vector to mimic the effect of Brownian motion due to discrete sampling of the DF, thus negating the need to run many simulations from $r_0=3\,R_\text{vir,1}$. 
+The perturbations are drawn from a Gaussian distribution modelling the typical offset of the SMBH phase space coordinates from the phase space coordinates of the stellar centre of mass, determined using the shrinking sphere method. 
+The Gaussian distributions are characterised by $\mathcal{N}_\text{pos}(\mu=0\,\text{pc}, \sigma^2=100\,\text{pc}^2)$, and $\mathcal{N}_\text{vel}(\mu=0\,\text{km\,s}^{-1}, \sigma^2=100\,\text{km}^2\text{\,s}^{-2})$ for each progenitor \drafting{should we show a figure of this?}. 
+From each \parent, we create ten uniquely-perturbed \child runs, allowing us to explore the distribution of parameters describing both the orbital and remnant properties of each \parent merger. 
+Additionally, we lower the stellar softening to $\epsilon_\star=3.5\,\text{pc}$ and tighten the integration tolerance \texttt{ErrTolIntAccuracy} to $0.002$ to optimise the run for \ketju.
+We check for energy conservation between the \parent and \child runs, and confirm that the total energy is conserved at the sub-percent level. 
+In total, we perform 360 ultra-high resolution unique \child simulations using \ketju, and use this sample for our analysis. 
+
+Within a relatively short time frame from beginning the \child run, the SMBH binary hardens predominantly through three-body stellar interactions. 
+We evolve the binary to the time $t_{a_h}=t(a_h)$, and continue to when $t_\text{safe}=t(a=15\,\text{pc})$. 
+We then analytically predict the orbital evolution of the binary by determining the hardening constant \drafting{assume this was explained in the intro} $H$ and eccentricity constant $K$ by fitting the derivative of $\text{d}(1/a)/\text{d}t$ with a linear function between $t_{a_h}$ and $t_\text{safe}$.
+Using $a_0=a_h$ and three different values of $e_0$, taken to be the 5\%, 50\%, and 95\% quantiles of the eccentricity distribution with the same time interval 
+$t_{a_h} \text{--} t_\text{safe}$, we predict the expected merger timescale of the system. 
+We continue to run the \child runs until one of three conditions are met:
+\begin{enumerate}
+    \item The SMBHs merge, or
+    \item The Hubble time, $13.8\,\text{Gyr}$, is exceeded, or
+    \item The eccentricity stabilises to below the analytically-determined eccentricity estimated from the 5\%-quantile eccentricity value, and said analytical-estimate indicates that the merger will occur significantly after the Hubble time.
+\end{enumerate}
+If it is not clear if the third condition is satisfied, we continue to run the merger until the second condition is met.
+
+\begin{table}[t]
+    \centering
+    \caption{Properties of merger orbits}
+    \label{tab:mergers}
+    \begin{tabular}{ccc}
+        \hline
+        Name & $r_\text{peri}/R_\text{vir,1}$ & $e_0$ \\
+        \hline
+        XY-030-0001 & $1.0\times10^{-3}$ & 0.999 \\
+        XY-030-0005 & $5.0\times10^{-3}$ & 0.998 \\
+        XY-030-0010 & $1.0\times10^{-2}$ & 0.994 \\
+        XY-030-0050 & $5.0\times10^{-2}$ & 0.992 \\
+        XY-030-0100 & $1.0\times10^{-1}$ & 0.976 \\
+        XY-030-1000 & $1.0\times10^{0}$ & 0.703 \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{initial_orbits.jpeg}
+    \caption{\drafting{Plots of the initial orbit? Update this figure if so}}
+    \label{fig:icorbit}
+\end{figure}
