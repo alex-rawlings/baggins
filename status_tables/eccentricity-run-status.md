@@ -21,4 +21,10 @@ Phase 2.1: different mass resolutions for select orbits
 | 2.1 | 500 K             |0.99|    10 |          |
 | 2.1 | 250 K             |0.99|    10 |          |
 
+Phase 3.1: multiple low resolutions runs of Hernquist spheres to fill out parameter space in eccentricity-deflection angle parameter space  
+
+|phase|# particles/galaxy | e  | # runs| completed|
+|-----|-------------------|----|-------|----------|
+| 3.1 | 500 K             |0.99|    20 |          |
+
 *Total number of runs: 130*
