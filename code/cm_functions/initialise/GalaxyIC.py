@@ -24,7 +24,7 @@ cols = mplColours()
 
 
 class GalaxyIC(_GalaxyICBase):
-    def __init__(self, parameter_file, stellar_mass=None):
+    def __init__(self, parameter_file, stellar_mass=None, sahu_legacy=False):
         """
         Class that interfaces between parameter file for galaxy initial 
         conditions, the galaxy object generator, and pygad.
@@ -36,6 +36,9 @@ class GalaxyIC(_GalaxyICBase):
         stellar_mass : float, optional
             stellar mass in Msol, only used by the DM methods if a stellar 
             component is not specified in the parameter file, by default None
+        sahu_legacy : bool, optional
+            use legacy method of Sahu+19 mass relation with incorrect scaling, 
+            by default False
 
         Raises
         ------
@@ -70,9 +73,8 @@ class GalaxyIC(_GalaxyICBase):
                 _star_mass = self.stars.total_mass
             except AttributeError:
                 if stellar_mass is None:
-                    msg = "If no stellar component supplied, a stellar mass must be given to initialise the DM halo"
-                    _logger.logger.error(msg)
-                    raise ValueError(msg)
+                    _logger.logger.exception("If no stellar component supplied, a stellar mass must be given to initialise the DM halo", exc_info=True)
+                    raise
                 else:
                     _star_mass = stellar_mass
             if dm_pars["use_NFW"]:
@@ -89,12 +91,11 @@ class GalaxyIC(_GalaxyICBase):
                 _star_mass = self.stars.total_mass
             except AttributeError:
                 if stellar_mass is None:
-                    msg = "If no stellar component supplied, a stellar mass must be given to initialise the SMBH mass"
-                    _logger.logger.error(msg)
-                    raise ValueError(msg)
+                    _logger.logger.exception("If no stellar component supplied, a stellar mass must be given to initialise the SMBH mass", exc_info=True)
+                    raise
                 else:
                     _star_mass = stellar_mass
-            self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file)
+            self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file, sahu_legacy=sahu_legacy)
             # manually set BH mass if desired
             if bh_pars["mass"]["value"] is not None:
                 _logger.logger.warning(f"Setting BH mass to user defined value!")

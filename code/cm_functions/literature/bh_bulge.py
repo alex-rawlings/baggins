@@ -45,7 +45,7 @@ def Magorrian98(logMstar):
     return -1.79 + 0.96 * logMstar
 
 
-def Sahu19(logmstar, old_method=True):
+def Sahu19(logmstar, old_method=False):
     """
     define the Sahu+19 bulge mass - BH mass relation
     https://ui.adsabs.harvard.edu/abs/2019ApJ...876..155S/abstract

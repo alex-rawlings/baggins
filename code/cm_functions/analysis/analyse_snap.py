@@ -322,11 +322,12 @@ def determine_if_merged(snap):
     remnant_id : int
         ID of the remnant BH (the one with non-zero mass)
     """
-    assert snap.bh["mass"].shape[0] > 1, "The system must be a merger system!"
-    merged = True if np.any(snap.bh["mass"]<1e-15) else False
-    if merged:
+    # Gadget4 cleans up merged BHs, so there are no ghost particles
+    if np.any(snap.bh["mass"]<1e-15) or len(snap.bh) < 2:
+        merged = True
         remnant_id = snap.bh["ID"][snap.bh["mass"]>1e-15][0]
     else:
+        merged = False
         remnant_id = None
     return merged, remnant_id
 

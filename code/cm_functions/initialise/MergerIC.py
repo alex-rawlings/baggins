@@ -41,14 +41,11 @@ class MergerIC:
             self.rng = rng
         self.exist_ok = exist_ok
         self._snaplist = None
+        self._calc_quants = {}
         try:
             self.save_location = self.parameters["calculated"]["full_save_location"]
         except KeyError:
-            if self.parameters['orbital_properties']['rperi']['value'] is None:
-                self.save_location = None
-            else:
-                self.save_location = self._make_saveloc()
-        self._calc_quants = {}
+            self.save_location = None
         self.perturb_directories = []
         self._ic_file_names = []
 

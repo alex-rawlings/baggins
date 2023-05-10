@@ -275,7 +275,7 @@ class _DMHaloDehnen(_DMComponent):
 
 
 class _SMBH(_GalaxyICBase):
-    def __init__(self, log_stellar_mass, parameter_file):
+    def __init__(self, log_stellar_mass, parameter_file, sahu_legacy=False):
         """
         Class describing a SMBH component.
 
@@ -285,9 +285,13 @@ class _SMBH(_GalaxyICBase):
             log10 of total stellar mass
         parameter_file : str, path-like, optional
             path to parameter file describing the galaxy ICs, by default None
+        sahu_legacy : bool, optional
+            use legacy method of Sahu+19 mass relation with incorrect scaling, 
+            by default False
         """
         super().__init__(parameter_file=parameter_file)
         self._log_stellar_mass = log_stellar_mass
+        self._sahu_legacy = sahu_legacy
         self.mass = None
         self.spin_relation = self.parameters["bh"]["spin_relation"].lower()
         try:
@@ -309,7 +313,7 @@ class _SMBH(_GalaxyICBase):
                 self._mass = self.parameters["calculated"]["bh"]["mass"]
                 _logger.logger.info("BH Mass read from parameter file")
         except KeyError:
-            self._mass = 10**Sahu19(self._log_stellar_mass)
+            self._mass = 10**Sahu19(self._log_stellar_mass, old_method=self._sahu_legacy)
             _logger.logger.info("BH Mass determined from Sahu+19 relation")
 
     @property

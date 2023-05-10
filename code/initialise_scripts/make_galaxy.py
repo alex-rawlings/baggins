@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser(description="Create ICs for Gadget which are so
 parser.add_argument(type=str, help="parameter file", dest="pf")
 parser.add_argument("-n", "--numberRots", type=int, help="number of rotations for projected quantities", dest="nrot", default=3)
 parser.add_argument("-b", "--batch", type=int, help="create a batch of galaxy ICs", dest="batch", default=1)
+parser.add_argument("-L", "--LEGACY", dest="bh_legacy", action="store_true", help="use legacy Sahu method for BH mass")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
@@ -16,7 +17,7 @@ SL = cmf.ScriptLogger("script", console_level=args.verbose)
 rng = np.random.default_rng()
 
 if args.batch == 1:
-    galaxy = cmf.initialise.GalaxyIC(parameter_file=args.pf)
+    galaxy = cmf.initialise.GalaxyIC(parameter_file=args.pf, sahu_legacy=args.bh_legacy)
     plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
     if plot_flag:
         galaxy.plot_mass_scaling_relations()
@@ -58,7 +59,7 @@ else:
             cmf.utils.overwrite_parameter_file(f, contents)
         SL.logger.warning(f"File {new_filename} created")
         # generate the galaxy
-        galaxy = cmf.initialise.GalaxyIC(parameter_file=new_filename)
+        galaxy = cmf.initialise.GalaxyIC(parameter_file=new_filename, sahu_legacy=args.bh_legacy)
         galaxy.generate_galaxy()
 
 

@@ -35,6 +35,10 @@ data_dirs.append(args.path)
 if args.extra_dirs:
     data_dirs.extend(args.extra_dirs)
     SL.logger.debug(f"Directories are: {data_dirs}")
+    labels = cmf.general.get_unique_path_part(data_dirs)
+    SL.logger.debug(f"Labels are: {labels}")
+else:
+    labels = [""]
 
 # for unit conversions
 myr = cmf.general.units.Myr
@@ -44,18 +48,19 @@ kpc = cmf.general.units.kpc
 thetas =  np.array([])
 median_eccs = np.array([])
 iqr_eccs = np.array([[],[]])
-total_N = 0
 
 for j, datdir in enumerate(data_dirs):
+    SL.logger.info(f"Reading from directory: {datdir}")
     bhfiles = cmf.utils.get_ketjubhs_in_dir(datdir)
     N = len(bhfiles)
 
-    thetas = np.concatenate((thetas, np.full(N, np.nan)))
-    median_eccs = np.concatenate((median_eccs, np.full(N, np.nan)))
-    iqr_eccs = np.hstack((iqr_eccs, np.full((2,N), np.nan)))
+    thetas = np.full(N, np.nan)
+    median_eccs = np.full(N, np.nan)
+    iqr_eccs = np.full((2,N), np.nan)
 
     # loop through each bh file in the directory
     for i, bhfile in enumerate(bhfiles):
+        SL.logger.debug(f"Reading file: {bhfile}")
         bh1, bh2 = cmf.analysis.get_binary_before_bound(bhfile)
         bh1, bh2 = cmf.analysis.move_to_centre_of_mass(bh1, bh2)
 
@@ -69,7 +74,7 @@ for j, datdir in enumerate(data_dirs):
         _, idxs, sep = cmf.analysis.find_pericentre_time(bh1, bh2, return_sep=True, prominence=0.005)
 
         theta_d = cmf.analysis.deflection_angle(bh1, bh2, idxs)
-        thetas[total_N+i], theta_idx = cmf.analysis.first_major_deflection_angle(theta_d, angle_defl)
+        thetas[i], theta_idx = cmf.analysis.first_major_deflection_angle(theta_d, angle_defl)
         if theta_idx is None:
             SL.logger.warning(f"No hard scattering in file {i}, skipping")
             continue
@@ -77,8 +82,22 @@ for j, datdir in enumerate(data_dirs):
         # determine the eccentricity
         op = ketjugw.orbital_parameters(bh1_bound, bh2_bound)
         snapfiles = cmf.utils.get_snapshots_in_dir(os.path.dirname(bhfile))
-        # TODO more robust determination of hardening radius? 
-        snap = pygad.Snapshot(snapfiles[int(len(snapfiles)/2)], physical=True)
+        # TODO more robust determination of hardening radius?
+        snap_idx = int(len(snapfiles)/2)
+        snap = pygad.Snapshot(snapfiles[snap_idx], physical=True)
+        breakflag = False
+        while not breakflag and cmf.analysis.determine_if_merged(snap)[0]:
+            snap_idx -= 1
+            snap.delete_blocks()
+            pygad.gc_full_collect()
+            del snap
+            try:
+                snap = pygad.Snapshot(snapfiles[snap_idx], physical=True)
+            except IndexError:
+                SL.logger.warning(f"No snapshots prior to merger! Skipping simulation {bhfile}")
+                breakflag = True
+        if breakflag: continue
+
         rinfl = max(list(cmf.analysis.influence_radius(snap).values()))
         SL.logger.debug(f"Influence radius: {rinfl}")
         ahard = cmf.analysis.hardening_radius(snap.bh["mass"], rinfl)
@@ -88,18 +107,25 @@ for j, datdir in enumerate(data_dirs):
         _, period_idxs = cmf.analysis.find_idxs_of_n_periods(op["t"][ahard_idx], op["t"], cmf.mathematics.radial_separation(bh1_bound.x, bh2_bound.x), num_periods=args.orbits)
         SL.logger.debug(f"Period idxs: {period_idxs}")
         m, iqr = cmf.mathematics.quantiles_relative_to_median(op["e_t"][period_idxs[0]:period_idxs[1]])
-        median_eccs[total_N+i] = m
-        iqr_eccs[0,total_N+i], iqr_eccs[1,total_N+i] = iqr
-    total_N += N
+        median_eccs[i] = m
+        iqr_eccs[0,i], iqr_eccs[1,i] = iqr
 
-plt.errorbar(thetas*180/np.pi, median_eccs, xerr=None, yerr=iqr_eccs, fmt="o", capsize=2, mec="k", mew=0.5)
+        # clean up
+        snap.delete_blocks()
+        pygad.gc_full_collect()
+        del snap
+    plt.errorbar(thetas*180/np.pi, median_eccs, xerr=None, yerr=iqr_eccs, fmt="o", capsize=2, mec="k", mew=0.5, label=labels[j])
+
+if args.extra_dirs:
+    plt.legend()
 plt.xlabel(r"$\theta_\mathrm{defl}$")
 plt.ylabel("e")
+plt.title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
 plt.ylim(0,1)
 
 if args.save:
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
-    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"deflection_angles_{now}.png"))
+    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"deflection_angles/deflection_angles_{now}.png"))
 else:
     SL.logger.warning("Figure will not be saved!")
 plt.show()

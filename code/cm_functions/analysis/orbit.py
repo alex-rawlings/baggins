@@ -5,7 +5,7 @@ from ..general import get_idx_in_array
 from ..mathematics import radial_separation, angle_between_vectors, project_orthogonal
 from ..env_config import _cmlogger
 
-__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass", "deflection_angle", "first_major_deflection_angle"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -381,7 +381,7 @@ def get_hard_timespan(t, a, t_s, ah_s):
     return np.sum(bool_arr) * (t[1]-t[0]), get_idx_in_array(1, bool_arr)
 
 
-def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
+def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1, max_iter=100, strict_mode=False):
     """
     Find the indices of a time series array corresponding to a given number of 
     periods about a desired time. Note the periods are taken to go from 
@@ -399,6 +399,11 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
         radial separation of BH binary as a time series
     num_periods : int, optional
         number of periods about tval to search for, by default 1
+    max_iter : int, optional
+        maximum number of allowed iterations in period search, be default 100
+    strict_mode : bool, optional
+        raise an error if insufficent number of periods are found, by default 
+        False
 
     Returns
     -------
@@ -419,26 +424,50 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1):
     y = np.diff(np.sign(np.diff(sep)))
     found_peaks = False
     multiplier = 1
-    max_idx = len(sep)-2
+    max_idx = len(y)-1
     # gradually increase search bracket for efficiency
+    iter_n = 0
     while not found_peaks:
         idxs = np.r_[max(0, idx-10*multiplier):min(max_idx, idx+10*multiplier)]
         peaks = np.where(y[idxs]==2)[0]
-        if len(peaks) > 2*num_periods: 
+        _logger.logger.debug(f"Number of peaks: {len(peaks)}")
+        if len(peaks) > 2*num_periods or iter_n == max_iter:
+            if iter_n == max_iter:
+                _logger.logger.error(f"Maximum number of iterations ({max_iter}) reached, and only {int(len(peaks)/2)}/{num_periods} have been found!")
+                try:
+                    assert not strict_mode
+                except AssertionError:
+                    _logger.logger.exception(f"Maximum iterations reached in determining orbital periods!", exc_info=True)
+                    raise
             # have the number of orbits we want, return indices
             found_peaks = True
             peaks_rel = idxs[0]+peaks - idx
-            end_idxs[0] = peaks_rel[np.where(peaks_rel<0, peaks_rel, -np.inf).argmax()-num_periods//2] + idx
-            end_idxs[1] = peaks_rel[np.where(peaks_rel>=0, peaks_rel, np.inf).argmin()+num_periods//2] + idx
+            # orbits are not of all same period, as orbit is shrinking
+            # sometimes there are not num_orbits//2 orbits before the desired index, thus the first entry to end_idxs could be negative. Protect against this by ensuring the first index is always >=0, and truncating the number of periods used
+            _idx0 = np.where(peaks_rel<0, peaks_rel, -np.inf).argmax()-num_periods//2
+            if _idx0 < 0 :
+                _idx1 = -_idx0
+                _idx0 = 0
+                try:
+                    assert not strict_mode
+                    _logger.logger.warning(f"Not enough complete orbits before desired time! Number of orbits used will be truncated to {_idx1}")
+                except AssertionError:
+                    _logger.logger.exception(f"Not enough complete orbits before desired time!", exc_info=True)
+                    raise
+            else:
+                _idx1 = min(np.where(peaks_rel>=0, peaks_rel, np.inf).argmin()+num_periods//2, len(peaks_rel)-1)
+            end_idxs[0] = peaks_rel[_idx0] + idx
+            end_idxs[1] = peaks_rel[_idx1] + idx
             try:
-                assert np.abs(np.diff(end_idxs)>1e-15)
+                assert end_idxs[0] < end_idxs[1]
             except AssertionError:
-                _logger.logger.exception(f"End indices of the period are the same: {end_idxs}. An error has occurred in the calculation! Search mutlitplier was {multiplier}, central index was {idx}, and {len(peaks)} peaks have been identified.", 
+                _logger.logger.exception(f"Period start index is greater than or equal to the period end index: {end_idxs}. An error has occurred in the calculation! Search mutlitplier was {multiplier}, central index was {idx}, and {len(peaks)} peaks have been identified.", 
                 exc_info=True)
                 raise
         else:
             # expand search bracket
             multiplier *= 2
+            iter_n += 1
     return idx, end_idxs
 
 
@@ -497,6 +526,60 @@ def move_to_centre_of_mass(bh1, bh2):
     bh2.v -= v_CM
     # TODO way to edit in place?
     return bh1, bh2
+
+
+def deflection_angle(bh1, bh2, peri_idx=None):
+    """
+    Determine the deflection angle due to scattering during a two-body encounter
+
+    Parameters
+    ----------
+     bh1 : ketjugw.Particle
+        BH 1
+    bh2 : ketjugw.Particle
+        BH 2
+    peri_idx : int, optional
+        indices of pericentre, by default None (calculates new)
+
+    Returns
+    -------
+    array-like
+        deflection angle (in radians)
+    """
+    M = bh1.m + bh2.m
+    L = radial_separation(ketjugw.orbital_angular_momentum(bh1, bh2))
+    E = ketjugw.orbital_energy(bh1, bh2)
+    if peri_idx is None:
+        _logger.logger.warning(f"Determining pericentre times using default inputs to `find_pericentre_time()`")
+        _, peri_idx = find_pericentre_time(bh1, bh2)
+    return 2 * np.arctan(M[peri_idx] / (L[peri_idx] * np.sqrt(2*E[peri_idx])))
+
+
+def first_major_deflection_angle(angles, threshold=np.pi/2):
+    """
+    Determine the value of the first major deflection
+
+    Parameters
+    ----------
+    angles : array-like
+        deflection angles at pericentre
+    threshold : float, optional
+        minimum angle for a 'major' deflection, by default np.pi/2
+
+    Returns
+    -------
+    : float
+        first major deflection angle
+    idx : int
+        which deflection angle is the first major angle
+    """
+    if np.any(angles > threshold):
+        idx = np.argmax(angles > threshold)
+        return angles[idx], idx
+    else:
+        _logger.logger.warning(f"No deflection angles were greater than the threshold value of {threshold:.3f}! Largest is {np.max(angles):.3f}")
+        return np.nan, None
+
 
 
 #### CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT ####
