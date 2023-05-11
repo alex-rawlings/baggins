@@ -1,6 +1,7 @@
 import argparse
 import multiprocessing as mp
 import os
+import re
 import datetime
 from numpy import arange
 import cm_functions as cmf
@@ -21,6 +22,18 @@ SL = cmf.ScriptLogger("script", args.verbose)
 
 class _Extractor:
     def __init__(self, apf, mpf, overwrite=False) -> None:
+        """
+        Data extraction base class, should not be directly called
+
+        Parameters
+        ----------
+        apf : str, path-like
+            path to analysis parameter file
+        mpf : list
+            list of merger parameter files
+        overwrite : bool, optional
+            allow output directory overwriting, by default False
+        """
         self.analysis_params_file = apf
         self.merger_params_files = mpf
         self.overwrite = overwrite
@@ -30,10 +43,9 @@ class _Extractor:
             self.merger_params.append(
                 cmf.utils.read_parameters(m)
             )
-        self._merger_family = None
+        self._make_family_name()
         self._merger_ids = []
         self._child_dirs = []
-        self._identifiers = []
         self._cube_files = []
     
     @property
@@ -49,21 +61,34 @@ class _Extractor:
         return self._child_dirs
 
     @property
-    def identifiers(self):
-        return self._identifiers
-
-    @property
     def cube_files(self):
         return self._cube_files
 
 
+    def _make_family_name(self):
+        """
+        Create the family name for a set of simulations, will be the directory within which each of the simulation cubes will be stored. Assumes that given a `merger_parameter.yml` file, a unique family name can be constructed by taking the galaxy progenitor names (removing any within-set identifiers such as '_a', '_A' up to 26, i.e. '_z'), and then appending the r0 and rperi distance, as was done to make the simulation directory.
+        """
+        _helper = lambda x: re.sub(r"[-_][a-z]$", "", x, count=1, flags=re.IGNORECASE)
+        gal1 = self.merger_params[0]["general"]["galaxy_name_1"]
+        gal2 = self.merger_params[0]["general"]["galaxy_name_2"]
+        gal1_basename = _helper(gal1)
+        gal2_basename = _helper(gal2)
+        sim_dir = self.merger_params[0]["calculated"]["full_save_location"].rstrip("/").split("/")[-1]
+        orbit_par = re.sub(f"{gal1}-{gal2}-", "", sim_dir, count=1)
+        self._merger_family = f"{gal1_basename}-{gal2_basename}-{orbit_par}"
+
+
     def _create_cube_names(self):
+        """
+        Create the cube names for each simulation in a set
+        """
         d = os.path.join(self.analysis_params["file_locations"]["cube_dir"], f"{self.merger_family}")
         os.makedirs(d, exist_ok=self.overwrite)
         for m in self.merger_ids:
             self._cube_files.append(f"{d}/HMQ-cube-{m}.hdf5")
 
-    
+
     def extract(self, i):
         try:
             hmq = cmf.analysis.HMQuantities(self.analysis_params_file, self.merger_params_files[i], self.child_dirs[i], self.merger_ids[i])
@@ -89,7 +114,6 @@ class ExtractorMCS(_Extractor):
         """
         super().__init__(apf, mpf, overwrite)
         run_dir = self.merger_params[0]["file_locations"]["save_location"]
-        self._merger_family = run_dir.rstrip("/").split("/")[-1]
         self._child_dirs = [os.path.join(run_dir, f"{p}/output") for p in next(os.walk(run_dir))[1]]
         self._child_dirs.sort()
         for m in self.merger_params:
@@ -118,7 +142,6 @@ class ExtractorPS(_Extractor):
         """
         super().__init__(apf, mpf, overwrite)
         run_dir = os.path.join(self.merger_params[0]["calculated"]["full_save_location"], self.merger_params[0]["file_locations"]["perturb_sub_dir"])
-        self._merger_family = run_dir.rstrip("/").split("/")[-2]
         if subdir is None:
             self._child_dirs = [os.path.join(run_dir, f"{p}/output") for p in next(os.walk(run_dir))[1]]
         else:

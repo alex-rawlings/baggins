@@ -388,6 +388,9 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1, max_iter=100, strict_
     pericentre to pericentre. Only odd-numbered num_periods values are 
     implemented for symmetry reasons, thus an even value of num_periods is the 
     same as calling the function with num_periods+1.
+    The method can also be used for any approximately monotonic series `tarr`, 
+    such as for example semimajor axis, provided the interval between data 
+    points is reasonably short.
 
     Parameters
     ----------

@@ -87,6 +87,15 @@ class HMQuantitiesData(HDF5Base):
     def binary_masses(self, v):
         self._binary_masses = v
 
+    # pericentre deflection angles before binary is bound
+    @property
+    def prebound_deflection_angles(self):
+        return self._prebound_deflection_angles
+
+    @prebound_deflection_angles.setter
+    def prebound_deflection_angles(self, v):
+        self._prebound_deflection_angles = v
+
     ##--------------------- Merger Quantities ---------------------##
 
     # properties of the merger remnant

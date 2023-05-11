@@ -8,7 +8,7 @@ import pygad
 
 from . import HMQuantitiesData
 from ..analyse_snap import get_com_velocity_of_each_galaxy, influence_radius, hardening_radius, projected_quantities, get_com_of_each_galaxy, inner_DM_fraction, determine_if_merged, velocity_anisotropy, get_massive_bh_ID, get_G_rho_per_sigma
-from ..orbit import get_bound_binary
+from ..orbit import get_bound_binary, get_binary_before_bound, move_to_centre_of_mass, find_pericentre_time, deflection_angle
 from ...env_config import _cmlogger, date_format, username
 from ...general import convert_gadget_time
 from ...mathematics import radial_separation
@@ -62,6 +62,7 @@ class HMQuantities(HMQuantitiesData):
 
         bh1, bh2, merged = get_bound_binary(self.ketju_file)
         orbit_pars = ketjugw.orbital_parameters(bh1, bh2)
+        bh1_pb, bh2_pb = get_binary_before_bound(self.ketju_file)
 
         # time that binary is bound
         self.binary_time = orbit_pars["t"]/myr
@@ -86,6 +87,15 @@ class HMQuantities(HMQuantitiesData):
 
         # masses of BHs
         self.binary_masses = [bh1.m[0], bh2.m[0]]
+
+        # pericentre deflection angle before binary is bound
+        bh1_pb, bh2_pb = move_to_centre_of_mass(bh1_pb, bh2_pb)
+        try:
+            peri_idxs = find_pericentre_time(bh1_pb, bh2_pb, prominence=0.005)
+            self.prebound_deflection_angles = deflection_angle(bh1_pb, bh2_pb, peri_idxs)
+        except:
+            _logger.logger.exception(f"Unable to determine pericentre times before binary is bound!", exc_info=True)
+            self.prebound_deflection_angles = []
 
         ##------------------- Determine merger properties -------------------##
 
@@ -275,7 +285,8 @@ class HMQuantities(HMQuantitiesData):
                         "binary_energy",
                         "binary_separation",
                         "binary_period",
-                        "binary_masses"
+                        "binary_masses",
+                        "prebound_deflection_angles"
             ]
             self._saver(bhb, _bhb_dl)
             _logger.logger.info(f"BH binary quantities saved to {fname}")
