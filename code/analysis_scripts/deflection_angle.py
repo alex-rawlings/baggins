@@ -21,7 +21,7 @@ SL = cmf.ScriptLogger("script", args.verbosity)
 
 if args.publish:
     cmf.plotting.set_publishing_style()
-
+    legend_kwargs = {"ncol":2, "fontsize":"small"}
 try:
     assert args.angle >=0 and args.angle <= 180
     angle_defl = args.angle * np.pi / 180
@@ -85,9 +85,9 @@ for j, datdir in enumerate(data_dirs):
     plt.errorbar(thetas*180/np.pi, median_eccs, xerr=None, yerr=iqr_eccs, fmt="o", capsize=2, mec="k", mew=0.5, label=labels[j])
 
 if args.extra_dirs:
-    plt.legend(title=legend_title)
-plt.xlabel(r"$\theta_\mathrm{defl}$")
-plt.ylabel("e")
+    plt.legend(title=legend_title, **legend_kwargs)
+plt.xlabel(r"$\theta\degree_\mathrm{defl}$")
+plt.ylabel("$e$")
 plt.title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
 plt.ylim(0,1)
 
