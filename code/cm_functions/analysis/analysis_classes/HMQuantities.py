@@ -10,7 +10,7 @@ from . import HMQuantitiesData
 from ..analyse_snap import get_com_velocity_of_each_galaxy, influence_radius, hardening_radius, projected_quantities, get_com_of_each_galaxy, inner_DM_fraction, determine_if_merged, velocity_anisotropy, get_massive_bh_ID, get_G_rho_per_sigma
 from ..orbit import get_bound_binary, get_binary_before_bound, move_to_centre_of_mass, find_pericentre_time, deflection_angle
 from ...env_config import _cmlogger, date_format, username
-from ...general import convert_gadget_time
+from ...general import convert_gadget_time, units
 from ...mathematics import radial_separation
 from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 
@@ -18,10 +18,6 @@ from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 __all__ = ["HMQuantities"]
 
 _logger = _cmlogger.copy(__file__)
-
-myr = ketjugw.units.yr * 1e6
-kpc = ketjugw.units.pc * 1e3
-
 
 
 class HMQuantities(HMQuantitiesData):
@@ -65,10 +61,10 @@ class HMQuantities(HMQuantitiesData):
         bh1_pb, bh2_pb = get_binary_before_bound(self.ketju_file)
 
         # time that binary is bound
-        self.binary_time = orbit_pars["t"]/myr
+        self.binary_time = orbit_pars["t"]/units.Myr
 
         # semimajor axis of binary
-        self.semimajor_axis = orbit_pars["a_R"] / kpc
+        self.semimajor_axis = orbit_pars["a_R"] / units.kpc
 
         # eccentricity of binary
         self.eccentricity = orbit_pars["e_t"]
@@ -80,10 +76,10 @@ class HMQuantities(HMQuantitiesData):
         self.binary_energy = ketjugw.orbital_energy(bh1, bh2)
 
         # radial separation of binary
-        self.binary_separation = radial_separation(bh1.x / kpc, bh2.x / kpc)
+        self.binary_separation = radial_separation(bh1.x / units.kpc, bh2.x / units.kpc)
 
         # period of binary
-        self.binary_period = 2*np.pi / orbit_pars["n"] / myr
+        self.binary_period = 2*np.pi / orbit_pars["n"] / units.Myr
 
         # masses of BHs
         self.binary_masses = [bh1.m[0], bh2.m[0]]
@@ -91,7 +87,7 @@ class HMQuantities(HMQuantitiesData):
         # pericentre deflection angle before binary is bound
         bh1_pb, bh2_pb = move_to_centre_of_mass(bh1_pb, bh2_pb)
         try:
-            peri_idxs = find_pericentre_time(bh1_pb, bh2_pb, prominence=0.005)
+            _, peri_idxs = find_pericentre_time(bh1_pb, bh2_pb, prominence=0.005)
             self.prebound_deflection_angles = deflection_angle(bh1_pb, bh2_pb, peri_idxs)
         except:
             _logger.logger.exception(f"Unable to determine pericentre times before binary is bound!", exc_info=True)
@@ -177,9 +173,12 @@ class HMQuantities(HMQuantitiesData):
             self.influence_radius.append(
                 max(list(influence_radius(snap).values()))
             )
-            self.hardening_radius.append(
-                hardening_radius(snap.bh["mass"], self.influence_radius[i])
-            )
+            try:
+                self.hardening_radius.append(
+                    hardening_radius(snap.bh["mass"], self.influence_radius[i])
+                )
+            except AssertionError:
+                self.hardening_radius.append(pygad.UnitScalar(np.nan, self.influence_radius[i].units))
             self.half_mass_radius.append(
                 pygad.analysis.half_mass_radius(snap.stars[ball_mask], center=xcom)
             )
@@ -322,3 +321,10 @@ class HMQuantities(HMQuantitiesData):
             _logger.logger.info(f"Galaxy property quantities saved to {fname}")
 
 
+    @classmethod
+    def load_from_file(self, f):
+        try:
+            raise NotImplementedError
+        except NotImplementedError:
+            _logger.logger.exception(f"Class {self.__name__} does not inherit the method <load_from_file> from {self.__base__.__name__}", exc_info=True)
+            raise

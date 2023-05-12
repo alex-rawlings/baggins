@@ -1,6 +1,11 @@
 import warnings
-from ...general import get_idx_in_array
+import numpy as np
 from . import HDF5Base
+from ...general import get_idx_in_array
+from ...env_config import _cmlogger
+
+
+_logger = _cmlogger.copy(__file__)
 
 __all__ = ["HMQuantitiesData"]
 
@@ -284,3 +289,24 @@ class HMQuantitiesData(HDF5Base):
     def get_idx_in_vec(self, t, tarr):
         warnings.warn("This function is a now called through general.get_idx_in_array()", DeprecationWarning)
         return get_idx_in_array(t, tarr)
+
+
+    def mass_resolution(self):
+        """
+        Determine the mass resolution for this simulation
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
+        if "stars" not in self.particle_masses:
+            _logger.logger.error(f"Key 'stars' not present in 'particle_masses', trying 'dm' instead...")
+            try:
+                field_part_mass = self.particle_masses["dm"]
+            except KeyError:
+                _logger.logger.exception(f"Key 'dm' not present in 'particle_masses': need one of 'stars' or 'dm'!", exc_info=True)
+                raise
+        else:
+            field_part_mass = self.particle_masses["stars"]
+        return self.particle_masses["bh"]/field_part_mass

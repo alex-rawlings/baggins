@@ -449,6 +449,11 @@ def hardening_radius(bhms, rm):
     : pygad.UnitArr
         hard binary radius in the same units as rm
     """
+    try:
+        assert len(bhms) == 2
+    except AssertionError:
+        _logger.logger.exception(f"Hardening radius defined for a BH binary, but only one BH is present!", exc_info=True)
+        raise
     q = bhms[0] / bhms[1]
     q = 1/q if q>1 else q #ensure q <= 1
     ah = q / (1 + q)**2 * rm / 4

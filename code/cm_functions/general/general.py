@@ -4,7 +4,7 @@ import scipy.optimize, scipy.special, scipy.interpolate
 from time import time
 from ..env_config import _cmlogger
 
-__all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity", "set_seed_time", "get_idx_in_array", "get_unique_path_part"]
+__all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity", "set_seed_time", "get_idx_in_array", "get_unique_path_part", "represent_numeric_in_scientific"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -173,4 +173,12 @@ def get_unique_path_part(path_list):
     for s in path_list:
         unique_parts.append(s[common_path_len:].lstrip("/"))
     return unique_parts
+
+
+def represent_numeric_in_scientific(v, mantissa_fmt=".1f"):
+    if mantissa_fmt[-1] != "f":
+        _logger.logger.error(f"Mantissa format must be of floating point type! Using default value '.1f'")
+        mantissa_fmt = ".1f"
+    exponent = int(np.floor(np.log10(v)))
+    return f"${v/10**exponent:{mantissa_fmt}}\\times 10^{exponent}$"
 
