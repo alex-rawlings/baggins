@@ -15,6 +15,15 @@
 \begin{itemize}
     \item show that impact parameters sensitive
 \end{itemize}
+\begin{figure*}
+    \includegraphics{nasim_scatter_e0-990.pdf}
+    \caption{\drafting{Show a plot like this where the scatter in eccentricity is determined as the standard deviation across simulations}}
+    \label{fig:nasim_e90}
+\end{figure*}
+We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.99$ orbit in \autoref{fig:nasim_e90}. 
+We find that the scaling of $\sigma_e$ is better described by a relation proportional to $1/N_\star$, as opposed to the $1/\sqrt{N_\star}$ relation described in \citet{nasim20}.
+We attribute this dramatic decrease in $\sigma_e$ to an inflated value of $\sigma_e$ at low mass resolution: there is increased scatter in eccentricity at low mass resolutions for very radial initial orbits of the SMBH binary. 
+
 
 
 \begin{figure*}
@@ -24,17 +33,22 @@
 \end{figure*}
 
 \begin{figure*}
-    \includegraphics{nasim_scatter_e0-0.990}
-    \caption{\drafting{Show a plot like this where the scatter in eccentricity is determined as the standard deviation across simulations}}
-    \label{fig:nasim}
-\end{figure*}
-
-\begin{figure*}
     \includegraphics{hyperparameter}
     \caption{\drafting{Hyperparameters of a hierarchical model of the binary hardening from a time when the binary is hard. To show convergence, we could compare the the distributions of $\sigma_{e_h}$ directly between resolutions}}
     \label{fig:hyperparameter}
 \end{figure*}
 
+\begin{figure}
+    \includegraphics{deflect_e-0900}
+    \caption{\drafting{Theta-e plane for $e_0=0.90$ orbit}}
+    \label{fig:deflect_e90}
+\end{figure}
+
+\begin{figure}
+    \includegraphics{deflect_e-0990}
+    \caption{\drafting{Theta-e plane for $e_0=0.99$ orbit}}
+    \label{fig:deflect_e99}
+\end{figure}
 
 
 \subsection{Explaining the eccentricity scatter with a toy model}
