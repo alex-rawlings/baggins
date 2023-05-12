@@ -45,7 +45,7 @@ if args.orbits:
 myr = ketjugw.units.yr * 1e6
 kpc = ketjugw.units.pc * 1e3
 cols = cmf.plotting.mplColours()
-linestyles = list(cmf.plotting.mplLines().values())
+linestyles = cmf.plotting.mplLines()
 num_dirs = len(ketju_dirs)
 SL.logger.debug(f"We will be plotting {num_dirs} different families...")
 

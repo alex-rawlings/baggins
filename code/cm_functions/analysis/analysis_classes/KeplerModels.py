@@ -29,8 +29,8 @@ class _KeplerModelBase(StanModel_1D):
 
         Parameters
         ----------
-        dir : str
-            directory where hierarchical model data (from simulations) is
+        dir : list
+            list of paths to hierarchical model data files
         pars : dict
             analysis parameters
         """
@@ -39,7 +39,7 @@ class _KeplerModelBase(StanModel_1D):
         for f in dir:
             _logger.logger.info(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
-            obs["star_mass"] = hmq.particle_masses["stars"]
+            obs["star_mass"].append([hmq.particle_masses["stars"]])
             try:
                 idx = hmq.get_idx_in_vec(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             except ValueError:

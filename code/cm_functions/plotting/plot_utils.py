@@ -28,6 +28,8 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
     """
     if fig is None:
         fig = gcf()
+    if publishing_style_set:
+        fig_ext = "pdf"
     f = inspect.stack()[-1] # get outermost caller on stack
     now = datetime.now()
     if fig_ext == "png":
@@ -81,6 +83,8 @@ def set_publishing_style():
     Set a custom matplolibrc file that is designed specifically for 
     publishing-style plots. Mainly changes figure size and axis label size.
     """
+    global publishing_style_set
+    publishing_style_set = True
     rcdefaults()
     rc_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "matplotlibrc_publish"))
     _logger.logger.info("Publishing Matplotlib style set")

@@ -1,4 +1,3 @@
-from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
@@ -120,25 +119,26 @@ def mplLines(regular=5, loose=10, dense=1):
 
     Returns
     -------
-    : collections.OrderedDict
-        linestyles that can be accessed by keyword or .items() notation
+    : list
+        linestyles
     """
-    return OrderedDict([
+    d = dict([
             ("solid",                    (0, ())),
             ("dotted",                   (0, (1,1))),
             ("dashed",                   (0, (5,regular))),
             ("dashdotted",               (0, (3,regular,1,regular))),
             ("dashdotdotted",            (0, (3,regular,1,regular,1,regular))),
 
-            ("densely dashed",           (0, (5,dense))),
-            ("densely dashdotted",       (0, (3,dense,1,dense))),
-            ("densely dashdotdotted",    (0, (3,dense,1,dense,1,dense))),
+            ("densely-dashed",           (0, (5,dense))),
+            ("densely-dashdotted",       (0, (3,dense,1,dense))),
+            ("densely-dashdotdotted",    (0, (3,dense,1,dense,1,dense))),
 
-            ("loosely dotted",           (0, (1,loose))),
-            ("loosely dashed",           (0, (5,loose))),
-            ("loosely dashdotted",       (0, (3,loose,1,loose))),
-            ("loosely dashdotdotted",    (0,(3,loose,1,loose,1,loose))),
+            ("loosely-dotted",           (0, (1,loose))),
+            ("loosely-dashed",           (0, (5,loose))),
+            ("loosely-dashdotted",       (0, (3,loose,1,loose))),
+            ("loosely-dashdotdotted",    (0,(3,loose,1,loose,1,loose))),
     ])
+    return list(d.values())
 
 
 def mplChars():
@@ -211,7 +211,7 @@ def create_odd_number_subplots(nrow, ncol, fkwargs={}, gskwargs={}):
     return fig, np.array(ax)
 
 
-def nice_log10_scale(ax):
+def nice_log10_scale(ax, axis="y"):
     """
     Ensure nice log scaling on an axis
 
@@ -220,8 +220,15 @@ def nice_log10_scale(ax):
     ax : matplotlib.axes._subplots.AxesSubplot
         axis to plot to
     """
-    ylims = ax.get_ylim()
-    ax.set_ylim(
-        10**np.floor(np.log10(ylims[0])),
-        10**np.ceil(np.log10(ylims[1]))
-    )
+    if "y" in axis:
+        ylims = ax.get_ylim()
+        ax.set_ylim(
+            10**np.floor(np.log10(ylims[0])),
+            10**np.ceil(np.log10(ylims[1]))
+        )
+    if "x" in axis:
+        xlims = ax.get_xlim()
+        ax.set_xlim(
+            10**np.floor(np.log10(xlims[0])),
+            10**np.ceil(np.log10(xlims[1]))
+        )

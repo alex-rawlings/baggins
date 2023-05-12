@@ -1,6 +1,9 @@
 import argparse
+import os.path
 import numpy as np
+import scipy.optimize
 import matplotlib.pyplot as plt
+from matplotlib import matplotlib_fname
 import cm_functions as cmf
 
 
@@ -39,29 +42,64 @@ ax.set_xscale("log")
 ax.set_yscale("log")
 
 # list to store the values to plot
-x = []
+e_ini = []
+mass_res = []
 sigma_e = []
+sim_count = 0
 
 
 for d in hmq_dirs:
     # we can hack into the Kepler HM classes to extract the data
-    # TODO may need to fix place holder figname parameter
+    HMQ_files = cmf.utils.get_files_in_dir(d)
     km = cmf.analysis.KeplerModelHierarchy("", "", "")
-    km.extract_data(d, analysis_params)
+    km.extract_data(HMQ_files, analysis_params)
     sigma_e.append(np.nanstd(
         [np.nanmean(ecc) for ecc in km.obs["e"]]
     ))
-    if args.groups == "e":
-        x.append(km.obs["e_ini"])
-    else:
-        min_bh_mass = min(min(km.obs["mass1"]), min(km.obs["mass2"]))
-        try:
-            assert np.allclose(np.diff([m for m in km.obs["star_mass"]]))
-        except AssertionError:
-            SL.logger.exception(f"Non-unique stellar masses! A fair comparison cannot be made. Stellar masses are {km.obs['star_mass']}", exc_info=True)
-            raise
-        x.append(min_bh_mass/km.obs["star_mass"][0])
+    e_ini.extend(km.obs["e_ini"])
+    min_bh_mass = min(min(km.obs["mass1"]), min(km.obs["mass2"]))
+    try:
+        assert np.allclose(np.diff(np.concatenate(km.obs["star_mass"])), np.zeros(km.num_groups-1))
+    except AssertionError:
+        SL.logger.exception(f"Non-unique stellar masses! A fair comparison cannot be made. Stellar masses are {km.obs['star_mass']}", exc_info=True)
+        raise
+    mass_res.append(min_bh_mass/km.obs["star_mass"][0])
+    sim_count += km.num_groups
 
-ax.scatter(x, sigma_e, lw=0.5, ec="k")
+e_ini = np.concatenate(e_ini)
+mass_res = np.concatenate(mass_res)
+
+if args.groups == "e":
+    try:
+        assert np.allclose(np.diff(mass_res), np.zeros(sim_count-1))
+    except AssertionError:
+        SL.logger.exception(f"Mass resolution must be constant when varying initial eccentricity!", exc_info=True)
+        raise
+    x = e_ini
+    fig_prefix = f"res-{mass_res[0]:.1e}"
+else:
+    try:
+        assert np.allclose(np.diff(e_ini), np.zeros(sim_count-1))
+    except AssertionError:
+        SL.logger.exception(f"Initial eccentricity must be constant when varying mass resolution!", exc_info=True)
+        raise
+    x = mass_res
+    fig_prefix = f"e0-{e_ini[0]:.3f}"
+
+ax.scatter(x, sigma_e, lw=0.5, ec="k", label="Sims.", zorder=10)
+
+# add the Nasim line if plotting resolution on x axis
+if args.groups == "res":
+    xseq = np.geomspace(0.9*min(x), 1.1*max(x))
+    nasim_line_1 = lambda n,k: k/np.sqrt(n+k**2)
+    nasim_line_2 = lambda n,k: k/np.sqrt(n**2+k**2)
+    for nl, lab, ls in zip((nasim_line_1, nasim_line_2), (r"$\propto 1/\sqrt{N}$", r"$\propto 1/N$"), cmf.plotting.mplLines()):
+        popt, pcov = scipy.optimize.curve_fit(nl, x, sigma_e)
+        ax.plot(xseq, nl(xseq, *popt), c="k", label=lab, ls=ls)
+cmf.plotting.nice_log10_scale(ax, "x")
+ax.legend()
+
+if args.save:
+    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/nasim_scatter_{fig_prefix}.png"))
 
 plt.show()
