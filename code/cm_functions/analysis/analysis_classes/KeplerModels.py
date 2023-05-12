@@ -39,7 +39,6 @@ class _KeplerModelBase(StanModel_1D):
         for f in dir:
             _logger.logger.info(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
-            obs["star_mass"].append([hmq.particle_masses["stars"]])
             try:
                 idx = hmq.get_idx_in_vec(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             except ValueError:
@@ -73,6 +72,7 @@ class _KeplerModelBase(StanModel_1D):
                 obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
             except AttributeError:
                 _logger.logger.warning(f"File {f} is missing the 'initial_galaxy_orbit' attribute. Ideally, re-run HMQ extraction process.")
+            obs["star_mass"].append([hmq.particle_masses["stars"]])
             i += 1
         self.obs = obs
 
