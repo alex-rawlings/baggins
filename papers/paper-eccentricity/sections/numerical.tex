@@ -17,11 +17,11 @@ We test \drafting{X} different mass resolutions by sampling the stellar phase sp
 
 \subsection{Merger ICs}
 We construct isolated merger initial conditions by placing two galaxies on an elliptical orbit with varying values of eccentricity, at a fixed initial separation of $D=3.72\,\mathrm{kpc}$ and semimajor axis $a_0=2.79\,\mathrm{kpc}$.
-We follow the same orbital configurations as \citet{gualandris22}, with one additional orbit. 
-The chosen eccentricities $e$ are 0.5, 0.7, 0.9, and 0.99.
+We follow the same orbital configurations as \citet{gualandris22}, with three additional orbit. 
+The chosen eccentricities $e$ are 0.5, 0.7, 0.9, 0.95, 0.97, and 0.99.
 We ensure that the radial and tangential velocities of the initial merger setup are consistent with the values reported in \citet{gualandris22}.
 An example of each orbital configuration is shown in \autoref{fig:orbits}.
-For each orbital configuration, we run \drafting{X} realisations, to account for Brownian motion effects of the SMBH binary caused by the discretised phase space. 
+For each orbital configuration, we run ten realisations, to account for Brownian motion effects of the SMBH binary caused by the discretised phase space. 
 Each orbital geometry is simulated using our fiducial particle resolution of $M_\bullet/m_\star = 10^4$.
 Additionally, we run the $e=0.9$ and $e=0.99$ orbits at varying mass resolutions, using the galaxy ICs at the mass resolutions described in \autoref{ssec:gics}.
 

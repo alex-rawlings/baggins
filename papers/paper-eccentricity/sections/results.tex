@@ -12,9 +12,18 @@
 \end{itemize}
 \begin{figure*}
     \includegraphics{nasim_scatter_e0-900.pdf}
-    \caption{\drafting{Show a plot like this where the scatter in eccentricity is determined as the standard deviation across simulations}}
+    \caption{\drafting{Inverse modelling convergence of eccentricity scatter as a function of mass resolution for $e_0=0.90$. NOTE AXIS LABEL SHOULD BE MASS RESOLUTION NOT PARTICLE NUMBER HERE}}
     \label{fig:nasim_e90}
 \end{figure*}
+We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:nasim_e99}. 
+Immediately apparent is the lack of convergence of $\sigma_e$, with $5\times10^3$ and $1\times10^4$ mass resolutions demonstrating an increased scatter compared to the lowest mass resolution of $2.5\times10^3$.
+The peculiar values of $\sigma_e$ arises due to the assumed Gaussian distribution of the eccentricity between simulations.
+Inspecting the orbital parameters for all simulations that form the $e_0=0.90$ suite, it is found that for resolutions of $5\times10^3$ and $1\times10^4$ the eccentricity clusters around a value of $e_\mathrm{h}\simeq0.90$, except for one simulation at each resolution which has a value of $e_\mathrm{h}<0.4$.
+This one outlier for each of the two resolutions artificially inflates the measured eccentricity variance, and by removing these two points we recover the $1/\sqrt{N_\star}$ scaling of $\sigma_e$ as in \citet{nasim20}.
+However, these low eccentricity values are a valid measurement from the simulation, and highlight the weakness in the inverse modelling approach to determine the spread in eccentricity. 
+The cause of these low eccentricity values is discussed in \autoref{ssec:toy}.
+\drafting{Run Bayesian model, more robust?}
+
 
 \subsection{Eccentricity scatter in high-e orbits}
 \begin{itemize}
@@ -28,7 +37,7 @@
 We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.99$ orbit in \autoref{fig:nasim_e99}. 
 We find that the scaling of $\sigma_e$ is better described by a relation proportional to $1/N_\star$, as opposed to the $1/\sqrt{N_\star}$ relation described in \citet{nasim20}.
 We attribute this dramatic decrease in $\sigma_e$ to an inflated value of $\sigma_e$ at low mass resolution: there is increased scatter in eccentricity at low mass resolutions for very radial initial orbits of the SMBH binary. 
-
+\drafting{TODO: figure comparing different eccentricity scatters}
 
 
 \begin{figure*}
@@ -56,7 +65,7 @@ We attribute this dramatic decrease in $\sigma_e$ to an inflated value of $\sigm
 \end{figure}
 
 
-\subsection{Explaining the eccentricity scatter with a toy model}
+\subsection{Explaining the eccentricity scatter with a toy model}\label{ssec:toy}
 
 We can gain insight into the large binary eccentricity scatter observed in the
 runs with high galactic merger orbit eccentricities by considering a simplified
