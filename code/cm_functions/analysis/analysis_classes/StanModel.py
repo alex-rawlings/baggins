@@ -298,6 +298,9 @@ class _StanModel:
             except AssertionError:
                 _logger.logger.exception(f"Observation {obs_name} has already been collapsed! Cannot collapse again!", exc_info=True)
                 raise
+            except IndexError:
+                _logger.logger.exception(f"Error collapsing {obs_name}, {self.obs[obs_name]}")
+                raise
         try:
             assert len(np.unique(dim)) == 1
         except AssertionError:

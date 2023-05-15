@@ -37,7 +37,7 @@ class _KeplerModelBase(StanModel_1D):
         obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[]}
         i = 0
         for f in dir:
-            _logger.logger.info(f"Loading file: {f}")
+            _logger.logger.debug(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
             try:
                 idx = hmq.get_idx_in_vec(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
@@ -74,6 +74,11 @@ class _KeplerModelBase(StanModel_1D):
                 _logger.logger.warning(f"File {f} is missing the 'initial_galaxy_orbit' attribute. Ideally, re-run HMQ extraction process.")
             obs["star_mass"].append([hmq.particle_masses["stars"]])
             i += 1
+        try:
+            assert i >= pars["stan"]["min_num_samples"]
+        except AssertionError:
+            _logger.logger.exception(f"We require no less than {pars['stan']['min_num_samples']} samples groups, but have only {i}!", exc_info=True)
+            raise
         self.obs = obs
 
         # some transformations we need

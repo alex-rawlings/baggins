@@ -26,5 +26,6 @@ Phase 3.1: multiple low resolutions runs of Hernquist spheres to fill out parame
 |phase|# particles/galaxy | e  | # runs| completed|
 |-----|-------------------|----|-------|----------|
 | 3.1 | 500 K             |0.99|    21 |       r  |
+| 3.0 | 500 K             |0.99|     1 |       W  |
 
 *Total number of runs: 151*

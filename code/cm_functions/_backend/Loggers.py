@@ -22,7 +22,7 @@ class InternalLogger:
             redirect all warnings to the logger, by default True
         """
         self.logger = logging.getLogger(name)
-        self._console_level = console_level
+        self._console_level = self._ensure_valid_level(console_level)
         self._capture_warnings = capture_warnings
         self._base_name = self.logger.name
         self._is_copy = False
@@ -35,10 +35,12 @@ class InternalLogger:
         self._logfile = None
         self._file_level = None
         logging.captureWarnings(self._capture_warnings)
-    
+
+
     @property
     def name(self):
         return self.logger.name
+
 
     def _set_handler(self, handler, level, fmt):
         """
@@ -56,7 +58,8 @@ class InternalLogger:
         handler.setLevel(getattr(logging, level))
         handler.setFormatter(logging.Formatter(fmt))
         self.logger.addHandler(handler)
-    
+
+
     def _ensure_valid_level(self, v):
         """
         Helper function to ensure a valid logging level is parsed
@@ -80,7 +83,8 @@ class InternalLogger:
         if v not in ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
             raise ValueError(f"Logging level <{v}> invalid!")
         return v
-    
+
+
     def add_file_handler(self, logfile, file_level="ERROR"):
         """
         Add a file handler to the logger
@@ -93,12 +97,13 @@ class InternalLogger:
             logging level, by default "ERROR"
         """
         self._logfile = logfile
-        self._file_level = file_level
+        self._file_level = self._ensure_valid_level(file_level)
         if not self._is_copy:
             with open(logfile, "a") as f:
                 f.write(f"{datetime.now()}: parent logger <{self.name}> created\n")
         self._f_handler = logging.FileHandler(filename=logfile)
         self._set_handler(self._f_handler, file_level, fmt=self._fh_format)
+
 
     def copy(self, n=None):
         """
@@ -124,6 +129,8 @@ class InternalLogger:
         if self._logfile is not None:
             c.add_file_handler(self._logfile, self._file_level)
         return c
+
+
 
 
 class ScriptLogger(InternalLogger):

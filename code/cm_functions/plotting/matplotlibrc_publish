@@ -372,8 +372,8 @@ axes.labelsize      : 8  # fontsize of the x any y labels
 
 ### TICKS
 # see http://matplotlib.org/api/axis_api.html#matplotlib.axis.Tick
-#xtick.top            : False   # draw ticks on the top side
-#xtick.bottom         : True   # draw ticks on the bottom side
+xtick.top            : True   # draw ticks on the top side
+xtick.bottom         : True   # draw ticks on the bottom side
 #xtick.major.size     : 3.5      # major tick size in points
 #xtick.minor.size     : 2      # minor tick size in points
 #xtick.major.width    : 0.8    # major tick width in points
@@ -389,8 +389,8 @@ xtick.labelsize      : 8 # fontsize of the tick labels
 #xtick.minor.top      : True   # draw x axis top minor ticks
 #xtick.minor.bottom   : True   # draw x axis bottom minor ticks
 
-#ytick.left           : True   # draw ticks on the left side
-#ytick.right          : False  # draw ticks on the right side
+ytick.left           : True   # draw ticks on the left side
+ytick.right          : True  # draw ticks on the right side
 #ytick.major.size     : 3.5      # major tick size in points
 #ytick.minor.size     : 2      # minor tick size in points
 #ytick.major.width    : 0.8    # major tick width in points
