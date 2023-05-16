@@ -1,0 +1,27 @@
+The second method is a forward modelling method, where we use Bayesian analysis to construct a simple hierarchical model. 
+We construct the hierarchical model using \textsc{Stan}, which is an implementation of Hamiltonian Monte Carlo.
+Our likelihood function is constructed using the analytical hardening relations \citep{quinlan96,sesana06}:
+\begin{equation}\label{eq:quinlan_H}
+    \dv{}{t}\left( \frac{1}{a} \right) = H \frac{G\rho}{\sigma},
+\end{equation}
+and
+\begin{equation}\label{eq:quinlan_K}
+    \dv{e}{t} = -K a^{-1} \dv{a}{t}.
+\end{equation}
+In these equations, $H$ and $K$ are dimensionless constants describing the evolution rate of the semimajor axis and eccentricity of the SMBH binary, respectively, and $\rho$ and $\sigma$ are the stellar density and velocity dispersion within the binary influence radius, respectively.
+We wish to determine the uncertainty on the free parameters $H' = HG\rho/\sigma$ and $K$, in addition to the initial conditions for the differential equation system, $a_\mathrm{h}$ and $e_\mathrm{h}$, at a time $t_\mathrm{h}$. 
+Let us denote the set of parameters $[H', K, a_\mathrm{h}, e_\mathrm{h}]$ as $\theta$.
+To determine the uncertainty in the parameter set $\theta$, we solve the differential equation system analytically for a time period after the SMBH binary becomes hard where the effect of GW emission can be ignored: here taken to be $t_\mathrm{end} = t(a=10\,\mathrm{pc})$. 
+Defining a time translation $t' = t - t_\mathrm{h}$, \autoref{eq:quinlan_H} becomes:
+\begin{equation}\label{eq:quinlan_H2}
+    \frac{1}{a(t')} \simeq H't' + \frac{1}{a_\mathrm{h}},
+\end{equation}
+and \autoref{eq:quinlan_K} becomes:
+\begin{equation}\label{eq:quinlan_K2}
+    e(t') \simeq K \ln\left[ \frac{a_\mathrm{h}}{a(t')} \right] + e_\mathrm{h}.
+\end{equation}
+The parallel to the first method now becomes apparent: in a given set of simulations, each simulation will have its own value of $\theta$, however each realisation of $\theta$ is itself a draw from a common population distribution that we wish to understand.
+If we assume that $e_\mathrm{h}$ is normally distributed with some mean $\mu_{e_\mathrm{h}}$ and standard deviation $\sigma_{e_\mathrm{h}}$, then the distribution of $\sigma_{e_\mathrm{h}}$ is precisely the uncertainty in the standard deviation of the binary eccentricity at the time the binary becomes hard.
+The primary benefit to using this second, forward modelling approach, is that we obtain an uncertainty estimate on $\sigma_{e_\mathrm{h}}$, which is not obtainable when using the first, inverse modelling approach. 
+
+A probabilistic graphical model is shown in \drafting{FIGURE}.

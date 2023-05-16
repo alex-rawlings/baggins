@@ -4,62 +4,44 @@
     \item Show that brownian motion affects impact parameter of the final passage before BHs bound --> eccentricity set
 \end{itemize}
 
-\drafting{Nasim result takes the mean of the eccentricity over some time period, and then determines the standard deviation across the means of different realisations of a merger system. We probably need to show this too for `consistency', however we could also introduce a simple hierarchical model here that allows us to do something similar more robustly.}
+\begin{figure}
+    \includegraphics{convergence}
+    \caption{\drafting{Convergence of eccentricity scatter as a function of mass resolution for $e_0=0.90$ and $e_0=0.99$. }}
+    \label{fig:convergence}
+\end{figure}
 
 \subsection{Eccentricity scatter in low-e orbits}
 \begin{itemize}
     \item Show that impact parameters not sensitive
 \end{itemize}
-\begin{figure*}
-    \includegraphics{nasim_scatter_e0-900.pdf}
-    \caption{\drafting{Inverse modelling convergence of eccentricity scatter as a function of mass resolution for $e_0=0.90$. }}
-    \label{fig:nasim_e90}
-\end{figure*}
-We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:nasim_e99}. 
-Immediately apparent is the lack of convergence of $\sigma_e$, with $5\times10^3$ and $1\times10^4$ mass resolutions demonstrating an increased scatter compared to the lowest mass resolution of $2.5\times10^3$.
+We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:convergence} with purple markers. 
+Taking the full set of ten simulations for this set (circle markers), immediately apparent is the lack of convergence of $\sigma_e$, with $5\times10^3$ and $1\times10^4$ mass resolutions demonstrating an increased scatter compared to the lowest mass resolution of $2.5\times10^3$.
 The peculiar values of $\sigma_e$ arises due to the assumed Gaussian distribution of the eccentricity between simulations.
 Inspecting the orbital parameters for all simulations that form the $e_0=0.90$ suite, it is found that for resolutions of $5\times10^3$ and $1\times10^4$ the eccentricity clusters around a value of $e_\mathrm{h}\simeq0.90$, except for one simulation at each resolution which has a value of $e_\mathrm{h}<0.4$.
-This one outlier for each of the two resolutions artificially inflates the measured eccentricity variance, and by removing these two points we recover the $1/\sqrt{N_\star}$ scaling of $\sigma_e$ as in \citet{nasim20}.
-However, these low eccentricity values are a valid measurement from the simulation, and highlight the weakness in the inverse modelling approach to determine the spread in eccentricity. 
+This one outlier for each of the two resolutions artificially inflates the measured eccentricity variance, and by applying a $2.5\sigma$-cut in eccentricity we recover the $1/\sqrt{M_\bullet/m_\star}\propto 1/\sqrt{N_\star}$ scaling of $\sigma_e$ as in \citet{nasim20} (square markers), apart from the highest mass resolution set of $M_\bullet/m_\star=4\times10^4$.
+However, the eccentricity values beyond $2.5\sigma$ from the mean are each a valid measurement from the simulation, and highlight the presence of stochasticity in eccentricity for these idealised simulation set-ups. 
 The cause of these low eccentricity values is discussed in \autoref{ssec:toy}.
-\drafting{Run Bayesian model, more robust?}
 
 
 \subsection{Eccentricity scatter in high-e orbits}
 \begin{itemize}
     \item show that impact parameters sensitive
 \end{itemize}
-\begin{figure*}
-    \includegraphics{nasim_scatter_e0-990.pdf}
-    \caption{\drafting{Show a plot like this where the scatter in eccentricity is determined as the standard deviation across simulations}}
-    \label{fig:nasim_e99}
-\end{figure*}
-We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.99$ orbit in \autoref{fig:nasim_e99}. 
-We find that the scaling of $\sigma_e$ is better described by a relation proportional to $1/N_\star$, as opposed to the $1/\sqrt{N_\star}$ relation described in \citet{nasim20}.
+We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.99$ orbit in \autoref{fig:convergence} with blue markers, where the marker symbols are consistent with those for the $e_0=0.90$ suite. 
+We find that the scaling of $\sigma_e$ is steeper than the $1/\sqrt{M_\bullet/m_\star}\propto1/\sqrt{N_\star}$ relation described in \citet{nasim20}.
 We attribute this dramatic decrease in $\sigma_e$ to an inflated value of $\sigma_e$ at low mass resolution: there is increased scatter in eccentricity at low mass resolutions for very radial initial orbits of the SMBH binary. 
-\drafting{TODO: figure comparing different eccentricity scatters}
+This observation is highlighted in \autoref{fig:nasim_e_comp}.
+As the majority of major galaxy mergers in the real Universe are expected to be radial \citep[e.g.][]{khochfar06}, understanding if the origin of the scatter in eccentricity is a numerical or a physical effect is of paramount importance, and will have direct implications for the predictions of SMBH merger rates by ongoing and future GW detection missions. 
 
-\begin{figure*}
-    \includegraphics{nasim_scatter_res-2M.pdf}
-    \caption{\drafting{Inverse modelling of eccentricity scatter as a function of initial eccentricity for $M_\bullet/m_star=2\times10^4$. }}
+\begin{figure}
+    \includegraphics{eccentricities.pdf}
+    \caption{\drafting{Inverse modelling of eccentricity scatter as a function of initial eccentricity for $M_\bullet/m_\star=2\times10^4$. Combine as a panel into a the convergence figure?}}
     \label{fig:nasim_e_comp}
-\end{figure*}
-
-\begin{figure*}
-    \includegraphics{orbit_pars}
-    \caption{\drafting{Orbital parameters of the different merger systems, colour coded according to the initial orbital eccentricity}}
-    \label{fig:orbitpars}
-\end{figure*}
-
-\begin{figure*}
-    \includegraphics{hyperparameter}
-    \caption{\drafting{Hyperparameters of a hierarchical model of the binary hardening from a time when the binary is hard. To show convergence, we could compare the the distributions of $\sigma_{e_h}$ directly between resolutions}}
-    \label{fig:hyperparameter}
-\end{figure*}
+\end{figure}
 
 \begin{figure}
     \includegraphics{deflect_e-0900}
-    \caption{\drafting{Theta-e plane for $e_0=0.90$ orbit}}
+    \caption{\drafting{Theta-e plane for $e_0=0.90$ orbit. Update this confetti colour scheme. This figure and the one for $e_0=0.99$ will be combined into a single plot overlaid on the tow model results}}
     \label{fig:deflect_e90}
 \end{figure}
 
@@ -157,9 +139,24 @@ $M_\bullet=10^8\,\Msun$,
 and
 $e_\mathrm{s}=0.85$,
 which match fairly well with the central properties of the merging galaxy when
-the SMBHs are becoming bound in the $e=0.99$ merger orbit simulations.
+the SMBHs are becoming bound in the $e_0=0.99$ merger orbit simulations.
 \drafting{(Check the params)}
 
+\drafting{This right place for this section?}
+To investigate the effect of the deflection angle, and by extension the impact parameter, on the final SMBH binary eccentricity, we determine the deflection angle at each pericentre passage before the SMBHs become bound \citep{binney08}:
+\begin{equation}
+    \theta_\mathrm{defl} = 2 \arctan \left(\frac{GM}{L\sqrt{2E}} \right)
+\end{equation}
+where $M=M_{\bullet,1}+M_{\bullet,2}$, and $L$ is the magnitude of the SMBH binary angular momentum vector and $E$ the binary orbital energy at the time of the pericentre passage.
+We set as the first `hard-scattering' angle the first angle that exceeds an orbit-dependent threshold: $\theta_{\mathrm{defl,min}}=90$ for $e_0=0.99$ and $\theta_{\mathrm{defl,min}}=45$ for $e_0=0.90$ \drafting{need to insert degrees sign, but command not working?}.
+To quantify the eccentricity of the resulting SMBH binary, we determine when the binary becomes hard (\autoref{eq:ahard}), and calculate the median and interquartile range (IQR) over a maximum of ten orbits about the time when $t=t(a=a_\mathrm{h})$.
+These points are shown in \drafting{FIGURE}, where the IQR is generally smaller than the symbol marker used in the plot. 
+
+\begin{figure}
+    \includegraphics{orbit}
+    \caption{\drafting{Orbit of a SMBH in one of the $e_0=0.99$ mergers, which by symmetry of the equal mass system is the same as the second BH orbit reflected. Line coloured according to time. Point A shows a time just before the first hard scattering, and point B a time just after. The circle marker indicates the final position of the BH before the BHs become bound.}}
+    \label{fig:orbit}
+\end{figure}
 
 \drafting{
 Figures to do:
