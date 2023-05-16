@@ -14,6 +14,7 @@ parser.add_argument("-o", "--orbits", type=int, dest="orbits", help="number of o
 parser.add_argument("-l", "--label", type=str, dest="label", help="labelling method", choices=["e", "res"], default=None)
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-s", "--save", action="store_true", dest="save", help="save figure")
+parser.add_argument("-sd", "--save-data", dest="save_data", type=str, default=None, help="directory to save data to")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbosity", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
@@ -41,9 +42,16 @@ else:
 
 
 # arrays to hold data
-thetas =  np.array([])
-median_eccs = np.array([])
-iqr_eccs = np.array([[],[]])
+data = dict(
+    thetas = [],
+    median_eccs = [],
+    low_iqr_ecc = [],
+    high_iqr_ecc = [],
+    e_ini = [],
+    mass_res = [],
+    threshold_angle = args.angle
+)
+
 
 for j, datdir in enumerate(data_dirs):
     SL.logger.info(f"Reading from directory: {datdir}")
@@ -65,6 +73,10 @@ for j, datdir in enumerate(data_dirs):
             else:
                 labels[j] = cmf.general.represent_numeric_in_scientific(hmq.mass_resolution())
                 legend_title = r"$M_\bullet/m_\star$"
+        
+        # save some data already
+        data["e_ini"].append(hmq.initial_galaxy_orbit["e0"])
+        data["mass_res"].append(hmq.mass_resolution())
 
         thetas[i], theta_idx = cmf.analysis.first_major_deflection_angle(hmq.prebound_deflection_angles, angle_defl)
         if theta_idx is None:
@@ -81,6 +93,12 @@ for j, datdir in enumerate(data_dirs):
         m, iqr = cmf.mathematics.quantiles_relative_to_median(hmq.eccentricity[period_idxs[0]:period_idxs[1]])
         median_eccs[i] = m
         iqr_eccs[0,i], iqr_eccs[1,i] = iqr
+    # save data
+    data["thetas"].extend(thetas*180/np.pi)
+    data["median_eccs"].extend(median_eccs)
+    data["low_iqr_ecc"].extend(iqr_eccs[0,:])
+    data["high_iqr_ecc"].extend(iqr_eccs[1,:])
+
 
     plt.errorbar(thetas*180/np.pi, median_eccs, xerr=None, yerr=iqr_eccs, fmt="o", capsize=2, mec="k", mew=0.5, label=labels[j])
 
@@ -91,9 +109,20 @@ plt.ylabel("$e$")
 plt.title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
 plt.ylim(0,1)
 
+now = datetime.now().strftime("%Y%m%d_%H%M%S")
 if args.save:
-    now = datetime.now().strftime("%Y%m%d_%H%M%S")
     cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"deflection_angles/deflection_angles_{now}.png"))
 else:
     SL.logger.warning("Figure will not be saved!")
+
+# save the data if desired
+if args.save_data:
+    try:
+        dat_len = [len(v) for v in data.values() if isinstance(v, list)]
+        assert np.allclose(np.diff(dat_len), np.zeros(len(dat_len)-1))
+    except AssertionError:
+        SL.logger.exception(f"Data must have equal length arrays, but has lengths {dat_len}!", exc_info=True)
+        raise
+    cmf.utils.save_data(data, os.path.join(args.save_data, f"deflection_angles_{now}.pickle"))
+
 plt.show()

@@ -37,7 +37,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
     assert(filename.endswith(".pickle"))
     with open(filename, 'wb') as f:
         pickle.dump(data, f, protocol=protocol)
-    _logger.logger.info(f"File {f} saved")
+    _logger.logger.info(f"File {filename} saved")
 
 
 def load_data(filename):

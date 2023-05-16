@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser(description="Perform the eccentricity dispersio
 parser.add_argument(type=str, help="path to directory of HMQ files", dest="path")
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
 parser.add_argument("-s", "--save", action="store_true", dest="save", help="save figure")
+parser.add_argument("-sd", "--save-data", dest="save_data", type=str, default=None, help="directory to save data to")
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-d", "--dir", type=str, action="append", default=[], dest="extra_dirs", help="other directories of HMQ files to compare")
 parser.add_argument("-g", "--groups", choices=["e", "res"], help="Data groups", default="e", dest="groups")
@@ -52,6 +53,8 @@ for d in hmq_dirs:
     sigma_e.append(np.nanstd(eccs))
     if args.ecut is not None:
         sigma_e_cut.append(np.nanstd(eccs[np.abs(eccs-np.nanmean(eccs))<args.ecut*np.nanstd(eccs)]))
+    else:
+        sigma_e_cut.append(np.nan)
     try:
         assert np.allclose(np.diff(np.concatenate(km.obs["e_ini"])), np.zeros(km.num_groups-1))
     except AssertionError:
@@ -112,5 +115,15 @@ else:
 
 if args.save:
     cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/nasim_scatter_{fig_prefix}.png"))
+
+if args.save_data is not None:
+    data = dict(
+        mass_res = mass_res,
+        e_ini = e_ini,
+        sigma_e = sigma_e,
+        sigma_e_cut = sigma_e_cut,
+        sigma_e_cut_threshold = args.ecut
+    )
+    cmf.utils.save_data(data, os.path.join(args.save_data, f"nasim_scatter_{fig_prefix}.pickle"))
 
 plt.show()

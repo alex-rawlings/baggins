@@ -4,12 +4,15 @@ from matplotlib import rc_file, rcdefaults, rcParams
 from matplotlib.pyplot import gcf
 from PIL import Image
 import os.path
+from .._backend.States import PublishingState
 from ..env_config import _cmlogger, git_hash, username, date_format, fig_ext
 
 __all__ = ["savefig", "get_meta", "set_publishing_style", "get_figure_size"]
 
 _logger = _cmlogger.copy(__file__)
 
+# state information
+_PS = PublishingState()
 
 def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
     """
@@ -28,11 +31,13 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
     """
     if fig is None:
         fig = gcf()
-    if publishing_style_set:
-        fig_ext = "pdf"
+    if _PS.is_set():
+        _fig_ext = "pdf"
+    else:
+        _fig_ext = fig_ext
     f = inspect.stack()[-1] # get outermost caller on stack
     now = datetime.now()
-    if fig_ext == "png":
+    if _fig_ext == "png":
         now = now.strftime(date_format)
     # ensure things are deterministic
     try:
@@ -51,7 +56,7 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
             # protect against cases where no extension is specified, and the 
             # file name has a "." in it
             _fname = fname_name if fname_ext in (".png", ".pdf") else fname
-            figname = f"{_fname}.{fig_ext}"
+            figname = f"{_fname}.{_fig_ext}"
             fig.savefig(figname, metadata=meta_data, **save_kwargs)
     finally:
         del f
@@ -83,8 +88,7 @@ def set_publishing_style():
     Set a custom matplolibrc file that is designed specifically for 
     publishing-style plots. Mainly changes figure size and axis label size.
     """
-    global publishing_style_set
-    publishing_style_set = True
+    _PS.turn_on()
     rcdefaults()
     rc_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "matplotlibrc_publish"))
     _logger.logger.info("Publishing Matplotlib style set")

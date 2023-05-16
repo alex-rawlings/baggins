@@ -297,8 +297,8 @@ class HMQuantitiesData(HDF5Base):
 
         Returns
         -------
-        _type_
-            _description_
+        : float
+            mass resolution
         """
         if "stars" not in self.particle_masses:
             _logger.logger.error(f"Key 'stars' not present in 'particle_masses', trying 'dm' instead...")
