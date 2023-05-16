@@ -116,7 +116,7 @@ class _KeplerModelBase(StanModel_1D):
 
         Returns
         -------
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             plotting axis
         """
         fig, ax = plt.subplots(1, 2, figsize=figsize)

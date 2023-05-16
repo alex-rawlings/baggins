@@ -522,7 +522,7 @@ class _StanModel:
 
         Returns
         -------
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             corner plot
         """
         if levels is None:
@@ -614,7 +614,7 @@ class _StanModel:
         ----------
         gq : list
             variables to plot
-        ax : matplotlib.axes._subplots.AxesSubplot or np.ndarray of, optional
+        ax : matplotlib.axes.Axes or np.ndarray of, optional
             axes object to plot to, by default None
         xlabels : list, optional
             labels for the x-axis, by default None
@@ -623,7 +623,7 @@ class _StanModel:
 
         Returns
         -------
-        matplotlib.axes._subplots.AxesSubplot
+        matplotlib.axes.Axes
             plotting axes
         """
         if ax is None:
@@ -831,7 +831,7 @@ class StanModel_2D(_StanModel):
              None
         levels : list, optional
             HDI intervals to plot, by default None
-        ax : matplotlib.axes._subplots.AxesSubplot, optional
+        ax : matplotlib.axes.Axes, optional
             axis to plot to, by default None (creates new instance)
         collapsed : bool, optional
             plotting collapsed observations?

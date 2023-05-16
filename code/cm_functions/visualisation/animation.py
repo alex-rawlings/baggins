@@ -36,7 +36,7 @@ class SMBHtrajectory:
         ----------
         bhdata : str
             path to the ketju_bhs.hdf5 to read in
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             axis to plot to
         centre : int, optional
             which BH to centre on, by default 1
@@ -135,7 +135,7 @@ class OverviewAnimation:
             list of ordered snapshots to plot (note no reordering is done)
         fig : matplotlib.figure.Figure
             figure object
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             axis to plot to
         centre : str, optional
             centring of animation, options are:

@@ -10,7 +10,7 @@
 general:
   galaxy_name_1: H_500K_d
   galaxy_name_2: H_500K_e
-  random_seed: 57139
+  random_seed: 45087
 
 # info about where files are to be read from and saved to
 file_locations:
@@ -23,7 +23,7 @@ file_locations:
 
 # info about the original orbit of the merger
 orbital_properties:
-  mass_radius_fac: 10000.
+  mass_radius_fac:
   r0:
     # initial separation of systems
     unit: kpc
@@ -73,11 +73,11 @@ perturb_properties:
 ---
 e0: 0.9995529146918907
 full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/hernquist_high_e/H_500K_d-H_500K_e-11.000-0.825
-last_update: '2023-05-10 13:15:40'
+last_update: '2023-05-16 15:51:45'
 mass_resolution: 3974.280029296875
 r0_physical: 11
 rperi_physical: 0.825
-time_to_pericentre: 0.01290726968332964
+time_to_pericentre: 0.01983073689906445
 virial_radius_large: 100.92122085255824
 ...
 

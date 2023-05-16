@@ -85,7 +85,7 @@ class _QuinlanModelBase(StanModel_2D):
 
         Returns
         -------
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             plotting axis
         """
         fig, ax = plt.subplots(2, 2, figsize=figsize)

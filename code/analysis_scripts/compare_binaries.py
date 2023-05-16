@@ -42,11 +42,12 @@ if args.orbits:
     ax2[1].set_xlabel("x/kpc")
     ax2[1].set_xlabel("y/kpc")
 
-myr = ketjugw.units.yr * 1e6
-kpc = ketjugw.units.pc * 1e3
+myr = cmf.general.units.Myr
+kpc = cmf.general.units.kpc
 cols = cmf.plotting.mplColours()
 linestyles = cmf.plotting.mplLines()
 num_dirs = len(ketju_dirs)
+total_sim_count = 0
 SL.logger.debug(f"We will be plotting {num_dirs} different families...")
 
 for j, d in enumerate(ketju_dirs):
@@ -78,11 +79,13 @@ for j, d in enumerate(ketju_dirs):
                     ax2[0].plot((bh.x[:,0]-op["x_CM"][:,0])/kpc, (bh.x[:,2]-op["x_CM"][:,2])/kpc, alpha=0.7, c=cols[j])
                     ax2[1].plot((bh.x[:,0]-op["x_CM"][:,0])/kpc, (bh.x[:,1]-op["x_CM"][:,1])/kpc, c=cols[j], alpha=0.7)
         line_count += 1
+        total_sim_count += 1
     if not bound_bhs_present:
         SL.logger.warning(f"No bound BHs present in {d}")
 
 try:
-    ax[0].legend(loc="upper right", **legend_kwargs)
+    if total_sim_count < 10:
+        ax[0].legend(loc="upper right", **legend_kwargs)
     ax[0].set_xscale("log")
     if args.save:
         now = datetime.now().strftime("%Y%m%d_%H%M%S")

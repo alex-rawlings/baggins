@@ -69,7 +69,7 @@ class _GrahamModelBase(StanModel_2D):
 
         Returns
         -------
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             plotting axis
         """
         fig, ax = plt.subplots(2,3, figsize=figsize)
@@ -117,7 +117,7 @@ class GrahamModelSimple(_GrahamModelBase):
 
         Returns
         -------
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             plotting axis
         """
         # latent parameter plots (corners, chains, etc)
@@ -156,7 +156,7 @@ class GrahamModelHierarchy(_GrahamModelBase):
 
         Returns
         -------
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             plotting axis
         """
         # hyper parameter plots (corners, chains, etc)

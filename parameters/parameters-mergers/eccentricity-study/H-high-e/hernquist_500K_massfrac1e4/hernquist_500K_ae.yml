@@ -9,13 +9,13 @@
 # general info about the merger
 general:
   galaxy_name_1: H_500K_a
-  galaxy_name_2: H_500K_a
-  random_seed: 98528
+  galaxy_name_2: H_500K_e
+  random_seed: 49843
 
 # info about where files are to be read from and saved to
 file_locations:
   galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_500K/hernquist_500K_a/hernquist_500K_a.hdf5
-  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_500K/hernquist_500K_a/hernquist_500K_a.hdf5
+  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_500K/hernquist_500K_e/hernquist_500K_e.hdf5
   # file will be saved to 
   # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
   save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/hernquist_high_e
@@ -23,7 +23,7 @@ file_locations:
 
 # info about the original orbit of the merger
 orbital_properties:
-  mass_radius_fac:
+  mass_radius_fac: 10000.
   r0:
     # initial separation of systems
     unit: kpc
@@ -71,13 +71,13 @@ perturb_properties:
 ...
 
 ---
-e0: 0.9995529042156597
-full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/hernquist_high_e/H_500K_a-H_500K_a-11.000-0.825
-last_update: '2023-05-16 15:51:24'
+e0: 0.9995529146918907
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/hernquist_high_e/H_500K_a-H_500K_e-11.000-0.825
+last_update: '2023-05-10 13:15:23'
 mass_resolution: 3974.280029296875
 r0_physical: 11
 rperi_physical: 0.825
-time_to_pericentre: 0.019840737973438563
-virial_radius_large: 100.91976701262134
+time_to_pericentre: 0.012907263358303592
+virial_radius_large: 100.92122085255824
 ...
 

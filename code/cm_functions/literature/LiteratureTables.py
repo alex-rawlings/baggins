@@ -115,7 +115,7 @@ class LiteratureTables:
         ----------
         var : str
             column to histogram
-        ax : matplotlib.axes._subplots.AxesSubplot, optional
+        ax : matplotlib.axes.Axes, optional
             axes to plot to, by default None
         label : str, optional
             legend label, by default None
@@ -124,7 +124,7 @@ class LiteratureTables:
 
         Returns
         -------
-        matplotlib.axes._subplots.AxesSubplot
+        matplotlib.axes.Axes
             plotting axis
         """
         if ax is None:
@@ -148,7 +148,7 @@ class LiteratureTables:
             quantile to plot
         var : str
             column to histogram
-        ax : matplotlib.axes._subplots.AxesSubplot
+        ax : matplotlib.axes.Axes
             axes to plot to
         xaxis : bool, optional
             plot on the x-axis?, by default True
@@ -181,7 +181,7 @@ class LiteratureTables:
         yerr : str, list, tuple, optional
             column for y-errors, or list/tuple of strings for non-symmetric 
             errors, by default None
-        ax : matplotlib.axes._subplots.AxesSubplot, optional
+        ax : matplotlib.axes.Axes, optional
             axes to plot to, by default None
         scatter_kwargs : dict, optional
             scatter parameters parsed to scatter() or errorbar(), by default {}
@@ -192,7 +192,7 @@ class LiteratureTables:
 
         Returns
         -------
-        matplotlib.axes._subplots.AxesSubplot
+        matplotlib.axes.Axes
             plotting axis
         """
         if ax is None:

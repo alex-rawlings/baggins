@@ -18,7 +18,7 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
 
     Parameters
     ----------
-    ax : matplotlib.axes._subplots.AxesSubplot
+    ax : matplotlib.axes.Axes
         axis to add the bar to
     length : float
         length of scale bar in data units
@@ -159,7 +159,7 @@ def shade_bool_regions(ax, xdata, mask, **kwargs):
 
     Parameters
     ----------
-    ax : matplotlib.axes._subplots.AxesSubplot
+    ax : matplotlib.axes.Axes
         axis to plot to
     xdata : np.ndarray
         x data values
@@ -217,7 +217,7 @@ def nice_log10_scale(ax, axis="y"):
 
     Parameters
     ----------
-    ax : matplotlib.axes._subplots.AxesSubplot
+    ax : matplotlib.axes.Axes
         axis to plot to
     """
     if "y" in axis:

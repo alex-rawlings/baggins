@@ -203,6 +203,8 @@ class MergerIC:
             raise
         mg.write_hdf5_ic_file(filename=file_name, system=merger, save_plots=False)
         _logger.logger.info(f"Merger IC file written to {file_name}")
+        # copy parameter file to simulation directory
+        shutil.copyfile(self.paramfile, os.path.join(self.save_location, os.path.basename(self.paramfile)))
         # save parameters
         self.write_calculated_parameters()
         # print some velocity information about merger

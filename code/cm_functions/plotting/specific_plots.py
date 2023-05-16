@@ -1,4 +1,3 @@
-import warnings
 import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
@@ -12,7 +11,7 @@ from ..general import convert_gadget_time, units
 from ..env_config import _cmlogger
 
 
-__all__ = ["plot_galaxies_with_pygad", "GradientLinePlot", "GradientScatterPlot", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere", "heatmap", "annotate_heatmap"]
+__all__ = ["plot_galaxies_with_pygad", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere", "heatmap", "annotate_heatmap"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -50,7 +49,7 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
     fig : matplotlib.figure.Figure
         pyplot figure object
     ax : np.ndarray
-        array of matplotlib.axes._subplots.AxesSubplot instances
+        array of matplotlib.axes.Axes instances
     ims : list, optional
         list of images from pygad plotting routine
     """
@@ -94,163 +93,6 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
         return fig, ax
 
 
-class GradientPlot:
-    """
-    
-    """
-    def __init__(self, ax, cmap="viridis", plot_kwargs={}):
-        """
-        Class to create pyplot plots with a colour gradient. The colour 
-        gradient is consistent between all lines/points in the figure. This is 
-        done by storing the data first, and then only plotting the data when 
-        explicitly called.
-
-        Parameters
-        ----------
-        ax : matplotlib.axes._subplots.AxesSubplot
-            axis to plot to
-        cmap : str, optional
-            pyplot colour map name, by default "viridis"
-        plot_kwargs : dict, optional
-            arguments to be parsed to either plt.plot() or plt.scatter(), by 
-            default {}
-        """
-        self.ax = ax
-        self.data_count = 0
-        self.all_x = []
-        self.all_y = []
-        self.all_c = []
-        self.all_label = []
-        self.cmap= getattr(plt.cm, cmap)
-        self.all_marker = []
-        self.all_pks = [plot_kwargs]
-        self.norm = [0,1]
-    
-    def __len__(self):
-        return self.data_count
-
-    def add_data(self, x, y, c, label=None, marker="o", plot_kwargs={}):
-        """
-        Add a dataset to the plot (note that the data is just stored here for 
-        future use).
-
-        Parameters
-        ----------
-        x : np.ndarray
-            x data
-        y : np.ndarray
-            y data
-        c : np.ndarray
-            data to map colours to
-        label : _type_, optional
-            label of plot, by default None
-        marker : str, optional
-            end marker, by default "o"
-        plot_kwargs : dict, optional
-            dict of other parameters to parse to pyplot.plot() or pyplot.scatter
-            (), by default {}
-        """
-        self.all_x.append(x)
-        self.all_y.append(y)
-        self.all_c.append(c)
-        self.all_label.append(label)
-        self.all_marker.append(marker)
-        self.all_pks.append(plot_kwargs)
-        self.data_count += 1
-    
-    def _set_colours(self, log=False):
-        """
-        Set the colours of the plot, should not be called directly
-
-        Parameters
-        ----------
-        log : bool, optional
-            colours in logscale?, by default False
-        """
-        vmin = min([np.nanmin(ci) for ci in self.all_c])
-        vmax = max([np.nanmax(ci) for ci in self.all_c])
-        if log:
-            if vmin < 0:
-                warnings.warn("Log scale normalisation cannot handle negative values! Using a linear scale")
-                self.norm = colors.Normalize(vmin, vmax)
-            else:
-                self.norm = colors.LogNorm(vmin, vmax)
-        else:
-            self.norm = colors.Normalize(vmin, vmax)
-    
-    def add_cbar(self, **kwargs):
-        """
-        Add a colour bar to the plot.
-        """
-        plt.colorbar(plt.cm.ScalarMappable(cmap=self.cmap, norm=self.norm), ax=self.ax, **kwargs)
-
-    def add_legend(self, **kwargs):
-        """
-        Add a legend to the plot.
-        """
-        self.ax.legend(**kwargs)
-
-
-class GradientLinePlot(GradientPlot):
-    """
-    Apply the GradientPlot class for pyplot line plots
-    """
-    def __init__(self, ax, cmap="viridis", plot_kwargs={}):
-        super().__init__(ax, cmap=cmap, plot_kwargs=plot_kwargs)
-    
-    def plot(self, logcolour=False):
-        """
-        Plot the data, ensuring a consistent colour scheme.
-
-        Parameters
-        ----------
-        logcolour : bool, optional
-            colours in log scale?, by default False
-
-        Raises
-        ------
-        ValueError
-            no data to plot
-        """
-        if self.data_count < 1:
-            raise ValueError("No data to plot!")
-        self._set_colours(log=logcolour)
-        for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
-            if markeri is not None:
-                self.ax.scatter(xi[-1], yi[-1], color=self.cmap(self.norm(ci[-1])), marker=markeri, label=labeli, zorder=10*self.data_count)
-            for xs, ys, cs in zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1]):
-                self.ax.plot(xs, ys, color=self.cmap(self.norm(cs)), **pki)
-
-
-class GradientScatterPlot(GradientPlot):
-    """
-    Apply the GradientPlot class for pyplot scatter plots
-    """
-    def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
-        super().__init__(ax, x, y, c, label=label, cmap=cmap, marker=marker, plot_kwargs=plot_kwargs)
-    
-    def plot(self, logcolour=False):
-        """
-        Plot the data, ensuring a consistent colour scheme.
-
-        Parameters
-        ----------
-        logcolour : bool, optional
-            colours in log scale?, by default False
-
-        Raises
-        ------
-        ValueError
-            no data to plot
-        """
-        if self.data_count < 1:
-            raise ValueError("No data to plot!")
-        self._set_colours(log=logcolour)
-        for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
-            for i, (xs, ys, cs) in enumerate(zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1])):
-                self.ax.scatter(xs, ys, color=self.cmap(self.norm(cs)), marker=markeri, label=(labeli if i==0 else ""),**pki)
-
-
 def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
     """
     Standard plot of binary semimajor axis and eccentricity.
@@ -259,14 +101,14 @@ def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
     ----------
     orbit_pars : dict
         orbit parameters from ketjugw.orbital_parameters()
-    ax : matplotlib.axes._subplots.AxesSubplot, optional
+    ax : matplotlib.axes.Axes, optional
         axis to plot to, by default None (creates new instance)
     toffset : float, optional
         time offset, by default 0
 
     Returns
     -------
-    ax : matplotlib.axes._subplots.AxesSubplot
+    ax : matplotlib.axes.Axes
         plotting axis
     """
     if ax is None:
@@ -289,7 +131,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
 
     Parameters
     ----------
-    ax : matplotlib.axes._subplots.AxesSubplot
+    ax : matplotlib.axes.Axes
         parent axis to put the twin axis on
     y1 : array-like
         independent dataset 1, the 'original' variable
@@ -300,7 +142,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
 
     Returns
     -------
-    ax2 : matplotlib.axes._subplots.AxesSubplot
+    ax2 : matplotlib.axes.Axes
         twin axis
     """
     try:
@@ -399,7 +241,7 @@ def draw_unit_sphere(ax, points=100):
 
     Parameters
     ----------
-    ax : matplotlib.axes._subplots.AxesSubplot
+    ax : matplotlib.axes.Axes
         plotting axis
     points : int, optional
         number of points, by default 100
