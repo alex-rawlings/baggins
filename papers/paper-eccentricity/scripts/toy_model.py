@@ -1,5 +1,8 @@
 import itertools
 import multiprocessing
+import pickle
+import sys
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
@@ -114,35 +117,186 @@ def compute_res(args):
     sys, b, v, r = args
     x0 = [r,b]
     v0 = [-v,0]
-    tmax = 100 * r/v
-    ts = np.linspace(0,tmax, 500)
+    tmax = 150 * r/v
+    ts = np.concatenate(([0], np.linspace(0.5*r/v,1.5*r/v, 50), np.linspace(1.5*r/v,tmax, 500)[1:]))
 
     x,v,t = sys.integrate(x0,v0,ts)
     return x,v,t
 
-def compute_deflection_angle(x,v,rmin):
+def compute_deflection_angle(sys,x,v):
     r = np.linalg.norm(x,axis=0)
     rdot = np.sum(x*v,axis=0)/r
-    i = np.nonzero((rdot>0)&(r>rmin))[0][0]
-    return np.pi + np.arctan2(v[1,i],v[0,i])
+    i = np.nonzero(rdot>0)[0][0]
+    E = sys.orbital_energy(x[:,i],v[:,i])
+    L = np.cross(x[:,i], v[:,i])
+    return 2*np.arctan(G*2*sys.M_BH/(L*np.sqrt(2*E)))
 
-def main_plots():
+def compute_argument_of_periapsis(sys, x, v):
+    r = np.linalg.norm(x,axis=0)
+    rdot = np.sum(x*v,axis=0)/r
+    i = np.nonzero(rdot>0)[0][0]
+    h = np.cross(x[:,i], v[:,i])
+    evec = np.cross(v[:,i], [0,0,h])[:2]/(2*G*sys.M_BH) - x[:,i]/r[i]
+    return np.arctan2(evec[1],evec[0])
+    
+
+
+def calculate_b_theta_e_curves(sys, r0, v0s, bs):
+    Bs, V0s = np.meshgrid(bs, v0s)
+    efin = []
+    deflection_angle = []
+    n_tot = np.prod(Bs.shape)
+    with multiprocessing.Pool() as pool:
+        for i, (x,v,t) in enumerate(pool.imap(compute_res,
+                                              zip(itertools.repeat(sys),
+                                                  Bs.ravel(),
+                                                  V0s.ravel(),
+                                                  itertools.repeat(r0))
+                                              )):
+            efin.append(sys.eccentricity(x[:,-1],v[:,-1]))
+            deflection_angle.append(compute_deflection_angle(sys,x,v))
+            print(f"{i+1}/{n_tot}")
+
+    return np.array(deflection_angle).reshape(V0s.shape), np.array(efin).reshape(Bs.shape)
+    
+
+def parameter_space_scan_hernquist_conf():
+# params matching Hernquist 11-0.825 high_e_no_stars runs fairly well
+    for gal_e, df_fudge in itertools.product([0.8,0.9],[0.3, 0.5]):
+        sys = System(M_BH=3e-1,
+                     rho=1,
+                     e_spheroid=gal_e,
+                     stellar_sigma=310*km_per_s,
+                     df_fudge_factor=df_fudge)
+
+
+        r0 = sys.r_infl
+
+        v0s = np.linspace(650, 950, 60) * km_per_s
+        bs = np.linspace(0.1, 150, 200) * 1e-3
+        
+        theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+        
+        res = dict(bs=bs*1e3, v0s=v0s/km_per_s, theta=theta, e=efin,
+                   e_shperoid=gal_e, df_fudge=df_fudge)
+
+        with open(f'data/hernquist_b_v_scan_es_{gal_e:.2f}_df_{df_fudge:.1f}.pkl', 'wb') as f:
+            pickle.dump(res, f, protocol=-1)
+
+def parameter_space_scan_g05_conf():
+# params matching gamma=0.5 e=0.99 runs fairly well
+    for gal_e, df_fudge in itertools.product([0.85,0.9],[0.3, 0.5]):
+        sys = System(M_BH=1e-2,
+                     rho=40,
+                     e_spheroid=gal_e,
+                     stellar_sigma=200*km_per_s,
+                     df_fudge_factor=df_fudge)
+
+
+        r0 = sys.r_infl
+
+        v0s = np.linspace(350, 600, 60) * km_per_s
+        bs = np.linspace(0.01, 25, 250) * 1e-3
+        
+        theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+        
+        res = dict(bs=bs*1e3, v0s=v0s/km_per_s, theta=theta, e=efin,
+                   e_shperoid=gal_e, df_fudge=df_fudge)
+
+        with open(f'data/g05_b_v_scan_es_{gal_e:.2f}_df_{df_fudge:.1f}.pkl', 'wb') as f:
+            pickle.dump(res, f, protocol=-1)
+    
+def parameter_space_scan_g05_conf2():
+# params matching gamma=0.5 e=0.99 runs fairly well
+    for gal_e, df_fudge in itertools.product([0.85,0.9],[0.3]):
+        sys = System(M_BH=1e-2,
+                     rho=70,
+                     e_spheroid=gal_e,
+                     stellar_sigma=225*km_per_s,
+                     df_fudge_factor=df_fudge)
+
+        r0 = sys.r_infl
+
+        v0s = np.linspace(400, 650, 40) * km_per_s
+        bs = np.linspace(0.01, 25, 250) * 1e-3
+        
+        theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+        
+        res = dict(bs=bs*1e3, v0s=v0s/km_per_s, theta=theta, e=efin,
+                   e_shperoid=gal_e, df_fudge=df_fudge)
+
+        with open(f'data/g05_2_b_v_scan_es_{gal_e:.2f}_df_{df_fudge:.1f}.pkl', 'wb') as f:
+            pickle.dump(res, f, protocol=-1)
+    
+def parameter_space_scan_g05_conf3():
+# params matching gamma=0.5 e=0.99 runs fairly well
+    for gal_e, df_fudge in itertools.product([0.85,0.9],[0.3]):
+        sys = System(M_BH=1e-2,
+                     rho=20,
+                     e_spheroid=gal_e,
+                     stellar_sigma=225*km_per_s,
+                     df_fudge_factor=df_fudge)
+
+        r0 = sys.r_infl
+
+        v0s = np.linspace(400, 650, 40) * km_per_s
+        bs = np.linspace(0.01, 25, 250) * 1e-3
+        
+        theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+        
+        res = dict(bs=bs*1e3, v0s=v0s/km_per_s, theta=theta, e=efin,
+                   e_shperoid=gal_e, df_fudge=df_fudge)
+
+        with open(f'data/g05_3_b_v_scan_es_{gal_e:.2f}_df_{df_fudge:.1f}.pkl', 'wb') as f:
+            pickle.dump(res, f, protocol=-1)
+
+def high_res_well_fitting_models():
+    #e=0.9 mergers are well fitted by this system, and the parameters are pretty similar to the sims as well
+    sys = System(M_BH=1e-2,
+                 rho=40,
+                 e_spheroid=0.9,
+                 stellar_sigma=200*km_per_s,
+                 df_fudge_factor=0.5)
+
+    r0 = sys.r_infl
+
+    v0s = [470 * km_per_s]
+    bs = np.geomspace(0.1, 20, 500) * 1e-3
+    
+    theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+    res090 = dict(theta=theta[0], e=efin[0], b=bs)
+
+    with open(f'data/well_fitting_e_0.90_model_curve.pkl', 'wb') as f:
+        pickle.dump(res090, f, protocol=-1)
+
+
+def test_plots():
     fig, axes = plt.subplots(3,1,sharex='col')
     fig2, ax_orbit = plt.subplots(1,1)
 #   ax_orbit.set_aspect('equal')
 
 # The system gives identical behavior when scaled in a certain way, these are
 # the individual free parameters:
+# Params matching gamma=0.5 e=.99/.97 runs fairly well
     M_BH_ref = 1e-2 # single BH mass
     rho_ref = 40 # stellar density
     sigma_ref = 200*km_per_s # stellar velocity dispersion
-    gal_e = 0.89
+    gal_e = 0.90
 
-    v0_per_sigma = 2.3 # initial BH velocity / stellar sigma
+    v0_per_sigma = 2.6 # initial BH velocity / stellar sigma
     r0_per_rinfl = 1 # initial BH separation/single BH influence radius
     #v0_per_sigma = 2.2 # initial BH velocity / stellar sigma
     #r0_per_rinfl = 2 # initial BH separation/single BH influence radius
-    bmin_per_r0,bmax_per_r0 = 1e-3, 1e-1 # impact parameter limits / initial separation
+    bmin_per_r0,bmax_per_r0 = 1e-3, 2e-1 # impact parameter limits / initial separation
+
+# params matching Hernquist 11-0.825 high_e_no_stars runs fairly well
+    #M_BH_ref = 3e-1 # single BH mass
+    #rho_ref = 1 # stellar density
+    #sigma_ref = 310*km_per_s # stellar velocity dispersion
+    #gal_e = 0.91
+    #v0_per_sigma = 2.41 # initial BH velocity / stellar sigma
+    #r0_per_rinfl = 1 # initial BH separation/single BH influence radius
+    #bmin_per_r0,bmax_per_r0 = 1e-3, 1.5e-1 # impact parameter limits / initial separation
 
     Mscale = 1 # free scale parameter for BH mass
     vscale = 1 # free scale parameter for velocities
@@ -154,16 +308,18 @@ def main_plots():
                  rho=rho_ref*rhoscale,
                  e_spheroid=gal_e,
                  stellar_sigma=sigma_ref*vscale,
-                 df_fudge_factor=0.35)
+                 df_fudge_factor=0.5)
 
 
     v0 = v0_per_sigma * sigma_ref * vscale
     r0 = r0_per_rinfl * sys.r_infl
-    print(r0*1e3, v0/km_per_s, 2*sys.a_hard)
+    print(r0*1e3, v0/km_per_s, 2*sys.a_hard*1e3)
+    bs = np.linspace(bmin_per_r0, bmax_per_r0, 20)*r0
+
 
     efin = []
     deflection_angle = []
-    bs = np.linspace(bmin_per_r0, bmax_per_r0, 40)*r0
+    periapsis_angle = []
 
     with multiprocessing.Pool() as pool:
         for b,(x,v,t) in zip(bs, 
@@ -180,7 +336,8 @@ def main_plots():
             e = sys. eccentricity(x,v)
             axes[2].plot(t, e,color=color)
             efin.append(e[-1])
-            deflection_angle.append(compute_deflection_angle(x,v,sys.r_infl))
+            deflection_angle.append(compute_deflection_angle(sys,x,v))
+            periapsis_angle.append(compute_argument_of_periapsis(sys,x,v))
             print(b, "done")
 
     axes[0].set_ylabel("R/kpc")
@@ -204,124 +361,29 @@ def main_plots():
     plt.xlabel('Deflection angle/deg')
     plt.ylabel('Final e')
 
-    plt.show()
-
-
-# XXX not working right
-def find_all_e_min(args):
-    sys, v0, r0, bounds = args
-    def f(b):
-        x,v,t = compute_res((sys, b[0], v0, r0))
-        return sys.eccentricity(x,v)[-1]
-
-    res = shgo(f, bounds=[bounds], options=dict(ftol=1e-3))
-    bs = res.xl[:,0]
-    es = res.funl
-    angles = []
-    for b in bs:
-        x,v,t = compute_res((sys, b, v0, r0))
-        angles.append( compute_deflection_angle(x,v,sys.r_infl))
-    angles = np.array(angles)
-    return bs, angles, es
-
-
-def find_e_min(args):
-    sys, v0, b0, r0, minimum_index = args
-    def f(b):
-        x,v,t = compute_res((sys, b, v0, r0))
-        return sys.eccentricity(x,v)[-1]
-    if minimum_index == 0:
-        bounds = [0,2*b0]
-    else:
-        bounds = [.5*b0, 5*b0]
-    res = minimize_scalar(f, method='bounded', bounds=bounds, options=dict(xatol=1e-2*b0))
-    b = res.x
-    x,v,t = compute_res((sys, b, v0, r0))
-    e = sys.eccentricity(x,v)[-1]
-    angle = compute_deflection_angle(x,v,sys.r_infl)
-    return b, angle, e
-
-
-def ecc_minimum_plot():
-    fig, axes = plt.subplots(3,1, sharex='col')
-
-    M_BH_ref = 1e-2 # single BH mass
-    rho_ref = 40 # stellar density
-    sigma_ref = 200*km_per_s # stellar velocity dispersion
-    gal_e = 0.85
-
-    v0_per_sigma = 2.5 # initial BH velocity / stellar sigma
-    r0_per_rinfl = 1.5 # initial BH separation/single BH influence radius
-
-    Mscale = 1 # free scale parameter for BH mass
-    vscale = 1 # free scale parameter for velocities
-
-    rscale = Mscale/vscale**2 # scaling of distances for identical behaviour
-    rhoscale = Mscale/rscale**3 # scaling of density for identical behaviour
-
-    sys = System(M_BH=M_BH_ref*Mscale,
-                 rho=rho_ref*rhoscale,
-                 e_spheroid=gal_e,
-                 stellar_sigma=sigma_ref*vscale,
-                 df_fudge_factor=0.5)
-
-    v0 = v0_per_sigma * sigma_ref * vscale
-    r0 = r0_per_rinfl * sys.r_infl
-
-    v0s = v0*(1 + np.linspace(-.2,.15,4))
-    
-    for b_index,b_guess in enumerate([1e-3*rscale, 25e-3*rscale]):
-        bs, angles, emins = [],[],[]
-        with multiprocessing.Pool() as pool:
-            for v0, (b, angle, emin) in zip(v0s,
-                                            pool.imap(find_e_min, 
-                                                      zip(itertools.repeat(sys),
-                                                          v0s,
-                                                          itertools.repeat(b_guess),
-                                                          itertools.repeat(r0),
-                                                          itertools.repeat(b_index)))
-                                            ):
-                bs.append(b)
-                angles.append(angle)
-                emins.append(emin)
-                print(v0, "done")
-
-        axes[0].plot(v0s/km_per_s, np.array(emins), marker='.')
-        axes[1].plot(v0s/km_per_s, np.array(bs)*1e3, marker='.')
-        axes[2].plot(v0s/km_per_s, np.degrees(angles), marker='.')
-
-    """
-    bs, angles, emins = [],[],[]
-    with multiprocessing.Pool() as pool:
-        for v0, (b, angle, emin) in zip(v0s,
-                                        pool.imap(find_all_e_min, 
-                                                  zip(itertools.repeat(sys),
-                                                      v0s,
-                                                      itertools.repeat(r0),
-                                                      itertools.repeat((0, 0.2))))
-                                        ):
-            bs.append(b)
-            angles.append(angle)
-            emins.append(emin)
-            print(v0, "done")
-
-    
-    axes[0].plot(v0s/km_per_s, np.array(emins), marker='.')
-    axes[1].plot(v0s/km_per_s, np.array(bs)*1e3, marker='.')
-    axes[2].plot(v0s/km_per_s, np.degrees(angles), marker='.')
-    """
-
-    axes[0].set_ylabel('Min e')
-    axes[1].set_ylabel('Min e impact parameter/pc')
-    axes[2].set_ylabel('Min e deflection angle/deg')
-    axes[-1].set_xlabel('Initial velocity / km/s')
+    plt.figure()
+    plt.plot(np.degrees(deflection_angle), np.degrees(periapsis_angle), '-')
+    plt.xlabel('Deflection angle/deg')
+    plt.ylabel('Arg periapsis/deg')
 
     plt.show()
+
 
 
 
 if __name__ == '__main__':
-    main_plots()
-    #ecc_minimum_plot()
+    if len(sys.argv) > 1:
+        print("running", sys.argv[1])
+        if sys.argv[1] == 'h':
+            parameter_space_scan_hernquist_conf()
+        if sys.argv[1] == 'g':
+            parameter_space_scan_g05_conf()
+        if sys.argv[1] == 'g2':
+            parameter_space_scan_g05_conf2()
+        if sys.argv[1] == 'g3':
+            parameter_space_scan_g05_conf3()
+    else:
+        #high_res_well_fitting_models()
+        test_plots()
 
 
