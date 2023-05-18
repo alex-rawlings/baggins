@@ -3,3 +3,16 @@
 \drafting{
     An interesting point to discuss is the origin of our eccentricity scatter. Early tests of the Gualandris setup seems to indicate that low eccentricity mergers do not demonstrate orbital flips, and are more converged. How to distinguish if the flip is the cause of the eccentricity scatter, or just correlated with eccentricity scatter?
 }
+
+We present in \autoref{sec:results} evidence for a tight correlation between the first hard-scattering angle $\theta_\mathrm{defl}$ and the hard SMBH binary eccentricity. 
+With the inclusion of the toy model, which provides a resolution-free model of the SMBH scattering process, we may draw two key interpretations of the results.
+
+First, the numerical simulations performed with \ketju{} are deterministic for a given set of initial conditions, given the same computing architecture and numerical parameters (e.g. the number of computing cores used).
+The scatter we observe in $\theta_\mathrm{defl}$ is thus a manifestation of Brownian motion induced by the phase space discretisation and other numerical errors, such as floating point round-off errors, denoted $\sigma_\mathrm{sim}$. 
+Thus, the numerical simulations present an instance where there is zero uncertainty in the initial conditions of the system, however there is error in the numerical evolution of the system.
+
+Second, in the real Universe there is no numerical error affecting the system evolution.
+There is however uncertainty in the initial conditions of the system, whereby the chance of two galaxy merger events having the exact same initial configuration is practically zero.
+We denote this uncertainty as $\sigma_\mathrm{true}$.
+Intuitively, we expect that $\sigma_\mathrm{sim} > \sigma_\mathrm{real}$: in other words, $\sigma_\mathrm{sim}$ provides an upper estimate on the uncertainty we can expect from galaxy mergers in the real Universe. 
+In particular, processes that perturb the impact parameter associated with the hard scattering of a SMBH pair will manifest as an effect in the resulting binary eccentricity.
