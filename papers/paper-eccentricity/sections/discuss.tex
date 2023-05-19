@@ -10,9 +10,11 @@ With the inclusion of the toy model, which provides a resolution-free model of t
 First, the numerical simulations performed with \ketju{} are deterministic for a given set of initial conditions, given the same computing architecture and numerical parameters (e.g. the number of computing cores used).
 The scatter we observe in $\theta_\mathrm{defl}$ is thus a manifestation of Brownian motion induced by the phase space discretisation and other numerical errors, such as floating point round-off errors, denoted $\sigma_\mathrm{sim}$. 
 Thus, the numerical simulations present an instance where there is zero uncertainty in the initial conditions of the system, however there is error in the numerical evolution of the system.
+We determine the positional displacement between corresponding SMBHs across the simulations at a given mass resolution for the $e_0=0.90$ and $e_0-0.99$ orbits by moving the SMBH binary system to the centre of mass frame, and setting the SMBH positions to coincide with the origin at the time of the simulation. 
+Computing the standard deviation in the positional displacements $\sigma_\mathrm{displ}$ between simulation $i$ and simulation $j\neq i$ for all times $t<t_\mathrm{bound}$, we find the SMBH positions vary of the order $\sim10\,\mathrm{pc}$ at the time of the hard scattering, which translates to an uncertainty in the deflection angle. 
 
 Second, in the real Universe there is no numerical error affecting the system evolution.
 There is however uncertainty in the initial conditions of the system, whereby the chance of two galaxy merger events having the exact same initial configuration is practically zero.
 We denote this uncertainty as $\sigma_\mathrm{true}$.
-Intuitively, we expect that $\sigma_\mathrm{sim} > \sigma_\mathrm{real}$: in other words, $\sigma_\mathrm{sim}$ provides an upper estimate on the uncertainty we can expect from galaxy mergers in the real Universe. 
+For the mergers of massive galaxies of the types modelled in this work, an uncertainty in the initial state of $\sigma_\mathrm{true} \sim \sigma_\mathrm{sim}$ is not unexpected, given the influence radius of a $10^8\,\Msun$ SMBH in a stellar background with velocity dispersion of the order $200\,\mathrm{km}\,\mathrm{s}^{-1}$ is $\sim 10\,\mathrm{pc}$ \drafting{From MBW, find better reference}.
 In particular, processes that perturb the impact parameter associated with the hard scattering of a SMBH pair will manifest as an effect in the resulting binary eccentricity.
