@@ -1,4 +1,3 @@
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors, rcParams
 import matplotlib.patheffects as pe
@@ -13,7 +12,7 @@ class Plotter:
         self._get_col = None
         self._color_constructor()
         self._get_marker = lambda x: ["o", "s", "^", "D", "v", "*", "p", "h", "X", "P"][x%10]
-        self._plot_linewidth = rcParams["lines.linewidth"]+2
+        self._plot_linewidth = rcParams["lines.linewidth"]
         self._line_count = {}
         self._scatter_count = {}
         self._error_count = {}
@@ -51,18 +50,45 @@ class Plotter:
 
 
     def _get_counts(self, ax, counter):
+        """
+        Get the counts of a particular plot type for a given axis
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        counter : dict
+            plot type counts with axis hash as keys
+
+        Returns
+        -------
+        : int
+            plot type count for given axis
+        """
         if ax.__hash__() not in counter:
             counter[ax.__hash__()] = 0
         return counter[ax.__hash__()]
 
 
     def _update_counts(self, ax, counter):
-        d = getattr(self, counter)
-        d[ax.__hash__()] += 1
-        setattr(self, counter, d)
+        """
+        Update the counts of a particular plot type for a given axis
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        counter : dict
+            plot type counts with axis hash as keys
+        """
+        counter[ax.__hash__()] += 1
 
 
     def print_all_counts(self):
+        """
+        Print the count of each plot type for every axis, where axes are 
+        identified by their hash key
+        """
         hl = set(self._line_count.keys())
         hs = set(self._scatter_count.keys())
         he = set(self._error_count.keys())
@@ -105,7 +131,7 @@ class Plotter:
                 path_effects=[pe.Stroke(linewidth=self._plot_linewidth+1.5, foreground="k"), pe.Normal()], 
                 **kwargs
             )
-        self._update_counts(ax, "_line_count")
+        self._update_counts(ax, self._line_count)
         return ax
 
 
@@ -137,7 +163,7 @@ class Plotter:
                     **self._markerkwargs, 
                     **kwargs
                 )
-        self._update_counts(ax, "_scatter_count")
+        self._update_counts(ax, self._scatter_count)
         return ax
 
 
@@ -173,7 +199,7 @@ class Plotter:
                     mew=self._markerkwargs["lw"],
                     **kwargs
                     )
-        self._update_counts(ax, "_error_count")
+        self._update_counts(ax, self._error_count)
         return ax
 
 
