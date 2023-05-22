@@ -1,61 +1,104 @@
-% mnras_template.tex 
-%
-% LaTeX template for creating an MNRAS paper
-%
-% v3.0 released 14 May 2015
-% (version numbers match those of mnras.cls)
-%
-% Copyright (C) Royal Astronomical Society 2015
-% Authors:
-% Keith T. Smith (Royal Astronomical Society)
+%% Based on file 'sample631.tex'
+%%
+%% Modified 2021 March
+%%
+%% This is a sample manuscript marked up using the
+%% AASTeX v6.31 LaTeX 2e macros.
+%%
+%% AASTeX is now based on Alexey Vikhlinin's emulateapj.cls 
+%% (Copyright 2000-2015).  See the classfile for details.
 
-% Change log
-%
-% v3.0 May 2015
-%    Renamed to match the new package name
-%    Version number matches mnras.cls
-%    A few minor tweaks to wording
-% v1.0 September 2013
-%    Beta testing only - never publicly released
-%    First version: a simple (ish) template for creating an MNRAS paper
+%% AASTeX requires revtex4-1.cls and other external packages such as
+%% latexsym, graphicx, amssymb, longtable, and epsf.  Note that as of 
+%% Oct 2020, APS now uses revtex4.2e for its journals but remember that 
+%% AASTeX v6+ still uses v4.1. All of these external packages should 
+%% already be present in the modern TeX distributions but not always.
+%% For example, revtex4.1 seems to be missing in the linux version of
+%% TexLive 2020. One should be able to get all packages from www.ctan.org.
+%% In particular, revtex v4.1 can be found at 
+%% https://www.ctan.org/pkg/revtex4-1.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Basic setup. Most papers should leave these options alone.
-\documentclass[fleqn,usenatbib]{mnras}
+%% The first piece of markup in an AASTeX v6.x document is the \documentclass
+%% command. LaTeX will ignore any data that comes before this command. The 
+%% documentclass can take an optional argument to modify the output style.
+%% The command below calls the preprint style which will produce a tightly 
+%% typeset, one-column, single-spaced document.  It is the default and thus
+%% does not need to be explicitly stated.
+%%
+%% using aastex version 6.3
+\documentclass[twocolumn]{aastex631}
 
-% MNRAS is set in Times font. If you don't have this installed (most LaTeX
-% installations will be fine) or prefer the old Computer Modern fonts, comment
-% out the following line
-\usepackage{newtxtext,newtxmath}
-% Depending on your LaTeX fonts installation, you might get better results with one of these:
-%\usepackage{mathptmx}
-%\usepackage{txfonts}
+%% The default is a single spaced, 10 point font, single spaced article.
+%% There are 5 other style options available via an optional argument. They
+%% can be invoked like this:
+%%
+%% \documentclass[arguments]{aastex631}
+%% 
+%% where the layout options are:
+%%
+%%  twocolumn   : two text columns, 10 point font, single spaced article.
+%%                This is the most compact and represent the final published
+%%                derived PDF copy of the accepted manuscript from the publisher
+%%  manuscript  : one text column, 12 point font, double spaced article.
+%%  preprint    : one text column, 12 point font, single spaced article.  
+%%  preprint2   : two text columns, 12 point font, single spaced article.
+%%  modern      : a stylish, single text column, 12 point font, article with
+%% 		  wider left and right margins. This uses the Daniel
+%% 		  Foreman-Mackey and David Hogg design.
+%%  RNAAS       : Supresses an abstract. Originally for RNAAS manuscripts 
+%%                but now that abstracts are required this is obsolete for
+%%                AAS Journals. Authors might need it for other reasons. DO NOT
+%%                use \begin{abstract} and \end{abstract} with this style.
+%%
+%% Note that you can submit to the AAS Journals in any of these 6 styles.
+%%
+%% There are other optional arguments one can invoke to allow other stylistic
+%% actions. The available options are:
+%%
+%%   astrosymb    : Loads Astrosymb font and define \astrocommands. 
+%%   tighten      : Makes baselineskip slightly smaller, only works with 
+%%                  the twocolumn substyle.
+%%   times        : uses times font instead of the default
+%%   linenumbers  : turn on lineno package.
+%%   trackchanges : required to see the revision mark up and print its output
+%%   longauthor   : Do not use the more compressed footnote style (default) for 
+%%                  the author/collaboration/affiliations. Instead print all
+%%                  affiliation information after each name. Creates a much 
+%%                  longer author list but may be desirable for short 
+%%                  author papers.
+%% twocolappendix : make 2 column appendix.
+%%   anonymous    : Do not show the authors, affiliations and acknowledgments 
+%%                  for dual anonymous review.
+%%
+%% these can be used in any combination, e.g.
+%%
+%% \documentclass[twocolumn,linenumbers,trackchanges]{aastex631}
+%%
+%% AASTeX v6.* now includes \hyperref support. While we have built in specific
+%% defaults into the classfile you can manually override them with the
+%% \hypersetup command. For example,
+%%
+%% \hypersetup{linkcolor=red,citecolor=green,filecolor=cyan,urlcolor=magenta}
+%%
+%% will change the color of the internal links to red, the links to the
+%% bibliography to green, the file links to cyan, and the external links to
+%% magenta. Additional information on \hyperref options can be found here:
+%% https://www.tug.org/applications/hyperref/manual.html#x1-40003
+%%
+%% Note that in v6.3 "bookmarks" has been changed to "true" in hyperref
+%% to improve the accessibility of the compiled pdf file.
+%%
+%% If you want to create your own macros, you can do so
+%% using \newcommand. Your macros should appear before
+%% the \begin{document} command.
+%%
+\usepackage{amsmath}
+\usepackage{amssymb}
 
-% Use vector fonts, so it zooms properly in on-screen viewing software
-% Don't change these lines unless you know what you are doing
-\usepackage[T1]{fontenc}
+\newcommand{\vdag}{(v)^\dagger}
+\newcommand\aastex{AAS\TeX}
+\newcommand\latex{La\TeX}
 
-% Allow "Thomas van Noord" and "Simon de Laguarde" and alike to be sorted by "N" and "L" etc. in the bibliography.
-% Write the name in the bibliography as "\VAN{Noord}{Van}{van} Noord, Thomas"
-\DeclareRobustCommand{\VAN}[3]{#2}
-\let\VANthebibliography\thebibliography
-\def\thebibliography{\DeclareRobustCommand{\VAN}[3]{##3}\VANthebibliography}
-
-
-%%%%% AUTHORS - PLACE YOUR OWN PACKAGES HERE %%%%%
-
-% Only include extra packages if you really need them. Common packages are:
-\usepackage{graphicx}	% Including figure files
-\usepackage{amsmath}	% Advanced maths commands
-%\usepackage{amssymb}	% Extra maths symbols
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%%%% AUTHORS - PLACE YOUR OWN COMMANDS HERE %%%%%
-
-% Please keep new commands to a minimum, and use \newcommand not \def to avoid
-% overwriting existing commands. Example:
-%\newcommand{\pcm}{\,cm$^{-2}$}	% per cm-squared
 \newcommand{\ketju}{\textsc{Ketju}}
 \newcommand{\mstar}{\textsc{Mstar}}
 \newcommand{\gadget}{\textsc{Gadget-4}}
@@ -67,78 +110,504 @@
 \newcommand{\dv}[2]{\ensuremath{\frac{\dd{#1}}{\dd{#2}}}}
 \newcommand{\vb}[1]{\ensuremath{\mathbf{#1}}}
 
-\graphicspath{{figures/}}
-
-% XXX: For highlighting draft notes, these should be removed when done
-\usepackage{color}
+% drafting macros
 \newcommand{\drafting}[1]{
 {\leavevmode\color[RGB]{224, 77, 24}#1}
 }
-
 
 \newcommand{\phj}[1]{
 {\leavevmode\color[RGB]{0,0,255}#1}
 }
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Reintroduced the \received and \accepted commands from AASTeX v5.2
+%\received{March 1, 2021}
+%\revised{April 1, 2021}
+%\accepted{\today}
 
-%%%%%%%%%%%%%%%%%%% TITLE PAGE %%%%%%%%%%%%%%%%%%%
+%% Command to document which AAS Journal the manuscript was submitted to.
+%% Adds "Submitted to " the argument.
+%\submitjournal{PSJ}
 
-% Title of the paper, and the short title which is used in the headers.
-% Keep the title short and informative.
-\title[Reviving Stochasticity]{Reviving stochasticity: SMBH-binary eccentricity is inherently random}
+%% For manuscript that include authors in collaborations, AASTeX v6.31
+%% builds on the \collaboration command to allow greater freedom to 
+%% keep the traditional author+affiliation information but only show
+%% subsets. The \collaboration command now must appear AFTER the group
+%% of authors in the collaboration and it takes TWO arguments. The last
+%% is still the collaboration identifier. The text given in this
+%% argument is what will be shown in the manuscript. The first argument
+%% is the number of author above the \collaboration command to show with
+%% the collaboration text. If there are authors that are not part of any
+%% collaboration the \nocollaboration command is used. This command takes
+%% one argument which is also the number of authors above to show. A
+%% dashed line is shown to indicate no collaboration. This example manuscript
+%% shows how these commands work to display specific set of authors 
+%% on the front page.
+%%
+%% For manuscript without any need to use \collaboration the 
+%% \AuthorCollaborationLimit command from v6.2 can still be used to 
+%% show a subset of authors.
+%
+%\AuthorCollaborationLimit=2
+%
+%% will only show Schwarz & Muench on the front page of the manuscript
+%% (assuming the \collaboration and \nocollaboration commands are
+%% commented out).
+%%
+%% Note that all of the author will be shown in the published article.
+%% This feature is meant to be used prior to acceptance to make the
+%% front end of a long author article more manageable. Please do not use
+%% this functionality for manuscripts with less than 20 authors. Conversely,
+%% please do use this when the number of authors exceeds 40.
+%%
+%% Use \allauthors at the manuscript end to show the full author list.
+%% This command should only be used with \AuthorCollaborationLimit is used.
 
-% The list of authors, and the short list which is used in the headers.
-% If you need two or more lines of authors, add an extra line using \newauthor
-\author[A. Rawlings et al.]{
-Alexander Rawlings,$^{1}$\thanks{E-mail: alexander.rawlings@helsinki.fi}
-Matias Mannerkoski,$^{1}$
-Others,$^{1}$
-\\
-% List of institutions
-$^{1}$
-Department of Physics,
-Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
-}
+%% The following command can be used to set the latex table counters.  It
+%% is needed in this document because it uses a mix of latex tabular and
+%% AASTeX deluxetables.  In general it should not be needed.
+%\setcounter{table}{1}
 
-% These dates will be filled out by the publisher
-\date{Accepted XXX. Received YYY; in original form ZZZ}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% The following section outlines numerous optional output that
+%% can be displayed in the front matter or as running meta-data.
+%%
+%% If you wish, you may supply running head information, although
+%% this information may be modified by the editorial offices.
+\shorttitle{Reviving Stochasticity}
+\shortauthors{A. Rawlings et al.}
+%%
+%% You can add a light gray and diagonal water-mark to the first page 
+%% with this command:
+%% \watermark{text}
+%% where "text", e.g. DRAFT, is the text to appear.  If the text is 
+%% long you can control the water-mark size with:
+%% \setwatermarkfontsize{dimension}
+%% where dimension is any recognized LaTeX dimension, e.g. pt, in, etc.
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\graphicspath{{./}{figures/}}
+%% This is the end of the preamble.  Indicate the beginning of the
+%% manuscript itself with \begin{document}.
 
-% Enter the current year, for the copyright statements etc.
-\pubyear{2022}
-
-% Don't change these lines
 \begin{document}
-\label{firstpage}
-\pagerange{\pageref{firstpage}--\pageref{lastpage}}
-\maketitle
 
-% Abstract of the paper
+\title{Reviving stochasticity: SMBH-binary eccentricity is inherently random}
+
+%% LaTeX will automatically break titles if they run longer than
+%% one line. However, you may use \\ to force a line break if
+%% you desire. In v6.31 you can include a footnote in the title.
+
+%% A significant change from earlier AASTEX versions is in the structure for 
+%% calling author and affiliations. The change was necessary to implement 
+%% auto-indexing of affiliations which prior was a manual process that could 
+%% easily be tedious in large author manuscripts.
+%%
+%% The \author command is the same as before except it now takes an optional
+%% argument which is the 16 digit ORCID. The syntax is:
+%% \author[xxxx-xxxx-xxxx-xxxx]{Author Name}
+%%
+%% This will hyperlink the author name to the author's ORCID page. Note that
+%% during compilation, LaTeX will do some limited checking of the format of
+%% the ID to make sure it is valid. If the "orcid-ID.png" image file is 
+%% present or in the LaTeX pathway, the OrcID icon will appear next to
+%% the authors name.
+%%
+%% Use \affiliation for affiliation information. The old \affil is now aliased
+%% to \affiliation. AASTeX v6.31 will automatically index these in the header.
+%% When a duplicate is found its index will be the same as its previous entry.
+%%
+%% Note that \altaffilmark and \altaffiltext have been removed and thus 
+%% can not be used to document secondary affiliations. If they are used latex
+%% will issue a specific error message and quit. Please use multiple 
+%% \affiliation calls for to document more than one affiliation.
+%%
+%% The new \altaffiliation can be used to indicate some secondary information
+%% such as fellowships. This command produces a non-numeric footnote that is
+%% set away from the numeric \affiliation footnotes.  NOTE that if an
+%% \altaffiliation command is used it must come BEFORE the \affiliation call,
+%% right after the \author command, in order to place the footnotes in
+%% the proper location.
+%%
+%% Use \email to set provide email addresses. Each \email will appear on its
+%% own line so you can put multiple email address in one \email call. A new
+%% \correspondingauthor command is available in V6.31 to identify the
+%% corresponding author of the manuscript. It is the author's responsibility
+%% to make sure this name is also in the author list.
+%%
+%% While authors can be grouped inside the same \author and \affiliation
+%% commands it is better to have a single author for each. This allows for
+%% one to exploit all the new benefits and should make book-keeping easier.
+%%
+%% If done correctly the peer review system will be able to
+%% automatically put the author and affiliation information from the manuscript
+%% and save the corresponding author the trouble of entering it by hand.
+
+%\correspondingauthor{August Muench}
+%\email{greg.schwarz@aas.org, gus.muench@aas.org}
+
+\author[0000-0003-1807-6321]{Alexander Rawlings}
+\affiliation{Department of Physics,
+Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland}
+
+\author[0000-0001-5721-9335]{Matias Mannerkoski}
+\affiliation{Department of Physics,
+Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland}
+
+\author{Others}
+
+\correspondingauthor{Alexander Rawlings}
+\email{alexander.rawlings@helsinki.fi}
+
+%% Note that the \and command from previous versions of AASTeX is now
+%% depreciated in this version as it is no longer necessary. AASTeX 
+%% automatically takes care of all commas and "and"s between authors names.
+
+%% AASTeX 6.31 has the new \collaboration and \nocollaboration commands to
+%% provide the collaboration status of a group of authors. These commands 
+%% can be used either before or after the list of corresponding authors. The
+%% argument for \collaboration is the collaboration identifier. Authors are
+%% encouraged to surround collaboration identifiers with ()s. The 
+%% \nocollaboration command takes no argument and exists to indicate that
+%% the nearby authors are not part of surrounding collaborations.
+
+%% Mark off the abstract in the ``abstract'' environment. 
 \begin{abstract}
-We present some stuff about eccentricity convergence in Nbody sims
+
+We present some stuff about eccentricity convergence in Nbody sims. Limited to 250 words.
+
 \end{abstract}
 
-% Select between one and six entries from the list of approved keywords.
-% Don't make up new ones.
-\begin{keywords}
-keyword1 -- keyword2 -- keyword3
-\end{keywords}
+%% Keywords should appear after the \end{abstract} command. 
+%% The AAS Journals now uses Unified Astronomy Thesaurus concepts:
+%% https://astrothesaurus.org
+%% You will be asked to selected these concepts during the submission process
+%% but this old "keyword" functionality is maintained in case authors want
+%% to include these concepts in their preprints.
+\keywords{Edit keywords}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% From the front matter, we move on to the body of the paper.
+%% Sections are demarcated by \section and \subsection, respectively.
+%% Observe the use of the LaTeX \label
+%% command after the \subsection to give a symbolic KEY to the
+%% subsection for cross-referencing in a \ref command.
+%% You can use LaTeX's \ref and \label commands to keep track of
+%% cross-references to sections, equations, tables, and figures.
+%% That way, if you change the order of any elements, LaTeX will
+%% automatically renumber them.
+%%
+%% We recommend that authors also use the natbib \citep
+%% and \citet commands to identify citations.  The citations are
+%% tied to the reference list via symbolic KEYs. The KEY corresponds
+%% to the KEY in the \bibitem in the reference list below. 
 
-%%%%%%%%%%%%%%%%% BODY OF PAPER %%%%%%%%%%%%%%%%%%
+
+%-------------------------- MAIN TEXT STARTS HERE --------------------------%
+% INTRODUCTION
+\section{Introduction}
+Supermassive black holes (SMBHs) are believed to reside at the centres of almost all massive galaxies. 
+As galaxies dynamically interact, so too are their supermassive black holes expected to interact in a three-phase merger process.
+The first phase, dynamical friction, acts to bring the SMBHs from kpc-scale separations to pc-scale separations, after which the SMBHs form a bound binary system, which can be characterised by an orbit with a semimajor axis $a$ and eccentricity $e$.
+Following the binding of the SMBHs, the SMBH binary separation is reduced through sequential slingshot encounters with the surrounding stellar distribution, and undergoes two types of interactions: hierarchical interactions and chaotic interactions.
+Hierarchical interactions occur when a perturbing third body is far from from the SMBH binary, $a_\mathrm{bin} < a_\mathrm{perturber}$, and the energy of the system does not change, however the angular momentum does.
+Hierarchical interactions drive changes in the SMBH binary eccentricity. 
+Conversely, chaotic interactions between the SMBH binary and a perturber remove orbital energy from the system when the semimajor axis of the perturber is comparable to the semimajor axis of the SMBH binary, $a_\mathrm{bin}\simeq a_\mathrm{perturber}$.
+The angular momentum of the system also varies during the chaotic interactions.
+Chaotic interactions drive the SMBH binary to sub-pc separation: a regime where gravitational wave (GW) emission becomes the dominant mechanism by which the SMBH binary can lose its remaining orbital energy and angular momentum, resulting in the coalescence of the two SMBHs into a single SMBH.
+
+It is well known that the efficiency by which GW emission can drive a SMBH binary to coalescence is highly sensitive to the eccentricity of the binary system \citep{peters1964}, with the merger timescale of the SMBH binary being particularly sensitive. 
+Additionally, the complex nature of SMBH coalescence in a galaxy merger setting necessitates the use of numerical techniques to understand, and to provide quantitative predictions for observational programmes such as pulsar timing arrays (PTAs) and the upcoming Laser Interferometer Space Antenna (LISA) mission.
+The requirement to understand the faithfulness to which SMBH binary eccentricity is captured in simulations is thus a critical piece of the puzzle in constraining the SMBH merger rate that the GW observational community aims to detect. 
+
+Previous work by \citet{nasim2020} have argued that scatter in SMBH binary eccentricity observed in simulations is an artefact of poor phase space discretisation in simulations, and that in the real Universe where SMBH masses are far greater than stellar masses, $M_\bullet \gg m_\star$, SMBH binary eccentricity is a reliably predictable quantity.
+In this work, we find that SMBH binary eccentricity is reliably predictable only for particular initial conditions of the galaxy merger system, and does not in general hold.
+Indeed, we find that for realistic galaxy merger orbits where the initial orbital eccentricity of the system is $e_0>0.99$, stochasticity in the final SMBH binary eccentricity is present. 
+This paper is organised \drafting{as follows: X, X, X.}
+\drafting{Add relevant references.}
 
 
-\input{./sections/intro}
+% NUMERICAL
+\section{Numerical Methods}
 
-\input{./sections/numerical}
+We construct a number of idealised galaxy merger simulations, which we evolve with our new version of \ketju{} \citep{rantala2017}, implemented in \gadget{}.
+For details about the implementation of \ketju{}, we point the reader to \drafting{Mannerkoski in prep}.
 
-\input{./sections/results}
+\subsection{Galaxy ICs}\label{ssec:gics}
+We construct our galaxy models to match those of \citet{gualandris2022}.
+Each galaxy is represented as a stellar-only Dehnen sphere \citep{dehnen1993} with shape parameter $\gamma=0.5$ and scale radius $a=186\,\mathrm{pc}$, where the Dehnen profile is given by:
+\begin{equation}\label{eq:dehnen}
+    \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
+\end{equation}
+The total stellar mass is $M_\star=10^{10}\,\Msun$, and at the centre of the model galaxy a SMBH of mass $M_\bullet=10^8\,\Msun$ is placed with zero initial velocity.
+We test five different mass resolutions by sampling the stellar phase space distribution with varying number of stellar particles: $N_\star = \{2.5\times10^5, 5.0\times10^5, 1.0\times10^6, 2.0\times10^6, 4.0\times10^6\}$.
 
-\input{./sections/discuss}
+\subsection{Merger ICs}
+We construct isolated merger initial conditions by placing two galaxies on an elliptical orbit with varying values of eccentricity, at a fixed initial separation of $D=3.72\,\mathrm{kpc}$ and semimajor axis $a_0=2.79\,\mathrm{kpc}$.
+We follow the same orbital configurations as \citet{gualandris2022}, with three additional orbit. 
+The chosen eccentricities $e$ are 0.5, 0.7, 0.9, 0.95, 0.97, and 0.99.
+We ensure that the radial and tangential velocities of the initial merger setup are consistent with the values reported in \citet{gualandris2022}.
+For each orbital configuration, we run ten realisations, to account for Brownian motion effects of the SMBH binary caused by the discretised phase space. 
+Each orbital geometry is simulated using our fiducial particle resolution of $M_\bullet/m_\star = 10^4$.
+Additionally, we run the $e_0=0.9$ and $e_0=0.99$ orbits at varying mass resolutions, using the galaxy ICs at the mass resolutions described in \autoref{ssec:gics}.
 
-\input{./sections/conclusions}
+\subsection{Assessing Eccentricity Uncertainty}
+In our analysis, we wish to determine the population spread in eccentricity from a finite set of observations.
+We assess the uncertainty in eccentricity using an inverse modelling approach following \citet{nasim2020}. 
+For each simulation in a given set, we determine the mean eccentricity $e_\mathrm{h}$ over five orbital periods centred on the orbit within which the SMBH binary has become hard.
+The binary hardening radius $a_\mathrm{h}$ is defined as \citep[e.g.][]{merritt2013}
+\begin{equation}\label{eq:ahard}
+    a_\mathrm{h} = \frac{q}{1+q} \frac{r_\mathrm{h}}{4},
+\end{equation}
+where $r_\mathrm{h}=r(m<2M_{\bullet,1})$ is the influence radius and $q = \{q \in \mathbb{R} | 0<q \leq 1\}$ is the mass ratio between the SMBHs.
+Under the assumption that each calculated mean eccentricity is a sample of some common distribution, we may (assuming that the distribution is Gaussian) obtain an estimate of the standard deviation of this distribution by taking the standard deviation of the collection of sample eccentricity means. 
 
+
+% RESULTS
+\section{Results}\label{sec:results}
+
+We present our findings first for the SMBH binary eccentricity scatter for initially low-eccentricity orbits (\autoref{ssec:lowe}), and then present the findings for initially high-eccentricity orbits (\autoref{ssec:highe}).
+We explain the results using an analytical representation in \autoref{ssec:toy}.
+
+\begin{figure}
+    \includegraphics{convergence}
+    \caption{\drafting{Convergence of eccentricity scatter as a function of mass resolution for $e_0=0.90$ and $e_0=0.99$. }}
+    \label{fig:convergence}
+\end{figure}
+
+
+\subsection{Eccentricity scatter in low-e orbits}\label{ssec:lowe}
+
+We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:convergence} with purple markers. 
+Taking the full set of ten simulations for this set (circle markers), immediately apparent is the lack of convergence of $\sigma_e$, with $5\times10^3$ and $1\times10^4$ mass resolutions demonstrating an increased scatter compared to the lowest mass resolution of $2.5\times10^3$.
+The peculiar values of $\sigma_e$ arises due to the assumed Gaussian distribution of the eccentricity between simulations.
+Inspecting the orbital parameters for all simulations that form the $e_0=0.90$ suite, it is found that for resolutions of $5\times10^3$ and $1\times10^4$ the eccentricity clusters around a value of $e_\mathrm{h}\simeq0.90$, except for one simulation at each resolution which has a value of $e_\mathrm{h}<0.4$.
+This one outlier for each of the two resolutions artificially inflates the measured eccentricity variance, and by applying a $2.5\sigma$-cut in eccentricity we recover the $1/\sqrt{M_\bullet/m_\star}\propto 1/\sqrt{N_\star}$ scaling of $\sigma_e$ as in \citet{nasim2020} (square markers), apart from the highest mass resolution set of $M_\bullet/m_\star=4\times10^4$.
+However, the eccentricity values beyond $2.5\sigma$ from the mean are each a valid measurement from the simulation, and highlight the presence of stochasticity in eccentricity for these idealised simulation set-ups. 
+The cause of these low eccentricity values is discussed in \autoref{ssec:toy}.
+
+
+\subsection{Eccentricity scatter in high-e orbits}\label{ssec:highe}
+
+We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.99$ orbit in \autoref{fig:convergence} with blue markers, where the marker symbols are consistent with those for the $e_0=0.90$ suite. 
+We find that the scaling of $\sigma_e$ is steeper than the $1/\sqrt{M_\bullet/m_\star}\propto1/\sqrt{N_\star}$ relation described in \citet{nasim2020}.
+We attribute this dramatic decrease in $\sigma_e$ to an inflated value of $\sigma_e$ at low mass resolution: there is increased scatter in eccentricity at low mass resolutions for very radial initial orbits of the SMBH binary. 
+This observation is highlighted in \autoref{fig:nasim_e_comp}.
+As the majority of major galaxy mergers in the real Universe are expected to be radial \citep[e.g.][]{khochfar2006}, understanding if the origin of the scatter in eccentricity is a numerical or a physical effect is of paramount importance, and will have direct implications for the predictions of SMBH merger rates by ongoing and future GW detection missions. 
+
+\begin{figure}
+    \includegraphics{eccentricities.pdf}
+    \caption{\drafting{Inverse modelling of eccentricity scatter as a function of initial eccentricity for $M_\bullet/m_\star=2\times10^4$. Combine as a panel into a the convergence figure?}}
+    \label{fig:nasim_e_comp}
+\end{figure}
+
+\begin{figure*}
+    \includegraphics{theta_e_sim_and_model_090}
+    \includegraphics{theta_e_sim_and_model_099}
+    \caption{
+    Scattering deflection angle $\theta$ and the resulting binary eccentricity
+    in the $e_0=0.90$ (left) and $e_0=0.99$ (right) simulations,
+    compared to reasonably well fitting model curves (see \autoref{ssec:toy}).
+    The model curve for the $e_0=0.90$ case has been shifted left by $12\degr$
+    to better match the simulation data.
+    }
+    \label{fig:theta_e}
+\end{figure*}
+
+
+
+\subsection{Explaining the eccentricity scatter with a toy model}\label{ssec:toy}
+
+We can gain insight into the large binary eccentricity scatter observed in the
+runs with high galactic merger orbit eccentricities by considering a simplified
+model that captures the essential features of how the SMBH binary becomes bound
+and settles on an orbit with a given eccentricity.
+The components we include in this model are the two SMBHs,
+a smooth background potential, and dynamical friction.
+For simplicity, we consider only symmetrical 1:1 mergers, and take the BH orbits
+to lie in the $xz$-plane.
+In this case the relative motion of the BHs can be treated as a one-body problem,
+with the equation of motion
+\begin{equation} \label{eq:toy_model_eom}
+\ddot{\vb{x}} = -\frac{2 G M_\bullet}{|\vb{x}|^3} \vb{x} + \vb{a}_\mathrm{bg} + \vb{a}_\mathrm{DF},
+\end{equation}
+where $\vb{x}$ is the separation vector of the BHs, $M_\bullet$ the mass of a single BH,
+$\vb{a}_\mathrm{bg}$ the acceleration due to the background potential,
+and $\vb{a}_\mathrm{DF}$ the acceleration due to dynamical friction.
+
+The background galaxy is modelled as a with constant density spheroidal potential,
+causing the acceleration \drafting{(e.g.\ B\&T)}
+\begin{equation}
+\vb{a}_\mathrm{bg} = - 2 \pi G \rho \operatorname{diag}(A_x,A_y,A_z) \vb{x},
+\end{equation}
+where $\rho$ is the stellar density,
+and the $A$ coefficients are related to the eccentricity $e_\mathrm{s}$ of the spheroid as
+\begin{equation}
+A_x = A_y  = 2 \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
+    \left[\frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right) - 1 \right]
+\end{equation}
+\begin{equation}
+A_z = \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
+        \left[ \frac{1}{1-e_\mathrm{s}^2} 
+        - \frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right)\right].
+\end{equation}
+With eccentricity values of $e_\mathrm{s} \approx 0.8\textnormal{--}0.9$,
+this spheroidal potential matches fairly well with the central potential in the galaxy during the
+BH binary binding phase, apart from the contributions from the BHs themselves and the groups of stars bound to them.
+\drafting{(Figure showing this?)}
+
+For dynamical friction, we use the \drafting{Chandrasekhar ref} formula assuming
+a Maxwellian distribution with a constant velocity dispersion $\sigma$.
+This formula gives the acceleration of a single BH due to dynamical friction as
+\begin{equation}\label{eq:chandra_df}
+\vb{a}_{1,\mathrm{DF}} = - 4 \pi G^2 M_\bullet \rho \ln{\Lambda} 
+                        (\operatorname{erf}(X) - 2 \pi^{-1/2} X e^{-X^2}) \frac{\vb{v}_{1}}{|\vb{v}_{1}|^3},
+\end{equation}
+where $\vb{v}_1 = \dot{\vb{x}}/2$ is the velocity of a single BH,
+$X = |\vb{v}_1|/\sqrt{2}\sigma$,
+and the Coulomb logarithm is taken to have the value $\ln{\Lambda} = 10$.
+To account for differences between the constant density background of stars
+assumed here and the more complex system that is present in the simulations
+we additionally multiply the acceleration given by Eq. \eqref{eq:chandra_df}
+with a scaling and cut-off function
+\begin{equation}
+f(a) = \frac{\alpha}{1 + \exp[(a_\mathrm{c}-a)/d_\mathrm{c}]},
+\end{equation}
+which serves to remove the effect of dynamical friction when the BH binary has become
+hard in addition to allowing the strength of dynamical friction to be scaled to
+achieve similar behaviour as observed in the simulations.
+Here $a$ is the semi-major axis of a bound binary, and for unbound binaries we set $f=\alpha$.
+We set the scaling factor $\alpha=0.5$, and use cut-off scales $a_\mathrm{c}=2 a_\mathrm{h}$
+and $d_\mathrm{c} = 0.5 a_\mathrm{h}$,
+with $a_\mathrm{h}$ being the semimajor-axis of a hard BH binary.
+The total dynamical friction term is then
+\begin{equation}
+\vb{a}_{\mathrm{DF}} = 2 f(a) \vb{a}_{1,\mathrm{DF}}.
+\end{equation}
+
+After specifying the initial position and velocity, as well as the other parameters of the model,
+the equation of motion can be solved using standard numerical integration techniques.
+We use the error controlled 8th order Runge--Kutta method DOP853 included in the SciPy library \citep{virtanen2020}
+for this purpose.
+To mimic the nearly linearly plunging orbit in the high-eccentricity merger orbit simulations,
+we specify the initial conditions confined to the $xz$-plane as 
+\begin{gather}
+\vb{x}_0 = (r_0, b)\\
+\dot{\vb{x}}_0 = (-v_0, 0).
+\end{gather}
+We fix $r_0 = 25\,\mathrm{pc}$,
+and use model parameters
+$\rho = 300 \,\Msun\,\mathrm{pc}^{-3}$,
+$\sigma=200\,\mathrm{km\,s^{-1}}$,
+and
+$M_\bullet=10^8\,\Msun$,
+which are fairly similar to the central properties of the merging galaxy when
+the SMBHs are becoming bound in the $e_0=0.90$ and $e_0=0.99$ merger orbit simulations.
+Based on the simulations we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.90$ case,
+and $v_0 = 560\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.99$ case.
+The spheroid eccentricity parameter is not easily measurable from the simulations,
+but by testing different values we find that $e_\mathrm{s}=0.905$ gives behaviour
+that closely resembles the simulation results.
+We compute the resulting eccentricities for a range of impact parameters for the two initial velocities.
+
+To compare the model against the simulations,
+we use the deflection angle in the first pericentre passage instead of the impact parameter,
+as it can be more robustly measured from the simulation data.
+The deflection angle is given by \citep{binney2008}:
+\begin{equation}
+    \theta_\mathrm{defl} = 2 \arctan \left(\frac{GM}{L\sqrt{2E}} \right)
+\end{equation}
+where $M=M_{\bullet,1}+M_{\bullet,2}$, and $L$ is the magnitude of the SMBH 
+binary angular momentum vector and $E$ the binary orbital energy at the time of the pericentre passage.
+To measure this angle from the simulations,
+we set as the first `hard-scattering' angle $\theta_\mathrm{defl}$ the first 
+angle that exceeds an orbit-dependent threshold:
+$\theta_{\mathrm{defl,min}}=90\degr$ for $e_0=0.99$ and $\theta_{\mathrm{defl,min}}=45\degr$ for $e_0=0.90$.
+This corresponds to the second or third actual pericentre passage in the simulations.
+In the model calculations we simply use the first actual pericentre for this calculation.
+
+The resulting model curves are shown together with the simulation data in \autoref{fig:theta_e}.
+To correctly match the data in the $e_0=0.90$ case, the model curve has been shifted to the left by $12\degr$.
+Otherwise the model appears to give a very good match to the simulation results,
+and the required slight shift could be due to the galactic potential being slightly tilted compared to the
+BH trajectories due to the complex dynamics at this stage.
+In the $e_0=0.99$ case we do not shift the model curve, although here a shift of a few degrees might give a better
+fit to the location of the minimum at $\theta \approx 100\degr$.
+In this case we can also see that the simulation data has more scatter around
+the model curve in the $\theta \gtrsim 120\degr$ region,
+although the model does appear to capture the mean behaviour fairly well.
+The behaviour of the model in this region is also quite sensitive to the exact value of $e_\mathrm{s}$,
+which might be related to the large scatter in the simulation data.
+
+
+
+\drafting{(Move these bits to the right place)}
+An example of $\theta_\mathrm{defl}$ is shown for two realisations of the $e_0=0.99$ orbit in \autoref{fig:orbit}, which occurs between the points A and B in the SMBH binary orbit in each inset panel. 
+To quantify the eccentricity of the resulting SMBH binary, we determine when the binary becomes hard (\autoref{eq:ahard}), and calculate the median and interquartile range (IQR) over a maximum of ten orbits about the time when $t=t(a=a_\mathrm{h})$.
+These points are shown in \drafting{FIGURE}, where the IQR is generally smaller than the symbol marker used in the plot. 
+
+\begin{figure}
+    \includegraphics{orbit}
+    \caption{Orbits from $t=0\,\mathrm{Myr}$ to $t=t_\mathrm{bound}$ of a single SMBH in two realisations of the $e_0=0.99$ mergers, which by symmetry of the equal mass system is the same as the second BH orbit reflected. Each line is coloured according to time of the simulation, however the colour for $t<22\,\mathrm{Myr}$ is constant for visual clarity of the later evolution. In each inset panel, point A shows a time just before the first hard scattering $\theta_\mathrm{defl}$, and point B a time just after. The circle marker indicates the final position of the SMBH before the SMBHs form a bound binary.}
+    \label{fig:orbit}
+\end{figure}
+
+
+\drafting{
+Findings
+\begin{itemize}
+\item Final $e$ varies with impact parameter for given $v_0$, two minima on small scales at $b$s that are likely to occur in simulations. 
+\item location and depth of minima varies with $v_0$, for some values possible to span the full range of $e$ for different impact params.
+\item Minimum $e$ for deflection angles $\sim 60^\circ, 120^\circ$.
+\end{itemize}
+}
+
+\drafting{
+Interpretation:
+\begin{itemize}
+\item Realistic merger orbits generally result in linearly plunging orbits just before binary formation,
+        with fairly small impact parameters.
+\item Often the relative velocities are in the range that leads to deflections around $90^\circ$
+      (some reason for this from energy considerations, since $b_{90}=GM_\mathrm{tot}/v^2$?),
+      small changes in impact param around that point hit the eccentricity minima in this model.
+\item Impact param differences seeded by the Brownian motion in sims,
+      but few pc differences small enough that you can't measure them from large scale merger orbits anyway.
+\item Conclusion: the scatter is physically relevant, not pure numerics.
+\end{itemize}
+}
+
+
+% DISCUSSION
+\section{Discussion}
+
+\drafting{
+    An interesting point to discuss is the origin of our eccentricity scatter. Early tests of the Gualandris setup seems to indicate that low eccentricity mergers do not demonstrate orbital flips, and are more converged. How to distinguish if the flip is the cause of the eccentricity scatter, or just correlated with eccentricity scatter?
+}
+
+We present in \autoref{sec:results} evidence for a tight correlation between the first hard-scattering angle $\theta_\mathrm{defl}$ and the hard SMBH binary eccentricity. 
+With the inclusion of the toy model, which provides a resolution-free model of the SMBH scattering process, we may draw two key interpretations of the results.
+
+First, the numerical simulations performed with \ketju{} are deterministic for a given set of initial conditions, given the same computing architecture and numerical parameters (e.g. the number of computing cores used).
+The scatter we observe in $\theta_\mathrm{defl}$ is thus a manifestation of Brownian motion induced by the phase space discretisation and other numerical errors, such as floating point round-off errors, denoted $\sigma_\mathrm{sim}$. 
+Thus, the numerical simulations present an instance where there is zero uncertainty in the initial conditions of the system, however there is error in the numerical evolution of the system.
+We determine the positional displacement between corresponding SMBHs across the simulations at a given mass resolution for the $e_0=0.90$ and $e_0=0.99$ orbits by moving the SMBH binary system to the centre of mass frame, and setting the SMBH positions to coincide with the origin at the beginning of the simulation. 
+Computing the standard deviation in the positional displacements for corresponding SMBHs $\sigma_\mathrm{displ}$ between simulation $i$ and simulation $j\neq i$ for all times $t<t_\mathrm{bound}$, we find the SMBH positions vary of the order $\sim10\,\mathrm{pc}$ at the time of the hard scattering, which translates to an uncertainty in the deflection angle. 
+
+Second, in the real Universe there is no numerical error affecting the system evolution.
+There is however uncertainty in the initial conditions of the system, whereby the chance of two galaxy merger events having the exact same initial configuration is practically zero.
+We denote this uncertainty as $\sigma_\mathrm{true}$.
+For the mergers of massive galaxies of the types modelled in this work, an uncertainty in the initial state of $\sigma_\mathrm{true} \sim \sigma_\mathrm{sim}$ is not unexpected, given the influence radius of a $10^8\,\Msun$ SMBH in a stellar background with velocity dispersion of the order $200\,\mathrm{km}\,\mathrm{s}^{-1}$ is $\sim 10\,\mathrm{pc}$ \drafting{From MBW, find better reference}.
+
+Thus, any process that perturbs the impact parameter associated with the hard scattering angle will result in an eccentricity sampled from the $\theta_\mathrm{defl}$--$e_\mathrm{h}$ curve, subject to some small scatter in $e$ resulting from the hierarchical interactions of distant perturbers, or by exchanges in angular momentum with the stellar cluster immediately surrounding the SMBH. 
+Critically however, the expected value of eccentricity is a direct consequence of the hard scattering angle, and is not an independent random process, and can be reliably predicted.
+We caution that there is not necessarily a one-to-one mapping of the initial merger eccentricity $e_0$ and the hard binary eccentricity $e_\mathrm{h}$, unless the $\theta_\mathrm{defl}$--$e_\mathrm{h}$ curve is uniform.
+As such a uniform function is not associated with the radial ($e_0>0.99$) mergers expected to occur in reality, we expect that for a given initial merger orbit $e_0$ a range of possible $e_\mathrm{h}$ would be observed.
+The converse also holds: inference about merging SMBH binary eccentricity does not necessarily provide a mapping back to the initial merger eccentricity unless the history of the system is known, which is unable to be achieved in a practical sense in reality.
+
+
+% CONCLUSIONS
+\section{Conclusions}
+
+% FINAL BITS
 \textit{Software:} \ketju{} \citep{rantala2017}, \gadget{} \citep{springel2022}, NumPy \citep{harris2020}, SciPy \citep{virtanen2020}, Matplotlib \citep{hunter2007}, pygad \citep{rottgers2020}. 
 
 
@@ -150,46 +619,27 @@ by the European Research Council via ERC Consolidator Grant KETJU (no. 818930).
 The numerical simulations used computational resources provided by
 the CSC -- IT Center for Science, Finland.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section*{Data Availability}
+%% For this sample we use BibTeX plus aasjournals.bst to generate the
+%% the bibliography. The sample631.bib file was populated from ADS. To
+%% get the citations to show in the compiled file do the following:
+%%
+%% pdflatex sample631.tex
+%% bibtext sample631
+%% pdflatex sample631.tex
+%% pdflatex sample631.tex
 
- 
-\drafting{The inclusion of a Data Availability Statement is a requirement for articles published in MNRAS. Data Availability Statements provide a standardised format for readers to understand the availability of data underlying the research results described in the article. The statement may refer to original data generated in the course of the study or to third-party data analysed in the article. The statement should describe and provide means of access, where possible, by linking to the data or providing the required accession numbers for the relevant databases or DOIs.}
+\bibliography{../ref}{}
+\bibliographystyle{aasjournal}
 
+%% This command is needed to show the entire author+affiliation list when
+%% the collaboration and author truncation commands are used.  It has to
+%% go at the end of the manuscript.
+%\allauthors
 
+%% Include this line if you are using the \added, \replaced, \deleted
+%% commands to see a summary list of all changes at the end of the article.
+%\listofchanges
 
-
-%%%%%%%%%%%%%%%%%%%% REFERENCES %%%%%%%%%%%%%%%%%%
-
-% The best way to enter references is to use BibTeX:
-
-\bibliographystyle{mnras}
-\bibliography{../ref} % if your bibtex file is called example.bib
-
-
-% Alternatively you could enter them by hand, like this:
-% This method is tedious and prone to error if you have lots of references
-%\begin{thebibliography}{99}
-%\bibitem[\protect\citeauthoryear{Author}{2012}]{Author2012}
-%Author A.~N., 2013, Journal of Improbable Astronomy, 1, 1
-%\bibitem[\protect\citeauthoryear{Others}{2013}]{Others2013}
-%Others S., 2012, Journal of Interesting Stuff, 17, 198
-%\end{thebibliography}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%%%%%%%%%%%%%%%% APPENDICES %%%%%%%%%%%%%%%%%%%%%
-
-\appendix
-
-%\input{sections/appendix}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-% Don't change these lines
-\bsp	% typesetting comment
-\label{lastpage}
 \end{document}
 
-% End of mnras_template.tex
+% End of file `sample631.tex'.
