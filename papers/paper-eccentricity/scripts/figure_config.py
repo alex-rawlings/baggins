@@ -1,5 +1,6 @@
 import os
 from matplotlib import rc_file, rcdefaults
+from Plotter import Plotter
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.abspath(os.path.join(this_dir, 'data/'))
@@ -17,3 +18,5 @@ def data_path(dname):
 rcdefaults()
 rc_file(os.path.join(this_dir,'matplotlibrc_publish'))
 
+# set up a custom plotting object
+plotter = Plotter()

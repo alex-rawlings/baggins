@@ -42,6 +42,7 @@ class _GradientPlot:
         self.all_marker = []
         self.all_pks = [plot_kwargs]
         self.norm = [0,1]
+        self._default_markerkwargs = {"ec":"k", "lw":0.5}
 
 
     def __len__(self):
@@ -154,23 +155,62 @@ class GradientLinePlot(_GradientPlot):
         super().__init__(ax, cmap=cmap, plot_kwargs=plot_kwargs)
 
 
-    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None):
+    def plot_single_series(self, i, logcolour=False, ax=None, vmin=None, vmax=None):
         """
-        Plot the data, ensuring a consistent colour scheme.
+        Plot the data for a single data series, but ensure colour is consistent 
+        with the colour-range of all data series in the object
 
         Parameters
         ----------
+        i : int
+            index of data series to plot
         logcolour : bool, optional
-            colours in log scale?, by default False
+            use logarithmic colour mapping, by default False
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        vmin : float, optional
+            minimum colour value (overrides default value), by default None
+        vmax : float, optional
+            maximum colour value (ovverides default value), by default None
         """
         self._data_check()
         self._set_colours(log=logcolour, vmin=vmin, vmax=vmax)
         ax = self.ax if ax is None else ax
-        for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
-            if markeri is not None:
-                ax.scatter(xi[-1], yi[-1], color=self.cmap(self.norm(ci[-1])), marker=markeri, label=labeli, zorder=10*self.data_count, ec="k", lw=0.5)
-            for xs, ys, cs in zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1]):
-                ax.plot(xs, ys, color=self.cmap(self.norm(cs)), **pki)
+        if self.all_marker[i] is not None:
+            ax.scatter(
+                self.all_x[i][-1], 
+                self.all_y[i][-1], 
+                color = self.cmap(self.norm(self.all_c[i][-1])),
+                marker = self.all_marker[i],
+                label = self.all_label[i],
+                zorder = 10 * self.data_count,
+                **self._default_markerkwargs
+            )
+        for xs, ys, cs in zip(
+                            zip(self.all_x[i][:-1], self.all_x[i][1:]),
+                            zip(self.all_y[i][:-1], self.all_y[i][1:]),
+                            self.all_c[i][:-1]
+                            ):
+                ax.plot(xs, ys, color=self.cmap(self.norm(cs)), **self.all_pks[i])
+
+
+    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None):
+        """
+        Plot the data for all data series, ensuring a consistent colour scheme.
+
+        Parameters
+        ----------
+        logcolour : bool, optional
+            use logarithmic colour mapping, by default False
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        vmin : float, optional
+            minimum colour value (overrides default value), by default None
+        vmax : float, optional
+            maximum colour value (ovverides default value), by default None
+        """
+        for i in range(self.data_count):
+            self.plot_single_series(i, logcolour=logcolour, ax=ax, vmin=vmin, vmax=vmax)
 
 
 
