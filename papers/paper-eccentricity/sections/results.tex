@@ -35,17 +35,19 @@ As the majority of major galaxy mergers in the real Universe are expected to be 
     \label{fig:nasim_e_comp}
 \end{figure}
 
-\begin{figure}
-    \includegraphics{deflect_e-0900}
-    \caption{\drafting{Theta-e plane for $e_0=0.90$ orbit. Update this confetti colour scheme. This figure and the one for $e_0=0.99$ will be combined into a single plot overlaid on the tow model results}}
-    \label{fig:deflect_e90}
-\end{figure}
+\begin{figure*}
+    \includegraphics{theta_e_sim_and_model_090}
+    \includegraphics{theta_e_sim_and_model_099}
+    \caption{
+    Scattering deflection angle $\theta$ and the resulting binary eccentricity
+    in the $e_0=0.90$ (left) and $e_0=0.99$ (right) simulations,
+    compared to reasonably well fitting model curves (see \autoref{ssec:toy}).
+    The model curve for the $e_0=0.90$ case has been shifted left by $12\degr$
+    to better match the simulation data.
+    }
+    \label{fig:theta_e}
+\end{figure*}
 
-\begin{figure}
-    \includegraphics{deflect_e-0990}
-    \caption{\drafting{Theta-e plane for $e_0=0.99$ orbit}}
-    \label{fig:deflect_e99}
-\end{figure}
 
 
 \subsection{Explaining the eccentricity scatter with a toy model}\label{ssec:toy}
@@ -127,24 +129,53 @@ we specify the initial conditions confined to the $xz$-plane as
 \vb{x}_0 = (r_0, b)\\
 \dot{\vb{x}}_0 = (-v_0, 0).
 \end{gather}
-We fix $r_0 = 100\,\mathrm{pc}$,
+We fix $r_0 = 25\,\mathrm{pc}$,
 and use model parameters
-$\rho = 400 \,\Msun\,\mathrm{pc}^{-3}$,
+$\rho = 300 \,\Msun\,\mathrm{pc}^{-3}$,
 $\sigma=200\,\mathrm{km\,s^{-1}}$,
-$M_\bullet=10^8\,\Msun$,
 and
-$e_\mathrm{s}=0.9$,
-which are similar to the central properties of the merging galaxy when
+$M_\bullet=10^8\,\Msun$,
+which are fairly similar to the central properties of the merging galaxy when
 the SMBHs are becoming bound in the $e_0=0.90$ and $e_0=0.99$ merger orbit simulations.
-\drafting{(Check the params)}
+Based on the simulations we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.90$ case,
+and $v_0 = 560\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.99$ case.
+The spheroid eccentricity parameter is not easily measurable from the simulations,
+but by testing different values we find that $e_\mathrm{s}=0.905$ gives behaviour
+that closely resembles the simulation results.
+We compute the resulting eccentricities for a range of impact parameters for the two initial velocities.
 
-\drafting{This right place for this section?}
-To investigate the effect of the deflection angle, and by extension the impact parameter, on the final SMBH binary eccentricity, we determine the deflection angle at each pericentre passage before the SMBHs become bound \citep{binney2008}:
+To compare the model against the simulations,
+we use the deflection angle in the first pericentre passage instead of the impact parameter,
+as it can be more robustly measured from the simulation data.
+The deflection angle is given by \citep{binney2008}:
 \begin{equation}
     \theta_\mathrm{defl} = 2 \arctan \left(\frac{GM}{L\sqrt{2E}} \right)
 \end{equation}
-where $M=M_{\bullet,1}+M_{\bullet,2}$, and $L$ is the magnitude of the SMBH binary angular momentum vector and $E$ the binary orbital energy at the time of the pericentre passage.
-We set as the first `hard-scattering' angle $\theta_\mathrm{defl}$ the first angle that exceeds an orbit-dependent threshold: $\theta_{\mathrm{defl,min}}=90$ for $e_0=0.99$ and $\theta_{\mathrm{defl,min}}=45$ for $e_0=0.90$ \drafting{need to insert degrees sign, but command not working?}.
+where $M=M_{\bullet,1}+M_{\bullet,2}$, and $L$ is the magnitude of the SMBH 
+binary angular momentum vector and $E$ the binary orbital energy at the time of the pericentre passage.
+To measure this angle from the simulations,
+we set as the first `hard-scattering' angle $\theta_\mathrm{defl}$ the first 
+angle that exceeds an orbit-dependent threshold:
+$\theta_{\mathrm{defl,min}}=90\degr$ for $e_0=0.99$ and $\theta_{\mathrm{defl,min}}=45\degr$ for $e_0=0.90$.
+This corresponds to the second or third actual pericentre passage in the simulations.
+In the model calculations we simply use the first actual pericentre for this calculation.
+
+The resulting model curves are shown together with the simulation data in \autoref{fig:theta_e}.
+To correctly match the data in the $e_0=0.90$ case, the model curve has been shifted to the left by $12\degr$.
+Otherwise the model appears to give a very good match to the simulation results,
+and the required slight shift could be due to the galactic potential being slightly tilted compared to the
+BH trajectories due to the complex dynamics at this stage.
+In the $e_0=0.99$ case we do not shift the model curve, although here a shift of a few degrees might give a better
+fit to the location of the minimum at $\theta \approx 100\degr$.
+In this case we can also see that the simulation data has more scatter around
+the model curve in the $\theta \gtrsim 120\degr$ region,
+although the model does appear to capture the mean behaviour fairly well.
+The behaviour of the model in this region is also quite sensitive to the exact value of $e_\mathrm{s}$,
+which might be related to the large scatter in the simulation data.
+
+
+
+\drafting{(Move these bits to the right place)}
 An example of $\theta_\mathrm{defl}$ is shown for two realisations of the $e_0=0.99$ orbit in \autoref{fig:orbit}, which occurs between the points A and B in the SMBH binary orbit in each inset panel. 
 To quantify the eccentricity of the resulting SMBH binary, we determine when the binary becomes hard (\autoref{eq:ahard}), and calculate the median and interquartile range (IQR) over a maximum of ten orbits about the time when $t=t(a=a_\mathrm{h})$.
 These points are shown in \drafting{FIGURE}, where the IQR is generally smaller than the symbol marker used in the plot. 
@@ -155,13 +186,6 @@ These points are shown in \drafting{FIGURE}, where the IQR is generally smaller 
     \label{fig:orbit}
 \end{figure}
 
-\drafting{
-Figures to do:
-\begin{itemize}
-\item $\theta$-$e$ curve at a few different $v_0$ values, shows minima in $e$.
-      Also plot data points from high-e simulations, we can hopefully match the curve shape at least roughly.
-\end{itemize}
-}
 
 \drafting{
 Findings

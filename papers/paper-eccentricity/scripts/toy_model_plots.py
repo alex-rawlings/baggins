@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -5,6 +6,7 @@ import pickle
 from scipy.interpolate import griddata
 
 from figure_config import fig_path, data_path
+from Plotter import Plotter
 
 degree_format_str = '${x:.0f}\degree$'
 
@@ -68,11 +70,11 @@ def th_e_curves(data):
     plt.xlabel(r'$\theta$')
     plt.gca().xaxis.set_major_formatter(degree_format_str)
     
-def plot_specific_th_e(data, v0s, simdata=None):
+def plot_specific_th_e(data, v0s, simdata=None, shift=0):
     plt.figure()
     for v0 in v0s:
         i = np.argmin(abs(np.array(data['v0s'])-v0))
-        plt.plot(np.degrees(data['theta'][i]), data['e'][i], label=f"$v_0 = {data['v0s'][i]:3.0f}"r'/\mathrm{km\,s^{-1}}$')
+        plt.plot(np.degrees(data['theta'][i]) + shift, data['e'][i], label=f"$v_0 = {data['v0s'][i]:3.0f}"r'/\mathrm{km\,s^{-1}}$')
 
 
     if simdata is not None:
@@ -106,13 +108,70 @@ def hr_well_fitting_models_plot(curve_shift=None):
 
 
     sim_data = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
-    plot_sim_data_th_e(plt.gca(), {'1':sim_data090})
+    plot_sim_data_th_e(plt.gca(), {'1':sim_data})
+
+    plt.figure()
+    plt.ylabel('$e$')
+    plt.xlabel(r'$\theta$')
+    plt.gca().xaxis.set_major_formatter(degree_format_str)
+
+    d = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
+    l, = plt.plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:orange')
+    plt.plot(np.degrees(d['theta']), d['e'], alpha=0.5, color=l.get_color())
+
+    sim_data = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
+    plot_sim_data_th_e(plt.gca(), {'1':sim_data})
+
+def paper_plots():
+    plotter = Plotter()
+
+    plt.figure()
+    plt.ylabel('$e$')
+    plt.xlabel(r'$\theta$')
+    plt.gca().xaxis.set_major_formatter(degree_format_str)
+    plt.ylim(0,1)
+    plt.xlim(20,165)
+
+    d = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
+    curve_shift = -12
+    l, = plt.plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:blue')
+    #plt.plot(np.degrees(d['theta']), d['e'], alpha=0.5, color=l.get_color())
+
+    sim_data = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
+    for k, g in itertools.groupby(sorted(zip(sim_data['mass_res'], sim_data['thetas'], sim_data['median_eccs'])),
+                                  lambda x: x[0]):
+        th, e = np.array(list(g)).T[1:]
+        if not np.any(np.isfinite(e)):
+            continue #some nan values in this dataset
+        plotter.scatter(th,e, label=rf"{k:.0f}", zorder=2)
+
+    plt.legend(ncol=1, title=r'$M_\bullet/m_\star$')
+    plt.savefig(fig_path('theta_e_sim_and_model_090.pdf'))
+
+    plt.figure()
+    plt.ylabel('$e$')
+    plt.xlabel(r'$\theta$')
+    plt.gca().xaxis.set_major_formatter(degree_format_str)
+    plt.ylim(0,1)
+    plt.xlim(20,165)
+
+    d = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
+    curve_shift = -6
+    #l, = plt.plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:blue', label='Shifted model')
+    plt.plot(np.degrees(d['theta']), d['e'], alpha=1, color='tab:blue')
+
+    sim_data = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
+    for k, g in itertools.groupby(sorted(zip(sim_data['mass_res'], sim_data['thetas'], sim_data['median_eccs'])),
+                                  lambda x: x[0]):
+        th, e = np.array(list(g)).T[1:]
+        plotter.scatter(th,e, label=f"{k:.0f}", zorder=2)
+
+    plt.legend(ncol=1, title=r'$M_\bullet/m_\star$')
+    plt.savefig(fig_path('theta_e_sim_and_model_099.pdf'))
 
 
-
-
-sim_data090 = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
-sim_data099 = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
+#sim_data090 = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
+#sim_data099 = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
 
 #data = load_data(data_path('hernquist_b_v_scan_es_0.90_df_0.3.pkl'))
 #plot_specific_th_e(data, [750,800,860], {'e=0.90': sim_data090, 'e=0.99':sim_data099})
@@ -123,9 +182,9 @@ sim_data099 = load_data(data_path('deflection_angles_e0-0.990.pickle'))
 #plot_specific_th_e(data, [470], {'e=0.90': sim_data090})
 #th_v_e_map(data)
 
-#data = load_data(data_path('g05_b_v_scan_es_0.85_df_0.3.pkl'))
-##data = load_data(data_path('g05_3_b_v_scan_es_0.90_df_0.3.pkl'))
-#plot_specific_th_e(data, [470,500,560, 650], {'e=0.90': sim_data090,'e=0.99':sim_data099})
+#data = load_data(data_path('g05_3_b_v_scan_es_0.90_df_0.5.pkl'))
+###data = load_data(data_path('g05_3_b_v_scan_es_0.90_df_0.3.pkl'))
+#plot_specific_th_e(data, [450, 570,590], {'e=0.90': sim_data090,'e=0.99':sim_data099}, shift=0)
 #th_v_e_map(data)
 
 #b_v_e_map(data)
@@ -134,6 +193,7 @@ sim_data099 = load_data(data_path('deflection_angles_e0-0.990.pickle'))
 ##min_e_plot(data)
 #th_e_curves(data)
 
-hr_well_fitting_models_plot(curve_shift=-12)
+#hr_well_fitting_models_plot(curve_shift=-12)
+paper_plots()
 
 plt.show()

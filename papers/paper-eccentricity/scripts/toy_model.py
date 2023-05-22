@@ -230,17 +230,17 @@ def parameter_space_scan_g05_conf2():
     
 def parameter_space_scan_g05_conf3():
 # params matching gamma=0.5 e=0.99 runs fairly well
-    for gal_e, df_fudge in itertools.product([0.85,0.9],[0.3]):
+    for gal_e, df_fudge in itertools.product([0.9],[0.5]):
         sys = System(M_BH=1e-2,
-                     rho=20,
+                     rho=30,
                      e_spheroid=gal_e,
-                     stellar_sigma=225*km_per_s,
+                     stellar_sigma=200*km_per_s,
                      df_fudge_factor=df_fudge)
 
-        r0 = sys.r_infl
+        r0 = 0.025
 
         v0s = np.linspace(400, 650, 40) * km_per_s
-        bs = np.linspace(0.01, 25, 250) * 1e-3
+        bs = np.linspace(0.01, 25, 200) * 1e-3
         
         theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
         
@@ -250,24 +250,33 @@ def parameter_space_scan_g05_conf3():
         with open(f'data/g05_3_b_v_scan_es_{gal_e:.2f}_df_{df_fudge:.1f}.pkl', 'wb') as f:
             pickle.dump(res, f, protocol=-1)
 
+# main plot data generated with this function
 def high_res_well_fitting_models():
-    #e=0.9 mergers are well fitted by this system, and the parameters are pretty similar to the sims as well
+    #e=0.9, 0.99 mergers are well described by this system, and the parameters are pretty similar to the sims as well
     sys = System(M_BH=1e-2,
-                 rho=40,
-                 e_spheroid=0.9,
+                 rho=30,
+                 e_spheroid=0.905,
                  stellar_sigma=200*km_per_s,
                  df_fudge_factor=0.5)
 
-    r0 = sys.r_infl
+    r0 = 25e-3
 
-    v0s = [470 * km_per_s]
+    v0s = [450 * km_per_s] # vel from simulations
     bs = np.geomspace(0.1, 20, 500) * 1e-3
-    
-    theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
-    res090 = dict(theta=theta[0], e=efin[0], b=bs)
 
+    theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+
+    res090 = dict(theta=theta[0], e=efin[0], b=bs)
     with open(f'data/well_fitting_e_0.90_model_curve.pkl', 'wb') as f:
         pickle.dump(res090, f, protocol=-1)
+
+    v0s = [560 * km_per_s]
+    theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+    res099 = dict(theta=theta[0], e=efin[0], b=bs)
+    with open(f'data/well_fitting_e_0.99_model_curve.pkl', 'wb') as f:
+        pickle.dump(res099, f, protocol=-1)
+
+
 
 
 def test_plots():
@@ -279,15 +288,15 @@ def test_plots():
 # the individual free parameters:
 # Params matching gamma=0.5 e=.99/.97 runs fairly well
     M_BH_ref = 1e-2 # single BH mass
-    rho_ref = 40 # stellar density
+    rho_ref = 30 # stellar density
     sigma_ref = 200*km_per_s # stellar velocity dispersion
-    gal_e = 0.90
+    gal_e = 0.905
 
-    v0_per_sigma = 2.6 # initial BH velocity / stellar sigma
-    r0_per_rinfl = 1 # initial BH separation/single BH influence radius
+    v0_per_sigma = 4.5/2 # initial BH velocity / stellar sigma
+    r0_per_rinfl = .5 # initial BH separation/single BH influence radius
     #v0_per_sigma = 2.2 # initial BH velocity / stellar sigma
     #r0_per_rinfl = 2 # initial BH separation/single BH influence radius
-    bmin_per_r0,bmax_per_r0 = 1e-3, 2e-1 # impact parameter limits / initial separation
+    bmin_per_r0,bmax_per_r0 = 5e-3, 8e-1 # impact parameter limits / initial separation
 
 # params matching Hernquist 11-0.825 high_e_no_stars runs fairly well
     #M_BH_ref = 3e-1 # single BH mass
@@ -312,9 +321,10 @@ def test_plots():
 
 
     v0 = v0_per_sigma * sigma_ref * vscale
-    r0 = r0_per_rinfl * sys.r_infl
+    #r0 = r0_per_rinfl * sys.r_infl
+    r0 = 25e-3
     print(r0*1e3, v0/km_per_s, 2*sys.a_hard*1e3)
-    bs = np.linspace(bmin_per_r0, bmax_per_r0, 20)*r0
+    bs = np.linspace(bmin_per_r0, bmax_per_r0, 30)*r0
 
 
     efin = []
