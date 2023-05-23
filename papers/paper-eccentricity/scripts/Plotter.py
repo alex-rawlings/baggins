@@ -84,6 +84,56 @@ class Plotter:
         counter[ax.__hash__()] += 1
 
 
+    def _reset_counts(self, ax, counter):
+        """
+        General method to reset a counter
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        counter : dict
+            plot type counts with axis hash as keys
+        """
+        counter[ax.__hash__()] = 0
+
+
+    def reset_line_count(self, ax):
+        """
+        Reset the line counter
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        self._reset_counts(ax=ax, counter=self._line_count)
+
+
+    def reset_scatter_count(self, ax):
+        """
+        Reset the scatter counter
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        self._reset_counts(ax=ax, counter=self._scatter_count)
+
+
+    def reset_error_count(self, ax):
+        """
+        Reset the errorbar counter
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        self._reset_counts(ax=ax, counter=self._error_count)
+
+
     def print_all_counts(self):
         """
         Print the count of each plot type for every axis, where axes are 
@@ -128,7 +178,7 @@ class Plotter:
                 x, y, 
                 c=self._get_col(lc), 
                 lw=self._plot_linewidth, 
-                path_effects=[pe.Stroke(linewidth=self._plot_linewidth+1.5, foreground="k"), pe.Normal()], 
+                path_effects=[pe.Stroke(linewidth=self._plot_linewidth+1, foreground="k"), pe.Normal()], 
                 **kwargs
             )
         self._update_counts(ax, self._line_count)
