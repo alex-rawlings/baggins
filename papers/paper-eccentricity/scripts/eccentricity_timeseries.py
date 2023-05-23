@@ -58,10 +58,6 @@ def t_shift(t):
 
 
 # initialise the figure
-'''fig, ax = plt.subplots(1,2,
-                    figsize=np.array(rcParams["figure.figsize"])*np.array([2,1]), 
-                    sharex="all", sharey="all"
-                    )'''
 fig = plt.figure(figsize=np.array(rcParams["figure.figsize"])*np.array([7/3,5/3]))
 ax1 = plt.subplot(2,2,(1,2))
 ax2 = plt.subplot(2,2,3, sharey=ax1)
@@ -116,9 +112,9 @@ for i, (data_path, axi, label) in enumerate(zip((e90_data_path, e99_data_path), 
     eccs = np.array([np.nanmean(ecc) for ecc in km.obs["e"]])
     mean_ecc = np.nanmean(eccs)
     axi.axhline(inverse_e(mean_ecc), c="k", ls="--")
-    # plot the SD of eacg time series' mean
+    # plot the SD of each time series' mean
     sd_ecc = np.nanstd(eccs)
-    axi.axhspan(inverse_e(mean_ecc-sd_ecc), inverse_e(mean_ecc+sd_ecc), alpha=0.3)
+    axi.axhspan(inverse_e(mean_ecc-2.5*sd_ecc), inverse_e(mean_ecc+2.5*sd_ecc), alpha=0.3)
 
 axins.set_xlim(-0.03, 0.03)
 axins.set_ylim(0.17, 0.21)
