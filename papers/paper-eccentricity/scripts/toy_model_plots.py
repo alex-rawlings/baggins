@@ -3,12 +3,12 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-from scipy.interpolate import griddata
+from scipy.interpolate import griddata, interp1d
 
 from figure_config import fig_path, data_path
 from Plotter import Plotter
 
-degree_format_str = '${x:.0f}\degree$'
+degree_format_str = '{x:.0f}°'
 
 def load_data(fname):
     with open(fname, 'rb') as f:
@@ -95,47 +95,43 @@ def plot_sim_data_th_e(ax, simdata):
                    )
 
 
-def hr_well_fitting_models_plot(curve_shift=None):
-
-    plt.figure()
-    plt.ylabel('$e$')
-    plt.xlabel(r'$\theta$')
-    plt.gca().xaxis.set_major_formatter(degree_format_str)
-
-    d = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
-    l, = plt.plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:orange')
-    plt.plot(np.degrees(d['theta']), d['e'], alpha=0.5, color=l.get_color())
-
-
-    sim_data = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
-    plot_sim_data_th_e(plt.gca(), {'1':sim_data})
-
-    plt.figure()
-    plt.ylabel('$e$')
-    plt.xlabel(r'$\theta$')
-    plt.gca().xaxis.set_major_formatter(degree_format_str)
-
-    d = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
-    l, = plt.plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:orange')
-    plt.plot(np.degrees(d['theta']), d['e'], alpha=0.5, color=l.get_color())
-
-    sim_data = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
-    plot_sim_data_th_e(plt.gca(), {'1':sim_data})
-
 def paper_plots():
     plotter = Plotter()
 
-    plt.figure()
-    plt.ylabel('$e$')
-    plt.xlabel(r'$\theta$')
-    plt.gca().xaxis.set_major_formatter(degree_format_str)
-    plt.ylim(0,1)
-    plt.xlim(20,165)
+    fig, axes = plt.subplots(1,2,sharey='row')
+    fig.set_figwidth(2*fig.get_figwidth())
 
-    d = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
+    axes[0].set_ylabel('$e$')
+    axes[0].set_ylim(0,1)
+    for ax in axes:
+        ax.set_xlabel(r'$\theta$')
+        ax.xaxis.set_major_formatter(degree_format_str)
+        ax.set_xlim(20,170)
+        ax.set_xticks(np.arange(30,180,30))
+
+    data = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
     curve_shift = -12
-    l, = plt.plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:blue')
-    #plt.plot(np.degrees(d['theta']), d['e'], alpha=0.5, color=l.get_color())
+    for e_s, d in zip(data['e_spheroids'], data['res']):
+        if e_s <0.9: continue
+        a = 1 if e_s == 0.905 else 0.5
+        l, = axes[0].plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:blue', alpha=a)
+    #axb = axes[0].secondary_xaxis('top', 
+    #            functions=(interp1d(np.degrees(d['theta']), d['b']*1e3,
+    #                                bounds_error=False, fill_value='extrapolate'),
+    #                       interp1d(d['b']*1e3, np.degrees(d['theta']),
+    #                                bounds_error=False, fill_value='extrapolate')))
+    #axb.set_xlabel('$b/\mathrm{pc}$')
+    #axb.set_xticks([1,2,3,5,10,20])
+    #axes[0].tick_params(top=False)
+    print("b90 for e_0=0.90", np.interp(90,np.degrees(d['theta'][::-1]),d['b'][::-1]*1e3))
+
+
+    axes[0].arrow(35-curve_shift,0.1,curve_shift,0, length_includes_head=True,
+                  width=0.01, head_width=0.02, head_length=3, edgecolor='none',
+                  facecolor='k')
+    axes[0].text(22,0.13,"Model shift")
+
+    axes[0].text(22,0.95,"$e_0=0.90$")
 
     sim_data = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
     for k, g in itertools.groupby(sorted(zip(sim_data['mass_res'], sim_data['thetas'], sim_data['median_eccs'])),
@@ -143,31 +139,42 @@ def paper_plots():
         th, e = np.array(list(g)).T[1:]
         if not np.any(np.isfinite(e)):
             continue #some nan values in this dataset
-        plotter.scatter(th,e, label=rf"{k:.0f}", zorder=2)
+        plotter.scatter(th,e, label=rf"{k:.0f}", zorder=2, ax=axes[0])
 
-    plt.legend(ncol=1, title=r'$M_\bullet/m_\star$')
-    plt.savefig(fig_path('theta_e_sim_and_model_090.pdf'))
 
-    plt.figure()
-    plt.ylabel('$e$')
-    plt.xlabel(r'$\theta$')
-    plt.gca().xaxis.set_major_formatter(degree_format_str)
-    plt.ylim(0,1)
-    plt.xlim(20,165)
-
-    d = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
+    data = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
     curve_shift = -6
-    #l, = plt.plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:blue', label='Shifted model')
-    plt.plot(np.degrees(d['theta']), d['e'], alpha=1, color='tab:blue')
+    for e_s, d in zip(data['e_spheroids'], data['res']):
+        if e_s < 0.9: continue
+        a = 1 if e_s == 0.905 else 0.5
+        #a = 0.7
+        axes[1].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color='tab:blue')
+
+
+    #axb = axes[1].secondary_xaxis('top', 
+    #            functions=(interp1d(np.degrees(d['theta']), d['b']*1e3,
+    #                                bounds_error=False, fill_value='extrapolate'),
+    #                       interp1d(d['b']*1e3, np.degrees(d['theta']),
+    #                                bounds_error=False, fill_value='extrapolate')))
+    #axb.set_xlabel('$b/\mathrm{pc}$')
+    #axb.set_xticks([1,2,3,5,10,20])
+    #axes[1].tick_params(top=False)
+    print("b90 for e_0=0.99", np.interp(90,np.degrees(d['theta'])[::-1],d['b'][::-1]*1e3))
+
+    axes[1].arrow(30-curve_shift,0.1,curve_shift,0, length_includes_head=True,
+                  width=0.01, head_width=0.02, head_length=3, edgecolor='none',
+                  facecolor='k')
+
+    axes[1].text(22,0.95,"$e_0=0.99$")
 
     sim_data = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
     for k, g in itertools.groupby(sorted(zip(sim_data['mass_res'], sim_data['thetas'], sim_data['median_eccs'])),
                                   lambda x: x[0]):
         th, e = np.array(list(g)).T[1:]
-        plotter.scatter(th,e, label=f"{k:.0f}", zorder=2)
+        plotter.scatter(th,e, label=f"{k:.0f}", zorder=2, ax=axes[1])
 
-    plt.legend(ncol=1, title=r'$M_\bullet/m_\star$')
-    plt.savefig(fig_path('theta_e_sim_and_model_099.pdf'))
+    axes[1].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right')
+    plt.savefig(fig_path('theta_e_sim_and_model.pdf'))
 
 
 #sim_data090 = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
@@ -176,15 +183,9 @@ def paper_plots():
 #data = load_data(data_path('hernquist_b_v_scan_es_0.90_df_0.3.pkl'))
 #plot_specific_th_e(data, [750,800,860], {'e=0.90': sim_data090, 'e=0.99':sim_data099})
 
-
-# good fit
-#data = load_data(data_path('old_scans/g05_b_v_scan_es_0.90_df_0.5.pkl'))
-#plot_specific_th_e(data, [470], {'e=0.90': sim_data090})
-#th_v_e_map(data)
-
 #data = load_data(data_path('g05_3_b_v_scan_es_0.90_df_0.5.pkl'))
 ###data = load_data(data_path('g05_3_b_v_scan_es_0.90_df_0.3.pkl'))
-#plot_specific_th_e(data, [450, 570,590], {'e=0.90': sim_data090,'e=0.99':sim_data099}, shift=0)
+#plot_specific_th_e(data, [450, 560,590], {'e=0.90': sim_data090,'e=0.99':sim_data099}, shift=0)
 #th_v_e_map(data)
 
 #b_v_e_map(data)
@@ -193,7 +194,7 @@ def paper_plots():
 ##min_e_plot(data)
 #th_e_curves(data)
 
-#hr_well_fitting_models_plot(curve_shift=-12)
+
 paper_plots()
 
 plt.show()

@@ -252,29 +252,31 @@ def parameter_space_scan_g05_conf3():
 
 # main plot data generated with this function
 def high_res_well_fitting_models():
-    #e=0.9, 0.99 mergers are well described by this system, and the parameters are pretty similar to the sims as well
-    sys = System(M_BH=1e-2,
-                 rho=30,
-                 e_spheroid=0.905,
-                 stellar_sigma=200*km_per_s,
-                 df_fudge_factor=0.5)
-
     r0 = 25e-3
-
-    v0s = [450 * km_per_s] # vel from simulations
     bs = np.geomspace(0.1, 20, 500) * 1e-3
+    e_spheroids = [0.895, 0.9, 0.905, 0.91]
 
-    theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+    v0s = [450 * km_per_s, 560 * km_per_s]
+    res090 = []
+    res099 = []
+    for e_s in e_spheroids:
+    #e=0.9, 0.99 mergers are well fitted by this system, and the parameters are pretty similar to the sims as well
+        sys = System(M_BH=1e-2,
+                     rho=30,
+                     e_spheroid=e_s,
+                     stellar_sigma=200*km_per_s,
+                     df_fudge_factor=0.5)
 
-    res090 = dict(theta=theta[0], e=efin[0], b=bs)
+        theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
+        res090.append(dict(theta=theta[0], e=efin[0], b=bs))
+        res099.append(dict(theta=theta[1], e=efin[1], b=bs))
+
     with open(f'data/well_fitting_e_0.90_model_curve.pkl', 'wb') as f:
-        pickle.dump(res090, f, protocol=-1)
+        pickle.dump(dict(e_spheroids=e_spheroids, res=res090), f, protocol=-1)
 
-    v0s = [560 * km_per_s]
-    theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
-    res099 = dict(theta=theta[0], e=efin[0], b=bs)
     with open(f'data/well_fitting_e_0.99_model_curve.pkl', 'wb') as f:
-        pickle.dump(res099, f, protocol=-1)
+        pickle.dump(dict(e_spheroids=e_spheroids, res=res099), f, protocol=-1)
+
 
 
 
@@ -288,15 +290,15 @@ def test_plots():
 # the individual free parameters:
 # Params matching gamma=0.5 e=.99/.97 runs fairly well
     M_BH_ref = 1e-2 # single BH mass
-    rho_ref = 30 # stellar density
+    rho_ref = 25 # stellar density
     sigma_ref = 200*km_per_s # stellar velocity dispersion
     gal_e = 0.905
 
-    v0_per_sigma = 4.5/2 # initial BH velocity / stellar sigma
+    v0_per_sigma = 5.6/2 # initial BH velocity / stellar sigma
     r0_per_rinfl = .5 # initial BH separation/single BH influence radius
     #v0_per_sigma = 2.2 # initial BH velocity / stellar sigma
     #r0_per_rinfl = 2 # initial BH separation/single BH influence radius
-    bmin_per_r0,bmax_per_r0 = 5e-3, 8e-1 # impact parameter limits / initial separation
+    bmin_per_r0,bmax_per_r0 = 5e-3, 1e-1 # impact parameter limits / initial separation
 
 # params matching Hernquist 11-0.825 high_e_no_stars runs fairly well
     #M_BH_ref = 3e-1 # single BH mass
