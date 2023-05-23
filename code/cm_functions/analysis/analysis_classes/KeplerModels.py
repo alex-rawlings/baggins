@@ -34,7 +34,7 @@ class _KeplerModelBase(StanModel_1D):
         pars : dict
             analysis parameters
         """
-        obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[]}
+        obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[], "t":[]}
         i = 0
         for f in dir:
             _logger.logger.debug(f"Loading file: {f}")
@@ -61,6 +61,7 @@ class _KeplerModelBase(StanModel_1D):
             # convert semimajor axis from kpc to pc here
             obs["a"].append(hmq.semimajor_axis[period_idxs] * 1000)
             obs["e"].append(hmq.eccentricity[period_idxs])
+            obs["t"].append(hmq.binary_time[period_idxs])
             try:
                 obs["mass1"].append([hmq.binary_masses[0]])
                 obs["mass2"].append([hmq.binary_masses[1]])

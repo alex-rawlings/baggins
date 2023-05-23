@@ -54,5 +54,4 @@ ax.set_yscale("log")
 
 plotter.scatter(data_2M["e_ini"], data_2M["sigma_e"], ax=ax)
 cmf.plotting.nice_log10_scale(ax, "y")
-cmf.plotting.savefig(figure_config.fig_path("eccentricities.png"), force_ext=True)
-plt.close(fig)
+plt.show()
