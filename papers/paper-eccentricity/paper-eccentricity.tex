@@ -461,8 +461,6 @@ which are the asymmetric background stellar potential,
 dynamical friction from the stellar background,
 and naturally the SMBHs themselves.
 
-\drafting{(The technical details of this toy model might be moved to an appendix if space is an issue.)}
-
 For simplicity, we consider only symmetrical 1:1 mergers, and take the BH orbits
 to lie in the $xy$-plane.
 In this case the relative motion of the BHs can be treated as a one-body problem,
@@ -481,16 +479,13 @@ causing the acceleration \citep[e.g.][]{binney2008}
 \end{equation}
 where $\rho$ is the stellar density,
 and the $A$ coefficients are related to the eccentricity $e_\mathrm{s}$ of the spheroid as
-\begin{equation}
-A_x = 2 \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
-    \left[\frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right) - 1 \right],
-\end{equation}
-and
-\begin{equation}
-A_y = \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
+\begin{align}
+A_x &= 2 \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
+    \left[\frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right) - 1 \right]\\
+A_y &= \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
         \left[ \frac{1}{1-e_\mathrm{s}^2} 
         - \frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right)\right].
-\end{equation}
+\end{align}
 Here we have chosen the long axis of the spheroid to be aligned with the $x$-axis.
 With eccentricity values of $e_\mathrm{s} \approx 0.9$,
 this spheroidal potential matches the central potential in the galaxy during the
@@ -501,8 +496,10 @@ For dynamical friction, we use the \citet{1943ApJ....97..255C} formula assuming
 a Maxwellian distribution with a constant velocity dispersion $\sigma$ \citep[e.g.][]{binney2008}.
 This formula gives the acceleration of a single BH due to dynamical friction as
 \begin{equation}\label{eq:chandra_df}
-\vb{a}_{1,\mathrm{DF}} = - 4 \pi G^2 M_\bullet \rho \ln{\Lambda} 
-                        (\operatorname{erf}(X) - 2 \pi^{-1/2} X e^{-X^2}) \frac{\vb{v}_{1}}{|\vb{v}_{1}|^3},
+\begin{aligned}
+\vb{a}_{1,\mathrm{DF}} = &-\frac{4 \pi G^2 M_\bullet \rho \ln{\Lambda}}{|\vb{v}_{1}|^3}\\
+                        &\times\left(\operatorname{erf}(X) - \frac{2X}{\sqrt{\pi}} \exp(-X^2)\right)\vb{v}_{1},
+\end{aligned}
 \end{equation}
 where $\vb{v}_1 = \dot{\vb{x}}/2$ is the velocity of a single BH,
 $X = |\vb{v}_1|/\sqrt{2}\sigma$,
@@ -529,10 +526,10 @@ The total dynamical friction term is then
 
 To mimic the nearly linearly plunging orbit in the high-eccentricity merger orbit simulations,
 we specify the initial conditions confined to the $xy$-plane as 
-\begin{gather}
-\vb{x}_0 = (r_0, b)\\
-\dot{\vb{x}}_0 = (-v_0, 0).
-\end{gather}
+\begin{align}
+\vb{x}_0 &= (r_0, b)\\
+\dot{\vb{x}}_0 &= (-v_0, 0).
+\end{align}
 We fix $r_0 = 25\,\mathrm{pc}$,
 and use model parameters
 $\rho = 300 \,\Msun\,\mathrm{pc}^{-3}$,
@@ -565,6 +562,7 @@ the model curve in the $\theta \gtrsim 120\degr$ region,
 although the model does appear to capture the mean behavior fairly well.
 The behavior of the model in this region is also quite sensitive to the exact value of $e_\mathrm{s}$,
 which might be related to the large scatter in the simulation data.
+
 Overall we can however see that this simple model correctly captures the behavior of eccentricity seen in the simulations.
 On the other hand, if the model is run with low values of $e_\mathrm{s}$,
 the binary always reaches extremely high eccentricities with little dependence on the deflection angle,
