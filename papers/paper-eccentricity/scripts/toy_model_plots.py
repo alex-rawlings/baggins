@@ -104,7 +104,7 @@ def paper_plots():
     axes[0].set_ylabel('$e$')
     axes[0].set_ylim(0,1)
     for ax in axes:
-        ax.set_xlabel(r'$\theta$')
+        ax.set_xlabel(r'$\theta_\mathrm{defl}$')
         ax.xaxis.set_major_formatter(degree_format_str)
         ax.set_xlim(20,170)
         ax.set_xticks(np.arange(30,180,30))
