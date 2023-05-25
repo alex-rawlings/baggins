@@ -446,6 +446,24 @@ We observe evidence for a relationship between the deflection angle $\theta_\mat
 
 \subsection{Reproducing the eccentricity behavior with a toy model}\label{ssec:toy}
 
+\begin{figure*}
+    \centering
+    \includegraphics{sample_model_orbits}
+    \caption{
+    Top:
+    Sample orbits computed with the toy model for potentials with different degrees of asymmetry
+    given by the spheroid eccentricity $e_\mathrm{s}$, with otherwise identical initial conditions.
+    The dashed lines show the isopotential contours of the model.
+    Only the early part of the evolution is shown for clarity.
+    Bottom:
+    The orbital eccentricity $e$ of the model orbits.
+    The vertical line marks the end of the period shown in the top panels. 
+    Note the non-linear scale to allow showing the high-eccentricities reached by
+    the $e_\mathrm{s}=0.2$ model.
+    }
+    \label{fig:model_orbits}
+\end{figure*}
+
 To gain insight into the origin of the dependence of binary eccentricity on the 
 deflection angle $\theta$ during the binary formation,
 we have constructed a simple toy model that can qualitatively reproduce the observed
@@ -558,9 +576,15 @@ The behavior of the model in this region is also quite sensitive to the exact va
 which might be related to the large scatter in the simulation data.
 
 Overall we can however see that this simple model correctly captures the behavior of eccentricity seen in the simulations.
-On the other hand, if the model is run with low values of $e_\mathrm{s}$,
-the binary always reaches extremely high eccentricities with little dependence on the deflection angle,
-indicating that the asymmetry of the galactic potential during the SMBH binary formation is the cause for the observed eccentricity behavior.
+We can therefore use the model to understand the cause of the complicated dependence of the binary eccentricity
+on the deflection angle $\theta_\mathrm{defl}$.
+\autoref{fig:model_orbits} shows sets of orbits computed with the model for two different potential shapes,
+with the parameters otherwise as in the model that matches the $e_0=0.90$ simulation results.
+In the $e_\mathrm{s}=0.9$ case the shape of the orbit after the initial scattering depends strongly on the deflection angle,
+as the asymmetric potential causes torque on the SMBHs that are not moving along the main axes of the potential.
+On the other hand, in the more symmetric potential with $e_\mathrm{s}=0.2$,
+The orbit shape is not very sensitive to the deflection angle due to the symmetry of the system,
+and the binary always reaches extremely high eccentricities.
 
 
 % DISCUSSION

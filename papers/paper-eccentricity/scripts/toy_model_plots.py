@@ -5,8 +5,7 @@ import matplotlib.pyplot as plt
 import pickle
 from scipy.interpolate import griddata, interp1d
 
-from figure_config import fig_path, data_path
-from Plotter import Plotter
+from figure_config import fig_path, data_path, marker_cycle, color_cycle
 
 degree_format_str = '{x:.0f}°'
 
@@ -95,11 +94,9 @@ def plot_sim_data_th_e(ax, simdata):
                    )
 
 
-def paper_plots():
-    plotter = Plotter()
+def paper_th_e_curve_plot():
 
-    fig, axes = plt.subplots(1,2,sharey='row')
-    fig.set_figwidth(2*fig.get_figwidth())
+    fig, axes = plt.subplots(1,2,sharey='row', figsize=(6,3.))
 
     axes[0].set_ylabel('$e$')
     axes[0].set_ylim(0,1)
@@ -111,18 +108,12 @@ def paper_plots():
 
     data = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
     curve_shift = -12
+    color = next(iter(color_cycle[-1:]))['color'] 
+
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s <0.9: continue
         a = 1 if e_s == 0.905 else 0.5
-        l, = axes[0].plot(np.degrees(d['theta'])+curve_shift, d['e'], color='tab:blue', alpha=a)
-    #axb = axes[0].secondary_xaxis('top', 
-    #            functions=(interp1d(np.degrees(d['theta']), d['b']*1e3,
-    #                                bounds_error=False, fill_value='extrapolate'),
-    #                       interp1d(d['b']*1e3, np.degrees(d['theta']),
-    #                                bounds_error=False, fill_value='extrapolate')))
-    #axb.set_xlabel('$b/\mathrm{pc}$')
-    #axb.set_xticks([1,2,3,5,10,20])
-    #axes[0].tick_params(top=False)
+        l, = axes[0].plot(np.degrees(d['theta'])+curve_shift, d['e'], color=color, alpha=a)
     print("b90 for e_0=0.90", np.interp(90,np.degrees(d['theta'][::-1]),d['b'][::-1]*1e3))
 
 
@@ -131,51 +122,94 @@ def paper_plots():
                   facecolor='k')
     axes[0].text(22,0.13,"Model shift")
 
-    axes[0].text(22,0.95,"$e_0=0.90$")
-
-    sim_data = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
-    for k, g in itertools.groupby(sorted(zip(sim_data['mass_res'], sim_data['thetas'], sim_data['median_eccs'])),
-                                  lambda x: x[0]):
-        th, e = np.array(list(g)).T[1:]
-        if not np.any(np.isfinite(e)):
-            continue #some nan values in this dataset
-        plotter.scatter(th,e, label=rf"{k:.0f}", zorder=2, ax=axes[0])
-
+    axes[0].set_title("$e_0=0.90$")
 
     data = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
     curve_shift = -6
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s < 0.9: continue
         a = 1 if e_s == 0.905 else 0.5
-        #a = 0.7
-        axes[1].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color='tab:blue')
+        axes[1].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color=color)
 
 
-    #axb = axes[1].secondary_xaxis('top', 
-    #            functions=(interp1d(np.degrees(d['theta']), d['b']*1e3,
-    #                                bounds_error=False, fill_value='extrapolate'),
-    #                       interp1d(d['b']*1e3, np.degrees(d['theta']),
-    #                                bounds_error=False, fill_value='extrapolate')))
-    #axb.set_xlabel('$b/\mathrm{pc}$')
-    #axb.set_xticks([1,2,3,5,10,20])
-    #axes[1].tick_params(top=False)
     print("b90 for e_0=0.99", np.interp(90,np.degrees(d['theta'])[::-1],d['b'][::-1]*1e3))
 
     axes[1].arrow(30-curve_shift,0.1,curve_shift,0, length_includes_head=True,
                   width=0.01, head_width=0.02, head_length=3, edgecolor='none',
                   facecolor='k')
 
-    axes[1].text(22,0.95,"$e_0=0.99$")
+    axes[1].set_title("$e_0=0.99$")
 
-    sim_data = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
-    for k, g in itertools.groupby(sorted(zip(sim_data['mass_res'], sim_data['thetas'], sim_data['median_eccs'])),
-                                  lambda x: x[0]):
-        th, e = np.array(list(g)).T[1:]
-        plotter.scatter(th,e, label=f"{k:.0f}", zorder=2, ax=axes[1])
+    def plot_sim_data(sim_data, ax):
+        for (k, g), m in zip(
+                            itertools.groupby(
+                            sorted(zip(sim_data['mass_res'],
+                                        sim_data['thetas'],
+                                        sim_data['median_eccs'])),
+                                      lambda x: x[0]),
+                            marker_cycle):
+            th, e = np.array(list(g)).T[1:]
+            if not np.any(np.isfinite(e)):
+                continue #some nan values in this dataset
+            ax.plot(th,e, label=rf"{k:.0f}", zorder=2, ls='none', **m)
+
+    plot_sim_data(load_data(data_path('deflection_angles_e0-0.900.pickle')), axes[0])
+
+    plot_sim_data(load_data(data_path('deflection_angles_e0-0.990.pickle')), axes[1])
 
     axes[1].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right')
-    plt.savefig(fig_path('theta_e_sim_and_model.pdf'))
+    fig.savefig(fig_path('theta_e_sim_and_model.pdf'))
 
+def paper_orbit_plot():
+    fig, axdict = plt.subplot_mosaic(
+                        """
+                        AABB
+                        AABB
+                        CCCC
+                        """,
+                        figsize=(6,5)
+                        )
+    for k in 'AB':
+        axdict[k].set_aspect('equal')
+        axdict[k].set_xlim((-80,80))
+        axdict[k].set_ylim((-120,40))
+        axdict[k].set_xlabel('$x/\mathrm{pc}$')
+        axdict[k].set_ylabel('$y/\mathrm{pc}$')
+
+    axdict['C'].set_xlim((0,6))
+    axdict['C'].set_ylim((0,1))
+    axdict['C'].set_xlabel('$t/\mathrm{Myr}$')
+    axdict['C'].set_ylabel(r'$e$')
+    axdict['C'].set_yscale('eccentricity')
+
+    def plot_potential(e_spheroid, ax):
+        e2s = e_spheroid**2
+        A1 = (1-e2s)/e2s*(1/(1-e2s) - 1/(2*e_spheroid)*np.log((1+e_spheroid)/(1-e_spheroid)))
+        A3 = 2*(1-e2s)/e2s*(1/(2*e_spheroid)*np.log((1+e_spheroid)/(1-e_spheroid)) - 1)
+
+        X,Y = np.meshgrid(np.linspace(*ax.get_xlim(), 200), np.linspace(*ax.get_ylim(), 200))
+        pot = A3 * X**2 + A1*Y**2 # constant magnitude factors aren't needed here
+
+        ax.contour(X,Y,pot, colors='silver', levels=10, linewidths=1., zorder=0, linestyles='--')
+    
+    def plot_dset(dset, orbit_ax, e_ax, tmax=None):
+        for d in dset:
+            t = d['t']*1e3
+            if tmax is None:
+                tmax = np.max(t)
+            l, = e_ax.plot(t, d['e'])
+            orbit_ax.plot(*d['x'][:,t<=tmax]*1e3, color=l.get_color(), lw=1.5)
+
+    tmax = 2.5
+    axdict['C'].axvline(tmax, color='silver')
+    for e_s, ax_orbit_key in zip([0.2,0.9], 'AB'):
+        ax_orbit = axdict[ax_orbit_key]
+        plot_potential(e_s, ax_orbit)
+        plot_dset(load_data(data_path(f'sample_orbits_e_s_{e_s:.1f}.pkl')), ax_orbit, axdict['C'], tmax=tmax) 
+        ax_orbit.set_title(fr'$e_\mathrm{{s}}={e_s:.1f}$')
+
+
+    fig.savefig(fig_path('sample_model_orbits.pdf'))
 
 #sim_data090 = load_data(data_path('deflection_angles_e0-0.900.pickle')) 
 #sim_data099 = load_data(data_path('deflection_angles_e0-0.990.pickle')) 
@@ -195,6 +229,7 @@ def paper_plots():
 #th_e_curves(data)
 
 
-paper_plots()
+paper_th_e_curve_plot()
+paper_orbit_plot()
 
-plt.show()
+#plt.show()

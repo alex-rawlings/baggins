@@ -277,6 +277,34 @@ def high_res_well_fitting_models():
     with open(f'data/well_fitting_e_0.99_model_curve.pkl', 'wb') as f:
         pickle.dump(dict(e_spheroids=e_spheroids, res=res099), f, protocol=-1)
 
+def gen_orbit_plot_data():
+# Some orbits for paper for the e0=0.9 well fitting config + ~spherical system
+    # for comparison
+    r0 = 25e-3
+    v0 = 450 * km_per_s
+    bs = np.array([3.2e-3, 6e-3, 9.8e-3])
+    for e_s in [0.2, 0.9]:
+        sys = System(M_BH=1e-2,
+                     rho=30,
+                     e_spheroid=e_s,
+                     stellar_sigma=200*km_per_s,
+                     df_fudge_factor=0.5)
+        res = []
+        for b in bs:
+            x = [r0,b]
+            v = [-v0,0]
+            tmax = 150 * r0/v0
+            ts = np.linspace(0,tmax, 10000)
+
+            x,v,t = sys.integrate(x,v,ts)
+            e = sys.eccentricity(x,v)
+            th = compute_deflection_angle(sys,x,v)
+            res.append(dict(x=x,v=v,e=e,t=t,th=th,b=b))
+            print(e_s, b, 'done')
+
+        with open(f'data/sample_orbits_e_s_{e_s:.1f}.pkl', 'wb') as f:
+            pickle.dump(res, f)
+
 
 
 
@@ -294,7 +322,7 @@ def test_plots():
     sigma_ref = 200*km_per_s # stellar velocity dispersion
     gal_e = 0.905
 
-    v0_per_sigma = 5.6/2 # initial BH velocity / stellar sigma
+    v0_per_sigma = 4.5/2 # initial BH velocity / stellar sigma
     r0_per_rinfl = .5 # initial BH separation/single BH influence radius
     #v0_per_sigma = 2.2 # initial BH velocity / stellar sigma
     #r0_per_rinfl = 2 # initial BH separation/single BH influence radius
@@ -326,7 +354,8 @@ def test_plots():
     #r0 = r0_per_rinfl * sys.r_infl
     r0 = 25e-3
     print(r0*1e3, v0/km_per_s, 2*sys.a_hard*1e3)
-    bs = np.linspace(bmin_per_r0, bmax_per_r0, 30)*r0
+    bs = np.linspace(bmin_per_r0, bmax_per_r0, 15)*r0
+
 
 
     efin = []
@@ -396,6 +425,7 @@ if __name__ == '__main__':
             parameter_space_scan_g05_conf3()
     else:
         #high_res_well_fitting_models()
-        test_plots()
+        gen_orbit_plot_data()
+        #test_plots()
 
 
