@@ -4,7 +4,6 @@ from matplotlib import rcParams
 import ketjugw
 import cm_functions as cmf
 import figure_config
-from figure_config import plotter
 
 
 # path to processed data files
@@ -17,27 +16,6 @@ e99_data_raw = "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentri
 
 # some analysis parameters
 analysis_params = cmf.utils.read_parameters("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml")
-
-
-def inverse_e(e, zero=1e-4):
-    """
-    Helper function to transform eccentricity to 1-e
-
-    Parameters
-    ----------
-    e : float, array-like
-        eccentricity values
-    zero : float, optional
-        how to represent 0, by default 1e-4
-
-    Returns
-    -------
-    array-like
-        converted eccentricity values
-    """
-    res = np.atleast_1d(1-e)
-    res[res<0] = zero
-    return res
 
 
 def t_shift(t):
@@ -58,69 +36,60 @@ def t_shift(t):
 
 
 # initialise the figure
-fig = plt.figure(figsize=np.array(rcParams["figure.figsize"])*np.array([7/3,5/3]))
-ax1 = plt.subplot(2,2,(1,2))
-ax2 = plt.subplot(2,2,3, sharey=ax1)
-ax3 = plt.subplot(2,2,4, sharex=ax2, sharey=ax2)
+fig, axdict = plt.subplot_mosaic(
+                                """
+                                AAAA
+                                BBCC
+                                """,
+                                figsize=(6,5)
+                                )
+
+for k in axdict.keys():
+    axdict[k].set_yscale("eccentricity")
+axdict["B"].sharex(axdict["C"])
+axdict["B"].sharey(axdict["C"])
 
 # plot the full eccentricity data for some runs
-ax1.set_xlabel(r"$t/\mathrm{Myr}$")
-ax1.set_ylabel(r"$1-e$")
-ax1.set_xscale("log")
-ax1.set_yscale("log")
-for suite, ls in zip((e90_data_raw, e99_data_raw), ("-", "--")):
+axdict["A"].set_xlabel(r"$t/\mathrm{Myr}$")
+axdict["A"].set_ylabel(r"$e$")
+axdict["A"].set_xscale("log")
+for suite, marker in zip((e90_data_raw, e99_data_raw), figure_config.marker_cycle.by_key()["marker"]):
     ketju_files = cmf.utils.get_ketjubhs_in_dir(suite)
     for i, kf in enumerate(ketju_files):
         if i > 2: break
         bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
         op = ketjugw.orbital_parameters(bh1, bh2)
-        plotter.plot(op["t"]/cmf.general.units.Myr, inverse_e(op["e_t"]), ax=ax1, ls=ls)
-    plotter.reset_line_count(ax1)
+        axdict["A"].plot(op["t"]/cmf.general.units.Myr, op["e_t"], marker=marker, markevery=[-1], zorder=10)
 
 
-for axi in (ax2, ax3): axi.set_xlabel(r"$t'/\mathrm{Myr}$")
-ax2.set_ylabel(r"$1-e$")
-
-# zoom in for right panel
-axins = ax3.inset_axes([0.3, 0.03, 0.6, 0.4])
+for axi in (axdict["B"], axdict["C"]): 
+    axi.set_xlabel(r"$t'/\mathrm{Myr}$")
+    axi.set_ylabel(r"$e$")
 
 # define a textbox
 textbox_dict = {"boxstyle":"square", "fc":"w", "ec":"k"}
 
 
-for i, (data_path, axi, label) in enumerate(zip((e90_data_path, e99_data_path), (ax2, ax3), (r"$e_0=0.90$", r"$e_0=0.99$"))):
-    # set ylimits
-    axi.set_ylim(1e-3, 1)
-    axi.set_yscale("log")
-
+for i, (data_path, axi, label) in enumerate(zip((e90_data_path, e99_data_path), (axdict["B"], axdict["C"]), (r"$e_0=0.90$", r"$e_0=0.99$"))):
     # extract data
     HMQ_files = cmf.utils.get_files_in_dir(data_path)
     km = cmf.analysis.KeplerModelHierarchy("", "", "")
     km.extract_data(HMQ_files, analysis_params)
     mean_t_h = np.mean([np.mean(t) for t in km.obs["t"]])
-    ax1.axvline(mean_t_h, c="k")
-    ax1.annotate(label, (mean_t_h, 1.5e-3), xytext=(mean_t_h*1.02,1.5e-3), horizontalalignment="left", verticalalignment="bottom", bbox=textbox_dict)
+    axdict["A"].axvline(mean_t_h, c="silver")
+    axdict["A"].annotate(label, (mean_t_h, 1.5e-3), xytext=(mean_t_h*1.02,0.4), horizontalalignment="left", verticalalignment="bottom", bbox=textbox_dict)
     axi.annotate(label, (0.02,0.97), xycoords=axi.transAxes, bbox=textbox_dict, verticalalignment="top", horizontalalignment="left", clip_on=True)
 
 
     # plot the time series for each run
     for t, ecc in zip(km.obs["t"], km.obs["e"]):
-        plotter.plot(t_shift(t), inverse_e(ecc), ax=axi)
-        if i==1:
-            plotter.plot(t_shift(t), inverse_e(ecc), ax=axins)
+        axi.plot(t_shift(t), ecc)
     # plot the mean of each time series' mean
     eccs = np.array([np.nanmean(ecc) for ecc in km.obs["e"]])
     mean_ecc = np.nanmean(eccs)
-    axi.axhline(inverse_e(mean_ecc), c="k", ls="--")
+    axi.axhline(mean_ecc, c="k", ls="--")
     # plot the SD of each time series' mean
     sd_ecc = np.nanstd(eccs)
-    axi.axhspan(inverse_e(mean_ecc-2.5*sd_ecc), inverse_e(mean_ecc+2.5*sd_ecc), alpha=0.3)
-
-axins.set_xlim(-0.03, 0.03)
-axins.set_ylim(0.17, 0.21)
-axins.set_xticklabels([])
-axins.set_xticks([])
-ax3.indicate_inset_zoom(axins, edgecolor="k")
-
+    axi.axhspan(mean_ecc-2.5*sd_ecc, mean_ecc+2.5*sd_ecc, alpha=0.3)
 
 cmf.plotting.savefig(figure_config.fig_path("eccentricities.pdf"), force_ext=True)

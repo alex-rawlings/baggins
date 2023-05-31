@@ -1,7 +1,6 @@
 import os
 import matplotlib as mpl
 import numpy as np
-from Plotter import Plotter
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 data_dir = os.path.abspath(os.path.join(this_dir, 'data/'))
@@ -35,9 +34,6 @@ color_cycle = _make_color_cycle()
 marker_cycle = mpl.cycler(marker=["o", "s", "^", "D", "v", "*", "p", "h", "X", "P"])
 
 mpl.rcParams['axes.prop_cycle'] = color_cycle
-
-# set up a custom plotting object
-plotter = Plotter()
 
 
 
