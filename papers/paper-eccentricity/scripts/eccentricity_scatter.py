@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cm_functions as cmf
 import figure_config
-from figure_config import plotter
-
 
 #------------------------------------------------------------
 # plot of convergence in sigma_e across resolutions
@@ -23,8 +21,8 @@ ax.set_yscale("log")
 
 # plot data
 for i, (d, lab) in enumerate(zip((data_e090, data_e099), (r"$e_0=0.90$", r"$e_0=0.99$"))):
-    plotter.scatter(d["mass_res"], d["sigma_e"], ax=ax, label=f"{lab}", zorder=10)
-    plotter.scatter(d["mass_res"], d["sigma_e_cut"], ax=ax, label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=1)
+    ax.scatter(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=10)
+    ax.scatter(d["mass_res"], d["sigma_e_cut"], label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=1)
 
 # add the sqrt{resolution} scaling line
 mass_res_seq = np.geomspace(2e3, 5e4, 10)
@@ -52,6 +50,6 @@ ax.set_xlabel(r"$e_0$")
 ax.set_ylabel(r"$\sigma_e$")
 ax.set_yscale("log")
 
-plotter.scatter(data_2M["e_ini"], data_2M["sigma_e"], ax=ax)
+ax.scatter(data_2M["e_ini"], data_2M["sigma_e"])
 cmf.plotting.nice_log10_scale(ax, "y")
 plt.show()
