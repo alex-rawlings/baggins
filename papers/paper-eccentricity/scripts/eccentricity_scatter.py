@@ -18,11 +18,11 @@ ax.set_xscale("log")
 ax.set_ylabel(r"$\sigma_e$")
 ax.set_yscale("log")
 
-
 # plot data
+marker_list = figure_config.marker_cycle.by_key()["marker"]
 for i, (d, lab) in enumerate(zip((data_e090, data_e099), (r"$e_0=0.90$", r"$e_0=0.99$"))):
-    ax.scatter(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=10)
-    ax.scatter(d["mass_res"], d["sigma_e_cut"], label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=1)
+    ax.plot(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=10, ls="", marker=marker_list[2*i])
+    ax.plot(d["mass_res"], d["sigma_e_cut"], label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=10, ls="", marker=marker_list[2*i+1])
 
 # add the sqrt{resolution} scaling line
 mass_res_seq = np.geomspace(2e3, 5e4, 10)
@@ -33,7 +33,7 @@ cmf.plotting.nice_log10_scale(ax, "xy")
 ax.legend(fontsize="small")
 
 # save
-cmf.plotting.savefig(figure_config.fig_path("convergence.png"), force_ext=True)
+cmf.plotting.savefig(figure_config.fig_path("convergence.pdf"), force_ext=True)
 plt.close(fig)
 
 
@@ -52,4 +52,3 @@ ax.set_yscale("log")
 
 ax.scatter(data_2M["e_ini"], data_2M["sigma_e"])
 cmf.plotting.nice_log10_scale(ax, "y")
-plt.show()

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pickle
 from scipy.interpolate import griddata, interp1d
 
-from figure_config import fig_path, data_path, marker_cycle, color_cycle
+from figure_config import fig_path, data_path, marker_cycle, color_cycle, marker_kwargs
 
 degree_format_str = '{x:.0f}°'
 
@@ -85,7 +85,6 @@ def plot_specific_th_e(data, v0s, simdata=None, shift=0):
     plt.legend()
 
 def plot_sim_data_th_e(ax, simdata):
-    marker_kwargs = {"edgecolor":"k", "lw":0.5}
     for (l,s),m in zip(simdata.items(), 'ov^sd'):
         ax.scatter(s['thetas'], s['median_eccs'],
                    c=s['mass_res'], cmap='PuBu',

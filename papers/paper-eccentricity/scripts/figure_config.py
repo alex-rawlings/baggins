@@ -35,6 +35,7 @@ marker_cycle = mpl.cycler(marker=["o", "s", "^", "D", "v", "*", "p", "h", "X", "
 
 mpl.rcParams['axes.prop_cycle'] = color_cycle
 
+marker_kwargs = {"edgecolor":"k", "lw":0.5}
 
 
 class EccentricityScale(mpl.scale.FuncScale):

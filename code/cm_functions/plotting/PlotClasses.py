@@ -49,6 +49,16 @@ class _GradientPlot:
         return self.data_count
 
 
+    @property
+    def max_colour(self):
+        return max([max(c) for c in self.all_c])
+
+
+    @property
+    def min_colour(self):
+        return min([min(c) for c in self.all_c])
+
+
     def add_data(self, x, y, c, label=None, marker="o", plot_kwargs={}):
         """
         Add a dataset to the plot (note that the data is just stored here for 
@@ -155,7 +165,7 @@ class GradientLinePlot(_GradientPlot):
         super().__init__(ax, cmap=cmap, plot_kwargs=plot_kwargs)
 
 
-    def plot_single_series(self, i, logcolour=False, ax=None, vmin=None, vmax=None):
+    def plot_single_series(self, i, logcolour=False, ax=None, vmin=None, vmax=None, marker_idx=-1):
         """
         Plot the data for a single data series, but ensure colour is consistent 
         with the colour-range of all data series in the object
@@ -178,9 +188,9 @@ class GradientLinePlot(_GradientPlot):
         ax = self.ax if ax is None else ax
         if self.all_marker[i] is not None:
             ax.scatter(
-                self.all_x[i][-1], 
-                self.all_y[i][-1], 
-                color = self.cmap(self.norm(self.all_c[i][-1])),
+                self.all_x[i][marker_idx], 
+                self.all_y[i][marker_idx], 
+                color = self.cmap(self.norm(self.all_c[i][marker_idx])),
                 marker = self.all_marker[i],
                 label = self.all_label[i],
                 zorder = 10 * self.data_count,
@@ -194,7 +204,7 @@ class GradientLinePlot(_GradientPlot):
                 ax.plot(xs, ys, color=self.cmap(self.norm(cs)), **self.all_pks[i])
 
 
-    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None):
+    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None, marker_idx=None):
         """
         Plot the data for all data series, ensuring a consistent colour scheme.
 
@@ -209,8 +219,10 @@ class GradientLinePlot(_GradientPlot):
         vmax : float, optional
             maximum colour value (ovverides default value), by default None
         """
+        if marker_idx is None:
+            marker_idx = [-1 for _ in range(self.data_count)]
         for i in range(self.data_count):
-            self.plot_single_series(i, logcolour=logcolour, ax=ax, vmin=vmin, vmax=vmax)
+            self.plot_single_series(i, logcolour=logcolour, ax=ax, vmin=vmin, vmax=vmax, marker_idx=marker_idx[i])
 
 
 
