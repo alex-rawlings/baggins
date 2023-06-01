@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pickle
 from scipy.interpolate import griddata, interp1d
 
-from figure_config import fig_path, data_path, marker_cycle, color_cycle, marker_kwargs
+from figure_config import fig_path, data_path, marker_cycle, color_cycle, color_cycle_shuffled, marker_kwargs
 
 degree_format_str = '{x:.0f}°'
 
@@ -145,6 +145,7 @@ def paper_th_e_curve_plot():
     axes[1].set_title("$e_0=0.99$")
 
     def plot_sim_data(sim_data, ax):
+        ax.set_prop_cycle(color_cycle_shuffled)
         for (k, g), m in zip(
                             itertools.groupby(
                             sorted(zip(sim_data['mass_res'],
