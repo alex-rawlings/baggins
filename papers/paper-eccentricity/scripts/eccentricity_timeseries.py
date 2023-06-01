@@ -66,9 +66,6 @@ for axi in (axdict["B"], axdict["C"]):
     axi.set_xlabel(r"$t'/\mathrm{Myr}$")
     axi.set_ylabel(r"$e$")
 
-# define a textbox
-textbox_dict = {"boxstyle":"square", "fc":"w", "ec":"k"}
-
 
 for i, (data_path, axi, label) in enumerate(zip((e90_data_path, e99_data_path), (axdict["B"], axdict["C"]), (r"$e_0=0.90$", r"$e_0=0.99$"))):
     # extract data
@@ -77,8 +74,8 @@ for i, (data_path, axi, label) in enumerate(zip((e90_data_path, e99_data_path), 
     km.extract_data(HMQ_files, analysis_params)
     mean_t_h = np.mean([np.mean(t) for t in km.obs["t"]])
     axdict["A"].axvline(mean_t_h, c="silver")
-    axdict["A"].annotate(label, (mean_t_h, 1.5e-3), xytext=(mean_t_h*1.02,0.4), horizontalalignment="left", verticalalignment="bottom", bbox=textbox_dict)
-    axi.annotate(label, (0.02,0.97), xycoords=axi.transAxes, bbox=textbox_dict, verticalalignment="top", horizontalalignment="left", clip_on=True)
+    axdict["A"].annotate(label, (mean_t_h, 1.5e-3), xytext=(mean_t_h*1.02,0.4), horizontalalignment="left", verticalalignment="bottom")
+    axi.set_title(label)
 
 
     # plot the time series for each run
@@ -90,6 +87,6 @@ for i, (data_path, axi, label) in enumerate(zip((e90_data_path, e99_data_path), 
     axi.axhline(mean_ecc, c="k", ls="--")
     # plot the SD of each time series' mean
     sd_ecc = np.nanstd(eccs)
-    axi.axhspan(mean_ecc-2.5*sd_ecc, mean_ecc+2.5*sd_ecc, alpha=0.3)
+    axi.axhspan(mean_ecc-2.5*sd_ecc, mean_ecc+2.5*sd_ecc, alpha=0.2)
 
 cmf.plotting.savefig(figure_config.fig_path("eccentricities.pdf"), force_ext=True)

@@ -6,7 +6,7 @@ import figure_config
 
 
 
-use_e90_data = True
+use_e90_data = False
 print_data = False
 # turn off for fast plotting, line will be a single colour
 use_gradient_line = True
@@ -37,7 +37,7 @@ if use_e90_data:
 
     # some shortcuts
     min_time_colour = 31
-    max_time_fac = 1.05
+    max_time_fac = 1.0
     idx_stride = 10
     A_idx = [4500, 4280]
     B_idx = [A_idx[0]+35, A_idx[1]+30]
@@ -85,8 +85,9 @@ axins2 = ax.inset_axes([0.65, 0.05, 0.3, 0.3])
 # keep axis limits fixed for comparison between orbits
 ax.set_xlim(-0.7, 1.2)
 ax.set_ylim(-0.5, 2)
+for axi in (ax, axins1, axins2): axi.set_prop_cycle(figure_config.color_cycle)
 
-glp = cmf.plotting.GradientLinePlot(ax=ax, cmap="BuPu_r")
+glp = cmf.plotting.GradientLinePlot(ax=ax, cmap="custom_diverging")
 
 for i, (dd, axins, ang) in enumerate(zip(data_dirs, (axins1, axins2), angles)):
     ketjufile = cmf.utils.get_ketjubhs_in_dir(dd)[0]
@@ -104,7 +105,7 @@ for i, (dd, axins, ang) in enumerate(zip(data_dirs, (axins1, axins2), angles)):
     y = bh.x[::idx_stride,2] / cmf.general.units.kpc
     t = bh.t[::idx_stride] / cmf.general.units.Myr
     if use_gradient_line:
-        glp.add_data(x, y, c=t)
+        glp.add_data(x, y, c=t, plot_kwargs={"ls":"-"})
     else:
         ax.plot(x,y, markevery=[int(bound_idx[i]/idx_stride)], marker="o")
         axins.plot(x,y, markevery=[int(bound_idx[i]/idx_stride)], marker="o")

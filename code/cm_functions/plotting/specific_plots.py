@@ -133,9 +133,9 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
     ----------
     ax : matplotlib.axes.Axes
         parent axis to put the twin axis on
-    y1 : array-like
+    x1 : array-like
         independent dataset 1, the 'original' variable
-    y2 : array-like
+    x2 : array-like
         independent dataset 2, the 'transformed' variable
     log : bool, optional
         log scale for secondary axis?, by default False

@@ -38,7 +38,15 @@ class _GradientPlot:
         self.all_y = []
         self.all_c = []
         self.all_label = []
-        self.cmap= getattr(plt.cm, cmap)
+        try:
+            self.cmap = getattr(plt.cm, cmap)
+        except AttributeError:
+            try:
+                assert cmap in [cm for cm in plt.colormaps() if cm not in dir(plt.cm)]
+                self.cmap = plt.colormaps[cmap]
+            except AssertionError:
+                _logger.logger.exception(f"cmap `{cmap}` not present in matplotlib defaults, nor is registered as a custom map!", exc_info=True)
+                raise
         self.all_marker = []
         self.all_pks = [plot_kwargs]
         self.norm = [0,1]
@@ -182,6 +190,8 @@ class GradientLinePlot(_GradientPlot):
             minimum colour value (overrides default value), by default None
         vmax : float, optional
             maximum colour value (ovverides default value), by default None
+        marker_idx : int
+            array index to place marker at
         """
         self._data_check()
         self._set_colours(log=logcolour, vmin=vmin, vmax=vmax)

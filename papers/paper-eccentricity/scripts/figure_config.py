@@ -1,5 +1,6 @@
 import os
 import matplotlib as mpl
+from seaborn import color_palette
 import numpy as np
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -18,25 +19,37 @@ def data_path(dname):
 mpl.rcdefaults()
 mpl.rc_file(os.path.join(this_dir,'matplotlibrc_publish'))
 
+# set the colour map
+# colourmap based off seaborn's "icefire" map with 9 colours
+col_list = color_palette("icefire", 9).as_hex()
+col_list.pop(4)
+col_list[4] = "#5e0303" # slightly different shade for better contrast
+# register the original diverging map
+custom_diverging_cmap = mpl.colors.LinearSegmentedColormap.from_list(
+            "custom_diverging",
+            col_list
+)
+# register the default map
+col_list[4:] = col_list[4:][::-1] # reverse second half
 custom_cmap = mpl.colors.LinearSegmentedColormap.from_list(
-                            'custom',
-                            np.array([(30,46,118),
-                                      (180,61,184),
-                                      (201,49,49),
-                                      (239,176,52)]
-                                    )/256.
-                            )
-mpl.colormaps.register(cmap=custom_cmap) # can use as cmap='custom'
+            "custom",
+            col_list
+)
 
-custom_colors = custom_cmap(np.linspace(0,1,6))
-custom_colors_shuffled = custom_colors[[0,5,3,1,4,2,]]
+mpl.colormaps.register(cmap=custom_cmap) # can use as cmap='custom'
+mpl.colormaps.register(cmap=custom_diverging_cmap)
+mpl.colormaps.register(cmap=custom_diverging_cmap.reversed(), name="custom_diverging_r")
+
+custom_colors = custom_cmap(np.linspace(0,1,8))
+custom_colors_shuffled = custom_colors[[0, 4, 1, 5, 2, 6, 3, 7]]
 
 color_cycle = mpl.cycler(color=custom_colors)
 color_cycle_shuffled = mpl.cycler(color=custom_colors_shuffled)
 
 marker_cycle = mpl.cycler(marker=["o", "s", "^", "D", "v", "*", "p", "h", "X", "P"])
+linestyle_cycle = mpl.cycler(ls=["-", ":", "--", "-."])
 
-mpl.rcParams['axes.prop_cycle'] = color_cycle_shuffled
+mpl.rcParams['axes.prop_cycle'] = linestyle_cycle * color_cycle_shuffled
 
 marker_kwargs = {"edgecolor":"k", "lw":0.5}
 
