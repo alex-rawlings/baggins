@@ -107,12 +107,13 @@ def paper_th_e_curve_plot():
 
     data = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
     curve_shift = -12
-    color = next(iter(color_cycle[-1:]))['color'] 
 
+    color = None
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s <0.9: continue
         a = 1 if e_s == 0.905 else 0.5
         l, = axes[0].plot(np.degrees(d['theta'])+curve_shift, d['e'], color=color, alpha=a)
+        color = l.get_color()
     print("b90 for e_0=0.90", np.interp(90,np.degrees(d['theta'][::-1]),d['b'][::-1]*1e3))
 
 
@@ -125,10 +126,14 @@ def paper_th_e_curve_plot():
 
     data = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
     curve_shift = -6
+
+    color=None
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s < 0.9: continue
         a = 1 if e_s == 0.905 else 0.5
-        axes[1].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color=color)
+        l, = axes[1].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color=color)
+        color = l.get_color()
+
 
 
     print("b90 for e_0=0.99", np.interp(90,np.degrees(d['theta'])[::-1],d['b'][::-1]*1e3))
@@ -175,11 +180,12 @@ def paper_orbit_plot():
         axdict[k].set_xlabel('$x/\mathrm{pc}$')
         axdict[k].set_ylabel('$y/\mathrm{pc}$')
 
-    axdict['C'].set_xlim((0,6))
-    axdict['C'].set_ylim((0,1))
-    axdict['C'].set_xlabel('$t/\mathrm{Myr}$')
-    axdict['C'].set_ylabel(r'$e$')
-    axdict['C'].set_yscale('eccentricity')
+    e_ax = axdict['C']
+    e_ax.set_xlim((0,6))
+    e_ax.set_ylim((0,1))
+    e_ax.set_xlabel('$t/\mathrm{Myr}$')
+    e_ax.set_ylabel(r'$e$')
+    e_ax.set_yscale('eccentricity')
 
     def plot_potential(e_spheroid, ax):
         e2s = e_spheroid**2
@@ -200,11 +206,13 @@ def paper_orbit_plot():
             orbit_ax.plot(*d['x'][:,t<=tmax]*1e3, color=l.get_color(), lw=1.5)
 
     tmax = 2.5
-    axdict['C'].axvline(tmax, color='silver')
+    e_ax.set_prop_cycle(color_cycle)
+    e_ax.axvline(tmax, color='silver')
+    e_ax.axvline(tmax, color='silver')
     for e_s, ax_orbit_key in zip([0.2,0.9], 'AB'):
         ax_orbit = axdict[ax_orbit_key]
         plot_potential(e_s, ax_orbit)
-        plot_dset(load_data(data_path(f'sample_orbits_e_s_{e_s:.1f}.pkl')), ax_orbit, axdict['C'], tmax=tmax) 
+        plot_dset(load_data(data_path(f'sample_orbits_e_s_{e_s:.1f}.pkl')), ax_orbit, e_ax, tmax=tmax) 
         ax_orbit.set_title(fr'$e_\mathrm{{s}}={e_s:.1f}$')
 
 

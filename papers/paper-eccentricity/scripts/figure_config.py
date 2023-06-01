@@ -18,22 +18,25 @@ def data_path(dname):
 mpl.rcdefaults()
 mpl.rc_file(os.path.join(this_dir,'matplotlibrc_publish'))
 
-def _make_color_cycle():
-    """
-    Construct the colour palette: a reordered, 10-element version of the 
-    `twilight` colour map.
-    """
-    cols_f = lambda x: mpl.cm.twilight(mpl.colors.Normalize(-1,7)(x))
-    #cols = [cols_f(i)  for p in zip(range(1,5), range(6,10)) for i in p]
-    #cols += [cols_f(0), cols_f(5)]
-    cols = cols_f([i for i in range(0,6,1)])
+custom_cmap = mpl.colors.LinearSegmentedColormap.from_list(
+                            'custom',
+                            np.array([(30,46,118),
+                                      (180,61,184),
+                                      (201,49,49),
+                                      (239,176,52)]
+                                    )/256.
+                            )
+mpl.colormaps.register(cmap=custom_cmap) # can use as cmap='custom'
 
-    return mpl.cycler(color=cols)
+custom_colors = custom_cmap(np.linspace(0,1,6))
+custom_colors_shuffled = custom_colors[[0,5,3,1,4,2,]]
 
-color_cycle = _make_color_cycle()
+color_cycle = mpl.cycler(color=custom_colors)
+color_cycle_shuffled = mpl.cycler(color=custom_colors_shuffled)
+
 marker_cycle = mpl.cycler(marker=["o", "s", "^", "D", "v", "*", "p", "h", "X", "P"])
 
-mpl.rcParams['axes.prop_cycle'] = color_cycle
+mpl.rcParams['axes.prop_cycle'] = color_cycle_shuffled
 
 marker_kwargs = {"edgecolor":"k", "lw":0.5}
 
