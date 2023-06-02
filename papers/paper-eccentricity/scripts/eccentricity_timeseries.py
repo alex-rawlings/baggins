@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
+from matplotlib.lines import Line2D
 import ketjugw
 import cm_functions as cmf
 import figure_config
@@ -60,8 +60,15 @@ for suite, marker in zip((e90_data_raw, e99_data_raw), figure_config.marker_cycl
         bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
         op = ketjugw.orbital_parameters(bh1, bh2)
         axdict["A"].plot(op["t"]/cmf.general.units.Myr, op["e_t"], marker=marker, markevery=[-1], zorder=10)
+axdict["A"].legend(
+                handles = [
+                    Line2D([0], [0], marker="o", label=r"$e_0=0.90$", c="w", mec="k", lw=0.5),
+                    Line2D([0], [0], marker="s", label=r"$e_0=0.99$", c="w", mec="k", lw=0.5)
+                ]
+)
 
 
+# plot data about t=t_h in separate panels
 for axi in (axdict["B"], axdict["C"]): 
     axi.set_xlabel(r"$t'/\mathrm{Myr}$")
     axi.set_ylabel(r"$e$")
