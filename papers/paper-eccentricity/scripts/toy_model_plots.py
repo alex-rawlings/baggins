@@ -1,6 +1,6 @@
 import itertools
 import numpy as np
-import matplotlib
+import scipy.stats
 import matplotlib.pyplot as plt
 import pickle
 from scipy.interpolate import griddata, interp1d
@@ -95,15 +95,44 @@ def plot_sim_data_th_e(ax, simdata):
 
 def paper_th_e_curve_plot():
 
-    fig, axes = plt.subplots(1,2,sharey='row', figsize=(6,3.))
+    fig, axdict = plt.subplot_mosaic(
+                                """
+                                .AAABBB.
+                                CDDDEEEF
+                                CDDDEEEF
+                                CDDDEEEF
+                                """,
+                                figsize=(6,4)
+    )
+    # share the axis limits
+    # marginal axes
+    axdict["A"].sharex(axdict["D"])
+    axdict["B"].sharex(axdict["D"]) # E shared with D later, makes ticks work
+    axdict["C"].sharey(axdict["D"])
+    axdict["F"].sharey(axdict["E"])
+    # main panels
+    axdict["D"].sharex(axdict["E"])
+    axdict["D"].sharey(axdict["E"])
 
-    axes[0].set_ylabel('$e$')
-    axes[0].set_ylim(0,1)
-    for ax in axes:
-        ax.set_xlabel(r'$\theta_\mathrm{defl}$')
-        ax.xaxis.set_major_formatter(degree_format_str)
-        ax.set_xlim(20,170)
-        ax.set_xticks(np.arange(30,180,30))
+    # turn off some ticks
+    for k in "AB":
+        axdict[k].set_xticklabels([])
+        axdict[k].set_yticklabels([])
+        axdict[k].set_yticks([])
+    for k in "DEF":
+        axdict[k].set_yticklabels([])
+    for k in "CF":
+        axdict[k].set_xticklabels([])
+        axdict[k].set_xticks([])
+
+    axdict["C"].set_ylabel('$e$')
+    axdict["C"].set_ylim(0,1)
+    for k in "DE":
+        axdict[k].set_xlabel(r'$\theta_\mathrm{defl}$')
+        axdict[k].xaxis.set_major_formatter(degree_format_str)
+    for k in "ABDE":
+        axdict[k].set_xlim(20,170)
+        axdict[k].set_xticks(np.arange(30,180,30))
 
     data = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
     curve_shift = -12
@@ -112,17 +141,17 @@ def paper_th_e_curve_plot():
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s <0.9: continue
         a = 1 if e_s == 0.905 else 0.5
-        l, = axes[0].plot(np.degrees(d['theta'])+curve_shift, d['e'], color=color, alpha=a)
+        l, = axdict["D"].plot(np.degrees(d['theta'])+curve_shift, d['e'], color=color, alpha=a)
         color = l.get_color()
     print("b90 for e_0=0.90", np.interp(90,np.degrees(d['theta'][::-1]),d['b'][::-1]*1e3))
 
 
-    axes[0].arrow(35-curve_shift,0.1,curve_shift,0, length_includes_head=True,
+    axdict["D"].arrow(35-curve_shift,0.1,curve_shift,0, length_includes_head=True,
                   width=0.01, head_width=0.02, head_length=3, edgecolor='none',
                   facecolor='k')
-    axes[0].text(22,0.13,"Model shift")
+    axdict["D"].text(22,0.13,"Model shift")
 
-    axes[0].set_title("$e_0=0.90$")
+    axdict["A"].set_title("$e_0=0.90$")
 
     data = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
     curve_shift = -6
@@ -131,21 +160,23 @@ def paper_th_e_curve_plot():
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s < 0.9: continue
         a = 1 if e_s == 0.905 else 0.5
-        l, = axes[1].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color=color)
+        l, = axdict["E"].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color=color)
         color = l.get_color()
 
 
 
     print("b90 for e_0=0.99", np.interp(90,np.degrees(d['theta'])[::-1],d['b'][::-1]*1e3))
 
-    axes[1].arrow(30-curve_shift,0.1,curve_shift,0, length_includes_head=True,
+    axdict["E"].arrow(30-curve_shift,0.1,curve_shift,0, length_includes_head=True,
                   width=0.01, head_width=0.02, head_length=3, edgecolor='none',
                   facecolor='k')
 
-    axes[1].set_title("$e_0=0.99$")
+    axdict["B"].set_title("$e_0=0.99$")
 
-    def plot_sim_data(sim_data, ax):
+    def plot_sim_data(sim_data, ax, axmt, axme):
         ax.set_prop_cycle(color_cycle_shuffled)
+        tbins = np.arange(*ax.get_xlim(), 5)
+        ebins = np.arange(*ax.get_ylim(), 0.1)
         for (k, g), m in zip(
                             itertools.groupby(
                             sorted(zip(sim_data['mass_res'],
@@ -157,12 +188,20 @@ def paper_th_e_curve_plot():
             if not np.any(np.isfinite(e)):
                 continue #some nan values in this dataset
             ax.plot(th,e, label=rf"{k:.0f}", zorder=2, ls='none', **m)
+            # add KDE to marginal
+            kde_t = scipy.stats.gaussian_kde(th[~np.isnan(th)])
+            t_pts = np.linspace(*ax.get_xlim(), 1000)
+            axmt.plot(t_pts, kde_t(t_pts))
+            kde_e = scipy.stats.gaussian_kde(e[~np.isnan(e)])
+            e_pts = np.linspace(*ax.get_ylim(), 1000)
+            axme.plot(kde_e(e_pts), e_pts)
+    axdict["C"].invert_xaxis()
 
-    plot_sim_data(load_data(data_path('deflection_angles_e0-0.900.pickle')), axes[0])
+    plot_sim_data(load_data(data_path('deflection_angles_e0-0.900.pickle')), axdict["D"], axdict["A"], axdict["C"])
 
-    plot_sim_data(load_data(data_path('deflection_angles_e0-0.990.pickle')), axes[1])
+    plot_sim_data(load_data(data_path('deflection_angles_e0-0.990.pickle')), axdict["E"], axdict["B"], axdict["F"])
 
-    axes[1].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right')
+    axdict["E"].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right')
     fig.savefig(fig_path('theta_e_sim_and_model.pdf'))
 
 def paper_orbit_plot():
