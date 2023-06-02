@@ -19,9 +19,9 @@ ax.set_ylabel(r"$\sigma_e$")
 ax.set_yscale("log")
 
 # set mass resolution - N_star mapping, 
-# knowing that the BH mass is 1e8 Msol and the galaxy merger has stellar mass 
-# 2e10 Msol
-N_star = data_e090["mass_res"] / 1e8 * 2e10
+# knowing that the BH mass is 1e8 Msol and the galaxy has stellar mass 
+# 1e10 Msol
+N_star = data_e090["mass_res"] / 1e8 * 1e10
 # set up the twin axis
 ax_twin = cmf.plotting.twin_axes_from_samples(ax, data_e090["mass_res"], N_star, log=False)
 ax_twin.set_xlabel(r"$N_\star$")
