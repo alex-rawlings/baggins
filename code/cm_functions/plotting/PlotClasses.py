@@ -134,9 +134,14 @@ class _GradientPlot:
         ----------
         ax : matplotlib.axes.Axes
             axis to add to
+
+        Returns
+        -------
+        : matplotlib.colorbar.Colorbar
+            colorbar object
         """
         ax = self.ax if ax is None else ax
-        plt.colorbar(plt.cm.ScalarMappable(cmap=self.cmap, norm=self.norm), ax=ax, **kwargs)
+        return plt.colorbar(plt.cm.ScalarMappable(cmap=self.cmap, norm=self.norm), ax=ax, **kwargs)
 
 
     def add_legend(self, ax, **kwargs):

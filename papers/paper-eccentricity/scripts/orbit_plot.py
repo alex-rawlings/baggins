@@ -1,6 +1,7 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import cm_functions as cmf
 import figure_config
 
@@ -160,7 +161,8 @@ if use_gradient_line:
     glp.plot(logcolour=False, vmin=min_time_colour, vmax=max_time_fac*glp.max_colour, marker_idx=m_idx)
     glp.plot_single_series(0, logcolour=False, ax=axins1, vmin=min_time_colour, vmax=max_time_fac*glp.max_colour, marker_idx=m_idx[0])
     glp.plot_single_series(1, logcolour=False, ax=axins2, vmin=min_time_colour, vmax=max_time_fac*glp.max_colour, marker_idx=m_idx[1])
-    glp.add_cbar(ax, label=r"$t/\mathrm{Myr}$", extend="min")
+    cbar = glp.add_cbar(ax, label=r"$t/\mathrm{Myr}$", extend="min")
+    cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
 if use_e90_data:
     axins1.set_xlim(-0.01, 0.02)
