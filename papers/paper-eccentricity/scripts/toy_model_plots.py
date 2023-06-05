@@ -102,7 +102,7 @@ def paper_th_e_curve_plot():
                                 CDDDEEEF
                                 CDDDEEEF
                                 """,
-                                figsize=(6,4)
+                                figsize=(7,4)
     )
     # share the axis limits
     # marginal axes
@@ -200,6 +200,12 @@ def paper_th_e_curve_plot():
     plot_sim_data(load_data(data_path('deflection_angles_e0-0.900.pickle')), axdict["D"], axdict["A"], axdict["C"])
 
     plot_sim_data(load_data(data_path('deflection_angles_e0-0.990.pickle')), axdict["E"], axdict["B"], axdict["F"])
+
+    # set marginal axis limits
+    axdict["A"].set_ylim(0, axdict["A"].get_ylim()[1])
+    axdict["B"].set_ylim(0, axdict["B"].get_ylim()[1])
+    axdict["C"].set_xlim(axdict["C"].get_xlim()[0], 0)
+    axdict["F"].set_xlim(0, axdict["F"].get_xlim()[1])
 
     axdict["E"].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right')
     fig.savefig(fig_path('theta_e_sim_and_model.pdf'))
