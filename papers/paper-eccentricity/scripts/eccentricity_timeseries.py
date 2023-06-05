@@ -18,82 +18,43 @@ e99_data_raw = "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentri
 analysis_params = cmf.utils.read_parameters("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml")
 
 
-def t_shift(t):
-    """
-    Apply a time shift
-
-    Parameters
-    ----------
-    t : array-like
-        times
-
-    Returns
-    -------
-    : array-like
-        shifted times
-    """
-    return t - np.nanmean(t)
-
-
 # initialise the figure
-fig, axdict = plt.subplot_mosaic(
-                                """
-                                AAAA
-                                BBCC
-                                """,
-                                figsize=(6,5)
-                                )
+fig, ax = plt.subplots(1,1, figsize=(6,3))
+ax.set_yscale("eccentricity")
 
-for k in axdict.keys():
-    axdict[k].set_yscale("eccentricity")
-axdict["B"].sharex(axdict["C"])
-axdict["B"].sharey(axdict["C"])
 
 # plot the full eccentricity data for some runs
-axdict["A"].set_xlabel(r"$t/\mathrm{Myr}$")
-axdict["A"].set_ylabel(r"$e$")
-axdict["A"].set_xscale("log")
-for suite, marker in zip((e90_data_raw, e99_data_raw), figure_config.marker_cycle.by_key()["marker"]):
+ax.set_xlabel(r"$t'/\mathrm{Myr}$")
+ax.set_ylabel(r"$e$")
+col = None
+start_idx = 2
+tmin = np.inf
+for suite, label in zip((e90_data_raw, e99_data_raw), (r"$e_0=0.90$", r"$e_0=0.99$")):
     ketju_files = cmf.utils.get_ketjubhs_in_dir(suite)
     for i, kf in enumerate(ketju_files):
-        if i > 2: break
         bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
         op = ketjugw.orbital_parameters(bh1, bh2)
-        axdict["A"].plot(op["t"]/cmf.general.units.Myr, op["e_t"], marker=marker, markevery=[-1], zorder=10)
-axdict["A"].legend(
-                handles = [
-                    Line2D([0], [0], marker="o", label=r"$e_0=0.90$", c="w", mec="k", lw=0.5),
-                    Line2D([0], [0], marker="s", label=r"$e_0=0.99$", c="w", mec="k", lw=0.5)
-                ]
-)
+        t = (op["t"] - op["t"][0]) / cmf.general.units.Myr
+        tmin = min(tmin, t[start_idx])
+        t = np.concatenate(([t[0]-t[1]], t)) 
+        e = np.concatenate(([1], op["e_t"]))
+        # skip first two points to deal with log scale
+        l = ax.plot(t[start_idx:], e[start_idx:], zorder=10, c=col, label=(label if i==0 else ""), ls="-")
+        col = l[-1].get_color()
+    col = None
+ax.set_xlim(tmin, 50)
+ax.legend()
+#ax.set_xscale("symlog", linthresh=2)
+ax.set_ylim(0,1)
 
 
-# plot data about t=t_h in separate panels
-for axi in (axdict["B"], axdict["C"]): 
-    axi.set_xlabel(r"$t'/\mathrm{Myr}$")
-    axi.set_ylabel(r"$e$")
 
-
-for i, (data_path, axi, label) in enumerate(zip((e90_data_path, e99_data_path), (axdict["B"], axdict["C"]), (r"$e_0=0.90$", r"$e_0=0.99$"))):
+for i, (data_path, col) in enumerate(zip((e90_data_path, e99_data_path), cmf.plotting.mplColours())):
     # extract data
     HMQ_files = cmf.utils.get_files_in_dir(data_path)
     km = cmf.analysis.KeplerModelHierarchy("", "", "")
     km.extract_data(HMQ_files, analysis_params)
     mean_t_h = np.mean([np.mean(t) for t in km.obs["t"]])
-    axdict["A"].axvline(mean_t_h, c="silver")
-    axdict["A"].annotate(label, (mean_t_h, 1.5e-3), xytext=(mean_t_h*1.02,0.4), horizontalalignment="left", verticalalignment="bottom")
-    axi.set_title(label)
-
-
-    # plot the time series for each run
-    for t, ecc in zip(km.obs["t"], km.obs["e"]):
-        axi.plot(t_shift(t), ecc)
-    # plot the mean of each time series' mean
-    eccs = np.array([np.nanmean(ecc) for ecc in km.obs["e"]])
-    mean_ecc = np.nanmean(eccs)
-    axi.axhline(mean_ecc, c="k", ls="--")
-    # plot the SD of each time series' mean
-    sd_ecc = np.nanstd(eccs)
-    axi.axhspan(mean_ecc-2.5*sd_ecc, mean_ecc+2.5*sd_ecc, alpha=0.2)
+    ax.annotate("", (mean_t_h, 1-5e-4), (mean_t_h, 1), arrowprops={"arrowstyle":"-|>", "fc":col, "ec":col})
 
 cmf.plotting.savefig(figure_config.fig_path("eccentricities.pdf"), force_ext=True)
