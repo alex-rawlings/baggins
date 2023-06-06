@@ -177,17 +177,28 @@ def paper_th_e_curve_plot():
         ax.set_prop_cycle(color_cycle_shuffled)
         tbins = np.arange(*ax.get_xlim(), 5)
         ebins = np.arange(*ax.get_ylim(), 0.1)
-        for (k, g), m in zip(
+
+# Group by mass resolution to get the same markers, filter out odd single mass
+# resolutions with only nan e due to quick mergers (?)
+# feelin' functional today...
+        data_groups = filter(
+                        lambda g: np.any(np.isfinite(g[2])),
+                        map(lambda a: np.array(list(a[1])).T, # groupby returns (key, iterator)
                             itertools.groupby(
-                            sorted(zip(sim_data['mass_res'],
-                                        sim_data['thetas'],
-                                        sim_data['median_eccs'])),
-                                      lambda x: x[0]),
-                            marker_cycle):
-            th, e = np.array(list(g)).T[1:]
-            if not np.any(np.isfinite(e)):
-                continue #some nan values in this dataset
-            ax.plot(th,e, label=rf"{k:.0f}", zorder=2, ls='none', **m)
+                                sorted(
+                                    zip(
+                                       sim_data['mass_res'],
+                                       sim_data['thetas'],
+                                       sim_data['median_eccs']
+                                       )
+                                      ),
+                                lambda x: x[0])
+                            )
+                         )
+
+        for g, m in zip(data_groups, marker_cycle):
+            mres, th, e = g
+            ax.plot(th,e, label=rf"{mres[0]:.0f}", zorder=2, ls='none', **m)
             # add KDE to marginal
             kde_t = scipy.stats.gaussian_kde(th[~np.isnan(th)])
             t_pts = np.linspace(*ax.get_xlim(), 1000)
@@ -195,6 +206,7 @@ def paper_th_e_curve_plot():
             kde_e = scipy.stats.gaussian_kde(e[~np.isnan(e)])
             e_pts = np.linspace(*ax.get_ylim(), 1000)
             axme.plot(kde_e(e_pts), e_pts)
+
     axdict["C"].invert_xaxis()
 
     plot_sim_data(load_data(data_path('deflection_angles_e0-0.900.pickle')), axdict["D"], axdict["A"], axdict["C"])
@@ -283,6 +295,6 @@ def paper_orbit_plot():
 
 
 paper_th_e_curve_plot()
-paper_orbit_plot()
+#paper_orbit_plot()
 
 #plt.show()
