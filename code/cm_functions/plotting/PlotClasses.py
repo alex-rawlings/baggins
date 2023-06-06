@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
+from matplotlib.collections import LineCollection
 from ..env_config import _cmlogger
 
 
@@ -15,7 +16,7 @@ class _GradientPlot:
     """
     
     """
-    def __init__(self, ax, cmap="cividis", plot_kwargs={}):
+    def __init__(self, ax, cmap="cividis"):
         """
         Class to create pyplot plots with a colour gradient. The colour 
         gradient is consistent between all lines/points in the figure. This is 
@@ -48,7 +49,6 @@ class _GradientPlot:
                 _logger.logger.exception(f"cmap `{cmap}` not present in matplotlib defaults, nor is registered as a custom map!", exc_info=True)
                 raise
         self.all_marker = []
-        self.all_pks = [plot_kwargs]
         self.norm = [0,1]
         self._default_markerkwargs = {"ec":"k", "lw":0.5}
 
@@ -67,7 +67,7 @@ class _GradientPlot:
         return min([min(c) for c in self.all_c])
 
 
-    def add_data(self, x, y, c, label=None, marker="o", plot_kwargs={}):
+    def add_data(self, x, y, c, label=None, marker="o"):
         """
         Add a dataset to the plot (note that the data is just stored here for 
         future use).
@@ -84,9 +84,6 @@ class _GradientPlot:
             label of plot, by default None
         marker : str, optional
             end marker, by default "o"
-        plot_kwargs : dict, optional
-            dict of other parameters to parse to pyplot.plot() or pyplot.scatter
-            (), by default {}
         """
         try:
             dat_len = [len(v) for v in (x,y,c)]
@@ -99,7 +96,6 @@ class _GradientPlot:
         self.all_c.append(c)
         self.all_label.append(label)
         self.all_marker.append(marker)
-        self.all_pks.append(plot_kwargs)
         self.data_count += 1
 
 
@@ -174,14 +170,19 @@ class GradientLinePlot(_GradientPlot):
     """
     Apply the _GradientPlot class for pyplot line plots
     """
-    def __init__(self, ax, cmap="viridis", plot_kwargs={}):
-        super().__init__(ax, cmap=cmap, plot_kwargs=plot_kwargs)
+    def __init__(self, ax, cmap="viridis"):
+        super().__init__(ax, cmap=cmap)
 
 
-    def plot_single_series(self, i, logcolour=False, ax=None, vmin=None, vmax=None, marker_idx=-1):
+    def _make_segments(self, i):
+        points = np.array([self.all_x[i], self.all_y[i]]).T.reshape(-1,1,2)
+        return np.concatenate([points[:-1], points[1:]], axis=1)
+
+
+    def plot_single_series(self, i, logcolour=False, ax=None, vmin=None, vmax=None, marker_idx=-1, **kwargs):
         """
-        Plot the data for a single data series, but ensure colour is consistent 
-        with the colour-range of all data series in the object
+        Plot the data for a single data series, ensuring colour scheme is 
+        consistent with all stored data
 
         Parameters
         ----------
@@ -197,6 +198,8 @@ class GradientLinePlot(_GradientPlot):
             maximum colour value (ovverides default value), by default None
         marker_idx : int
             array index to place marker at
+        kwargs :
+            other keyword arguments to LineCollection()
         """
         self._data_check()
         self._set_colours(log=logcolour, vmin=vmin, vmax=vmax)
@@ -211,33 +214,26 @@ class GradientLinePlot(_GradientPlot):
                 zorder = 10 * self.data_count,
                 **self._default_markerkwargs
             )
-        for xs, ys, cs in zip(
-                            zip(self.all_x[i][:-1], self.all_x[i][1:]),
-                            zip(self.all_y[i][:-1], self.all_y[i][1:]),
-                            self.all_c[i][:-1]
-                            ):
-                ax.plot(xs, ys, color=self.cmap(self.norm(cs)), **self.all_pks[i])
+        segments = self._make_segments(i)
+        lc = LineCollection(
+                            segments,
+                            array = self.all_c[i],
+                            cmap = self.cmap,
+                            norm = self.norm,
+                            **kwargs
+        )
+        ax.add_collection(lc)
+        return lc
 
 
-    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None, marker_idx=None):
+    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None, marker_idx=None, **kwargs):
         """
         Plot the data for all data series, ensuring a consistent colour scheme.
-
-        Parameters
-        ----------
-        logcolour : bool, optional
-            use logarithmic colour mapping, by default False
-        ax : matplotlib.axes.Axes, optional
-            plotting axes, by default None
-        vmin : float, optional
-            minimum colour value (overrides default value), by default None
-        vmax : float, optional
-            maximum colour value (ovverides default value), by default None
         """
         if marker_idx is None:
             marker_idx = [-1 for _ in range(self.data_count)]
         for i in range(self.data_count):
-            self.plot_single_series(i, logcolour=logcolour, ax=ax, vmin=vmin, vmax=vmax, marker_idx=marker_idx[i])
+            self.plot_single_series(i, logcolour=logcolour, ax=ax, vmin=vmin, vmax=vmax, marker_idx=marker_idx[i], **kwargs)
 
 
 
@@ -246,22 +242,53 @@ class GradientScatterPlot(_GradientPlot):
     """
     Apply the _GradientPlot class for pyplot scatter plots
     """
-    def __init__(self, ax, x, y, c, label=None, cmap="viridis", marker="o", plot_kwargs={}):
-        super().__init__(ax, x, y, c, label=label, cmap=cmap, marker=marker, plot_kwargs=plot_kwargs)
+    def __init__(self, ax, cmap="cividis"):
+        super().__init__(ax, cmap=cmap)
 
 
-    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None):
+    def _set_colours(self, log=False, vmin=None, vmax=None):
         """
-        Plot the data, ensuring a consistent colour scheme.
+        Set the colours for the plot, see similarly-called super() method
+
+        Returns
+        -------
+        : callable
+            function to map colours
+        """
+        super()._set_colours(log, vmin, vmax)
+        return lambda x: self.cmap(self.norm(x))
+
+
+    def plot_single_series(self, i, logcolour=False, ax=None, vmin=None, vmax=None, **kwargs):
+        """
+        Plot the data for a single data series, ensuring colour scheme is 
+        consistent with all stored data
 
         Parameters
         ----------
+        i : int
+            index of data series to plot
         logcolour : bool, optional
-            colours in log scale?, by default False
+            use logarithmic colour mapping, by default False
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        vmin : float, optional
+            minimum colour value (overrides default value), by default None
+        vmax : float, optional
+            maximum colour value (ovverides default value), by default None
+        kwargs : 
+            other keyword arguments to pyplot.scatter()
         """
         self._data_check()
-        self._set_colours(log=logcolour, vmin=vmin, vmax=vmax)
+        cmapper = self._set_colours(log=logcolour, vmin=vmin, vmax=vmax)
         ax = self.ax if ax is None else ax
-        for xi, yi, ci, labeli, markeri, pki in zip(self.all_x, self.all_y, self.all_c, self.all_label, self.all_marker, self.all_pks):
-            for i, (xs, ys, cs) in enumerate(zip(zip(xi[:-1], xi[1:]), zip(yi[:-1], yi[1:]), ci[:-1])):
-                ax.scatter(xs, ys, color=self.cmap(self.norm(cs)), marker=markeri, label=(labeli if i==0 else ""), ec="k", lw=0.5, **pki)
+        ax.scatter(self.all_x[i], self.all_y[i], c=cmapper(self.all_c[i]), **kwargs)
+
+
+    def plot(self, logcolour=False, ax=None, vmin=None, vmax=None, **kwargs):
+        """
+        Plot the data, ensuring a consistent colour scheme.
+        """
+        for i in range(self.data_count):
+            self.plot_single_series(i, logcolour=logcolour, ax=ax, vmin=vmin, vmax=vmax, **kwargs)
+

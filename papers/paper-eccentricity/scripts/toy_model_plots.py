@@ -140,7 +140,7 @@ def paper_th_e_curve_plot():
     color = None
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s <0.9: continue
-        a = 1 if e_s == 0.905 else 0.5
+        a = 0.8 if e_s == 0.905 else 0.3
         l, = axdict["D"].plot(np.degrees(d['theta'])+curve_shift, d['e'], color=color, alpha=a)
         color = l.get_color()
     print("b90 for e_0=0.90", np.interp(90,np.degrees(d['theta'][::-1]),d['b'][::-1]*1e3))
@@ -159,7 +159,7 @@ def paper_th_e_curve_plot():
     color=None
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s < 0.9: continue
-        a = 1 if e_s == 0.905 else 0.5
+        a = 0.8 if e_s == 0.905 else 0.3
         l, = axdict["E"].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color=color)
         color = l.get_color()
 
@@ -295,6 +295,6 @@ def paper_orbit_plot():
 
 
 paper_th_e_curve_plot()
-#paper_orbit_plot()
+paper_orbit_plot()
 
 #plt.show()

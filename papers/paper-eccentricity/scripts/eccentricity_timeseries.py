@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.lines import Line2D
 import ketjugw
 import cm_functions as cmf
 import figure_config
@@ -38,6 +37,10 @@ for suite, label in zip((e90_data_raw, e99_data_raw), (r"$e_0=0.90$", r"$e_0=0.9
         tmin = min(tmin, t[start_idx])
         t = np.concatenate(([t[0]-t[1]], t)) 
         e = np.concatenate(([1], op["e_t"]))
+        if op["e_t"][-1] < 0.1:
+            print("Adding an artificial point at e=0 for visual appeal...")
+            t = np.concatenate((t, [2*t[-1]-t[-2]]))
+            e = np.concatenate((e, [0]))
         # skip first two points to deal with log scale
         l = ax.plot(t[start_idx:], e[start_idx:], zorder=10, c=col, label=(label if i==0 else ""), ls="-")
         col = l[-1].get_color()

@@ -11,10 +11,11 @@ print_data = False
 # turn off for fast plotting, line will be a single colour
 use_gradient_line = True
 
-
+idx_stride = 10
 min_time_colour = -2
 max_time_colour = -min_time_colour
 arrowprops = {"arrowstyle":"wedge", "fc":"k", "ec":"w", "lw":0.1}
+gradline_kwargs = {"ls":"-", "capstyle":"round"}
 
 # set up figure
 fig, ax = plt.subplots(1,2, figsize=(6,3), sharex="all", sharey="all")
@@ -50,7 +51,6 @@ for j in range(2):
         ]
 
         # some shortcuts
-        idx_stride = 10
         A_idx = [4500, 4280]
         B_idx = [A_idx[0]+35, A_idx[1]+30]
         extra_bound_bit = [1000, 2000]
@@ -79,9 +79,8 @@ for j in range(2):
         ]
 
         # some shortcuts
-        idx_stride = 10
         A_idx = [3150, 3140]
-        B_idx = [A_idx[0]+35, A_idx[1]+35]
+        B_idx = [A_idx[0]+29, A_idx[1]+35]
         extra_bound_bit = [1500, 800]
 
 
@@ -114,7 +113,7 @@ for j in range(2):
         t = bh.t[::idx_stride] / cmf.general.units.Myr
         t = t - t[bound_idx_strided[i]]
         if use_gradient_line:
-            glp.add_data(x, y, c=t, plot_kwargs={"ls":"-"})
+            glp.add_data(x, y, c=t)
         else:
             ax[j].plot(x,y, markevery=[bound_idx_strided[i]], marker="o")
             axins.plot(x,y, markevery=[bound_idx_strided[i]], marker="o")
@@ -151,7 +150,7 @@ for j in range(2):
             axins.annotate(
                         "B", 
                         (x[B_idx[i]], y[B_idx[i]]),
-                        xytext=(5, -7) if i==0 else (2.7, -12),
+                        xytext=(0, 25) if i==0 else (2, -16),
                         textcoords="offset points",
                         arrowprops=arrowprops,
                         horizontalalignment="left",
@@ -165,9 +164,9 @@ for j in range(2):
         axins.set_title(f"$\\theta_\mathrm{{defl}}={ang:.1f}\degree$", fontsize="small")
 
     if use_gradient_line:
-        glp.plot(logcolour=False, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided)
-        glp.plot_single_series(0, logcolour=False, ax=axins1, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[0])
-        glp.plot_single_series(1, logcolour=False, ax=axins2, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[1])
+        glp.plot(logcolour=False, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided, **gradline_kwargs)
+        glp.plot_single_series(0, logcolour=False, ax=axins1, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[0], **gradline_kwargs)
+        glp.plot_single_series(1, logcolour=False, ax=axins2, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[1], **gradline_kwargs)
         if j==1:
             cbar = glp.add_cbar(ax[j], label=r"$t'/\mathrm{Myr}$", extend="both")
             cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))

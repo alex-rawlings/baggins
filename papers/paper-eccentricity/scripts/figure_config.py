@@ -41,7 +41,7 @@ mpl.colormaps.register(cmap=custom_diverging_cmap)
 mpl.colormaps.register(cmap=custom_diverging_cmap.reversed(), name="custom_diverging_r")
 
 custom_colors = custom_cmap(np.linspace(0,1,8))
-custom_colors_shuffled = custom_colors[[0, 4, 1, 5, 2, 6, 3, 7]]
+custom_colors_shuffled = custom_colors[[1, 4, 0, 5, 2, 6, 3, 7]]
 
 color_cycle = mpl.cycler(color=custom_colors)
 color_cycle_shuffled = mpl.cycler(color=custom_colors_shuffled)
