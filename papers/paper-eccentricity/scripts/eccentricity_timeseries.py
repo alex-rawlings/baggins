@@ -41,7 +41,7 @@ for j, (suite, label) in enumerate(zip((e90_data_raw, e99_data_raw), (r"$e_0=0.9
         tmin = min(tmin, t[start_idx])
         t = np.concatenate(([t[0]-t[1]], t)) 
         e = np.concatenate(([1], op["e_t"]))
-        if op["e_t"][-1] < 0.1:
+        if op["e_t"][-1] < 0.2 and np.any(op["e_t"]>0.9):
             print("Adding an artificial point at e=0 for visual appeal...")
             t = np.concatenate((t, [2*t[-1]-t[-2]]))
             e = np.concatenate((e, [0]))
