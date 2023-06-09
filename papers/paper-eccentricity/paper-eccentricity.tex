@@ -463,46 +463,45 @@ We observe evidence for a relationship between the deflection angle $\theta_\mat
     \includegraphics{sample_model_orbits}
     \caption{
     Top:
-    Sample orbits computed with the toy model for potentials with different degrees of asymmetry
-    given by the spheroid eccentricity $e_\mathrm{s}$, with otherwise identical initial conditions.
+    Sample orbits computed with the toy model for different background potential eccentricities $e_\mathrm{s}$,
+    with otherwise identical initial conditions.
     The dashed lines show the isopotential contours of the model.
     Only the early part of the evolution is shown for clarity.
     Bottom:
-    The orbital eccentricity $e$ of the model orbits.
+    The orbital eccentricity $e$ of the model orbits (note the non-linear scale).
     The vertical line marks the end of the period shown in the top panels. 
-    Note the non-linear scale to allow showing the high-eccentricities reached by
-    the $e_\mathrm{s}=0.2$ model.
     }
     \label{fig:model_orbits}
 \end{figure*}
 
-To gain insight into the origin of the dependence of binary eccentricity on the 
-deflection angle $\_\mathrm{defl}$ during the binary formation,
-we have constructed a simple toy model that can qualitatively reproduce the observed
+To understand the dependency of the binary eccentricity on the 
+deflection angle $\theta_\mathrm{defl}$ during the binary formation,
+we have constructed a simple toy model that can reproduce the observed
 behavior from the simulations.
 This model includes only the essential components relevant to this process,
 which are the asymmetric background stellar potential,
 dynamical friction from the stellar background,
 and naturally the SMBHs themselves.
 
-For simplicity, we consider only symmetrical 1:1 mergers, and take the BH orbits
+For simplicity, we consider only equal-mass mergers, and take the BH orbits
 to lie in the $xy$-plane.
 In this case the relative motion of the BHs can be treated as a one-body problem,
 with the equation of motion
 \begin{equation} \label{eq:toy_model_eom}
 \ddot{\vb{x}} = -\frac{2 G M_\bullet}{|\vb{x}|^3} \vb{x} + \vb{a}_\mathrm{bg} + \vb{a}_\mathrm{DF},
 \end{equation}
-where $\vb{x}=(x,y)$ is the separation vector of the BHs, $M_\bullet$ the mass of a single BH,
+where $\vb{x}=(x,y)$ is the separation vector of the BHs,
+$M_\bullet = 10^8\,\Msun$ is the mass of a single BH,
 $\vb{a}_\mathrm{bg}$ the acceleration due to the background potential,
 and $\vb{a}_\mathrm{DF}$ the acceleration due to dynamical friction.
 
 The background galaxy is modeled as a constant density spheroidal potential,
-causing the acceleration \citep[e.g.][]{binney2008}
+with its long axis aligned along the $x$-axis.
+The acceleration from this potential is \citep[e.g.][]{binney2008}
 \begin{equation}
 \vb{a}_\mathrm{bg} = - 2 \pi G \rho \operatorname{diag}(A_x,A_y) \vb{x},
 \end{equation}
-where $\rho$ is the stellar density,
-and the $A$ coefficients are related to the eccentricity $e_\mathrm{s}$ of the spheroid as
+where $A$ coefficients are related to the eccentricity $e_\mathrm{s}$ of the spheroid as
 \begin{align}
 A_x &= 2 \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
     \left[\frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right) - 1 \right]\\
@@ -510,11 +509,8 @@ A_y &= \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2}
         \left[ \frac{1}{1-e_\mathrm{s}^2} 
         - \frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right)\right].
 \end{align}
-Here we have chosen the long axis of the spheroid to be aligned with the $x$-axis.
-With eccentricity values of $e_\mathrm{s} \approx 0.9$,
-this spheroidal potential matches the central potential in the galaxy during the
-SMBH binary binding phase reasonably well,
-apart from the contributions from the BHs themselves and the groups of stars bound to them.
+The stellar density is set to the value $\rho = 300 \,\Msun\,\mathrm{pc}^{-3}$,
+which approximately matches the values seen in the simulations when SMBH binary is becoming bound.
 
 For dynamical friction, we use the \citet{chandrasekhar1943} formula assuming
 a Maxwellian distribution with a constant velocity dispersion $\sigma_\mathrm{M}$ \citep[e.g.][]{binney2008}.
@@ -522,50 +518,43 @@ This formula gives the acceleration of a single BH due to dynamical friction as
 \begin{equation}\label{eq:chandra_df}
 \begin{aligned}
 \vb{a}_{1,\mathrm{DF}} = &-\frac{4 \pi G^2 M_\bullet \rho \ln{\Lambda}}{|\vb{v}_{1}|^3}\\
-                        &\times\left(\operatorname{erf}(X) - \frac{2X}{\sqrt{\pi}} \exp(-X^2)\right)\vb{v}_{1},
+                        &\times\left(\operatorname{erf}(X) - \frac{2X}{\sqrt{\pi}} \exp(-X^2)\right)\vb{v}_{1}.
 \end{aligned}
 \end{equation}
-where $\vb{v}_1 = \dot{\vb{x}}/2$ is the velocity of a single BH,
-$X = |\vb{v}_1|/\sqrt{2}\sigma_\mathrm{M}$,
-and the Coulomb logarithm is taken to have the value $\ln{\Lambda} = 10$.
-To account for differences between the constant density background of stars
-assumed here and the more complex system that is present in the simulations
-we additionally multiply the acceleration given by Eq.~\eqref{eq:chandra_df}
-with a scaling and cut-off function
+Here $\vb{v}_1 = \dot{\vb{x}}/2$ is the velocity of a single BH, 
+and $X = |\vb{v}_1|/\sqrt{2}\sigma_\mathrm{M}$,
+where the stellar velocity dispersion is taken to have the value
+$\sigma_\mathrm{M}=200\,\mathrm{km\,s^{-1}}$
+to approximately match the simulations.
+The Coulomb logarithm is taken to have the value $\ln{\Lambda} = 5$,
+which is appropriate for the size of the simulated systems.
+
+The effect of dynamical friction weakens as the BH binary orbit shrinks,
+and to account for this we multiply the acceleration given by Eq.~\eqref{eq:chandra_df}
+with the smooth cut-off function
 \begin{equation}
-f(a) = \frac{\alpha}{1 + \exp[(a_\mathrm{c}-a)/d_\mathrm{c}]},
+f(a) = \frac{1}{1 + \exp[(a_\mathrm{c}-a)/d_\mathrm{c}]}.
 \end{equation}
-which serves to remove the effect of dynamical friction when the SMBH binary has become
-hard in addition to allowing the strength of dynamical friction to be scaled to
-achieve similar behavior as observed in the simulations, since in the simulations the
-stellar background is much more complex.
-Here $a$ is the semi-major axis of a bound binary, and for unbound binaries we set $f(a)=\alpha$.
-We set the scaling factor $\alpha=0.5$, and use cut-off scales $a_\mathrm{c}=2 a_\mathrm{h}$
+Here $a$ is the semi-major axis of a bound binary, and for unbound binaries we set $f(a)=1$.
+We use the cut-off scales $a_\mathrm{c}=2 a_\mathrm{h}$
 and $d_\mathrm{c} = 0.5 a_\mathrm{h}$,
-with $a_\mathrm{h}$ being the semimajor-axis of a hard BH binary.
+with $a_\mathrm{h}$ defined by equation \eqref{eq:ahard}.
 The total dynamical friction term is then
 \begin{equation}
 \vb{a}_{\mathrm{DF}} = 2 f(a) \vb{a}_{1,\mathrm{DF}}.
 \end{equation}
 
-To mimic the nearly linearly plunging orbit in the high-eccentricity merger orbit simulations,
-we specify the initial conditions confined to the $xy$-plane as 
+To mimic the nearly linearly plunging orbits before the scattering event seen in \autoref{fig:orbit},
+we specify the initial conditions as 
 \begin{align}
-\vb{x}_0 &= (r_0, b)\\
+\vb{x}_0 &= (25\,\mathrm{pc}, b)\\
 \dot{\vb{x}}_0 &= (-v_0, 0).
 \end{align}
-We fix $r_0 = 25\,\mathrm{pc}$,
-and use model parameters
-$\rho = 300 \,\Msun\,\mathrm{pc}^{-3}$,
-$\sigma_\mathrm{M}=200\,\mathrm{km\,s^{-1}}$,
-and
-$M_\bullet=10^8\,\Msun$,
-which are fairly similar to the central properties of the merging galaxy when
-the SMBHs are becoming bound in the $e_0=0.90$ and $e_0=0.99$ merger orbit simulations.
 Based on the simulations we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.90$ case,
 and $v_0 = 560\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.99$ case.
 The spheroid eccentricity parameter is not easily measurable from the simulations,
-and we therefore perform calculations with different values of $e_\mathrm{s}$.
+and we therefore perform calculations with different values of $e_\mathrm{s}$,
+finding a good fit to simulation results for $e_\mathrm{s}\approx 0.9$.
 We compute the resulting eccentricities for a range of impact parameters up to $b=20\,\mathrm{pc}$
 for the two initial velocities,
 by solving the equation of motion \eqref{eq:toy_model_eom} until the binary has become hard using
@@ -576,7 +565,6 @@ corresponds to initial impact parameters of $b\approx 5.8\,\mathrm{pc}$ and
 $b\approx 3.3\,\mathrm{pc}$ for the $e_0=0.90$ and $e_0=0.99$ cases, respectively.
 
 The resulting model curves are shown together with the simulation data in \autoref{fig:theta_e}.
-We observe a modest decrease in deflection angle $\theta_\mathrm{defl}$ with increasing mass resolution for both the $e_0=0.90$ and $e_0=0.99$ cases. 
 To correctly match the data in the $e_0=0.90$ case, the model curve has been shifted to the left by $12\degr$,
 while in the $e_0=0.99$ case a smaller shift of $6\degr$ is used.
 Otherwise the model appears to give a very good match to the simulation results,

@@ -32,8 +32,14 @@ class System:
         self.rho = rho
 
         self.stellar_sigma = stellar_sigma
-        self.df_fudge_factor = df_fudge_factor
-        self.logL = 10
+# XXX: The fudge factor actually just changes logL, so it would be better to
+# directly specify logL.
+# Originally they were separate factors, with logL having a fixed values.
+# But I noticed this pretty obvious thing only when all the calculations for the paper were done, 
+# so it was best not to touch the interface of the code.
+# But for future applications this should be fixed to take logL directly, or
+# better yet, to calculate it based on the BH mass, sigma and size of the system.
+        self.logL = 10 * df_fudge_factor
 
         self.a_hard = G * M_BH / (8 * stellar_sigma**2)
         self.r_infl = np.cbrt(2*M_BH/(rho*(4/3*np.pi)))
@@ -59,7 +65,7 @@ class System:
                           * (erf(X) - 2*X/np.sqrt(np.pi)*np.exp(-X**2))
                           * v_single/v_single_norm**3)
 
-        return 2*df_single * self.df_fudge_factor
+        return 2*df_single
 
     def df_decoupling_factor(self, x, v):
         a = self.semimajor_axis(x,v)
@@ -425,7 +431,7 @@ if __name__ == '__main__':
             parameter_space_scan_g05_conf3()
     else:
         #high_res_well_fitting_models()
-        gen_orbit_plot_data()
-        #test_plots()
+        #gen_orbit_plot_data()
+        test_plots()
 
 
