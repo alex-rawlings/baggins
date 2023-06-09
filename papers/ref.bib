@@ -392,6 +392,20 @@
   keywords = {04.25.Nx,04.30.Db,04.70.Bw,Classical black holes,perturbation theory,Post-Newtonian approximation,related approximations,Wave generation and sources}
 }
 
+@misc{mannerkoski2023,
+  title = {{{KETJU}} -- Resolving Small-Scale Supermassive Black Hole Dynamics in {{GADGET-4}}},
+  author = {Mannerkoski, Matias and Rawlings, Alexander and Johansson, Peter H. and Naab, Thorsten and Rantala, Antti and Springel, Volker and Irodotou, Dimitrios and Liao, Shihong},
+  year = {2023},
+  month = jun,
+  journal = {arXiv e-prints},
+  url = {https://ui.adsabs.harvard.edu/abs/2023arXiv230604963M},
+  urldate = {2023-06-09},
+  abstract = {We present the new public version of the KETJU supermassive black hole (SMBH) dynamics module, as implemented into GADGET-4. KETJU adds a small region around each SMBH where the dynamics of the SMBHs and stellar particles are integrated using an algorithmically regularised integrator instead of the leapfrog integrator with gravitational softening used by GADGET-4. This enables modelling SMBHs as point particles even during close interactions with stellar particles or other SMBHs, effectively removing the spatial resolution limitation caused by gravitational softening. KETJU also includes post-Newtonian corrections, which allows following the dynamics of SMBH binaries to sub-parsec scales and down to tens of Schwarzschild radii. Systems with multiple SMBHs are also supported, with the code also including the leading non-linear cross terms that appear in the post-Newtonian equations for such systems. We present tests of the code showing that it correctly captures, at sufficient mass resolution, the sinking driven by dynamical friction and binary hardening driven by stellar scattering. We also present an example application demonstrating how the code can be applied to study the dynamics of SMBHs in mergers of multiple galaxies and the effect they have on the properties of the surrounding galaxy. We expect that the presented KETJU SMBH dynamics module can also be straightforwardly incorporated into other codes similar to GADGET-4, which would allow coupling small-scale SMBH dynamics to the rich variety of galactic physics models that exist in the literature.},
+  keywords = {Astrophysics - Astrophysics of Galaxies,Astrophysics - Instrumentation and Methods for Astrophysics},
+  annotation = {ADS Bibcode: 2023arXiv230604963M},
+  file = {/Users/alexrawlings/Zotero/storage/AYIEG43I/Mannerkoski et al. - 2023 - KETJU -- resolving small-scale supermassive black .pdf}
+}
+
 @article{merritt2001,
   title = {Brownian {{Motion}} of a {{Massive Binary}}},
   author = {Merritt, David},
@@ -471,6 +485,24 @@
   file = {/Users/alexrawlings/Zotero/storage/VFBUIFHA/Nasim et al. - 2020 - Defeating stochasticity coalescence time-scales o.pdf}
 }
 
+@article{nasim2021,
+  title = {Formation of Counter-Rotating and Highly Eccentric Massive Black Hole Binaries in Galaxy Mergers},
+  author = {Nasim, Imran Tariq and Petrovich, Cristobal and Nasim, Adam and Dosopoulou, Fani and Antonini, Fabio},
+  year = {2021},
+  month = may,
+  journal = {Monthly Notices of the Royal Astronomical Society},
+  volume = {503},
+  pages = {498--510},
+  issn = {0035-8711},
+  doi = {10.1093/mnras/stab351},
+  url = {https://ui.adsabs.harvard.edu/abs/2021MNRAS.503..498N},
+  urldate = {2023-06-09},
+  abstract = {Supermassive black hole (SMBH) binaries represent the main target for missions such as the Laser Interferometer Space Antenna and Pulsar Timing Arrays. The understanding of their dynamical evolution prior to coalescence is therefore crucial to improving detection strategies and for the astrophysical interpretation of the gravitational wave data. In this paper, we use high-resolution N-body simulations to model the merger of two equal-mass galaxies hosting a central SMBH. In our models, all binaries are initially prograde with respect to the galaxy sense of rotation. But, binaries that form with a high eccentricity, e {$\greaterequivlnt$} 0.7, quickly reverse their sense of rotation and become almost perfectly retrograde at the moment of binary formation. The evolution of these binaries proceeds towards larger eccentricities, as expected for a binary hardening in a counter-rotating stellar distribution. Binaries that form with lower eccentricities remain prograde and at comparatively low eccentricities. We study the origin of the orbital flip by using an analytical model that describes the early stages of binary evolution. This model indicates that the orbital plane flip is due to the torque from the triaxial background mass distribution that naturally arises from the galactic merger process. Our results imply the existence of a population of SMBH binaries with a high eccentricity and could have significant implications for the detection of the gravitational wave signal emitted by these systems.},
+  keywords = {Astrophysics - Astrophysics of Galaxies,black hole physics,galaxies: interactions,galaxies: kinematics and dynamics,galaxies: nuclei,gravitational waves,methods: numerical},
+  annotation = {ADS Bibcode: 2021MNRAS.503..498N},
+  file = {/Users/alexrawlings/Zotero/storage/QITY8ZQL/Nasim et al. - 2021 - Formation of counter-rotating and highly eccentric.pdf}
+}
+
 @article{navarro1997,
   title = {A {{Universal Density Profile}} from {{Hierarchical Clustering}}},
   author = {Navarro, Julio F. and Frenk, Carlos S. and White, Simon D. M.},
@@ -539,6 +571,24 @@
   pages = {53},
   doi = {10.3847/1538-4357/aa6d65},
   keywords = {Astrophysics - Astrophysics of Galaxies,black hole physics,galaxies: evolution,galaxies: nuclei,methods: numerical,stars: kinematics and dynamics}
+}
+
+@article{rantala2020,
+  title = {{{MSTAR}} - a Fast Parallelized Algorithmically Regularized Integrator with Minimum Spanning Tree Coordinates},
+  author = {Rantala, Antti and Pihajoki, Pauli and Mannerkoski, Matias and Johansson, Peter H. and Naab, Thorsten},
+  year = {2020},
+  month = mar,
+  journal = {Monthly Notices of the Royal Astronomical Society},
+  volume = {492},
+  pages = {4131--4148},
+  issn = {0035-8711},
+  doi = {10.1093/mnras/staa084},
+  url = {https://ui.adsabs.harvard.edu/abs/2020MNRAS.492.4131R},
+  urldate = {2023-06-09},
+  abstract = {We present the novel algorithmically regularized integration method MSTAR for high-accuracy (|{$\Delta$}E/E| {$\greaterequivlnt$} 10-14) integrations of N-body systems using minimum spanning tree coordinates. The twofold parallelization of the O(N\_part\^2) force loops and the substep divisions of the extrapolation method allow for a parallel scaling up to NCPU = 0.2 \texttimes{} Npart. The efficient parallel scaling of MSTAR makes the accurate integration of much larger particle numbers possible compared to the traditional algorithmic regularization chain (AR-CHAIN) methods, e.g. Npart = 5000 particles on 400 CPUs for 1 Gyr in a few weeks of wall-clock time. We present applications of MSTAR on few particle systems, studying the Kozai mechanism and N-body systems like star clusters with up to Npart = 104 particles. Combined with a tree or fast multipole-based integrator, the high performance of MSTAR removes a major computational bottleneck in simulations with regularized subsystems. It will enable the next-generation galactic-scale simulations with up to 109 stellar particles (e.g. m\_\star = 100 M\_{$\odot$} for an M\_\star = 10\^\{11\} M\_{$\odot$} galaxy), including accurate collisional dynamics in the vicinity of nuclear supermassive black holes.},
+  keywords = {Astrophysics - Astrophysics of Galaxies,Astrophysics - Instrumentation and Methods for Astrophysics,galaxies: star clusters: general,gravitation,methods: numerical,quasars: supermassive black holes},
+  annotation = {ADS Bibcode: 2020MNRAS.492.4131R},
+  file = {/Users/alexrawlings/Zotero/storage/IG3KB7XG/Rantala et al. - 2020 - MSTAR - a fast parallelized algorithmically regula.pdf}
 }
 
 @article{rottgers2020,
