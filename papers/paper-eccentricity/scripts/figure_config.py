@@ -75,7 +75,6 @@ class EccentricityScale(mpl.scale.FuncScale):
 
     def set_default_locators_and_formatters(self, axis):
         axis.set_major_locator(mpl.ticker.FixedLocator([0,0.2,0.4,0.6,0.8,0.9, 0.99, 0.999, 1]))
-        axis.set_minor_locator(mpl.ticker.FixedLocator([1-1e-4, 1-1e-5, 1-1e-6]))
 
         axis.set_major_formatter(mpl.ticker.StrMethodFormatter("{x:5g}"))
 

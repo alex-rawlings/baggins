@@ -65,7 +65,7 @@ def th_e_curves(data):
     cb = fig.colorbar(lines)
     cb.set_label('$v_0/\mathrm{km\,s^{-1}}$')
 
-    plt.ylabel('$e$')
+    plt.ylabel(r'$e_\mathrm{h}$')
     plt.xlabel(r'$\theta$')
     plt.gca().xaxis.set_major_formatter(degree_format_str)
     
@@ -79,7 +79,7 @@ def plot_specific_th_e(data, v0s, simdata=None, shift=0):
     if simdata is not None:
         plot_sim_data_th_e(plt.gca(), simdata)
     
-    plt.ylabel('$e$')
+    plt.ylabel(r'$e_\mathrm{h}$')
     plt.xlabel(r'$\theta$')
     plt.gca().xaxis.set_major_formatter(degree_format_str)
     plt.legend()
@@ -125,7 +125,7 @@ def paper_th_e_curve_plot():
         axdict[k].set_xticklabels([])
         axdict[k].set_xticks([])
 
-    axdict["C"].set_ylabel('$e$')
+    axdict["C"].set_ylabel('$e(t)$')
     axdict["C"].set_ylim(0,1)
     for k in "DE":
         axdict[k].set_xlabel(r'$\theta_\mathrm{defl}$')
@@ -242,7 +242,7 @@ def paper_orbit_plot():
     e_ax.set_xlim((0,6))
     e_ax.set_ylim((0,1))
     e_ax.set_xlabel('$t/\mathrm{Myr}$')
-    e_ax.set_ylabel(r'$e$')
+    e_ax.set_ylabel(r'$e(t)$')
     e_ax.set_yscale('eccentricity')
 
     def plot_potential(e_spheroid, ax):
