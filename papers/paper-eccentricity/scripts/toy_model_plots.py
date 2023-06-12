@@ -125,7 +125,7 @@ def paper_th_e_curve_plot():
         axdict[k].set_xticklabels([])
         axdict[k].set_xticks([])
 
-    axdict["C"].set_ylabel('$e(t)$')
+    axdict["C"].set_ylabel('$e_\mathrm{h}$')
     axdict["C"].set_ylim(0,1)
     for k in "DE":
         axdict[k].set_xlabel(r'$\theta_\mathrm{defl}$')
