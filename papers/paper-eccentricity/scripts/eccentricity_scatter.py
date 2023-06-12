@@ -28,9 +28,10 @@ ax_twin.set_xlabel(r"$N_\star$")
 
 # plot data
 marker_list = figure_config.marker_cycle.by_key()["marker"]
-for i, (d, lab) in enumerate(zip((data_e090, data_e099), (r"$e_0=0.90$", r"$e_0=0.99$"))):
-    ax.plot(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=10, ls="", marker=marker_list[2*i])
-    ax.plot(d["mass_res"], d["sigma_e_cut"], label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=10, ls="", marker=marker_list[2*i+1])
+col_list = figure_config.color_cycle_shuffled.by_key()["color"]
+for i, (d, lab, marker, col) in enumerate(zip((data_e090, data_e099), (r"$e_0=0.90$", r"$e_0=0.99$"), marker_list, col_list)):
+    l = ax.plot(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=1, ls="", marker=marker, mec=col, mfc="None")
+    ax.plot(d["mass_res"], d["sigma_e_cut"], label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=1, ls="", marker=marker, mfc=col)
 
 # add the sqrt{resolution} scaling line
 mass_res_seq = np.geomspace(2e3, 5e4, 10)

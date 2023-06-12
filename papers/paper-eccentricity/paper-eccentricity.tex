@@ -259,7 +259,9 @@ Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland}
 \affiliation{Department of Physics,
 Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland}
 
-\author{Others}
+\author[0000-0002-7314-2558]{Thorsten Naab}
+\affiliation{Max-Planck-Institut f\"ur Astrophysik, Karl-Schwarzchild-Str 1,
+D-85748 Garching, Germany}
 
 \correspondingauthor{Alexander Rawlings}
 \email{alexander.rawlings@helsinki.fi}
@@ -337,81 +339,75 @@ Indeed, we find that for realistic galaxy merger orbits where the initial orbita
 
 
 % NUMERICAL
-\section{Numerical Methods}
+\section{Numerical Simulations}
 
 \begin{figure*}
     \centering
     \includegraphics{eccentricities.pdf}
-    \caption{Eccentricity $e$ (note the non-linear scale) as a function of shifted time $t'=t-t_\mathrm{bound}$ for select representative simulations from the $e_0 = 0.90$ set (blue lines) and $e_0 = 0.99$ set (orange lines). The downwards-pointing arrows indicate the mean time when the SMBH binaries becomes hard for the two simulation sets. In both the shown $e_0 = 0.90$ and $e_0 = 0.99$ sets, one simulation has a low eccentricity, displacing it to a value of $e$ greater than $2.5\sigma$ from the collective mean. In the $e_0=0.90$ set, two simulations have a SMBH binary merger, as indicated by the rapid circularisation of the eccentricity.}
+    \caption{Eccentricity $e$ (note the non-linear scale) as a function of shifted time $t'=t-t_\mathrm{bound}$ for the highest mass resolution simulations from the $e_0 = 0.90$ set (blue lines) and $e_0 = 0.99$ set (orange lines). 
+    The downwards-pointing arrows indicate the median time when the SMBH binaries becomes hard for the two simulation sets. 
+    In both the shown $e_0 = 0.90$ and $e_0 = 0.99$ sets, one simulation has a comparatively low eccentricity, displacing it to a value of $e$ greater than $2.5\sigma$ from the collective mean. 
+    In the $e_0=0.90$ set, seven simulations have a SMBH binary merger, as indicated by the rapid circularisation of the eccentricity.}
     \label{fig:eccentricities}
 \end{figure*}
 
-We construct a number of idealised galaxy merger simulations, which we evolve with our new version of \ketju{} \citep{rantala2017}, implemented in \gadget{}.
-For details about the implementation of \ketju{}, we point the reader to \drafting{Mannerkoski in prep}.
+We construct a number of idealised galaxy merger simulations, which we evolve with our new version of \ketju{} \citep{rantala2017, rantala2020,mannerkoski2023}, implemented in \gadget{}.
+For details about the implementation of \ketju{}, we point the reader to \citet{mannerkoski2023}.
 
-\subsection{Galaxy ICs}\label{ssec:gics}
-We construct our galaxy models to match those of \citet{gualandris2022}.
-Each galaxy is represented as a stellar-only Dehnen sphere \citep{dehnen1993} with shape parameter $\gamma=0.5$ and scale radius $a=186\,\mathrm{pc}$, where the Dehnen profile is given by:
+We construct our galaxy models to represent the nuclear bulge of a gas-devoid elliptical galaxy, matching those models of \citet{nasim2020}.
+Each galaxy is thus represented as a stellar-only Dehnen sphere \citep{dehnen1993} with shape parameter $\gamma=0.5$ and scale radius $a=186\,\mathrm{pc}$, where the Dehnen profile is given by:
 \begin{equation}\label{eq:dehnen}
     \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
 \end{equation}
 The total stellar mass is $M_\star=10^{10}\,\Msun$, and at the centre of the model galaxy a SMBH of mass $M_\bullet=10^8\,\Msun$ is placed with zero initial velocity.
-We test five different mass resolutions by sampling the stellar phase space distribution with varying number of stellar particles: $N_\star = \{2.5\times10^5, 5.0\times10^5, 1.0\times10^6, 2.0\times10^6, 4.0\times10^6\}$.
+We test five different mass resolutions by sampling the stellar phase space distribution with a varying number of stellar particles: $N_\star = \{2.5\times10^5, 5.0\times10^5, 1.0\times10^6, 2.0\times10^6, 4.0\times10^6\}$.
 
-\subsection{Merger ICs}
-We construct isolated merger initial conditions by placing two galaxies on an elliptical orbit with varying values of eccentricity, at a fixed initial separation of $D=3.72\,\mathrm{kpc}$ and semimajor axis $a_0=2.79\,\mathrm{kpc}$.
+We then construct isolated merger initial conditions by placing two galaxies on an elliptical orbit with varying values of eccentricity, at a fixed initial separation of $D=3.72\,\mathrm{kpc}$ and semimajor axis $a_0=2.79\,\mathrm{kpc}$.
 The chosen eccentricities $e_0$ are 0.90 and 0.99.
 We ensure that the radial and tangential velocities of the initial merger setup are consistent with the values reported in \citet{gualandris2022}.
 For each orbital configuration, we run ten realisations, to account for Brownian motion effects of the SMBH binary caused by the discretised phase space. 
 Each orbital geometry is simulated using our fiducial particle resolution of $M_\bullet/m_\star = 10^4$.
-Additionally, we run the $e_0=0.90$ and $e_0=0.99$ orbits at varying mass resolutions, using the galaxy ICs at the mass resolutions described in \autoref{ssec:gics}.
-
-\subsection{Assessing Eccentricity Uncertainty}
-In our analysis, we wish to determine the population spread in eccentricity from a finite set of observations.
-We assess the uncertainty in eccentricity using an inverse modelling approach following \citet{nasim2020}. 
-For each simulation in a given set, we determine the mean eccentricity $e_\mathrm{h}$ over five orbital periods centred on the orbit within which the SMBH binary has become hard.
-The binary hardening radius $a_\mathrm{h}$ is defined as \citep[e.g.][]{merritt2006}
-\begin{equation}\label{eq:ahard}
-    a_\mathrm{h} = \frac{q}{(1+q)^2} \frac{r_\mathrm{m}}{4},
-\end{equation}
-where $r_\mathrm{m}=r(m<2M_{\bullet,1})$ is the influence radius and $q = \{q \in \mathbb{R} | 0<q \leq 1\}$ is the mass ratio between the SMBHs.
-Under the assumption that each calculated mean eccentricity is a sample of some common distribution, we may (assuming that the distribution is Gaussian) obtain an estimate of the standard deviation of this distribution by taking the standard deviation of the collection of sample eccentricity means, denoted $\sigma_e$. 
-
+Additionally, we run the $e_0=0.90$ and $e_0=0.99$ orbits at varying mass resolutions, using the galaxy ICs at the mass resolutions described above.
 
 % RESULTS
 \section{Results}\label{sec:results}
 
 \begin{figure}
     \includegraphics{convergence}
-    \caption{Convergence of the eccentricity scatter $\sigma_e$ as a function of mass resolution $M_\bullet/m_\star$ and the total number of stellar particles $2N_\star$ for initial eccentricities $e_0=0.90$ and $e_0=0.99$. The expected $1/\sqrt{N_\star}$ scaling is recovered for the $e_0 = 0.90$ suite after applying a $2.5\sigma$-cut to the simulation data. For the $e_0=0.99$ suite, a steeper scaling than the $1/\sqrt{N_\star}$ is obtained after applying a similar $2.5\sigma$-cut to the data.}
+    \caption{Convergence of the eccentricity scatter $\sigma_e$ as a function of mass resolution $M_\bullet/m_\star$ and the total number of stellar particles $2N_\star$ for initial eccentricities $e_0=0.90$ and $e_0=0.99$. 
+    The expected $1/\sqrt{N_\star}$ scaling is recovered for the $e_0 = 0.90$ suite after applying a $2.5\sigma$-cut to the simulation data. 
+    For the $e_0=0.99$ suite, a steeper scaling than the $1/\sqrt{N_\star}$ is obtained after applying a similar $2.5\sigma$-cut to the data.}
     \label{fig:convergence}
 \end{figure}
 
 
-\subsection{Eccentricity scatter in low-e orbits}\label{ssec:lowe}
+\subsection{\drafting{Eccentricity scatter in simulations}}
 
-A representative set of realisations for the $e_0=0.90$ orbit is shown with blue lines in \autoref{fig:eccentricities}.
-We define a shifted time $t'$ such that $t'(0) = t_\mathrm{bound}$. 
-One simulation is seen to lie significantly beyond the mean eccentricity, with $e_\mathrm{h}\sim 0.2$.
+The SMBH binary eccentricity for both the $e_0=0.90$ (blue) and $e_0=0.99$ (orange) orbits are shown in \autoref{fig:eccentricities} as a function of shifted time $t' = t - t_\mathrm{bound}$ for the highest mass resolution sets. 
+At least one simulation is seen to lie significantly beyond the mean eccentricity in each set, with $e_\mathrm{h} \sim 0.8$ for the $e_0=0.90$ set and $e_\mathrm{h}\sim 0.2$ for the $e_0=0.99$ set. 
+The median time when each simulation set forms a hard binary is similar between the two sets, as indicated by the arrows in \autoref{fig:eccentricities}.
+The $e_0=0.90$ set also demonstrates seven SMBH-binary mergers, seen as a rapid circularisation in eccentricity in \autoref{fig:eccentricities}, which is captured self-consistently using \ketju{}.
 
-We show the dependence of eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:convergence} with circle and square markers. 
-Taking for each mass resolution the full set of ten simulations (circle markers), immediately apparent is the lack of convergence of $\sigma_e$, with $5\times10^3$ and $1\times10^4$ mass resolutions demonstrating an increased scatter compared to the lowest mass resolution of $2.5\times10^3$.
+To characterise the scatter in eccentricity, we determine the mean eccentricity $e_\mathrm{h}$ over five orbital periods centred on the orbit within which the SMBH binary has become hard.
+The binary hardening radius $a_\mathrm{h}$ is defined as \citep[e.g.][]{merritt2006}
+\begin{equation}\label{eq:ahard}
+    a_\mathrm{h} = \frac{q}{(1+q)^2} \frac{r_\mathrm{m}}{4} = \frac{r_\mathrm{m}}{16},
+\end{equation}
+where $r_\mathrm{m}=r(m<2M_{\bullet,1})$ is the influence radius and $q$ is the mass ratio between the SMBHs (for our simulations $q=1.0$, giving rise to the second equality in \autoref{eq:ahard}).
+Assuming the distribution of mean hard-binary eccentricities is Gaussian, we characterise the inter-simulation eccentricity scatter as the standard deviation in mean values of $e_\mathrm{h}$, denoted as $\sigma_e$.
+
+We show the dependence of inter-simulation eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:convergence} with circle markers, and for the $e_0=0.99$ orbit using square markers.
+The full set of ten simulations per mass resolution is shown with unfilled markers, and those simulations satisfying a $2.5\sigma$-cut in eccentricity with filled markers. 
+
+For the $e_0=0.90$ orbit, using the full set of simulations results in a lack of convergence of $\sigma_e$, with $5\times10^3$ and $1\times10^4$ mass resolutions demonstrating an increased scatter compared to the lowest mass resolution of $2.5\times10^3$.
 The peculiar values of $\sigma_e$ arise due to the assumed Gaussian distribution of the eccentricity between simulations.
-Inspecting the orbital parameters for all simulations that form the $e_0=0.90$ suite, it is found that for resolutions of $5\times10^3$ and $1\times10^4$ the eccentricity clusters around a value of $e_\mathrm{h}\simeq0.90$, except for one simulation at both $5\times10^3$ and $1\times10^4$ resolutions which has a value of $e_\mathrm{h}<0.4$.
-This one outlier for each of the two resolutions artificially inflates the measured eccentricity variance, and by applying a $2.5\sigma$-cut in eccentricity (i.e., taking those lines within the blue region of the left panel of \autoref{fig:eccentricities}) we recover the $1/\sqrt{M_\bullet/m_\star}\propto 1/\sqrt{N_\star}$ scaling of $\sigma_e$ as in \citet{nasim2020} (square markers), apart from the highest mass resolution set of $M_\bullet/m_\star=4\times10^4$.
-However, the eccentricity values beyond $2.5\sigma$ from the mean are each a valid measurement from the simulation, and highlight the presence of stochasticity in eccentricity for these idealised simulation set-ups. 
+Inspecting the orbital parameters for all simulations from the $e_0=0.90$ set, it is found that for resolutions of $5\times10^3$ and $1\times10^4$ the eccentricity clusters around a value of $e_\mathrm{h}\simeq0.90$, except for one simulation at both $5\times10^3$ and $1\times10^4$ resolutions which has a value of $e_\mathrm{h}<0.4$.
+This one outlier for each of the two resolutions artificially inflates the measured eccentricity variance, and with the $2.5\sigma$-cut data we recover the $1/\sqrt{N_\star}$ scaling of $\sigma_e$, confirming the results of \citet{nasim2020}, apart from the highest mass resolution set of $M_\bullet/m_\star=4\times10^4$.
+The variation in eccentricity also clearly decreases for the cleaned $e_0=0.99$ orbit simulations, albeit with a steeper gradient than the $e_0=0.90$ set. 
+Again, a single simulation at the highest mass resolution for the $e_0=0.99$ set is responsible for the inflated value of $\sigma_e$ in the full data set for this resolution.
+
+Critically, the eccentricity values beyond $2.5\sigma$ from the mean that are removed in our cleaned samples are each still a valid measurement from the simulation, and highlight the presence of stochasticity in eccentricity for these idealised simulation set-ups with a highly-radial initial orbit. 
 The cause of these low eccentricity values is discussed in \autoref{ssec:toy}.
-
-
-\subsection{Eccentricity scatter in high-e orbits}\label{ssec:highe}
-
-Similar to the $e_0=0.90$ case, we show a representative set of realisation for the $e_0=0.99$ orbit with orange lines in \autoref{fig:eccentricities}.
-Again, one simulation is seen to have $e_\mathrm{h} \sim 0.1$, significantly offset from the mean value of $e_\mathrm{h}$ for this simulation set. 
-
-The dependence of eccentricity standard deviation on mass resolution for the $e_0=0.99$ orbit is shown in \autoref{fig:convergence} with triangle and diamond markers. 
-We find that the scaling of $\sigma_e$ is steeper than the $1/\sqrt{N_\star}$ relation described in \citet{nasim2020}.
-We attribute this dramatic decrease in $\sigma_e$ to an inflated value of $\sigma_e$ at low mass resolution: there is increased scatter in eccentricity at low mass resolutions for very radial initial orbits of the SMBH binary. 
-As the majority of major galaxy mergers in the real Universe are expected to be radial \citep[e.g.][]{khochfar2006}, understanding if the origin of the scatter in eccentricity is a numerical or a physical effect is of paramount importance, and will have direct implications for the predictions of SMBH merger rates by ongoing and future GW detection missions. 
 
 \subsection{Binary binding process and the scatter in eccentricity}
 
@@ -434,7 +430,10 @@ We observe evidence for a relationship between the deflection angle $\theta_\mat
 \begin{figure*}
     \centering
     \includegraphics{orbit}
-    \caption{Orbits from $t=0\,\mathrm{Myr}$ to a time shortly after $t_\mathrm{bound}$ of a single SMBH in two representative realisations of the $e_0=0.90$ mergers (left) and the $e_0=0.99$ mergers (right), which by symmetry of the equal mass system is the same as the second BH orbit reflected. Each line is coloured according to the shifted time $t'=t-t_\mathrm{bound}$ of the simulation, however the colours for $|t'|>2\,\mathrm{Myr}$ is constant for visual clarity of the deflection-phase of the evolution. In each inset panel, point A shows a time just before the first hard scattering $\theta_\mathrm{defl}$, and point B a time just after. The circle marker indicates the position of the SMBH just before the SMBHs form a bound binary.}
+    \caption{Orbits from $t=0\,\mathrm{Myr}$ to a time shortly after $t_\mathrm{bound}$ of a single SMBH in two representative realisations of the $e_0=0.90$ mergers (left) and the $e_0=0.99$ mergers (right), which by symmetry of the equal mass system is the same as the second BH orbit reflected. 
+    Each line is coloured according to the shifted time $t'=t-t_\mathrm{bound}$ of the simulation, however the colours for $|t'|>2\,\mathrm{Myr}$ is constant for visual clarity of the deflection-phase of the evolution. 
+    In each inset panel, point A shows a time just before the first hard scattering $\theta_\mathrm{defl}$, and point B a time just after. 
+    The circle marker indicates the position of the SMBH just before the SMBHs form a bound binary.}
     \label{fig:orbit}
 \end{figure*}
 
@@ -597,10 +596,12 @@ and the binary always reaches extremely high eccentricities.
 We show in \autoref{sec:results} that variation in eccentricity $e_\mathrm{h}$ for a given system configuration is tightly correlated with the variation in the deflection angle $\theta_\mathrm{defl}$, independent of the simulation mass resolution.
 The inclusion of the toy model allows us to investigate the relationship between $\theta_\mathrm{defl}$ and $e_\mathrm{h}$ in the infinite-mass resolution limit, around which the quantities measured from the simulation demonstrate minimal scatter. 
 As shown by the simulation points and the marginal kernel density estimates (KDEs) of \autoref{fig:theta_e}, the variation in eccentricity can span almost the full domain space of $[0,1]$.
+Galaxy mergers which have a more radial initial orbit $e_0$ are expected to demonstrate increased variance in eccentricity \citep{gualandris2022} \drafting{other refs needed here}.
+However, as the majority of major galaxy mergers in the real Universe are expected to be radial \citep[e.g.][]{khochfar2006}, understanding if the origin of the eccentricity scatter is a numerical or a physical effect is of paramount importance, and will have direct implications for the predictions of SMBH merger rates by ongoing and future GW detection missions. 
+We thus turn our discussion to the cause of variation in the impact parameter $b$ (and hence by \autoref{eq:theta}, $\theta_\mathrm{defl}$) first in simulations, and then in reality, as a predictor of the eccentricity variance. 
+\drafting{Mention that we see qualitatively similar results for more realistic density profiles (e.g. the Hernquist runs).}
 
-We turn our discussion to the cause of variation in the impact parameter $b$ (and thus by \autoref{eq:theta}, $\theta_\mathrm{defl}$) first in simulations, and then in reality. 
-
-In numerical simulations with a discretised phase space, the two primary causes of variation in $b$ are Brownian motion of the SMBH binary \citep{merritt2001}, and initial particle sampling variation in the merger IC, both of which have been shown to be more pronounced in lower mass resolution simulations compared to higher mass resolution simulations. 
+In numerical simulations with a discretised phase space, the two primary causes of variation in $b$ are initial particle sampling variation in the merger IC and Brownian motion of the SMBH binary \citep{merritt2001}, both of which have been shown to be more pronounced in lower mass resolution simulations compared to higher mass resolution simulations. 
 By allowing the SMBH binary to wander further from its expected location in phase space, a wider range of impact parameters, and thus deflection angles, may be sampled.
 This consequently maps to a different sampling of the eccentricity space, however due to the non-linear mapping (as shown in \autoref{fig:theta_e}), the eccentricity domain space sampled can vary between $\sigma_e \sim 0.01$ to $\sigma_e>0.1$, for the shown system configurations.
 Different systems, with different galaxy density profiles or merger orbits, may have an even more pronounced value of $\sigma_e$.
@@ -630,9 +631,6 @@ By using a resolution-free toy model of the SMBH scattering process, we demonstr
 The results presented here justify extending the investigation to more realistic galaxy merger scenarios, to quantify the expected range of hard binary eccentricities critical for merger timescale predictions for future gravitational wave observation missions. 
 
 % FINAL BITS
-\textit{Software:} \ketju{} \citep{rantala2017}, \gadget{} \citep{springel2022}, NumPy \citep{harris2020}, SciPy \citep{virtanen2020}, Matplotlib \citep{hunter2007}, pygad \citep{rottgers2020}. 
-
-
 \section*{Acknowledgements}
 
 P.H.J. acknowledge the support
@@ -642,6 +640,8 @@ The numerical simulations used computational resources provided by
 the CSC -- IT Center for Science, Finland.
 
 We list here the roles and contributions of the authors according to the Contributor Roles Taxonomy (CRediT\footnote{https://credit.niso.org}). \textbf{AR}: Conceptualisation, Investigation, Formal analysis, Data curation, Writing -- original draft. \textbf{MM}: Conceptualisation, Formal analysis, Writing -- original draft. \textbf{PHJ}: Supervision, Writing -- review \& editing.
+
+\textit{Software:} \ketju{} \citep{rantala2017}, \gadget{} \citep{springel2022}, NumPy \citep{harris2020}, SciPy \citep{virtanen2020}, Matplotlib \citep{hunter2007}, pygad \citep{rottgers2020}. 
 
 %% For this sample we use BibTeX plus aasjournals.bst to generate the
 %% the bibliography. The sample631.bib file was populated from ADS. To
