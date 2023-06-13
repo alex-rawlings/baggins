@@ -23,31 +23,17 @@ class _QuinlanModelBase(StanModel_2D):
     @property
     def latent_qtys(self):
         return self._latent_qtys
-    
-    def _idx_finder(self, val, vec):
-        try:
-            idx = get_idx_in_array(val, vec)
-            status = True
-        except ValueError:
-            _logger.logger.warning(f"No data prior to merger! The requested semimajor axis value is {val}, semimajor_axis attribute is: {vec}. This run will not form part of the analysis.")
-            status = False
-            idx = -9999
-        except AssertionError:
-            _logger.logger.warning(f"Trying to search for value {val}, but an AssertionError was thrown. The array bounds are {min(vec)} - {max(vec)}. This run will not form part of the analysis.")
-            status = False
-            idx = -9999
-        return status, idx
 
-    
+
     def extract_data(self, dir, pars):
         obs = {"t":[], "a":[], "e":[], "e_ini":[]}
         i = 0
         for f in dir:
             _logger.logger.info(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
-            status, idx0 = self._idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
+            status, idx0 = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             if not status: continue
-            status, idx1 = self._idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)
+            status, idx1 = hmq.idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)
             if not status: continue
             try:
                 assert idx0 < idx1
