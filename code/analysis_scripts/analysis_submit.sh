@@ -2,8 +2,8 @@
 #SBATCH --job-name=ana_HMQ
 #SBATCH --account=pjohanss
 #SBATCH --ntasks-per-node=128
-#SBATCH --time=01:00:00
-#SBATCH --partition=test
+#SBATCH --time=02:00:00
+#SBATCH --partition=medium
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=alexander.rawlings@helsinki.fi
 
