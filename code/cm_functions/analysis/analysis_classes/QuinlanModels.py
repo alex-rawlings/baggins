@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from . import StanModel_2D, HMQuantitiesData
 from ...env_config import _cmlogger
-from ...general import get_idx_in_array
 from ...plotting import savefig
 
 
