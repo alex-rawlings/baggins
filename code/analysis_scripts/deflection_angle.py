@@ -22,7 +22,7 @@ SL = cmf.ScriptLogger("script", args.verbosity)
 
 if args.publish:
     cmf.plotting.set_publishing_style()
-    legend_kwargs = {"ncol":2, "fontsize":"small"}
+legend_kwargs = {"ncol":2, "fontsize":"small"}
 try:
     assert args.angle >=0 and args.angle <= 180
     angle_defl = args.angle * np.pi / 180
@@ -47,10 +47,20 @@ data = dict(
     median_eccs = [],
     low_iqr_ecc = [],
     high_iqr_ecc = [],
+    median_a = [],
+    low_iqr_a = [],
+    high_iqr_a = [],
     e_ini = [],
     mass_res = [],
     threshold_angle = args.angle
 )
+
+
+fig, ax = plt.subplots(2,1, sharex="all")
+ax[1].set_xlabel(r"$\theta\degree_\mathrm{defl}$")
+ax[0].set_ylabel(r"$a/\mathrm{pc}$")
+ax[1].set_ylabel("$e$")
+ax[0].set_title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
 
 
 for j, datdir in enumerate(data_dirs):
@@ -60,7 +70,9 @@ for j, datdir in enumerate(data_dirs):
 
     thetas = np.full(N, np.nan)
     median_eccs = np.full(N, np.nan)
+    median_a = np.full_like(median_eccs, np.nan)
     iqr_eccs = np.full((2,N), np.nan)
+    iqr_a = np.full_like(iqr_eccs, np.nan)
 
     # loop through each bh file in the directory
     for i, HMQfile in enumerate(HMQfiles):
@@ -93,21 +105,25 @@ for j, datdir in enumerate(data_dirs):
         m, iqr = cmf.mathematics.quantiles_relative_to_median(hmq.eccentricity[period_idxs[0]:period_idxs[1]])
         median_eccs[i] = m
         iqr_eccs[0,i], iqr_eccs[1,i] = iqr
+        m, iqr = cmf.mathematics.quantiles_relative_to_median(hmq.semimajor_axis[period_idxs[0]:period_idxs[1]]*1e3)
+        median_a[i] = m
+        iqr_a[0,i], iqr_a[1,i] = iqr
+
     # save data
     data["thetas"].extend(thetas*180/np.pi)
     data["median_eccs"].extend(median_eccs)
     data["low_iqr_ecc"].extend(iqr_eccs[0,:])
     data["high_iqr_ecc"].extend(iqr_eccs[1,:])
+    data["median_a"].extend(median_a)
+    data["low_iqr_a"].extend(iqr_a[0,:])
+    data["high_iqr_a"].extend(iqr_a[1,:])
 
-
-    plt.errorbar(thetas*180/np.pi, median_eccs, xerr=None, yerr=iqr_eccs, fmt="o", capsize=2, mec="k", mew=0.5, label=labels[j])
+    for axi, m, err in zip(ax, (median_a, median_eccs), (iqr_a, iqr_eccs)):
+        axi.errorbar(thetas*180/np.pi, m, xerr=None, yerr=err, fmt="o", capsize=2, mec="k", mew=0.5, label=labels[j])
 
 if args.extra_dirs:
-    plt.legend(title=legend_title, **legend_kwargs)
-plt.xlabel(r"$\theta\degree_\mathrm{defl}$")
-plt.ylabel("$e$")
-plt.title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
-plt.ylim(0,1)
+    ax[0].legend(title=legend_title, **legend_kwargs)
+ax[1].set_ylim(0,1)
 
 now = datetime.now().strftime("%Y%m%d_%H%M%S")
 if args.save:
