@@ -21,10 +21,10 @@ ax.set_yscale("log")
 # set mass resolution - N_star mapping, 
 # knowing that the BH mass is 1e8 Msol and the galaxy has stellar mass 
 # 1e10 Msol
-N_star = data_e090["mass_res"] / 1e8 * 1e10
+N_star = data_e090["mass_res"] / 1e8 * 1e10 * 2
 # set up the twin axis
 ax_twin = cmf.plotting.twin_axes_from_samples(ax, data_e090["mass_res"], N_star, log=False)
-ax_twin.set_xlabel(r"$N_\star$")
+ax_twin.set_xlabel(r"$N_{\star,\mathrm{tot}}$")
 
 # plot data
 marker_list = figure_config.marker_cycle.by_key()["marker"]
@@ -35,7 +35,7 @@ for i, (d, lab, marker, col) in enumerate(zip((data_e090, data_e099), (r"$e_0=0.
 
 # add the sqrt{resolution} scaling line
 mass_res_seq = np.geomspace(2e3, 5e4, 10)
-ax.plot(mass_res_seq, 3*mass_res_seq**-0.5, c="k", label=r"$\propto 1/\sqrt{N_\star}$")
+ax.plot(mass_res_seq, 3*mass_res_seq**-0.5, c="k", label=r"$\propto 1/\sqrt{N_{\star,\mathrm{tot}}}$")
 
 # final touch ups
 cmf.plotting.nice_log10_scale(ax, "xy")

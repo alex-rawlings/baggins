@@ -126,7 +126,8 @@ def paper_th_e_curve_plot():
         axdict[k].set_xticks([])
 
     axdict["C"].set_ylabel('$e_\mathrm{h}$')
-    axdict["C"].set_ylim(0,1)
+    axdict["C"].set_ylim(0,1.03)
+    for k in "DE": axdict[k].axhline(1, c="silver")
     for k in "DE":
         axdict[k].set_xlabel(r'$\theta_\mathrm{defl}$')
         axdict[k].xaxis.set_major_formatter(degree_format_str)
@@ -204,7 +205,7 @@ def paper_th_e_curve_plot():
             t_pts = np.linspace(*ax.get_xlim(), 1000)
             axmt.plot(t_pts, kde_t(t_pts))
             kde_e = scipy.stats.gaussian_kde(e[~np.isnan(e)])
-            e_pts = np.linspace(*ax.get_ylim(), 1000)
+            e_pts = np.linspace(0,1, 1000)
             axme.plot(kde_e(e_pts), e_pts)
 
     axdict["C"].invert_xaxis()

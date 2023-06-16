@@ -51,8 +51,8 @@ for j in range(2):
         ]
 
         # some shortcuts
-        A_idx = [4500, 4280]
-        B_idx = [A_idx[0]+35, A_idx[1]+30]
+        A_idx = [4517, 4295]
+        B_idx = [A_idx[0]+26, A_idx[1]+11]
         extra_bound_bit = [1000, 2000]
     else:
         angle_data = cmf.utils.load_data("data/deflection_angles_e0-0.990.pickle")
@@ -80,7 +80,7 @@ for j in range(2):
 
         # some shortcuts
         A_idx = [3150, 3140]
-        B_idx = [A_idx[0]+29, A_idx[1]+35]
+        B_idx = [A_idx[0]+31, A_idx[1]+39]
         extra_bound_bit = [1500, 800]
 
 
@@ -93,6 +93,7 @@ for j in range(2):
     for axi in (ax[j], axins1, axins2): axi.set_prop_cycle(figure_config.color_cycle)
 
     glp = cmf.plotting.GradientLinePlot(ax=ax[j], cmap="custom_diverging")
+    glp.marker_kwargs = {"ec":"w", "lw":0.2}
 
     for i, (dd, axins, ang) in enumerate(zip(data_dirs, (axins1, axins2), angles)):
         ketjufile = cmf.utils.get_ketjubhs_in_dir(dd)[0]
@@ -118,44 +119,6 @@ for j in range(2):
             ax[j].plot(x,y, markevery=[bound_idx_strided[i]], marker="o")
             axins.plot(x,y, markevery=[bound_idx_strided[i]], marker="o")
         # annotate points just before and just after the first hard scatter
-        if j==0:
-            axins.annotate(
-                    "A", 
-                    (x[A_idx[i]], y[A_idx[i]]),
-                    xytext=(-20, -1) if i==0 else (-13,1),
-                    textcoords="offset points",
-                    arrowprops=arrowprops,
-                    horizontalalignment="right",
-                    verticalalignment="bottom"
-                    )
-            axins.annotate(
-                        "B", 
-                        (x[B_idx[i]], y[B_idx[i]]),
-                        xytext=(-15, 20) if i==0 else (11,-14),
-                        textcoords="offset points",
-                        arrowprops=arrowprops,
-                        horizontalalignment="left",
-                        verticalalignment="top"
-                    )
-        else:
-            axins.annotate(
-                        "A", 
-                        (x[A_idx[i]], y[A_idx[i]]),
-                        xytext=(-6,10) if i==0 else (-13, 10),
-                        textcoords="offset points",
-                        arrowprops=arrowprops,
-                        horizontalalignment="right",
-                        verticalalignment="bottom"
-                        )
-            axins.annotate(
-                        "B", 
-                        (x[B_idx[i]], y[B_idx[i]]),
-                        xytext=(0, 25) if i==0 else (2, -16),
-                        textcoords="offset points",
-                        arrowprops=arrowprops,
-                        horizontalalignment="left",
-                        verticalalignment="top"
-                        )
 
         axins.set_xticklabels([])
         axins.set_yticklabels([])
@@ -165,22 +128,27 @@ for j in range(2):
 
     if use_gradient_line:
         glp.plot(logcolour=False, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided, **gradline_kwargs)
-        glp.plot_single_series(0, logcolour=False, ax=axins1, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[0], **gradline_kwargs)
-        glp.plot_single_series(1, logcolour=False, ax=axins2, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[1], **gradline_kwargs)
+        lc1 = glp.plot_single_series(0, logcolour=False, ax=axins1, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[0], **gradline_kwargs)
+        lc2 = glp.plot_single_series(1, logcolour=False, ax=axins2, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[1], **gradline_kwargs)
+        for i, axins in enumerate((axins1, axins2)):
+            glp.draw_arrow_on_series(axins, i, A_idx[i])
+            glp.draw_arrow_on_series(axins, i, B_idx[i])
         if j==1:
             cbar = glp.add_cbar(ax[j], label=r"$t'/\mathrm{Myr}$", extend="both")
             cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     if j==0:
-        axins1.set_xlim(-0.01, 0.02)
-        axins1.set_ylim(-0.05, 0.06)
-        axins2.set_xlim(-0.015, 0.035)
-        axins2.set_ylim(-0.03, 0.02)
+        axins1.set_xlim(-0.015, 0.035)
+        axins1.set_ylim(-0.03, 0.04)
+        cmf.plotting.draw_sizebar(axins2, 0.01, "pc", location="upper left", remove_ticks=False, unitconvert="kilo2base", textsize="small", fmt=".0f")
     else:
-        axins1.set_xlim(-0.05, 0.05)
-        axins1.set_ylim(-0.04, 0.03)
-        axins2.set_xlim(-0.06, 0.02)
-        axins2.set_ylim(-0.08, 0.03)
+        axins1.set_xlim(-0.06, 0.05)
+        axins1.set_ylim(-0.08, 0.03)
+        cmf.plotting.draw_sizebar(axins1, 0.01, "pc", location="lower right", remove_ticks=False, unitconvert="kilo2base", textsize="small", fmt=".0f")
+    axins2.set_xlim(*axins1.get_xlim())
+    axins2.set_ylim(*axins1.get_ylim())
+    axins1.set_aspect("equal")
+    axins2.set_aspect("equal")
 
     for axins in (axins1, axins2):
         ax[j].indicate_inset_zoom(axins, edgecolor="k")
