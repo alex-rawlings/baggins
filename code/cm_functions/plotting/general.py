@@ -12,7 +12,7 @@ __all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "m
 _logger = _cmlogger.copy(__file__)
 
 
-def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert="base", remove_ticks=True, textsize=None, fmt=".1f"):
+def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, frameon=False, unitconvert="base", remove_ticks=True, textsize=None, fmt=".1f", **kwargs):
     """
     Draw a horizontal scale bar using the mpl toolkit
 
@@ -31,8 +31,6 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
         padding around label, by default 0.1
     borderpad : float, optional
         padding around border, by default 0.5
-    sep : float, optional
-        separation between label and scale bar, by default 5
     frameon : bool, optional
         draw box around scale bar?, by default False
     unitconvert : str, optional
@@ -43,10 +41,12 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
         size of text, by default None
     fmt : str, optional
         formatter for numeric part of label, by default ".1f"
+    kwargs :
+        other keyword arguments for AnchoredSizeBar()
     """
     factors = {"mill2base":1e-3, "cent2base":1e-2, "base":1, "kilo2base":1e3, "mega2base":1e6}
     label = f"{length*factors[unitconvert]:{fmt}} {units}"
-    asb = AnchoredSizeBar(ax.transData, length, label, loc=location, pad=pad, borderpad=borderpad, sep=sep, frameon=frameon, fontproperties={"size":textsize})
+    asb = AnchoredSizeBar(ax.transData, length, label, loc=location, pad=pad, borderpad=borderpad, frameon=frameon, fontproperties={"size":textsize}, **kwargs)
     ax.add_artist(asb)
     if remove_ticks:
         ax.axes.xaxis.set_visible(False)
