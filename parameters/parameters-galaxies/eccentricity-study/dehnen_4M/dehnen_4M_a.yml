@@ -1,0 +1,116 @@
+# always assume units of:
+# mass: solar masses
+# distance: kpc
+# time: Gyr
+# velocity: km/s
+# unless otherwise stated
+
+---
+# general info about the galaxy
+general:
+  galaxy_name: dehnen_4M_a
+  simulation_start_time:
+    unit: Gyr
+    # set to -1 to use redshift 0
+    value: -1
+  random_seed: 32834
+  minimum_radius: 
+    unit: kpc
+    value: 1.5e-3
+  maximum_radius: 
+    unit: kpc
+    value: 8000
+  recentre_to_com: false
+
+# info about file locations
+file_locations:
+  save_location: /scratch/pjohanss/arawling/collisionless_merger/galaxies/dehnen/dehnen_4M
+  # relative to save_location/
+  figure_location: figures
+  data_location: output
+
+# info about the stars
+stars:
+  use_cored: false
+  particle_mass:
+    unit: Msol
+    value: 2.5e+3
+  anisotropy_radius:
+    unit: kpc
+    value:
+  softening:
+    unit: kpc
+    value: 5.e-3
+  # parameters specific to cored profiles
+  cored:
+    distance_modulus:
+    sersic_n:
+    effective_radius:
+      unit: arcsec
+      value:
+    log_core_density:
+      unit: mag/arcsec^2
+      value:
+    core_radius:
+      unit: arcsec
+      value: 
+    core_slope:
+    transition_index:
+    mass_light_ratio: 4.0
+  # parameters specific to cuspy profiles
+  cuspy:
+    log_total_mass: 10
+    scale_radius:
+      unit: kpc
+      value: 0.186
+    gamma: 0.5
+
+# info about DM
+dm:
+  use_NFW: false
+  particle_mass:
+    unit: Msol
+    value:
+  softening:
+    unit: kpc
+    value:
+  mass_relation: Behroozi
+  # parameters specific to NFW profiles
+  NFW:
+    cut_pars:
+      slope: 4.0
+      approx0: 1.0e-5
+      scaled_max_radius: 7
+  # parameters specific to Dehnen profiles
+  Dehnen:
+    gamma: 1.0
+    scale_radius:
+      unit: kpc
+      value: 300
+
+bh:
+  mass:
+    unit: Msol
+    value: 1.e+8
+  softening:
+    unit: kpc
+    value: 3.0e-3
+  set_spin: random
+  spin_relation: zlochower_dry
+...
+
+---
+bh:
+  mass: 1.00000000e+08
+  particle_count: 1.0
+  spin:
+  - -0.5258012751144069
+  - -0.22327673047719537
+  - -0.14333318992165978
+dm: {}
+last_update: '2023-06-20 10:11:16'
+redshift: 0
+stars:
+  particle_count: 3.99976800e+06
+...
+

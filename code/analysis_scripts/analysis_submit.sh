@@ -2,8 +2,8 @@
 #SBATCH --job-name=ana_HMQ
 #SBATCH --account=pjohanss
 #SBATCH --ntasks-per-node=128
-#SBATCH --time=01:00:00
-#SBATCH --partition=test
+#SBATCH --time=10:00:00
+#SBATCH --partition=medium
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=alexander.rawlings@helsinki.fi
 
@@ -13,7 +13,19 @@ module restore py393
 
 python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-090/dehnen_100K_mergers -m mc
 
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-090/dehnen_250K_mergers -m mc
+
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-090/dehnen_500K_mergers -m mc
+
+#python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-090/dehnen_1M_mergers -m mc
+
 python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-099/dehnen_100K_mergers -m mc
+
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-099/dehnen_250K_mergers -m mc
+
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-099/dehnen_500K_mergers -m mc
+
+#python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-099/dehnen_1M_mergers -m mc
 
 
 #cd hierarchical_models

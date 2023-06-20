@@ -1,0 +1,85 @@
+# always assume units of:
+# mass: solar masses
+# distance: kpc
+# time: Gyr
+# velocity: km/s
+# unless otherwise stated
+
+---
+# general info about the merger
+general:
+  galaxy_name_1: D_500K_b
+  galaxy_name_2: D_500K_c
+  random_seed: 84523
+  recentre_progens_to_com: false
+  recentre_merger_to_com: false
+
+# info about where files are to be read from and saved to
+file_locations:
+  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/dehnen/dehnen_500K/dehnen_500K_b/dehnen_500K_b.hdf5
+  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/dehnen/dehnen_500K/dehnen_500K_c/dehnen_500K_c.hdf5
+  # file will be saved to 
+  # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
+  save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-099/500K/
+  perturb_sub_dir:
+
+# info about the original orbit of the merger
+orbital_properties:
+  mass_radius_fac: 10000.
+  r0:
+    # initial separation of systems
+    unit: kpc
+    value: 3.72
+    # distance at first pericentre passage
+  rperi:
+    unit: kpc
+    value:
+  a0:
+    unit: kpc
+    value: 2.79
+  e0: 0.99
+
+# info about how the system should be perturbed
+perturb_properties:
+  # when to apply the perturbation
+  perturb_time:
+    unit: Gyr
+    value:
+  number_perturbs: 10
+  # perturb BH particles with a Gaussian distribution
+  perturb_bhs:
+    perturb_position:
+      unit: kpc
+      # Gaussian standard deviation
+      value:
+    perturb_velocity:
+      unit: km/s
+      # Gaussian standard deviation
+      value:
+  perturb_field_particles:
+    family: stars
+    perturb_position:
+      unit: kpc
+      value:
+    radial_bounds:
+      unit: kpc
+      value:
+  gadget_parameters_to_update:
+  # create a copy of a gadget paramfile with changes made to these vars
+  # InitCondFile, SnapshotFileBase are always updated
+    SofteningStars:
+    ketju_disable_integration:
+    ErrTolIntAccuracy:
+...
+
+---
+e0: 0.99
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-099/500K/D_500K_b-D_500K_c-3.720-0.028
+last_update: '2023-06-19 18:36:48'
+mass_resolution: 5000.0
+r0_physical: 3.72
+rperi_physical: 0.027900000000000025
+time_to_pericentre: 0.015527178066997022
+virial_radius_large: 35.01184770014493
+...
+
