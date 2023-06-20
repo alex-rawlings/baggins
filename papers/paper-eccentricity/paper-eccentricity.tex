@@ -327,25 +327,26 @@ Supermassive black holes (SMBHs) are believed to reside at the centres of all ma
 In the $\Lambda$CDM model as galaxies grow through gas accretion and mergers \citep[e.g.][]{Volonteri2003,naab2017} their SMBHs 
 are also expected to interact in a three-phase merger process \citep{begelman1980}.
 
-Firstly, dynamical friction \citep{chandrasekhar1943}, acts to bring the SMBHs from kiloparsec-scale separations to parsec-scale separations, after which the SMBHs form a bound binary with a semimajor axis $a$ and eccentricity $e$ \citep[e.g.][]{Milosavljevic2001,Merritt2013book}. In the second phase, the
+Firstly, dynamical friction \citep{chandrasekhar1943} acts to bring the SMBHs from kiloparsec-scale separations to parsec-scale separations, after which the SMBHs form a bound binary with a semimajor axis $a$ and eccentricity $e$ \citep[e.g.][]{Milosavljevic2001,Merritt2013book}. In the second phase, the
 SMBH binary separation is reduced through sequential slingshot encounters with the surrounding stellar
 distribution \citep{hills1980, hills1983, quinlan1996}. Finally, at small subparsec separations gravitational wave (GW) emission
 becomes the dominant mechanism by which the SMBH binary can lose its remaining orbital energy and angular momentum, thus driving the
-SMBHs to coalescence \citep[e.g.][]{Mannerkoski2021,Mannerkoski2022}, where the strength of the GW emission strongly depends on the
+SMBHs to coalescence \citep[e.g.][]{Mannerkoski2019}, where the strength of the GW emission strongly depends on the
 binary eccentricity \citep{peters1963,peters1964}.
 
 The complex nature of SMBH coalescence in a galaxy merger setting necessitates the use of numerical techniques \citep[e.g.][]{Berentzen2009,Khan2011,Dosopoulou2017,Mannerkoski2019}
 to provide quantitative predictions for observational programmes such as ground-based pulsar timing arrays \citep[PTAs, e.g.][]{Lentati2015,Verbiest2016,Arzoumanian2020} and the upcoming Laser Interferometer Space Antenna \citep[LISA, e.g.][]{Amaro-Seoane2023} space mission.
-Understanding how faithfully SMBH binary eccentricity is captured in numerical simulations is thus a critical piece of the puzzle in constraining the SMBH merger rate
+Understanding how faithfully SMBH binary eccentricity is captured in numerical simulations is thus critical in constraining the SMBH merger rate
 that the observational GW community aims to detect. 
 
-The SMBH binary merging process and its dependence on eccentricity and resolution has been extensively studied using collisionsless merger simulations \citep[e.g.][]{Berentzen2009,Vasiliev2015,Bortolas2016,gualandris2017,gualandris2022}. Specifically, in a recent study \citet{nasim2020} have argued that the scatter in SMBH binary eccentricity observed in gas-free merger simulations is in fact an artefact of poor phase space
+The SMBH binary merging process and its dependence on eccentricity and resolution has been extensively studied using collisionsless merger simulations \citep[e.g.][]{Berentzen2009,Vasiliev2015,Bortolas2016,gualandris2017,gualandris2022}. 
+Recently, \citet{nasim2020} have argued that the scatter in SMBH binary eccentricity observed in gas-free merger simulations is an artefact of poor phase space
 discretisation, and that in the real Universe where SMBH masses are far greater than stellar masses $(M_\bullet \gg m_\star)$, SMBH binary eccentricity is a reliably predictable quantity.   
 
-In this Letter, based on simulations run with the KETJU code, we find that the SMBH binary eccentricity is reliably predictable only for particular
+In this Letter, we find that the SMBH binary eccentricity is reliably predictable only for particular
 initial conditions of the galaxy merger system, and does not in general hold.
 Indeed, we find that for realistic galaxy merger orbits where the initial orbital eccentricity of the system is $e_0>0.90$, stochasticity in the final
-SMBH binary eccentricity is always present. 
+SMBH binary eccentricity is physical and unavoidable. 
 
 
 %Previous work by \citet{nasim2020} have argued that scatter in SMBH binary eccentricity observed in gas-free merger simulations is an artefact of poor phase space discretisation, and that in the real Universe where SMBH masses are far greater than stellar masses, $M_\bullet \gg m_\star$, SMBH binary eccentricity is a reliably predictable quantity.
@@ -688,7 +689,11 @@ by the European Research Council via ERC Consolidator Grant KETJU (no. 818930).
 The numerical simulations used computational resources provided by
 the CSC -- IT Center for Science, Finland.
 
-We list here the roles and contributions of the authors according to the Contributor Roles Taxonomy (CRediT\footnote{https://credit.niso.org}). \textbf{AR}: Conceptualisation, Investigation, Formal analysis, Data curation, Writing -- original draft. \textbf{MM}: Conceptualisation, Formal analysis, Writing -- original draft. \textbf{PHJ}: Supervision, Writing -- review \& editing.
+We list here the roles and contributions of the authors according to the Contributor Roles Taxonomy (CRediT\footnote{https://credit.niso.org}). 
+\textbf{AR}: Conceptualisation, Investigation, Formal analysis, Data curation, Writing -- original draft. 
+\textbf{MM}: Conceptualisation, Formal analysis, Writing -- original draft. 
+\textbf{PHJ}: Supervision, Writing -- review \& editing.
+\textbf{TN}:  Writing -- review \& editing.
 
 \textit{Software:} \ketju{} \citep{rantala2017}, \gadget{} \citep{springel2021}, NumPy \citep{harris2020}, SciPy \citep{virtanen2020}, Matplotlib \citep{hunter2007}, pygad \citep{rottgers2020}. 
 
