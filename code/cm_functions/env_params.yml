@@ -10,5 +10,5 @@ logging:
   file_level: WARNING
 ...
 ---
-git_hash: heads/sim-rerun-0-ga1fc56c
+git_hash: heads/sim-rerun-0-gc2901ab
 ...

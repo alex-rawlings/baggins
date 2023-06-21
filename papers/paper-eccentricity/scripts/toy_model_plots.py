@@ -92,6 +92,12 @@ def plot_sim_data_th_e(ax, simdata):
                    zorder=3
                    )
 
+def add_artificial_end_to_curve(d, t_shift=0):
+    d['theta'] = np.insert(d['theta'], 0, np.pi-t_shift)
+    d['e'] = np.append(d['e'], 1)
+    d['b'] = np.insert(d['b'], 0, 0)
+    return d
+
 
 def paper_th_e_curve_plot():
 
@@ -133,7 +139,7 @@ def paper_th_e_curve_plot():
         axdict[k].xaxis.set_major_formatter(degree_format_str)
     for k in "ABDE":
         axdict[k].set_xlim(20,180)
-        axdict[k].set_xticks(np.arange(30,180,30))
+        axdict[k].set_xticks(np.arange(30,200,30))
 
     data = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
     curve_shift = -12
@@ -142,7 +148,8 @@ def paper_th_e_curve_plot():
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s <0.9: continue
         a = 0.8 if e_s == 0.905 else 0.3
-        l, = axdict["D"].plot(np.degrees(d['theta'])+curve_shift, d['e'], color=color, alpha=a)
+        d_plot = add_artificial_end_to_curve(d, curve_shift)
+        l, = axdict["D"].plot(np.degrees(d_plot['theta'])+curve_shift, d_plot['e'], color=color, alpha=a)
         color = l.get_color()
     print("b90 for e_0=0.90", np.interp(90,np.degrees(d['theta'][::-1]),d['b'][::-1]*1e3))
 
@@ -161,7 +168,8 @@ def paper_th_e_curve_plot():
     for e_s, d in zip(data['e_spheroids'], data['res']):
         if e_s < 0.9: continue
         a = 0.8 if e_s == 0.905 else 0.3
-        l, = axdict["E"].plot(np.degrees(d['theta'])+curve_shift, d['e'], alpha=a, color=color)
+        d_plot = add_artificial_end_to_curve(d, curve_shift)
+        l, = axdict["E"].plot(np.degrees(d_plot['theta'])+curve_shift, d_plot['e'], alpha=a, color=color)
         color = l.get_color()
 
 
