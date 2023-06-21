@@ -127,12 +127,12 @@ def paper_th_e_curve_plot():
 
     axdict["C"].set_ylabel('$e_\mathrm{h}$')
     axdict["C"].set_ylim(0,1.03)
-    for k in "DE": axdict[k].axhline(1, c="silver")
+    for k in "CDEF": axdict[k].axhline(1, c="silver")
     for k in "DE":
         axdict[k].set_xlabel(r'$\theta_\mathrm{defl}$')
         axdict[k].xaxis.set_major_formatter(degree_format_str)
     for k in "ABDE":
-        axdict[k].set_xlim(20,170)
+        axdict[k].set_xlim(20,180)
         axdict[k].set_xticks(np.arange(30,180,30))
 
     data = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))

@@ -30,34 +30,17 @@ ax_twin.set_xlabel(r"$N_{\star,\mathrm{tot}}$")
 marker_list = figure_config.marker_cycle.by_key()["marker"]
 col_list = figure_config.color_cycle_shuffled.by_key()["color"]
 for i, (d, lab, marker, col) in enumerate(zip((data_e090, data_e099), (r"$e_0=0.90$", r"$e_0=0.99$"), marker_list, col_list)):
-    l = ax.plot(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=1, ls="", marker=marker, mec=col, mfc="None")
-    ax.plot(d["mass_res"], d["sigma_e_cut"], label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=1, ls="", marker=marker, mfc=col)
+    l = ax.plot(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=1, ls="", marker=marker, c=col)
+    #ax.plot(d["mass_res"], d["sigma_e_cut"], label=f"{lab} ($<{d['sigma_e_cut_threshold']:.1f}\\sigma$)", zorder=1, ls="", marker=marker, mfc=col)
 
 # add the sqrt{resolution} scaling line
-mass_res_seq = np.geomspace(2e3, 5e4, 10)
-ax.plot(mass_res_seq, 3*mass_res_seq**-0.5, c="k", label=r"$\propto 1/\sqrt{N_{\star,\mathrm{tot}}}$")
+mass_res_seq = np.geomspace(2e3, 1e4, 10)
+ax.plot(mass_res_seq, mass_res_seq**-0.5, c="k", label=r"$\propto 1/\sqrt{N_{\star,\mathrm{tot}}}$")
 
 # final touch ups
 cmf.plotting.nice_log10_scale(ax, "xy")
-ax.legend(fontsize="small")
+ax.set_xlim(7e2, ax.get_xlim()[1])
+ax.legend(fontsize="small", loc="lower left")
 
 # save
 cmf.plotting.savefig(figure_config.fig_path("convergence.pdf"), force_ext=True)
-plt.close(fig)
-
-
-#------------------------------------------------------------
-# plot of sigma_e across initial eccentricities
-#------------------------------------------------------------
-
-# read in data
-data_2M = cmf.utils.load_data(figure_config.data_path("nasim_scatter_res-2.0e+04.pickle"))
-
-# set up the figure
-fig, ax = plt.subplots(1,1)
-ax.set_xlabel(r"$e_0$")
-ax.set_ylabel(r"$\sigma_e$")
-ax.set_yscale("log")
-
-ax.scatter(data_2M["e_ini"], data_2M["sigma_e"])
-cmf.plotting.nice_log10_scale(ax, "y")

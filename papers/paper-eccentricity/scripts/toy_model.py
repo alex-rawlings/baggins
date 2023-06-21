@@ -260,6 +260,7 @@ def parameter_space_scan_g05_conf3():
 def high_res_well_fitting_models():
     r0 = 25e-3
     bs = np.geomspace(0.1, 20, 500) * 1e-3
+    bs = np.insert(bs, 0, 1e-6)
     e_spheroids = [0.895, 0.9, 0.905, 0.91]
 
     v0s = [450 * km_per_s, 560 * km_per_s]
@@ -430,8 +431,8 @@ if __name__ == '__main__':
         if sys.argv[1] == 'g3':
             parameter_space_scan_g05_conf3()
     else:
-        #high_res_well_fitting_models()
+        high_res_well_fitting_models()
         #gen_orbit_plot_data()
-        test_plots()
+        #test_plots()
 
 
