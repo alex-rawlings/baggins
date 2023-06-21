@@ -33,7 +33,7 @@ if args.method == "new":
         except AssertionError:
             SL.logger.exception(f"Can create a maximum of 26 galaxy ICs, {len(total_combins)} is too great!", exc_info=True)
             raise
-        for i, s1 in enumerate(suffixes[:args.batch]):
+        for i, s1 in enumerate(suffixes[:args.batch], start=1):
             for s2 in suffixes[i:args.batch]:
                 # create a new parameter file for each realisation
                 try:

@@ -10,7 +10,9 @@
 general:
   galaxy_name_1: D_2M_b
   galaxy_name_2: D_2M_d
-  random_seed: 37930
+  random_seed: 6073
+  recentre_progens_to_com: false
+  recentre_merger_to_com: false
 
 # info about where files are to be read from and saved to
 file_locations:
@@ -73,11 +75,11 @@ perturb_properties:
 ---
 e0: 0.99
 full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-099/2M/D_2M_b-D_2M_d-3.720-0.028
-last_update: '2023-04-26 14:34:18'
+last_update: '2023-06-20 10:20:56'
 mass_resolution: 2.00000000e+04
 r0_physical: 3.72
 rperi_physical: 0.027900000000000025
-time_to_pericentre: 0.015527176234208094
-virial_radius_large: 35.00253477252375
+time_to_pericentre: 0.015527147482416775
+virial_radius_large: 35.00376099516744
 ...
 

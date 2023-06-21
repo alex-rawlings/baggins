@@ -112,8 +112,8 @@ class MergerIC:
         NotImplementedError
             for units other than 'virial' and 'kpc'
         """
-        galaxy1 = mg.SnapshotSystem(self.parameters["file_locations"]["galaxy_file_1"])
-        galaxy2 = mg.SnapshotSystem(self.parameters["file_locations"]["galaxy_file_2"])
+        galaxy1 = mg.SnapshotSystem(self.parameters["file_locations"]["galaxy_file_1"], self.parameters["general"]["recentre_progens_to_com"])
+        galaxy2 = mg.SnapshotSystem(self.parameters["file_locations"]["galaxy_file_2"], self.parameters["general"]["recentre_progens_to_com"])
         oppars = self.parameters["orbital_properties"]
 
         # determine the radial units
@@ -129,6 +129,7 @@ class MergerIC:
         # determine mass radius "fudge" factor
         if oppars["mass_radius_fac"] is None:
             oppars["mass_radius_fac"] = 0.5
+            _logger.logger.warning(f"Setting merger `mass_radius_fac` to default value of {oppars['mass_radius_fac']}")
         
         self._calc_quants["virial_radius_large"] = _get_virial_radius()
 
@@ -201,7 +202,7 @@ class MergerIC:
         except AssertionError:
             _logger.logger.exception(f"File {file_name} already exists!", exc_info=True)
             raise
-        mg.write_hdf5_ic_file(filename=file_name, system=merger, save_plots=False)
+        mg.write_hdf5_ic_file(filename=file_name, system=merger, save_plots=False, center_CoM=self.parameters["general"]["recentre_merger_to_com"])
         _logger.logger.info(f"Merger IC file written to {file_name}")
         # copy parameter file to simulation directory
         shutil.copyfile(self.paramfile, os.path.join(self.save_location, os.path.basename(self.paramfile)))
@@ -211,7 +212,7 @@ class MergerIC:
         _logger.logger.info("Initial merger velocities")
         for k in ("tangential", "radial"):
             _logger.logger.info(f"- {k}: {merger.initial_velocities[k]:.3f} km/s")
-    
+
 
     def create_perturbation_directories(self, file_to_copy, paramfile="paramfile"):
         """
@@ -239,7 +240,7 @@ class MergerIC:
             )
             shutil.copyfile(file_to_copy, os.path.join(child_dir, f"{self._ic_file_names[i]}.hdf5"))
 
-    
+
     def update_gadget_paramfile(self, pfile, params):
         """
         Update a Gadget parameter file for a perturbed run

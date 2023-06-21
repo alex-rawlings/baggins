@@ -10,57 +10,58 @@
 general:
   galaxy_name:
   simulation_start_time:
-    unit: 'Gyr'
+    unit: Gyr
     # set to -1 to use redshift 0
     value: -1
-  random_seed: 42
-  minimum_radius: 
-    unit: 'kpc'
-    value: 1.5e-3
-  maximum_radius: 
-    unit: 'kpc'
-    value: 8000
+  random_seed:
+  minimum_radius:
+    unit: kpc
+    value:
+  maximum_radius:
+    unit: kpc
+    value:
+  recentre_to_com:
 
 # info about file locations
 file_locations:
-  save_location: 
+  save_location:
   # relative to save_location/
-  figure_location:
-  data_location:
+  figure_location: figures
+  data_location: output
 
 # info about the stars
 stars:
   use_cored: false
   particle_mass:
-    unit: 'Msol'
-    value: 
+    unit: Msol
+    value:
   anisotropy_radius:
-    unit: 'kpc'
+    unit: kpc
     value:
   softening:
-    unit: 'kpc'
-    value: 
+    unit: kpc
+    value:
   # parameters specific to cored profiles
   cored:
     distance_modulus:
     sersic_n:
     effective_radius:
-      unit: 'arcsec'
+      unit: arcsec
       value:
     log_core_density:
-      unit: 'mag/arcsec^2'
+      unit: mag/arcsec^2
       value:
     core_radius:
-      unit: 'arcsec'
-      value: 
+      unit: arcsec
+      value:
     core_slope:
     transition_index:
-    mass_light_ratio: 4.0
+    mass_light_ratio:
   # parameters specific to cuspy profiles
   cuspy:
     log_total_mass:
     scale_radius:
-      unit: 'kpc'
+      unit: kpc
       value:
     gamma:
 
@@ -68,29 +69,32 @@ stars:
 dm:
   use_NFW: false
   particle_mass:
-    unit: 'Msol'
+    unit: Msol
     value:
   softening:
-    unit: 'kpc'
+    unit: kpc
     value:
-  mass_relation: 'Behroozi'
+  mass_relation: Behroozi
   # parameters specific to NFW profiles
   NFW:
     cut_pars:
-      slope: 4.0
-      approx0: 1.0e-5
-      scaled_max_radius: 7
+      slope:
+      approx0:
+      scaled_max_radius:
   # parameters specific to Dehnen profiles
   Dehnen:
     gamma:
     scale_radius:
-      unit: 'kpc'
+      unit: kpc
       value:
 
 bh:
+  mass:
+    unit: Msol
+    value:
   softening:
-    unit: 'kpc'
-    value: 3.0e-3
-  set_spin: 'random'
-  spin_relation: 'zlochower_dry'
+    unit: kpc
+    value:
+  set_spin:
+  spin_relation:
 ...

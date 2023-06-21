@@ -43,7 +43,8 @@ class HMQuantities(HMQuantitiesData):
         try:
             assert len(kf) == 1
         except AssertionError:
-            _logger.logger.exception(f"Multiple Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantities object.", exc_info=True)
+            error_str = "Multiple" if len(kf)>1 else "No"
+            _logger.logger.exception(f"{error_str} Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantities object.", exc_info=True)
             raise
         self.ketju_file = kf[0]
         self.snaplist = get_snapshots_in_dir(self.data_directory)
@@ -128,11 +129,12 @@ class HMQuantities(HMQuantitiesData):
         # set counter here so that those rejected snapshots don't affect 
         # ordering
         i = 0
+        masses_set = False
         N = len(self.snaplist)
         for snapfile in self.snaplist:
             snap = pygad.Snapshot(snapfile, physical=True)
             t = convert_gadget_time(snap, new_unit="Myr")
-            if i==0:
+            if not masses_set:
                 self.particle_masses["stars"] = max(np.unique(snap.stars["mass"]))
                 try:
                     self.particle_masses["dm"] = max(np.unique(snap.dm["mass"]))
@@ -140,6 +142,7 @@ class HMQuantities(HMQuantitiesData):
                     _logger.logger.warning("DM particles do not exist for this run")
                     has_dm = False
                 self.particle_masses["bh"] = min(np.unique(snap.bh["mass"]))
+                masses_set = True
             if t < self.binary_time[0]:
                 # snapshot is from before binary is bound, let's skip
                 _logger.logger.debug(f"Snapshot {snapfile} is before the binary is bound --> skipping.")

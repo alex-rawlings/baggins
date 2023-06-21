@@ -10,7 +10,9 @@
 general:
   galaxy_name_1: D_4M_a
   galaxy_name_2: D_4M_b
-  random_seed: 40080
+  random_seed: 19093
+  recentre_progens_to_com: false
+  recentre_merger_to_com: false
 
 # info about where files are to be read from and saved to
 file_locations:
@@ -73,11 +75,11 @@ perturb_properties:
 ---
 e0: 0.99
 full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-099/4M/D_4M_a-D_4M_b-3.720-0.028
-last_update: '2023-05-09 13:15:05'
+last_update: '2023-06-20 10:22:01'
 mass_resolution: 4.00000000e+04
 r0_physical: 3.72
 rperi_physical: 0.027900000000000025
-time_to_pericentre: 0.015527181217104502
-virial_radius_large: 35.004184818182765
+time_to_pericentre: 0.015527159109117934
+virial_radius_large: 35.00392992540227
 ...
 

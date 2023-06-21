@@ -46,7 +46,7 @@ custom_colors_shuffled = custom_colors[[1, 4, 0, 5, 2, 6, 3, 7]]
 color_cycle = mpl.cycler(color=custom_colors)
 color_cycle_shuffled = mpl.cycler(color=custom_colors_shuffled)
 
-marker_cycle = mpl.cycler(marker=["o", "s", "^", "D", "v", "*", "p", "h", "X", "P"])
+marker_cycle = mpl.cycler(marker=["o", "s", "^", "D", "v", "p", "h", "X", "P", "*"])
 linestyle_cycle = mpl.cycler(ls=["-", ":", "--", "-."])
 
 mpl.rcParams['axes.prop_cycle'] = linestyle_cycle * color_cycle_shuffled

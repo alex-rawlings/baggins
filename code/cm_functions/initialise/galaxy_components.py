@@ -43,6 +43,7 @@ class _GalaxyICBase:
         self.simulation_start_time = self.parameters["general"]["simulation_start_time"]["value"]
         self.maximum_radius = self.parameters["general"]["maximum_radius"]["value"]
         self.minimum_radius = self.parameters["general"]["minimum_radius"]["value"]
+        self.recentre_to_com = self.parameters["general"]["recentre_to_com"]
         try:
             assert self.simulation_start_time < 0
             #we are using redshift 0

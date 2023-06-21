@@ -13,13 +13,14 @@ general:
     unit: Gyr
     # set to -1 to use redshift 0
     value: -1
-  random_seed: 70986
+  random_seed: 82261
   minimum_radius: 
     unit: kpc
     value: 1.5e-3
   maximum_radius: 
     unit: kpc
     value: 8000
+  recentre_to_com: false
 
 # info about file locations
 file_locations:
@@ -103,11 +104,11 @@ bh:
   mass: 1.00000000e+08
   particle_count: 1.0
   spin:
-  - -0.5216771316361104
-  - -0.37450224198851834
-  - -0.5589111646317094
+  - -0.11214237246713213
+  - 0.2733370673279853
+  - -0.5164198081730133
 dm: {}
-last_update: '2023-04-26 11:36:07'
+last_update: '2023-06-19 18:02:20'
 redshift: 0
 stars:
   particle_count: 4.99971000e+05
