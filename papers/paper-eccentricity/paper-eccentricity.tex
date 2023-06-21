@@ -514,7 +514,7 @@ deflection angle $\theta_\mathrm{defl}$ during the binary formation
 can be reproduced using a simple toy model,
 which includes only the essential components relevant to this process.
 Taking the orbit to lie in the $xy$-plane,
-the relative motion of the two equal-mass SMBHs in this model is follows the 
+the relative motion of the two equal-mass SMBHs in this model follows the 
 equation of motion
 \begin{equation} \label{eq:toy_model_eom}
 \ddot{\vb{x}} = -\frac{2 G M_\bullet}{|\vb{x}|^3} \vb{x} + \vb{a}_\mathrm{bg} + \vb{a}_\mathrm{DF},
@@ -524,7 +524,7 @@ $M_\bullet = 10^8\,\Msun$ is the mass of a single SMBH,
 $\vb{a}_\mathrm{bg}$ the acceleration due to the asymmetric background potential,
 and $\vb{a}_\mathrm{DF}$ the acceleration due to dynamical friction.
 
-The stellar background is modeled as a constant density spheroidal potential
+The stellar background can be modeled as a constant density spheroidal potential
 \citep[e.g.][]{binney2008}
 \begin{equation}
 \Phi_\mathrm{bg}(\vb{x}) = \pi G \rho (A_x x^2 + A_y y^2),
@@ -535,7 +535,7 @@ with the acceleration given by
 \end{equation}
 The $A$ coefficients are related to the eccentricity $e_\mathrm{s}$ of the spheroid as
 \begin{align}
-A_x &= 2 \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
+A_x &= 2 \left(\frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2}\right) 
     \left[\frac{1}{2 e_\mathrm{s}} \ln\left(\frac{1+e_\mathrm{s}}{1-e_\mathrm{s}}\right) - 1 \right]\\
 A_y &= \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2} 
         \left[ \frac{1}{1-e_\mathrm{s}^2} 
@@ -543,14 +543,14 @@ A_y &= \frac{1-e_\mathrm{s}^2}{e_\mathrm{s}^2}
 \end{align}
 with the long axis aligned along the $x$-axis.
 The stellar density is set to $\rho = 300 \,\Msun\,\mathrm{pc}^{-3}$,
-which approximately matches the values seen in the simulations when SMBH binary is becoming bound.
+which approximately matches the values seen in the simulations when the SMBH binary is becoming bound.
 
-Dynamical friction is modeled using the \citet{chandrasekhar1943} formula assuming
+The dynamical friction of a single BH is modeled using the \citet{chandrasekhar1943} formula assuming
 a Maxwellian distribution with a constant velocity dispersion
 ${\sigma_\mathrm{M}=200\,\mathrm{km\,s^{-1}}}$,
-set based on the value measured from the simulations.
-This formula gives the acceleration of a single BH due to dynamical friction as
-\citep[e.g.][]{binney2008}
+set based on the value measured from the simulations \citep[e.g.][]{binney2008}:
+%This formula gives the acceleration of a single BH due to dynamical friction as
+%\citep[e.g.][]{binney2008}
 \begin{equation}\label{eq:chandra_df}
 \begin{aligned}
 \vb{a}_{1,\mathrm{DF}} = &-\frac{4 \pi G^2 M_\bullet \rho \ln{\Lambda}}{|\vb{v}_{1}|^3}\\
@@ -560,7 +560,7 @@ This formula gives the acceleration of a single BH due to dynamical friction as
 Here $\vb{v}_1 = \dot{\vb{x}}/2$ is the velocity of a single BH, 
 $X = |\vb{v}_1|/\sqrt{2}\sigma_\mathrm{M}$,
 and the Coulomb logarithm is taken to have the value $\ln{\Lambda} = 5$,
-which is appropriate for the size of the simulated systems.
+which is derived from the size of the simulated systems.
 
 The effect of dynamical friction weakens as the SMBH binary orbit shrinks.
 To account for this, when the binary is bound 
@@ -584,18 +584,21 @@ we specify the initial conditions as
 \vb{x}_0 &= (25\,\mathrm{pc}, b)\\
 \dot{\vb{x}}_0 &= (-v_0, 0).
 \end{align}
-Based on the simulations, we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ to match the
-typical SMBH relative velocity at this separation in the $e_0=0.90$ case,
-and $v_0 = 560\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.99$ case.
-The spheroid eccentricity parameter $e_\mathrm{s}$ is not easily measurable from the simulations,
-due to stellar components that remain bound to the SMBHs and obscure the background
+In order to match the typical SMBH relative velocity seen at this separation in
+the simulations we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ for the $e_0=0.90$ case, and
+ $v_0 = 560\,\mathrm{km\,s^{-1}}$ for the the $e_0=0.99$ case.
+%we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ to match the
+%typical SMBH relative velocity at this separation in the $e_0=0.90$ case,
+%and $v_0 = 560\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.99$ case.
+The spheroid eccentricity parameter $e_\mathrm{s}$ is not easily measured from the simulations,
+due to stellar components that remain tightly bound to the SMBHs and obscure the background
 potential relevant for the dynamics,
-as well as due to the potential in the simulations being constantly evolving.
+as well as due to fact that the potential in the simulations is constantly evolving.
 However, only sufficiently large values of $e_\mathrm{s}$ allow for low binary
 eccentricities to be produced,
 as is shown by \autoref{fig:model_orbits}.
 Performing calculations with different values of $e_\mathrm{s}$,
-we found a good fit to simulation results for $e_\mathrm{s}\approx 0.9$.
+we found a good fit to the simulation results for $e_\mathrm{s}\approx 0.9$.
 
 We compute the resulting eccentricities for a range of impact parameters up to $b=20\,\mathrm{pc}$
 for the two initial velocities,
@@ -608,7 +611,7 @@ $b\approx 3.3\,\mathrm{pc}$ for the $e_0=0.90$ and $e_0=0.99$ cases, respectivel
 The resulting model curves are shown together with the simulation data in \autoref{fig:theta_e}.
 To correctly match the data in the $e_0=0.90$ case, the model curve has been shifted to the left by $12\degr$,
 while in the $e_0=0.99$ case a smaller shift of $6\degr$ is used.
-These shifts are likely required due to the rotation of the stellar component tilting the background potential
+These shifts are required due to the rotation of the stellar component tilting the background potential
 relative to the SMBH trajectories in the simulations, with the effect being stronger in the $e_0=0.90$ case
 due to the less radial merger orbit.
 In the $e_0=0.99$ case we can also see that the simulation data has significant scatter around
