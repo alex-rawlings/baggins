@@ -375,7 +375,7 @@ SMBH binary eccentricity is physical and unavoidable.
     \centering
     \includegraphics{eccentricities.pdf}
     \caption{Eccentricity $e$ (note the non-linear scale) as a function of shifted time $t'=t-t_\mathrm{bound}$ for the highest mass resolution simulations from the $e_0 = 0.90$ set (blue lines) and $e_0 = 0.99$ set (orange lines). 
-    The downwards-pointing arrows indicate the median time when the SMBH binaries becomes hard for the two simulation sets. 
+    The downwards-pointing arrows indicate the median time when the SMBH binaries becomes hard. 
     In both the shown $e_0 = 0.90$ and $e_0 = 0.99$ sets, one simulation has a comparatively low eccentricity, displacing it to a value of $e$ greater than $2.5\sigma$ from the collective mean. 
     In the $e_0=0.90$ set, seven simulations have a SMBH binary merger within $50\,\mathrm{Myr}$, as indicated by the rapid circularisation of the eccentricity.}
     \label{fig:eccentricities}
@@ -415,7 +415,7 @@ For each orbital configuration, we run ten realisations for each mass resolution
 
 \subsection{Eccentricity scatter in simulations}
 
-The SMBH binary eccentricity for both the $e_0=0.90$ (blue) and $e_0=0.99$ (orange) orbits are shown in \autoref{fig:eccentricities} as a function of shifted time $t' = t - t_\mathrm{bound}$ for the highest mass resolution sets. 
+The SMBH binary eccentricity for both the $e_0=0.90$ (blue) and $e_0=0.99$ (orange) orbits are shown in \autoref{fig:eccentricities} as a function of shifted time $t' = t - t_\mathrm{bound}$ for the highest mass resolution sets, where $t_\mathrm{bound}$ is the time when the SMBH binaries become bound. 
 At least one simulation is seen to lie significantly beyond the mean eccentricity in each set, with $e_\mathrm{h} \sim 0.8$ for the $e_0=0.90$ set and $e_\mathrm{h}\sim 0.2$ for the $e_0=0.99$ set. 
 The median time when each simulation set forms a hard binary is similar between the two sets, as indicated by the arrows in \autoref{fig:eccentricities}.
 The $e_0=0.90$ set also demonstrates seven SMBH-binary mergers within $50\,\mathrm{Myr}$ of forming a bound binary, seen as a rapid circularisation in eccentricity in \autoref{fig:eccentricities}, which is captured self-consistently using \ketju{}.
@@ -426,7 +426,8 @@ The binary hardening radius $a_\mathrm{h}$ is defined as \citep[e.g.][]{merritt2
     a_\mathrm{h} = \frac{q}{(1+q)^2} \frac{r_\mathrm{m}}{4} = \frac{r_\mathrm{m}}{16},
 \end{equation}
 where $r_\mathrm{m}=r(m<2M_{\bullet,1})$ is the influence radius and $q$ is the mass ratio between the SMBHs (for our simulations $q=1.0$, giving rise to the second equality in \autoref{eq:ahard}).
-Assuming the distribution of mean hard-binary eccentricities is Gaussian, we characterise the inter-simulation eccentricity scatter as the standard deviation in mean values of $e_\mathrm{h}$, denoted as $\sigma_e$.
+% Assuming the distribution of mean hard-binary eccentricities is Gaussian,
+We characterise the inter-simulation eccentricity scatter in the mean values of $e_\mathrm{h}$ with the standard deviation, denoted as $\sigma_e$.
 
 We show the dependence of inter-simulation eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:convergence} with circle markers, and for the $e_0=0.99$ orbit using square markers.
 The full set of ten simulations per mass resolution is shown with unfilled markers, and those simulations satisfying a $2.5\sigma$-cut in eccentricity with filled markers. 
@@ -465,7 +466,7 @@ We observe evidence for a relationship between the deflection angle $\theta_\mat
     \centering
     \includegraphics{orbit}
     \caption{Orbits from $t=0\,\mathrm{Myr}$ to a time shortly after $t_\mathrm{bound}$ of a single SMBH in two representative realisations of the $e_0=0.90$ mergers (left) and the $e_0=0.99$ mergers (right), which by symmetry of the equal mass system is a reflection of the second BH orbit about the $x=-z$ line. 
-    Each line is coloured according to the shifted time $t'=t-t_\mathrm{bound}$ of the simulation, however the colours for $|t'|>2\,\mathrm{Myr}$ is constant for visual clarity of the deflection-phase of the evolution. 
+    Each line is coloured according to the shifted time $t'=t-t_\mathrm{bound}$ of the simulation, however the colours for $|t'|>2\,\mathrm{Myr}$ is constant for visual clarity. % of the deflection-phase of the evolution. 
     In each inset panel, point A shows a time just before the first hard scattering $\theta_\mathrm{defl}$, and point B a time just after. 
     The circle marker indicates the position of the SMBH just before the SMBHs form a bound binary.}
     \label{fig:orbit}
