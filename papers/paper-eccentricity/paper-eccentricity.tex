@@ -425,7 +425,7 @@ The binary hardening radius $a_\mathrm{h}$ is defined as \citep[e.g.][]{merritt2
 \begin{equation}\label{eq:ahard}
     a_\mathrm{h} = \frac{q}{(1+q)^2} \frac{r_\mathrm{m}}{4} = \frac{r_\mathrm{m}}{16},
 \end{equation}
-where $r_\mathrm{m}=r(m<2M_{\bullet,1})$ is the influence radius and $q$ is the mass ratio between the SMBHs (for our simulations $q=1.0$, giving rise to the second equality in \autoref{eq:ahard}).
+where $r_\mathrm{m}=r(m<2M_{\bullet,1})$ is the influence radius and $q$ is the mass ratio between the SMBHs (for our simulations $q=1.0$). 
 % Assuming the distribution of mean hard-binary eccentricities is Gaussian,
 We characterise the inter-simulation eccentricity scatter in the mean values of $e_\mathrm{h}$ with the standard deviation, denoted as $\sigma_e$.
 
@@ -451,16 +451,17 @@ At each pericentre passage, the two SMBHs scatter off each other with some defle
 \end{equation}
 where $M=M_{\bullet,1}+M_{\bullet,2}$, and $L$ is the magnitude of the SMBH 
 binary angular momentum vector and $E$ the binary orbital energy at the time of the pericentre passage \citep{binney2008}.
-The deflection angle is a function of the impact parameter $b$ of the SMBH trajectory, however $\theta_\mathrm{defl}$ is able to be more robustly measured than $b$ from the simulation data.
-\drafting{
-    Each pericentre passage is associated with a deflection angle, however we find that it is the first extreme deflection angle that is important.
-    To quantify extreme, we set as $\theta_\mathrm{defl}$ the first 
-angle that exceeds an orbit-dependent threshold:
-$\theta_{\mathrm{defl,min}}=90\degr$ for the $e_0=0.99$ mergers and $\theta_{\mathrm{defl,min}}=45\degr$ for the $e_0=0.90$ mergers.
-}
+The deflection angle is a function of the impact parameter $b$ of the SMBH trajectory. However as $\theta_\mathrm{defl}$ can be more robustly measured from the simulation data, we instead
+opt using it for our analysis. 
+
+Each pericentre passage is associated with a deflection angle, however we find that it is the first extreme deflection angle, associated with a hard scattering event, that is important.
+ To quantify an extreme deflection angle, we set as $\theta_\mathrm{defl}$ the first 
+angle that exceeds an orbit-dependent threshold of $\theta_{\mathrm{defl,min}}=90\degr$ for the $e_0=0.99$ mergers and $\theta_{\mathrm{defl,min}}=45\degr$ for the $e_0=0.90$ mergers.
+
+
 In general, this corresponds to the second or third actual pericentre passage of the SMBHs in the simulations.
 An example of $\theta_\mathrm{defl}$ is shown for two realisations of the $e_0=0.90$ ($e_0=0.99$) orbit in the left (right) panel of \autoref{fig:orbit}, which occurs between the points A and B in the SMBH binary orbit in each inset panel. 
-We observe evidence for a relationship between the deflection angle $\theta_\mathrm{defl}$ and the resulting eccentricity at the time the SMBH binary becomes hard, shown in \autoref{fig:theta_e}.
+We observe evidence for a relationship between the deflection angle $\theta_\mathrm{defl}$ and the resulting eccentricity at the time the SMBH binary becomes hard, as shown in \autoref{fig:theta_e}.
 
 \begin{figure*}
     \centering
