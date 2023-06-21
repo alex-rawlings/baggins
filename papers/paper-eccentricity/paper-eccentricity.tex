@@ -381,20 +381,23 @@ SMBH binary eccentricity is physical and unavoidable.
     \label{fig:eccentricities}
 \end{figure*}
 
-We construct a number of idealised galaxy merger simulations, which we evolve with our new version of \ketju{} \citep{rantala2017, rantala2020,mannerkoski2023}, implemented in \gadget{} \citep{springel2021}.
-For details about the implementation of \ketju{}, we point the reader to \citet{mannerkoski2023}.
-We use the same code configuration (including post-Newtonian corrections to order 3.5, fast multiple method with second order multipoles, and hierarchical time integration) as \citet{mannerkoski2023}.
+We construct a number of idealised galaxy merger simulations, which we evolve with our new version of \ketju{} \citep{mannerkoski2023,rantala2017}, in which the dynamics of
+SMBH and stars in a small region around them are integrated with an algorithmically regularised integrator \citep{rantala2020}, whereas the dynamics of the remaining particles
+is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) with second order multipoles. Together with hierarchical time integration this allows for
+symmetric interactions and manifest momentum conservation. KETJU also includes Post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{Mora2004}. 
 
-We construct our galaxy models to represent the nuclear bulge of a gas-devoid elliptical galaxy, matching the models of \citet{nasim2020}.
+
+Our galaxy models represent the nuclear bulge of a gas-devoid elliptical galaxy, matching the models of \citet{nasim2020}.
 Each galaxy is thus represented as a stellar-only Dehnen sphere \citep{dehnen1993} with shape parameter $\gamma=0.5$ and scale radius $a=186\,\mathrm{pc}$, where the Dehnen profile is given by:
 \begin{equation}\label{eq:dehnen}
     \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
 \end{equation}
-The total stellar mass is $M_\star=10^{10}\,\Msun$, and at the centre of the model galaxy a SMBH of mass $M_\bullet=10^8\,\Msun$ is placed with zero initial velocity.
-We test five different mass resolutions by sampling the stellar phase space distribution with a varying number of stellar particles: $N_\star = \{2.5\times10^5, 5.0\times10^5, 1.0\times10^6, 2.0\times10^6, 4.0\times10^6\}$.
+The total stellar mass is $M_\star=10^{10}\,\Msun$, and at the centre of the model galaxy a SMBH of mass $M_\bullet=10^8\,\Msun$ is placed.
+We test six different mass resolutions %by sampling the stellar phase space distribution
+with a varying number of stellar particles: $N_\star = \{1.0\times10^5,2.5\times10^5, 5.0\times10^5, 1.0\times10^6, 2.0\times10^6, 4.0\times10^6\}$.
 
-We then construct isolated merger initial conditions by placing two galaxies on an elliptical orbit with varying values of eccentricity, at a fixed initial separation of $D=3.72\,\mathrm{kpc}$ and semimajor axis $a_0=2.79\,\mathrm{kpc}$.
-The chosen eccentricities $e_0$ are 0.90 and 0.99.
+We then construct isolated merger initial conditions by placing two galaxies on two different elliptical orbits with eccentricities of $e_0=0.90$ and $e_0=0.99$, at a fixed
+initial separation of $D=3.72\,\mathrm{kpc}$ and semimajor axis $a_0=2.79\,\mathrm{kpc}$.
 The radial and tangential velocities of the initial merger setup are consistent with the values reported in \citet{gualandris2022} for the $e_0=0.90$ orbit.
 For each orbital configuration, we run ten realisations for each mass resolution, to account for stochasticity caused by the discretised phase space. 
 
