@@ -282,24 +282,24 @@ D-85748 Garching, Germany}
 \begin{abstract}
 
 
-\drafting{
-    Key results:
-    \begin{enumerate}
-        \item Eccentricity of hard binary depends on deflection angle 
-        \item Mapping $\theta_\mathrm{defl} \rightarrow e_\mathrm{h}$ relatively independent of resolution, however low res explores wider domain space 
-        \item Explored eccentricity space can be full $[0,1]$ range for certain systems 
-        \item Exact values of $e$ from simulations meaningless, need to understand the distribution of 
-        \item Current resolutions appropriate for exploring statistics of eccentricity
-    \end{enumerate}
-    Limited to 250 words.
-}
+%\drafting{
+%    Key results:
+%    \begin{enumerate}
+%        \item Eccentricity of hard binary depends on deflection angle 
+%        \item Mapping $\theta_\mathrm{defl} \rightarrow e_\mathrm{h}$ relatively independent of resolution, however low res explores wider domain space 
+%        \item Explored eccentricity space can be full $[0,1]$ range for certain systems 
+%        \item Exact values of $e$ from simulations meaningless, need to understand the distribution of 
+%        \item Current resolutions appropriate for exploring statistics of eccentricity
+%    \end{enumerate}
+%    Limited to 250 words.
+%}
 
 \drafting{
     We present a study of collisionless merger simulations using the recently released \ketju{} code to investigate the stochasticity in the supermassive black hole (SMBH) binary eccentricity at the time a hard binary forms.
     We find a mapping between the hard binary eccentricity and the deflection angle the SMBHs undergo prior to becoming bound that is independent of the ratio between SMBH mass and stellar particle mass. 
     Decreasing the number of stellar particles does however sample a wider domain of deflection angles due to Brownian motion compared to increased stellar particle counts; some merger geometries explore the full $[0,1]$ domain of eccentricity as a result.
-    We argue that the SMBH binary eccentricity is not a deterministic function of the initial merger eccentricity, but rather should be understood as a distribution of possible outcomes, which are also most likely present in the observable universe.
-    We conclude that mass resolutions currently used to explore the SMBH binary merger process, including their merger timescales, are sufficient to capture the observable population.
+    We argue that the SMBH binary eccentricity is not a deterministic function of the initial merger eccentricity, but rather should be understood as a distribution of possible outcomes, and is also most likely present in the observable universe.
+    We conclude that mass resolutions currently used to explore the SMBH binary merger process, including their merger timescales, are sufficient to capture the observable population, and that stochasticity in the SMBH binary eccentricity is unavoidable.
 }
 
 \end{abstract}
@@ -382,17 +382,16 @@ SMBH binary eccentricity is physical and unavoidable.
 \begin{figure*}
     \centering
     \includegraphics{eccentricities.pdf}
-    \caption{Eccentricity $e$ (note the non-linear scale) as a function of shifted time $t'=t-t_\mathrm{bound}$ for the highest mass resolution simulations from the $e_0 = 0.90$ set (blue lines) and $e_0 = 0.99$ set (orange lines). 
+    \caption{Eccentricity $e$ (note the non-linear scale) as a function of shifted time $t'=t-t_\mathrm{bound}$ for the $M_\bullet/m_\star=5000$ resolution simulations from the $e_0 = 0.90$ set (blue lines) and $e_0 = 0.99$ set (orange lines). 
     The downwards-pointing arrows indicate the median time when the SMBH binaries becomes hard. 
-    In both the shown $e_0 = 0.90$ and $e_0 = 0.99$ sets, one simulation has a comparatively low eccentricity, displacing it to a value of $e$ greater than $2.5\sigma$ from the collective mean. 
-    In the $e_0=0.90$ set, seven simulations have a SMBH binary merger within $50\,\mathrm{Myr}$, as indicated by the rapid circularisation of the eccentricity.}
+    In the $e_0=0.90$ set, six simulations have a SMBH binary merger within $50\,\mathrm{Myr}$, shown by the rapid orbit circularisation.}
     \label{fig:eccentricities}
 \end{figure*}
 
 We construct a number of idealised galaxy merger simulations, which we evolve with our new version of \ketju{} \citep{mannerkoski2023,rantala2017}, in which the dynamics of
 SMBH and stars in a small region around them are integrated with an algorithmically regularised integrator \citep{rantala2020}, whereas the dynamics of the remaining particles
 is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) with second order multipoles. Together with hierarchical time integration this allows for
-symmetric interactions and manifest momentum conservation. KETJU also includes Post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{Mora2004}. 
+symmetric interactions and manifest momentum conservation. \ketju{} also includes Post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{Mora2004}. 
 
 
 Our galaxy models represent the nuclear bulge of a gas-devoid elliptical galaxy, matching the models of \citet{nasim2020}.
@@ -414,19 +413,20 @@ For each orbital configuration, we run ten realisations for each mass resolution
 
 \begin{figure}
     \includegraphics{convergence}
-    \caption{Convergence of the eccentricity scatter $\sigma_e$ as a function of mass resolution $M_\bullet/m_\star$ and the number of stellar particles per progenitor galaxy $N_\star$ for initial eccentricities $e_0=0.90$ and $e_0=0.99$. 
-    The expected $1/\sqrt{N_\star}$ scaling is recovered for the $e_0 = 0.90$ mergers after applying a $2.5\sigma$-cut to the simulation data. 
-    For the $e_0=0.99$ mergers, a steeper scaling than the $1/\sqrt{N_\star}$ is obtained after applying a similar $2.5\sigma$-cut to the data.}
+    \caption{Convergence of the eccentricity scatter $\sigma_e$ as a function of mass resolution $M_\bullet/m_\star$ and the total number of stellar particles $N_{\star, \mathrm{tot}}$. 
+    The expected $1/\sqrt{N_\star}$ scaling is recovered for the $e_0 = 0.90$ mergers. 
+    For the $e_0=0.99$ mergers, $\sigma_e$ does not decrease until $M_\bullet/m_\star \geq 20000$.}
     \label{fig:convergence}
 \end{figure}
 
 
 \subsection{Eccentricity scatter in simulations}
 
-The SMBH binary eccentricity for both the $e_0=0.90$ (blue) and $e_0=0.99$ (orange) orbits are shown in \autoref{fig:eccentricities} as a function of shifted time $t' = t - t_\mathrm{bound}$ for the highest mass resolution sets, where $t_\mathrm{bound}$ is the time when the SMBH binaries become bound. 
-At least one simulation is seen to lie significantly beyond the mean eccentricity in each set, with $e_\mathrm{h} \sim 0.8$ for the $e_0=0.90$ set and $e_\mathrm{h}\sim 0.2$ for the $e_0=0.99$ set. 
+The SMBH binary eccentricity for both the $e_0=0.90$ (blue) and $e_0=0.99$ (orange) orbits are shown in \autoref{fig:eccentricities} as a function of shifted time $t' = t - t_\mathrm{bound}$ for the highest mass resolution sets, where $t_\mathrm{bound}$ is the time when the binary orbital energy $\mathcal{E}$ becomes and remains negative. 
 The median time when each simulation set forms a hard binary is similar between the two sets, as indicated by the arrows in \autoref{fig:eccentricities}.
-The $e_0=0.90$ set also demonstrates seven SMBH-binary mergers within $50\,\mathrm{Myr}$ of forming a bound binary, seen as a rapid circularisation in eccentricity in \autoref{fig:eccentricities}, which is captured self-consistently using \ketju{}.
+The $e_0=0.90$ set also demonstrates six SMBH-binary mergers within $50\,\mathrm{Myr}$ of forming a bound binary, seen as a rapid orbit circularisation in \autoref{fig:eccentricities}, which is captured self-consistently using \ketju{}.
+The $e_0=0.99$ runs show a wide variation in eccentricity, where $e$ spans almost the entire domain range $[0,1]$.
+Even though the $e_0=0.99$ runs have a higher initial merger eccentricity than the $e_0=0.90$ runs, none of the SMBH binaries in the shown $e_0=0.99$ set obtain high enough eccentricities to undergo GW-induced coalescence.
 
 To characterise the scatter in eccentricity, we determine the mean eccentricity $e_\mathrm{h}$ over five orbital periods centred on the orbit within which the SMBH binary has become hard.
 The binary hardening radius $a_\mathrm{h}$ is defined as \citep[e.g.][]{merritt2006}
@@ -434,20 +434,13 @@ The binary hardening radius $a_\mathrm{h}$ is defined as \citep[e.g.][]{merritt2
     a_\mathrm{h} = \frac{q}{(1+q)^2} \frac{r_\mathrm{m}}{4} = \frac{r_\mathrm{m}}{16},
 \end{equation}
 where $r_\mathrm{m}=r(m<2M_{\bullet,1})$ is the influence radius and $q$ is the mass ratio between the SMBHs (for our simulations $q=1.0$). 
-% Assuming the distribution of mean hard-binary eccentricities is Gaussian,
 We characterise the inter-simulation eccentricity scatter in the mean values of $e_\mathrm{h}$ with the standard deviation, denoted as $\sigma_e$.
 
 We show the dependence of inter-simulation eccentricity standard deviation on mass resolution for the $e_0=0.90$ orbit in \autoref{fig:convergence} with circle markers, and for the $e_0=0.99$ orbit using square markers.
-The full set of ten simulations per mass resolution is shown with unfilled markers, and those simulations satisfying a $2.5\sigma$-cut in eccentricity with filled markers. 
 
-For the $e_0=0.90$ orbit, using the full set of simulations results in a lack of convergence of $\sigma_e$, with $5\times10^3$ and $1\times10^4$ mass resolutions demonstrating an increased scatter compared to the lowest mass resolution of $2.5\times10^3$.
-The peculiar values of $\sigma_e$ arise due to the assumed Gaussian distribution of the eccentricity between simulations.
-Inspecting the orbital parameters for all simulations from the $e_0=0.90$ set, it is found that for resolutions of $5\times10^3$ and $1\times10^4$ the eccentricity clusters around a value of $e_\mathrm{h}\simeq0.90$, except for one simulation at both $5\times10^3$ and $1\times10^4$ resolutions which has a value of $e_\mathrm{h}<0.4$.
-This one outlier for each of the two resolutions artificially inflates the measured eccentricity variance, and with the $2.5\sigma$-cut data we recover the $1/\sqrt{N_\star}$ scaling of $\sigma_e$, confirming the results of \citet{nasim2020}, apart from the highest mass resolution set of $M_\bullet/m_\star=4\times10^4$.
-The variation in eccentricity also clearly decreases for the cleaned $e_0=0.99$ orbit simulations, albeit with a steeper gradient than the $e_0=0.90$ set. 
-Again, a single simulation at the highest mass resolution for the $e_0=0.99$ set is responsible for the inflated value of $\sigma_e$ in the full data set for this resolution.
-
-Critically, the eccentricity values beyond $2.5\sigma$ from the mean that are removed in our cleaned samples are each still a valid measurement from the simulation, and highlight the presence of stochasticity in eccentricity for these idealised simulation set-ups with a highly-radial initial orbit. 
+For the $e_0=0.90$ orbit, the convergence of $\sigma_e$ scales as $1/\sqrt{N_{\star,\mathrm{tot}}}$, where $N_{\star,\mathrm{tot}}$ is the total number of stellar particles in the merger, in agreement with the results of \citet{nasim2020}. 
+The variation in eccentricity does not show the same scaling for the $e_0=0.99$ orbit as the $e_0=0.99$ orbit. 
+For mass resolutions $M_\bullet/m_\star<10000$, the value of $\sigma_e$ is almost constant, before significantly dropping at higher mass resolutions. \drafting{Add about 4M runs when done}
 
 \subsection{Binary binding process and the scatter in eccentricity}
 
@@ -463,12 +456,11 @@ The deflection angle is a function of the impact parameter $b$ of the SMBH traje
 opt using it for our analysis. 
 
 Each pericentre passage is associated with a deflection angle, however we find that it is the first extreme deflection angle, associated with a hard scattering event, that is important.
- To quantify an extreme deflection angle, we set as $\theta_\mathrm{defl}$ the first 
-angle that exceeds an orbit-dependent threshold of $\theta_{\mathrm{defl,min}}=90\degr$ for the $e_0=0.99$ mergers and $\theta_{\mathrm{defl,min}}=45\degr$ for the $e_0=0.90$ mergers.
+To quantify an extreme deflection angle, we set as $\theta_\mathrm{defl}$ the first angle that exceeds $\theta_{\mathrm{defl,min}}=30\degr$. \drafting{Is this detail necessary?}
 
 
 In general, this corresponds to the second or third actual pericentre passage of the SMBHs in the simulations.
-An example of $\theta_\mathrm{defl}$ is shown for two realisations of the $e_0=0.90$ ($e_0=0.99$) orbit in the left (right) panel of \autoref{fig:orbit}, which occurs between the points A and B in the SMBH binary orbit in each inset panel. 
+An example of $\theta_\mathrm{defl}$ is shown for two realisations of the $e_0=0.90$ ($e_0=0.99$) orbit in the left (right) panel of \autoref{fig:orbit}, which occurs between the arrow heads along the SMBH trajectory in each inset panel. 
 We observe evidence for a relationship between the deflection angle $\theta_\mathrm{defl}$ and the resulting eccentricity at the time the SMBH binary becomes hard, as shown in \autoref{fig:theta_e}.
 
 \begin{figure*}
@@ -476,8 +468,8 @@ We observe evidence for a relationship between the deflection angle $\theta_\mat
     \includegraphics{orbit}
     \caption{Orbits from $t=0\,\mathrm{Myr}$ to a time shortly after $t_\mathrm{bound}$ of a single SMBH in two representative realisations of the $e_0=0.90$ mergers (left) and the $e_0=0.99$ mergers (right), which by symmetry of the equal mass system is a reflection of the second BH orbit about the $x=-z$ line. 
     Each line is coloured according to the shifted time $t'=t-t_\mathrm{bound}$ of the simulation, however the colours for $|t'|>2\,\mathrm{Myr}$ is constant for visual clarity. % of the deflection-phase of the evolution. 
-    In each inset panel, point A shows a time just before the first hard scattering $\theta_\mathrm{defl}$, and point B a time just after. 
-    The circle marker indicates the position of the SMBH just before the SMBHs form a bound binary.}
+    In each inset panel, $\theta_\mathrm{defl}$ is the deflection between the arrow heads.
+    The circle marker indicates the SMBH position just before a bound binary is formed.}
     \label{fig:orbit}
 \end{figure*}
 
@@ -663,7 +655,7 @@ However, most major mergers are expected to occur on highly radial orbits based 
 and the dynamical friction from the dark matter halo would generally drive even lower eccentricity merger orbits to highly radial final plunges when the initial separation of the galaxies is large enough.
 
 In numerical simulations with a discretised phase space, the two primary causes of random variation in the impact parameter are the initial particle sampling variation in the merger initial conditions and the Brownian motion of the SMBH binary \citep{merritt2001}.
-Both of these effects scale as $1/\sqrt{N_\star}$, which can explain the observed scaling of $\sigma_e$ \citep{nasim2020} when the system falls into the region of parameter space where the relation between $e$ and $b$
+Both of these effects scale as $1/\sqrt{N_{\star,\mathrm{tot}}}$, which can explain the observed scaling of $\sigma_e$ \citep{nasim2020} when the system falls into the region of parameter space where the relation between $e$ and $b$
 is approximately linear.
 The deviation from this scaling seen in \autoref{fig:convergence}, particularly when not excluding outlying data points, is then simply explained by the fact that the eccentricity is not globally a linear function of the impact parameter. 
 
