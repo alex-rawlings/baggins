@@ -481,8 +481,8 @@ We observe evidence for a relationship between the deflection angle $\theta_\mat
     Scattering deflection angle $\theta_\mathrm{defl}$ and the resulting binary eccentricity
     in the $e_0=0.90$ (left) and $e_0=0.99$ (right) simulations,
     compared to reasonably well fitting model curves.
-    The solid lines show the results from the toy model with $e_\mathrm{s}=0.905$,
-    while the semitransparent lines show the results for  $e_\mathrm{s}=0.900$ and $e_\mathrm{s}=0.910$.
+    The solid lines show the results from the toy model with $e_\mathrm{s}=0.91$,
+    while the semitransparent lines show the results for  $e_\mathrm{s}=0.90$ and $e_\mathrm{s}=0.92$.
     The model curves have been shifted left by $12\degr$ and $6\degr$
     to better match the simulation data, with the shift also indicated by arrows.
     The marginal histograms show kernel density estimates to the simulation data.
@@ -546,21 +546,19 @@ The stellar density is set to $\rho = 300 \,\Msun\,\mathrm{pc}^{-3}$,
 which approximately matches the values seen in the simulations when the SMBH binary is becoming bound.
 
 The dynamical friction of a single BH is modeled using the \citet{chandrasekhar1943} formula assuming
-a Maxwellian distribution with a constant velocity dispersion
-${\sigma_\mathrm{M}=200\,\mathrm{km\,s^{-1}}}$,
-set based on the value measured from the simulations \citep[e.g.][]{binney2008}:
-%This formula gives the acceleration of a single BH due to dynamical friction as
-%\citep[e.g.][]{binney2008}
+a Maxwellian distribution with a constant velocity dispersion $\sigma_\star$ \citep[e.g.][]{binney2008}:
 \begin{equation}\label{eq:chandra_df}
 \begin{aligned}
 \vb{a}_{1,\mathrm{DF}} = &-\frac{4 \pi G^2 M_\bullet \rho \ln{\Lambda}}{|\vb{v}_{1}|^3}\\
-                        &\times\left(\operatorname{erf}(X) - \frac{2X}{\sqrt{\pi}} \exp(-X^2)\right)\vb{v}_{1}.
+                         &\times\left(\operatorname{erf}(X) - \frac{2X}{\sqrt{\pi}} \exp(-X^2)\right)\vb{v}_{1},
 \end{aligned}
 \end{equation}
-Here $\vb{v}_1 = \dot{\vb{x}}/2$ is the velocity of a single BH, 
-$X = |\vb{v}_1|/\sqrt{2}\sigma_\mathrm{M}$,
-and the Coulomb logarithm is taken to have the value $\ln{\Lambda} = 5$,
-which is derived from the size of the simulated systems.
+where $\vb{v}_1 = \dot{\vb{x}}/2$ is the velocity of a single BH,
+and $X = |\vb{v}_1|/\sqrt{2}\sigma_\star$.
+We set ${\sigma_\star=200\,\mathrm{km\,s^{-1}}}$ based on the value measured from the simulations.
+The value of the Coulomb logarithm is expected to be $\ln{\Lambda}\sim 4\textnormal{--}5$
+based on the size of the stellar system,
+and we find $\ln{\Lambda} = 4.7$ to give results that agree well with the simulations.
 
 The effect of dynamical friction weakens as the SMBH binary orbit shrinks.
 To account for this, when the binary is bound 
@@ -587,9 +585,6 @@ we specify the initial conditions as
 In order to match the typical SMBH relative velocity seen at this separation in
 the simulations we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ for the $e_0=0.90$ case, and
  $v_0 = 560\,\mathrm{km\,s^{-1}}$ for the the $e_0=0.99$ case.
-%we set $v_0 = 450\,\mathrm{km\,s^{-1}}$ to match the
-%typical SMBH relative velocity at this separation in the $e_0=0.90$ case,
-%and $v_0 = 560\,\mathrm{km\,s^{-1}}$ to match the $e_0=0.99$ case.
 The spheroid eccentricity parameter $e_\mathrm{s}$ is not easily measured from the simulations,
 due to stellar components that remain tightly bound to the SMBHs and obscure the background
 potential relevant for the dynamics,
@@ -616,8 +611,10 @@ relative to the SMBH trajectories in the simulations, with the effect being stro
 due to the less radial merger orbit.
 In the $e_0=0.99$ case we can also see that the simulation data has significant scatter around
 the model curve in the $\theta_\mathrm{defl} \gtrsim 120\degr$ region,
-although the model does appear to capture the mean behaviour fairly well.
-The behaviour of the model in this region is also quite sensitive to the exact value of $e_\mathrm{s}$,
+although the model does appear to capture the mean behaviour fairly well, apart from the largest values of
+$\theta_\mathrm{defl}$.
+The behaviour of the model in this region is also quite sensitive to the values of $e_\mathrm{s}$
+and $\ln{\Lambda}$,
 which might be related to the large scatter in the simulation data.
 
 Otherwise the behaviour of the simulation data is captured well,
