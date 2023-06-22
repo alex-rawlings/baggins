@@ -59,7 +59,7 @@ class HMQuantities(HMQuantitiesData):
 
         bh1, bh2, merged = get_bound_binary(self.ketju_file)
         orbit_pars = ketjugw.orbital_parameters(bh1, bh2)
-        bh1_pb, bh2_pb = get_binary_before_bound(self.ketju_file)
+        bh1_pb, bh2_pb, bound_state = get_binary_before_bound(self.ketju_file)
 
         # time that binary is bound
         self.binary_time = orbit_pars["t"]/units.Myr

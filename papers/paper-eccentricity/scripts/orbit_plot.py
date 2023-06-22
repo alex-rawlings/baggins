@@ -85,8 +85,14 @@ for j in range(2):
 
 
     ax[j].set_xlabel(r"$x/\mathrm{kpc}$")
-    axins1 = ax[j].inset_axes([0.05, 0.4, 0.3, 0.3])
-    axins2 = ax[j].inset_axes([0.65, 0.05, 0.3, 0.3])
+    axins1 = ax[j].inset_axes(
+                            [0.05, 0.4, 0.38, 0.4] if j==0 else 
+                            [0.05, 0.4, 0.38, 0.4]
+                            )
+    axins2 = ax[j].inset_axes(
+                            [0.65, 0.05, 0.35, 0.4] if j==0 else
+                            [0.55, 0.05, 0.4, 0.4]
+                            )
     # keep axis limits fixed for comparison between orbits
     ax[j].set_xlim(-0.7, 1.2)
     ax[j].set_ylim(-0.5, 2)
@@ -138,7 +144,7 @@ for j in range(2):
             cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     if j==0:
-        axins1.set_xlim(-0.015, 0.038)
+        axins1.set_xlim(-0.015, 0.032)
         axins1.set_ylim(-0.03, 0.04)
         cmf.plotting.draw_sizebar(axins1, 0.01, "pc", location="lower right", **sizebar_kwargs)
     else:

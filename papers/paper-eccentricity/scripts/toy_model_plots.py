@@ -131,9 +131,13 @@ def paper_th_e_curve_plot():
         axdict[k].set_xticklabels([])
         axdict[k].set_xticks([])
 
+    # add an inset panel for the e0=0.90 case
+    axins = axdict["D"].inset_axes([0.6, 0.05, 0.35, 0.85])
+
     axdict["C"].set_ylabel('$e_\mathrm{h}$')
     axdict["C"].set_ylim(0,1.03)
     for k in "CDEF": axdict[k].axhline(1, c="silver")
+    axins.axhline(1, c="silver")
     for k in "DE":
         axdict[k].set_xlabel(r'$\theta_\mathrm{defl}$')
         axdict[k].xaxis.set_major_formatter(degree_format_str)
@@ -145,11 +149,12 @@ def paper_th_e_curve_plot():
     curve_shift = -14
 
     color = None
-    for e_s, d in zip(data['e_spheroids'], data['res']):
-        a = 0.8 if e_s == 0.91 else 0.3
-        d_plot = add_artificial_end_to_curve(d, curve_shift)
-        l, = axdict["D"].plot(np.degrees(d_plot['theta'])+curve_shift, d_plot['e'], color=color, alpha=a)
-        color = l.get_color()
+    for axi in (axdict["D"], axins):
+        for e_s, d in zip(data['e_spheroids'], data['res']):
+            a = 0.8 if e_s == 0.91 else 0.3
+            d_plot = add_artificial_end_to_curve(d, curve_shift)
+            l, = axi.plot(np.degrees(d_plot['theta'])+curve_shift, d_plot['e'], color=color, alpha=a)
+            color = l.get_color()
     print("b90 for e_0=0.90", np.interp(90,np.degrees(d['theta'][::-1]),d['b'][::-1]*1e3))
 
 
@@ -181,7 +186,7 @@ def paper_th_e_curve_plot():
 
     axdict["B"].set_title("$e_0=0.99$")
 
-    def plot_sim_data(sim_data, ax, axmt, axme):
+    def plot_sim_data(sim_data, ax, axmt=None, axme=None):
         ax.set_prop_cycle(color_cycle_shuffled)
         tbins = np.arange(*ax.get_xlim(), 5)
         ebins = np.arange(*ax.get_ylim(), 0.1)
@@ -208,16 +213,19 @@ def paper_th_e_curve_plot():
             mres, th, e = g
             ax.plot(th,e, label=rf"{mres[0]:.0f}", zorder=2, ls='none', **m)
             # add KDE to marginal
-            kde_t = scipy.stats.gaussian_kde(th[~np.isnan(th)])
-            t_pts = np.linspace(*ax.get_xlim(), 1000)
-            axmt.plot(t_pts, kde_t(t_pts))
-            kde_e = scipy.stats.gaussian_kde(e[~np.isnan(e)])
-            e_pts = np.linspace(0,1, 1000)
-            axme.plot(kde_e(e_pts), e_pts)
+            if axmt is not None:
+                kde_t = scipy.stats.gaussian_kde(th[~np.isnan(th)])
+                t_pts = np.linspace(*ax.get_xlim(), 1000)
+                axmt.plot(t_pts, kde_t(t_pts))
+            if axme is not None:
+                kde_e = scipy.stats.gaussian_kde(e[~np.isnan(e)])
+                e_pts = np.linspace(0,1, 1000)
+                axme.plot(kde_e(e_pts), e_pts)
 
     axdict["C"].invert_xaxis()
 
     plot_sim_data(load_data(data_path('deflection_angles_e0-0.900.pickle')), axdict["D"], axdict["A"], axdict["C"])
+    plot_sim_data(load_data(data_path('deflection_angles_e0-0.900.pickle')), axins)
 
     plot_sim_data(load_data(data_path('deflection_angles_e0-0.990.pickle')), axdict["E"], axdict["B"], axdict["F"])
 
@@ -226,6 +234,13 @@ def paper_th_e_curve_plot():
     axdict["B"].set_ylim(0, axdict["B"].get_ylim()[1])
     axdict["C"].set_xlim(axdict["C"].get_xlim()[0], 0)
     axdict["F"].set_xlim(0, axdict["F"].get_xlim()[1])
+
+    # set inset axis limits
+    axins.set_xlim(52, 72.5)
+    axins.set_ylim(0.96, 1.001)
+    axins.set_xticks([])
+    axins.set_yticks([])
+    axdict["D"].indicate_inset_zoom(axins, edgecolor="k")
 
     axdict["E"].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right')
     fig.savefig(fig_path('theta_e_sim_and_model.pdf'))

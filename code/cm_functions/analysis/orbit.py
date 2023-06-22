@@ -182,22 +182,28 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
         object for bh1, where the particle has the same time domain as bh2
     bh2 : ketjugw.Particle
         same as bh1, but for bh2
+    bound_state : str
+        how binary is behaving
     """
     bh1, bh2, merged = get_bh_particles(ketju_file, tol)
     energy_mask = ketjugw.orbital_energy(bh1, bh2) > 0
     try:
         bound_idx = len(energy_mask) - get_idx_in_array(1, energy_mask[::-1])
+        bound_state = "normal"
     except AssertionError:
-        if np.all(energy_mask == 1):
+        if np.all(energy_mask):
             _logger.logger.warning("Binary system has not become bound! We will use all data from the BH particles.")
             bound_idx = -1
-        elif np.all(energy_mask == 0):
+            bound_state = "never"
+        elif np.all(~energy_mask):
+            bound_state = "always"
             _logger.logger.exception("Binary system is never unbound!", exc_info=True)
             raise
         else:
-            _logger.logger.exception(f"This instance should not be reachable.", exc_info=True)
-            raise
-    return bh1[:bound_idx], bh2[:bound_idx]
+            _logger.logger.warning(f"Binary system is oscillating between bound and unbound, and data ends at an unbound point. We will use all data from the BH particles.")
+            bound_idx = -1
+            bound_state = "oscillate"
+    return bh1[:bound_idx], bh2[:bound_idx], bound_state
 
 
 
