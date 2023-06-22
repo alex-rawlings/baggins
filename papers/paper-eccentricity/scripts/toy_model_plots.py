@@ -146,8 +146,7 @@ def paper_th_e_curve_plot():
 
     color = None
     for e_s, d in zip(data['e_spheroids'], data['res']):
-        if e_s <0.9: continue
-        a = 0.8 if e_s == 0.905 else 0.3
+        a = 0.8 if e_s == 0.91 else 0.3
         d_plot = add_artificial_end_to_curve(d, curve_shift)
         l, = axdict["D"].plot(np.degrees(d_plot['theta'])+curve_shift, d_plot['e'], color=color, alpha=a)
         color = l.get_color()
@@ -166,8 +165,7 @@ def paper_th_e_curve_plot():
 
     color=None
     for e_s, d in zip(data['e_spheroids'], data['res']):
-        if e_s < 0.9: continue
-        a = 0.8 if e_s == 0.905 else 0.3
+        a = 0.8 if e_s == 0.91 else 0.3
         d_plot = add_artificial_end_to_curve(d, curve_shift)
         l, = axdict["E"].plot(np.degrees(d_plot['theta'])+curve_shift, d_plot['e'], alpha=a, color=color)
         color = l.get_color()
@@ -242,10 +240,11 @@ def paper_orbit_plot():
                         )
     for k in 'AB':
         axdict[k].set_aspect('equal')
-        axdict[k].set_xlim((-80,80))
-        axdict[k].set_ylim((-120,40))
+        axdict[k].set_xlim((-85,80))
+        axdict[k].set_ylim((-120,45))
         axdict[k].set_xlabel('$x/\mathrm{pc}$')
         axdict[k].set_ylabel('$y/\mathrm{pc}$')
+        axdict[k].set_xticks(np.arange(-80,90,20))
 
     e_ax = axdict['C']
     e_ax.set_xlim((0,6))
