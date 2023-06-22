@@ -142,7 +142,7 @@ def paper_th_e_curve_plot():
         axdict[k].set_xticks(np.arange(30,200,30))
 
     data = load_data(data_path('well_fitting_e_0.90_model_curve.pkl'))
-    curve_shift = -12
+    curve_shift = -14
 
     color = None
     for e_s, d in zip(data['e_spheroids'], data['res']):
@@ -161,7 +161,7 @@ def paper_th_e_curve_plot():
     axdict["A"].set_title("$e_0=0.90$")
 
     data = load_data(data_path('well_fitting_e_0.99_model_curve.pkl'))
-    curve_shift = -6
+    curve_shift = 0
 
     color=None
     for e_s, d in zip(data['e_spheroids'], data['res']):
@@ -174,9 +174,10 @@ def paper_th_e_curve_plot():
 
     print("b90 for e_0=0.99", np.interp(90,np.degrees(d['theta'])[::-1],d['b'][::-1]*1e3))
 
-    axdict["E"].arrow(30-curve_shift,0.1,curve_shift,0, length_includes_head=True,
-                  width=0.01, head_width=0.02, head_length=3, edgecolor='none',
-                  facecolor='k')
+    if curve_shift > 0:
+        axdict["E"].arrow(30-curve_shift,0.1,curve_shift,0, length_includes_head=True,
+                    width=0.01, head_width=0.02, head_length=3, edgecolor='none',
+                    facecolor='k')
 
     axdict["B"].set_title("$e_0=0.99$")
 
