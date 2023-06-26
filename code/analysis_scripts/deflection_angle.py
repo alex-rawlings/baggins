@@ -3,14 +3,13 @@ import os.path
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.ticker as mticker
 import cm_functions as cmf
 
 parser = argparse.ArgumentParser(description="Plot deflection angle and median eccentricity of merger runs")
 parser.add_argument(type=str, help="path to HMQ directory", dest="path")
 parser.add_argument("-d", "--dir", type=str, action="append", default=[], dest="extra_dirs", help="other HMQ directories to compare")
-parser.add_argument("-a", "--angle", type=float, dest="angle", help="minimum deflection angle", default=90)
-parser.add_argument("-o", "--orbits", type=int, dest="orbits", help="number of orbits to determine eccentricity over", default=11)
+parser.add_argument("-a", "--angle", type=float, dest="angle", help="minimum deflection angle", default=30)
+parser.add_argument("-o", "--orbits", type=int, dest="orbits", help="number of orbits to determine eccentricity over", default=5)
 parser.add_argument("-l", "--label", type=str, dest="label", help="labelling method", choices=["e", "res"], default=None)
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-s", "--save", action="store_true", dest="save", help="save figure")

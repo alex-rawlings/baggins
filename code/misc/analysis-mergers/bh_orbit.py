@@ -1,19 +1,18 @@
 import os.path
+import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
 import cm_functions as cmf
 
 
-pathnum = 0
-compare_e = True
+pathnum = 1
+compare_e = False
 
 kpc = ketjugw.units.pc * 1e3
 
 datapath = [
-    "/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/gualandris/stars_only_e_05",
-    "/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/gualandris/stars_only_e_07",
-    "/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/gualandris/stars_only_e_09",
-    "/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/gualandris/stars_only_e_099"
+    "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-090/100K",
+    "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-090/500K"
 ]
 
 e_vals = [0.5, 0.7, 0.9, 0.99]
@@ -45,8 +44,9 @@ if compare_e:
     for d, l in zip(datapath, e_vals):
         ax = plotter(d, ax=ax, compare_e=compare_e, label=l)
 else:
-    ax = plotter(datapath[pathnum])
+    ax = None
+    ax = plotter(datapath[pathnum], ax=ax)
 
 ax.legend()
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "merger/gualandris_ics.png"))
+#cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "merger/gualandris_ics.png"))
 plt.show()

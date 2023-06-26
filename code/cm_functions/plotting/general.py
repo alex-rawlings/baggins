@@ -7,12 +7,12 @@ import itertools
 from ..env_config import _cmlogger
 
 
-__all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions", "create_odd_number_subplots", "nice_log10_scale"]
+__all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions", "create_odd_number_subplots", "nice_log10_scale", "arrow_on_line"]
 
 _logger = _cmlogger.copy(__file__)
 
 
-def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, sep=5, frameon=False, unitconvert="base", remove_ticks=True):
+def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, frameon=False, unitconvert="base", remove_ticks=True, textsize=None, fmt=".1f", **kwargs):
     """
     Draw a horizontal scale bar using the mpl toolkit
 
@@ -31,18 +31,22 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
         padding around label, by default 0.1
     borderpad : float, optional
         padding around border, by default 0.5
-    sep : float, optional
-        separation between label and scale bar, by default 5
     frameon : bool, optional
         draw box around scale bar?, by default False
     unitconvert : str, optional
         convert units of scalebar, by default base (no conversion)
     remove_ticks : bool, optional
         remove tick labels on axis?, by default True
+    textsize : str, optional
+        size of text, by default None
+    fmt : str, optional
+        formatter for numeric part of label, by default ".1f"
+    kwargs :
+        other keyword arguments for AnchoredSizeBar()
     """
     factors = {"mill2base":1e-3, "cent2base":1e-2, "base":1, "kilo2base":1e3, "mega2base":1e6}
-    label = f"{length*factors[unitconvert]} {units}"
-    asb = AnchoredSizeBar(ax.transData, length, label, loc=location, pad=pad, borderpad=borderpad, sep=sep, frameon=frameon)
+    label = f"{length*factors[unitconvert]:{fmt}} {units}"
+    asb = AnchoredSizeBar(ax.transData, length, label, loc=location, pad=pad, borderpad=borderpad, frameon=frameon, fontproperties={"size":textsize}, **kwargs)
     ax.add_artist(asb)
     if remove_ticks:
         ax.axes.xaxis.set_visible(False)
@@ -232,3 +236,42 @@ def nice_log10_scale(ax, axis="y"):
             10**np.floor(np.log10(xlims[0])),
             10**np.ceil(np.log10(xlims[1]))
         )
+
+
+def arrow_on_line(l, xpos=None, direction="right", size=15, arrowprops={}):
+    """
+    Add an arrow to a curve
+
+    Parameters
+    ----------
+    l : matplotib.Line2D
+        line object to add arrow to
+    xpos : float, optional
+        x-coordinate to draw line on, by default None
+    direction : str, optional
+        direction arrow points, by default "right"
+    size : int, optional
+        size of arrow, by default 15
+    arrowprops : dict, optional
+        arrow style kwargs, by default {}
+    """
+    if arrowprops:
+        arrowprops = {"arrowstyle":"->", "color":l.get_color()}
+    xdata = l.get_xdata()
+    ydata = l.get_ydata()
+
+    if xpos is None:
+        xpos = xdata.mean()
+    # roughly get start index
+    idx0 = np.argim(np.abs(xdata-xpos))
+    if direction == "left":
+        idx1 = idx0 - 1
+    else:
+        idx1 = idx0 + 1
+    l.axes.annotate(
+        "",
+        xytext=(xdata[idx0], ydata[idx0]),
+        xy=(xdata[idx1], ydata[idx1]),
+        arrowprops=arrowprops,
+        size=size
+    )

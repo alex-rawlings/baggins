@@ -50,7 +50,7 @@ class _GradientPlot:
                 raise
         self.all_marker = []
         self.norm = [0,1]
-        self._default_markerkwargs = {"ec":"k", "lw":0.5}
+        self.marker_kwargs = {"ec":"k", "lw":0.5}
 
 
     def __len__(self):
@@ -211,8 +211,8 @@ class GradientLinePlot(_GradientPlot):
                 color = self.cmap(self.norm(self.all_c[i][marker_idx])),
                 marker = self.all_marker[i],
                 label = self.all_label[i],
-                zorder = 10 * self.data_count,
-                **self._default_markerkwargs
+                zorder = 10*self.data_count,
+                **self.marker_kwargs
             )
         segments = self._make_segments(i)
         lc = LineCollection(
@@ -234,6 +234,36 @@ class GradientLinePlot(_GradientPlot):
             marker_idx = [-1 for _ in range(self.data_count)]
         for i in range(self.data_count):
             self.plot_single_series(i, logcolour=logcolour, ax=ax, vmin=vmin, vmax=vmax, marker_idx=marker_idx[i], **kwargs)
+
+
+    def draw_arrow_on_series(self, ax, i, idx0, direction="right", size=12):
+        """
+        Draw an arrow on a series.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        i : int
+            index of data series to plot
+        idx0 : int
+            index in data series i to start the arrow at
+        direction : str, optional
+            direction arrow points, by default "right"
+        size : int, optional
+            arrow size, by default 12
+        """
+        if direction=="left":
+            idx1 = idx0 - 1
+        else:
+            idx1 = idx0 + 1
+        ax.annotate(
+            "",
+            xytext=(self.all_x[i][idx0], self.all_y[i][idx0]),
+            xy=(self.all_x[i][idx1], self.all_y[i][idx1]),
+            arrowprops={"arrowstyle":"-|>", "fc":self.cmap(self.norm(self.all_c[i][idx0])), "ec":"w", "lw":0.1},
+            size=size
+        )
 
 
 

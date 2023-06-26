@@ -10,7 +10,9 @@
 general:
   galaxy_name_1: D_500K_b
   galaxy_name_2: D_500K_d
-  random_seed: 25938
+  random_seed: 76762
+  recentre_progens_to_com: false
+  recentre_merger_to_com: false
 
 # info about where files are to be read from and saved to
 file_locations:
@@ -73,11 +75,11 @@ perturb_properties:
 ---
 e0: 0.9
 full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-090/500K/D_500K_b-D_500K_d-3.720-0.279
-last_update: '2023-05-09 12:57:22'
+last_update: '2023-06-19 18:03:26'
 mass_resolution: 5000.0
 r0_physical: 3.72
 rperi_physical: 0.2789999999999999
-time_to_pericentre: 0.017617430336443064
-virial_radius_large: 35.00635634087168
+time_to_pericentre: 0.01761742149850077
+virial_radius_large: 35.01184770014493
 ...
 

@@ -137,7 +137,7 @@ class GalaxyIC(_GalaxyICBase):
             pass
         self.mass_units = "gadget"
         _logger.logger.warning(f"Mass units are now in {self.mass_units} standard.")
-    
+
 
     def write_calculated_parameters(self):
         """
@@ -146,8 +146,8 @@ class GalaxyIC(_GalaxyICBase):
         now = datetime.now()
         self._calc_quants["last_update"] = now.strftime(date_format)
         write_calculated_parameters(self._calc_quants, self.parameter_file)
-    
-    
+
+
     def plot_mass_scaling_relations(self):
         """
         Plot the stellar mass distribution, and the scaling relations of BH mass -- bulge mass and bulge mass -- DM mass.
@@ -302,7 +302,7 @@ class GalaxyIC(_GalaxyICBase):
                 _logger.logger.warning(f"{k} has: {particle_count} particles!")
         
         # save galaxy
-        mg.write_hdf5_ic_file(self.hdf5_file_name, generated_galaxy)
+        mg.write_hdf5_ic_file(self.hdf5_file_name, generated_galaxy, center_CoM=self.recentre_to_com)
         self.write_calculated_parameters()
 
 

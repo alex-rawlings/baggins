@@ -14,7 +14,7 @@ use_gradient_line = True
 idx_stride = 10
 min_time_colour = -2
 max_time_colour = -min_time_colour
-arrowprops = {"arrowstyle":"wedge", "fc":"k", "ec":"w", "lw":0.1}
+sizebar_kwargs = {"width":3, "remove_ticks":False, "unitconvert":"kilo2base", "textsize":"small", "fmt":".0f"}
 gradline_kwargs = {"ls":"-", "capstyle":"round"}
 
 # set up figure
@@ -33,11 +33,11 @@ for j in range(2):
         if print_data:
             for i, (res, ang) in enumerate(zip(angle_data["mass_res"], angle_data["thetas"])):
                 print(f"{i:02d}: res: {res:.1e}, angle: {ang:.1f}")
-            raise RuntimeError
+            print("------------")
 
         angles = [
-            angle_data["thetas"][16],
-            angle_data["thetas"][28]
+            angle_data["thetas"][1],
+            angle_data["thetas"][6]
         ]
 
         main_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-090/"
@@ -46,14 +46,14 @@ for j in range(2):
 
         # XXX MUST MATCH THESE WITH THE CORRESPONDING DATA ABOVE, NOT DONE AUTO
         data_dirs = [
-            os.path.join(main_path, "500K/D_500K_b-D_500K_d-3.720-0.279"),
-            os.path.join(main_path, "1M/D_1M_c-D_1M_d-3.720-0.279"),
+            os.path.join(main_path, "100K/D_100K_a-D_100K_c-3.720-0.279"),
+            os.path.join(main_path, "100K/D_100K_b-D_100K_e-3.720-0.279"),
         ]
 
         # some shortcuts
-        A_idx = [4500, 4280]
-        B_idx = [A_idx[0]+35, A_idx[1]+30]
-        extra_bound_bit = [1000, 2000]
+        A_idx = [4550, 4525]
+        B_idx = [A_idx[0]+26, A_idx[1]+16]
+        extra_bound_bit = [1000, 1000]
     else:
         angle_data = cmf.utils.load_data("data/deflection_angles_e0-0.990.pickle")
 
@@ -64,8 +64,8 @@ for j in range(2):
             raise RuntimeError
 
         angles = [
-            angle_data["thetas"][18],
-            angle_data["thetas"][24]
+            angle_data["thetas"][4],
+            angle_data["thetas"][7]
         ]
 
         main_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-099/"
@@ -74,25 +74,32 @@ for j in range(2):
 
         # XXX MUST MATCH THESE WITH THE CORRESPONDING DATA ABOVE, NOT DONE AUTO
         data_dirs = [
-            os.path.join(main_path, "500K/D_500K_c-D_500K_d-3.720-0.028"),
-            os.path.join(main_path, "1M/D_1M_b-D_1M_b-3.720-0.028"),
+            os.path.join(main_path, "100K/D_100K_b-D_100K_c-3.720-0.028"),
+            os.path.join(main_path, "100K/D_100K_c-D_100K_d-3.720-0.028"),
         ]
 
         # some shortcuts
-        A_idx = [3150, 3140]
-        B_idx = [A_idx[0]+29, A_idx[1]+35]
+        A_idx = [3135, 3135]
+        B_idx = [A_idx[0]+40, A_idx[1]+64]
         extra_bound_bit = [1500, 800]
 
 
     ax[j].set_xlabel(r"$x/\mathrm{kpc}$")
-    axins1 = ax[j].inset_axes([0.05, 0.4, 0.3, 0.3])
-    axins2 = ax[j].inset_axes([0.65, 0.05, 0.3, 0.3])
+    axins1 = ax[j].inset_axes(
+                            [0.05, 0.4, 0.38, 0.4] if j==0 else 
+                            [0.05, 0.4, 0.38, 0.4]
+                            )
+    axins2 = ax[j].inset_axes(
+                            [0.65, 0.05, 0.35, 0.4] if j==0 else
+                            [0.55, 0.05, 0.4, 0.4]
+                            )
     # keep axis limits fixed for comparison between orbits
     ax[j].set_xlim(-0.7, 1.2)
     ax[j].set_ylim(-0.5, 2)
     for axi in (ax[j], axins1, axins2): axi.set_prop_cycle(figure_config.color_cycle)
 
     glp = cmf.plotting.GradientLinePlot(ax=ax[j], cmap="custom_diverging")
+    glp.marker_kwargs = {"ec":"w", "lw":0.2}
 
     for i, (dd, axins, ang) in enumerate(zip(data_dirs, (axins1, axins2), angles)):
         ketjufile = cmf.utils.get_ketjubhs_in_dir(dd)[0]
@@ -118,44 +125,6 @@ for j in range(2):
             ax[j].plot(x,y, markevery=[bound_idx_strided[i]], marker="o")
             axins.plot(x,y, markevery=[bound_idx_strided[i]], marker="o")
         # annotate points just before and just after the first hard scatter
-        if j==0:
-            axins.annotate(
-                    "A", 
-                    (x[A_idx[i]], y[A_idx[i]]),
-                    xytext=(-20, -1) if i==0 else (-13,1),
-                    textcoords="offset points",
-                    arrowprops=arrowprops,
-                    horizontalalignment="right",
-                    verticalalignment="bottom"
-                    )
-            axins.annotate(
-                        "B", 
-                        (x[B_idx[i]], y[B_idx[i]]),
-                        xytext=(-15, 20) if i==0 else (11,-14),
-                        textcoords="offset points",
-                        arrowprops=arrowprops,
-                        horizontalalignment="left",
-                        verticalalignment="top"
-                    )
-        else:
-            axins.annotate(
-                        "A", 
-                        (x[A_idx[i]], y[A_idx[i]]),
-                        xytext=(-6,10) if i==0 else (-13, 10),
-                        textcoords="offset points",
-                        arrowprops=arrowprops,
-                        horizontalalignment="right",
-                        verticalalignment="bottom"
-                        )
-            axins.annotate(
-                        "B", 
-                        (x[B_idx[i]], y[B_idx[i]]),
-                        xytext=(0, 25) if i==0 else (2, -16),
-                        textcoords="offset points",
-                        arrowprops=arrowprops,
-                        horizontalalignment="left",
-                        verticalalignment="top"
-                        )
 
         axins.set_xticklabels([])
         axins.set_yticklabels([])
@@ -165,22 +134,27 @@ for j in range(2):
 
     if use_gradient_line:
         glp.plot(logcolour=False, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided, **gradline_kwargs)
-        glp.plot_single_series(0, logcolour=False, ax=axins1, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[0], **gradline_kwargs)
-        glp.plot_single_series(1, logcolour=False, ax=axins2, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[1], **gradline_kwargs)
+        lc1 = glp.plot_single_series(0, logcolour=False, ax=axins1, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[0], **gradline_kwargs)
+        lc2 = glp.plot_single_series(1, logcolour=False, ax=axins2, vmin=min_time_colour, vmax=max_time_colour, marker_idx=bound_idx_strided[1], **gradline_kwargs)
+        for i, axins in enumerate((axins1, axins2)):
+            glp.draw_arrow_on_series(axins, i, A_idx[i])
+            glp.draw_arrow_on_series(axins, i, B_idx[i])
         if j==1:
             cbar = glp.add_cbar(ax[j], label=r"$t'/\mathrm{Myr}$", extend="both")
             cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     if j==0:
-        axins1.set_xlim(-0.01, 0.02)
-        axins1.set_ylim(-0.05, 0.06)
-        axins2.set_xlim(-0.015, 0.035)
-        axins2.set_ylim(-0.03, 0.02)
+        axins1.set_xlim(-0.015, 0.032)
+        axins1.set_ylim(-0.03, 0.04)
+        cmf.plotting.draw_sizebar(axins1, 0.01, "pc", location="lower right", **sizebar_kwargs)
     else:
-        axins1.set_xlim(-0.05, 0.05)
-        axins1.set_ylim(-0.04, 0.03)
-        axins2.set_xlim(-0.06, 0.02)
-        axins2.set_ylim(-0.08, 0.03)
+        axins1.set_xlim(-0.06, 0.05)
+        axins1.set_ylim(-0.08, 0.03)
+        cmf.plotting.draw_sizebar(axins1, 0.01, "pc", location="lower right", **sizebar_kwargs)
+    axins2.set_xlim(*axins1.get_xlim())
+    axins2.set_ylim(*axins1.get_ylim())
+    axins1.set_aspect("equal")
+    axins2.set_aspect("equal")
 
     for axins in (axins1, axins2):
         ax[j].indicate_inset_zoom(axins, edgecolor="k")

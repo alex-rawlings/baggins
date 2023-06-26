@@ -259,8 +259,9 @@ def parameter_space_scan_g05_conf3():
 # main plot data generated with this function
 def high_res_well_fitting_models():
     r0 = 25e-3
-    bs = np.geomspace(0.1, 20, 500) * 1e-3
-    e_spheroids = [0.895, 0.9, 0.905, 0.91]
+    bs = np.append(np.geomspace(1e-3,0.1,5)[:-1], np.geomspace(0.1, 20, 500)) * 1e-3
+    e_spheroids = [0.9, 0.91, 0.92]
+
 
     v0s = [450 * km_per_s, 560 * km_per_s]
     res090 = []
@@ -271,7 +272,7 @@ def high_res_well_fitting_models():
                      rho=30,
                      e_spheroid=e_s,
                      stellar_sigma=200*km_per_s,
-                     df_fudge_factor=0.5)
+                     df_fudge_factor=0.47)
 
         theta, efin = calculate_b_theta_e_curves(sys, r0, v0s, bs)
         res090.append(dict(theta=theta[0], e=efin[0], b=bs))
@@ -294,7 +295,7 @@ def gen_orbit_plot_data():
                      rho=30,
                      e_spheroid=e_s,
                      stellar_sigma=200*km_per_s,
-                     df_fudge_factor=0.5)
+                     df_fudge_factor=0.47)
         res = []
         for b in bs:
             x = [r0,b]
@@ -324,15 +325,15 @@ def test_plots():
 # the individual free parameters:
 # Params matching gamma=0.5 e=.99/.97 runs fairly well
     M_BH_ref = 1e-2 # single BH mass
-    rho_ref = 25 # stellar density
+    rho_ref = 30 # stellar density
     sigma_ref = 200*km_per_s # stellar velocity dispersion
     gal_e = 0.905
 
-    v0_per_sigma = 4.5/2 # initial BH velocity / stellar sigma
+    v0_per_sigma = 5.5/2 # initial BH velocity / stellar sigma
     r0_per_rinfl = .5 # initial BH separation/single BH influence radius
     #v0_per_sigma = 2.2 # initial BH velocity / stellar sigma
     #r0_per_rinfl = 2 # initial BH separation/single BH influence radius
-    bmin_per_r0,bmax_per_r0 = 5e-3, 1e-1 # impact parameter limits / initial separation
+    bmin_per_r0,bmax_per_r0 = 3e-2, 8e-2 # impact parameter limits / initial separation
 
 # params matching Hernquist 11-0.825 high_e_no_stars runs fairly well
     #M_BH_ref = 3e-1 # single BH mass
@@ -353,14 +354,14 @@ def test_plots():
                  rho=rho_ref*rhoscale,
                  e_spheroid=gal_e,
                  stellar_sigma=sigma_ref*vscale,
-                 df_fudge_factor=0.5)
+                 df_fudge_factor=0.47)
 
 
     v0 = v0_per_sigma * sigma_ref * vscale
     #r0 = r0_per_rinfl * sys.r_infl
     r0 = 25e-3
     print(r0*1e3, v0/km_per_s, 2*sys.a_hard*1e3)
-    bs = np.linspace(bmin_per_r0, bmax_per_r0, 15)*r0
+    bs = np.linspace(bmin_per_r0, bmax_per_r0, 25)*r0
 
 
 
@@ -431,7 +432,7 @@ if __name__ == '__main__':
             parameter_space_scan_g05_conf3()
     else:
         #high_res_well_fitting_models()
-        #gen_orbit_plot_data()
-        test_plots()
+        gen_orbit_plot_data()
+        #test_plots()
 
 

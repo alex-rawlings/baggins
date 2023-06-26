@@ -10,7 +10,9 @@
 general:
   galaxy_name_1: D_250K_b
   galaxy_name_2: D_250K_d
-  random_seed: 58479
+  random_seed: 71788
+  recentre_progens_to_com: false
+  recentre_merger_to_com: false
 
 # info about where files are to be read from and saved to
 file_locations:
@@ -73,11 +75,11 @@ perturb_properties:
 ---
 e0: 0.99
 full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-099/250K/D_250K_b-D_250K_d-3.720-0.028
-last_update: '2023-05-09 13:19:16'
+last_update: '2023-06-19 18:35:18'
 mass_resolution: 2500.0
 r0_physical: 3.72
 rperi_physical: 0.027900000000000025
-time_to_pericentre: 0.015527201206013027
-virial_radius_large: 35.01161112845039
+time_to_pericentre: 0.015527139578565875
+virial_radius_large: 35.020528377250606
 ...
 
