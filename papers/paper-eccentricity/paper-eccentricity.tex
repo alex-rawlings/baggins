@@ -251,7 +251,7 @@
 \affiliation{Department of Physics,
 Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland}
 
-\author[0000-0001-5721-9335]{Matias Mannerkoski}
+\author[0000-0001-5721-9335]{Matias mannerkoski}
 \affiliation{Department of Physics,
 Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland}
 
@@ -362,22 +362,22 @@ We conclude that the sensitivity of the eccentricity on the small-scale perturba
 % INTRODUCTION
 \section{Introduction}
 Supermassive black holes (SMBHs) are believed to reside at the centres of all massive galaxies \citep[e.g.][]{kormendy2013}.
-In the $\Lambda$CDM model as galaxies grow through gas accretion and mergers \citep[e.g.][]{Volonteri2003,naab2017} their SMBHs 
+In the $\Lambda$CDM model as galaxies grow through gas accretion and mergers \citep[e.g.][]{volonteri2003,naab2017} their SMBHs 
 are also expected to interact in a three-phase merger process \citep{begelman1980}.
 
-Firstly, dynamical friction \citep{chandrasekhar1943} acts to bring the SMBHs from kiloparsec-scales down to parsec-scale separations, after which the SMBHs form a bound binary with a semimajor axis $a$ and eccentricity $e$ \citep[e.g.][]{Milosavljevic2001,Merritt2013book}. In the second phase, the
+Firstly, dynamical friction \citep{chandrasekhar1943} acts to bring the SMBHs from kiloparsec-scales down to parsec-scale separations, after which the SMBHs form a bound binary with a semimajor axis $a$ and eccentricity $e$ \citep[e.g.][]{milosavljevic2001,merritt2013}. In the second phase, the
 SMBH binary separation is reduced through sequential slingshot encounters with the surrounding stellar
-distribution \citep{hills1980, hills1983, quinlan1996,Rantala2018}. Finally, at small subparsec separations gravitational wave (GW) emission
+distribution \citep{hills1980, hills1983, quinlan1996,rantala2018}. Finally, at small subparsec separations gravitational wave (GW) emission
 becomes the dominant mechanism by which the SMBH binary can lose its remaining orbital energy and angular momentum, thus driving the
-SMBHs to coalescence \citep[e.g.][]{Mannerkoski2019,Mannerkoski2022}, where the strength of the GW emission strongly depends on the
+SMBHs to coalescence \citep[e.g.][]{mannerkoski2019,mannerkoski2022}, where the strength of the GW emission strongly depends on the
 binary eccentricity \citep{peters1963,peters1964}.
 
-The complex nature of SMBH coalescence in a galaxy merger setting necessitates the use of numerical techniques \citep[e.g.][]{Berentzen2009,Khan2011,Dosopoulou2017,Mannerkoski2019}
-to provide quantitative predictions for observational programmes such as ground-based pulsar timing arrays \citep[PTAs, e.g.][]{Lentati2015,Verbiest2016,Arzoumanian2020} and the upcoming Laser Interferometer Space Antenna \citep[LISA, e.g.][]{Amaro-Seoane2023} space mission.
+The complex nature of SMBH coalescence in a galaxy merger setting necessitates the use of numerical techniques \citep[e.g.][]{berentzen2009,khan2011,dosopoulou2017,mannerkoski2019}
+to provide quantitative predictions for observational programmes such as ground-based pulsar timing arrays \citep[PTAs, e.g.][]{lentati2015,verbiest2016,arzoumanian2020} and the upcoming Laser Interferometer Space Antenna \citep[LISA, e.g.][]{amaro-seoane2023} space mission.
 Understanding how faithfully SMBH binary eccentricity is captured in numerical simulations is thus critical in constraining the SMBH merger rate
 that the observational GW community aims to detect. 
 
-The SMBH binary merging process and its dependence on eccentricity and resolution has been extensively studied using collisionsless merger simulations \citep[e.g.][]{Berentzen2009,Vasiliev2015,Bortolas2016,gualandris2017,gualandris2022}. 
+The SMBH binary merging process and its dependence on eccentricity and resolution has been extensively studied using collisionsless merger simulations \citep[e.g.][]{berentzen2009,vasiliev2015,bortolas2016,gualandris2017,gualandris2022}. 
 Recently, \citet{nasim2020} have argued that the scatter in SMBH binary eccentricity observed in gas-free merger simulations is an artefact of poor phase space
 discretisation, and that in the real Universe where SMBH masses are far greater than stellar masses $(M_\bullet \gg m_\star)$, SMBH binary eccentricity is a reliably predictable quantity.   
 
@@ -422,7 +422,7 @@ SMBH binary eccentricity is physical and unavoidable.
 We construct a number of idealised galaxy merger simulations, which we evolve with our new version of \ketju{} \citep{mannerkoski2023,rantala2017}, in which the dynamics of
 SMBH and stars in a small region around them are integrated with an algorithmically regularised integrator \citep{rantala2020}, whereas the dynamics of the remaining particles
 is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) with second order multipoles. Together with hierarchical time integration this allows for
-symmetric interactions and manifest momentum conservation. \ketju{} also includes Post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{Blanchet2014}. 
+symmetric interactions and manifest momentum conservation. \ketju{} also includes Post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{blanchet2014}. 
 
 
 Our galaxy models represent the nuclear bulge of a gas-devoid elliptical galaxy, matching the models of \citet{nasim2020}.
@@ -687,7 +687,7 @@ where we do not expect any significant effects from dark matter or the outer par
 
 
 
-In numerical simulations with a discretised phase space, the two primary causes of random variation in the impact parameter are the initial particle sampling variation in the merger initial conditions and the Brownian motion of the SMBH binary \citep{merritt2001,Bortolas2016}.
+In numerical simulations with a discretised phase space, the two primary causes of random variation in the impact parameter are the initial particle sampling variation in the merger initial conditions and the Brownian motion of the SMBH binary \citep{merritt2001,bortolas2016}.
 Both of these effects scale as $1/\sqrt{N_{\star,\mathrm{tot}}}$, which can explain the observed scaling of $\sigma_e$ \citep{nasim2020} when the system falls into the region of parameter space where the relation between $e$ and $b$
 is approximately linear.
 The deviation from this scaling seen in \autoref{fig:convergence} can then be explained by the fact that the eccentricity is not globally a linear function of the impact parameter. 
