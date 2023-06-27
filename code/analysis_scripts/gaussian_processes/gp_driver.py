@@ -1,84 +1,49 @@
+import argparse
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import cm_functions as cmf
 
 
-avg_over_idxs = 50
-GP = cmf.analysis.StanModel_2D("stan/gp.stan", "", "gaussian_processes/gp")
-
-theta = []
-a_hard = []
-e_hard = []
-
-for f in cmf.utils.get_files_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/eccentricity_study/H_500K-H_500K-11.000-0.825"):
-    hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
-    # protect against instances where no data for bound binary
-    try:
-        hmq.hardening_radius
-    except AttributeError:
-        continue
-    t = cmf.analysis.first_major_deflection_angle(hmq.prebound_deflection_angles)[0]
-    if np.isnan(t): continue
-    theta.append(
-        [t]
-    )
-    a_hard.append([np.nanmedian(hmq.hardening_radius)])
-    status, hard_idx = hmq.idx_finder(a_hard[-1][0], hmq.semimajor_axis)
-    if not status: continue
-    idxs = np.r_[hard_idx-avg_over_idxs:hard_idx+avg_over_idxs]
-    e_hard.append(
-        [np.nanmedian(hmq.eccentricity[idxs])]
-    )
+parser = argparse.ArgumentParser(description="Run Stan model for Quinlan hardening parameter", allow_abbrev=False)
+parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
+parser.add_argument(type=str, help="directory to HMQuantity HDF5 files or csv files", dest="dir")
+parser.add_argument(type=str, help="new sample or load previous", choices=["new", "loaded"], dest="type")
+parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
+parser.add_argument("-n", "--num", type=int, help="number of predictive sample points", dest="num_predpoints", default=50)
+parser.add_argument("-d", "--dir", type=str, action="append", default=[], dest="extra_dirs", help="other directories to compare")
+parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
+parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbosity", default="INFO", help="verbosity level")
+args = parser.parse_args()
 
 
-GP.obs = dict(
-    theta = theta,
-    a_hard = a_hard,
-    ecc = e_hard
-)
+SL = cmf.ScriptLogger("script", args.verbosity)
 
-GP.transform_obs("theta", "theta_deg", lambda x: x*180/np.pi)
+if args.type == "new":
+    hmq_dirs = []
+    hmq_dirs.append(args.dir)
+    if args.extra_dirs:
+        hmq_dirs.extend(args.extra_dirs)
+        SL.logger.debug(f"Directories are: {hmq_dirs}")
+else:
+    hmq_dirs = None
+analysis_params = cmf.utils.read_parameters(args.apf)
 
-GP.collapse_observations(["theta", "theta_deg", "a_hard", "ecc"])
+figname_base = "gaussian_processes"
+model_file = "stan/gp.stan"
 
-stan_data = dict(
-    theta1 = GP.obs_collapsed["theta"],
-    theta_deg = GP.obs_collapsed["theta"] * 180/np.pi,
-    ecc = GP.obs_collapsed["ecc"],
-    N1 = GP.num_obs,
-    N2 = 50
-)
+if args.type == "loaded":
+    GP = cmf.analysis.DeflectionAngleGP.load_fit(model_file, args.dir, figname_base)
+else:
+    GP = cmf.analysis.DeflectionAngleGP(model_file, "", figname_base)
 
-stan_data.update(dict(
-        theta2 = np.linspace(
-            min(stan_data["theta1"]),
-            max(stan_data["theta1"]),
-            stan_data["N2"]
-        )
-))
-stan_data.update(dict(
-    theta2_deg = stan_data["theta2"] * 180/np.pi
-))
+GP.extract_data(analysis_params, hmq_dirs)
+e_ini = f"e0-{GP.e_ini:.2f}".replace(".", "")
+GP.figname_base = os.path.join(GP.figname_base, f"{e_ini}/{e_ini}")
 
-outdir = os.path.join(cmf.DATADIR, f"stan_files/gps")
+GP.set_stan_dict(args.num_predpoints)
 
-GP.sample_model(data=stan_data, sample_kwargs={"output_dir":outdir})
+outdir = os.path.join(cmf.DATADIR, f"stan_files/gps/{e_ini}")
 
-
-
-fig, ax = plt.subplots(1,1)
-ax.set_ylim(0, 1)
-ax.set_xlabel(r"$\theta\degree$")
-ax.set_ylabel(r"$e_\mathrm{h}$")
-GP.posterior_plot("theta_deg", "ecc", "theta2_deg", "y", collapsed=True, ax=ax, levels=[25, 68, 95])
-ax2 = GP.parameter_corner_plot(["rho", "alpha", "sigma"])
-fig2 = ax2.flatten()[0].get_figure()
-cmf.plotting.savefig(GP._make_fig_name(GP.figname_base, f"corner_{GP._parameter_corner_plot_counter}"), fig=fig2)
-
-fig3, ax3 = plt.subplots(1,1)
-GP.plot_generated_quantity_dist("y", ax=ax3)
-ax3.set_xlabel("e")
-ax3.set_ylabel("PDF")
-fig3 = ax3.get_figure()
-cmf.plotting.savefig(GP._make_fig_name(GP.figname_base, f"marginal_eh"), fig=fig3)
+GP.sample_model(sample_kwargs={"output_dir":outdir})
+GP.all_plots()

@@ -564,7 +564,7 @@ def deflection_angle(bh1, bh2, peri_idx=None):
     return 2 * np.arctan(M[peri_idx] / (L[peri_idx] * np.sqrt(2*E[peri_idx])))
 
 
-def first_major_deflection_angle(angles, threshold=np.pi/2):
+def first_major_deflection_angle(angles, threshold=np.pi/6):
     """
     Determine the value of the first major deflection
 
@@ -573,7 +573,7 @@ def first_major_deflection_angle(angles, threshold=np.pi/2):
     angles : array-like
         deflection angles at pericentre
     threshold : float, optional
-        minimum angle for a 'major' deflection, by default np.pi/2
+        minimum angle for a 'major' deflection, by default np.pi/6
 
     Returns
     -------

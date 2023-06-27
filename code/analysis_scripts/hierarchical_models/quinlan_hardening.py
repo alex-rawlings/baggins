@@ -63,16 +63,11 @@ else:
 
 quinlan_model.extract_data(HMQ_files, analysis_params)
 if "e_ini" in quinlan_model.obs:
-    e_ini = np.nanmedian([v for v in quinlan_model.obs["e_ini"]])
+    e_ini = None
 else:
     SL.logger.warning(f"Initial eccentricity has been determined from the file name, and has value: {e_ini:.3f}")
 
 SL.logger.info(f"Number of simulations with usable data: {quinlan_model.num_groups}")
-try:
-    assert quinlan_model.num_groups >= analysis_params["stan"]["min_num_samples"]
-except AssertionError:
-    SL.logger.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {quinlan_model.num_groups}!', exc_info=True)
-    raise
 
 # thin data
 SL.logger.debug(f"{quinlan_model.num_obs} data points before thinning")
@@ -80,30 +75,19 @@ quinlan_model.thin_observations(args.thin)
 SL.logger.debug(f"{quinlan_model.num_obs} data points after thinning")
 
 # initialise the data dictionary
-stan_data = dict(
-    N_tot = quinlan_model.num_obs,
-    N_groups = quinlan_model.num_groups,
-    group_id = quinlan_model.obs_collapsed["label"],
-    t = quinlan_model.obs_collapsed["t_shift"],
-    e_ini = e_ini
-)
+quinlan_model.set_stan_dict(e_ini)
 
 if args.prior:
     # create the push-forward distribution for the prior model
-    quinlan_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"])
+    quinlan_model.sample_prior(sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"])
 
     # prior predictive checks
     quinlan_model.all_prior_plots(full_figsize)
 else:
-    stan_data.update(dict(
-        inv_a = quinlan_model.obs_collapsed["inva"], 
-        ecc = quinlan_model.obs_collapsed["e"]
-    ))
-
     analysis_params["stan"]["hardening_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/hardening/{args.sample}/{merger_id}")
 
     # run the model
-    quinlan_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"])
+    quinlan_model.sample_model(sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"])
 
     quinlan_model.determine_loo()
 

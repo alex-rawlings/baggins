@@ -15,7 +15,6 @@ class _QuinlanModelBase(StanModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
         self._latent_qtys = ["HGp_s", "inv_a_0", "K", "e0"]
-        #self._latent_qtys_labs = [r"$HG\rho/\sigma / (\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\mathrm{kpc}/a_0$", r"$K$", r"$e_0$"]
         self._latent_qtys_labs = [r"$H'(\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\mathrm{kpc}/a_0$", r"$K$", r"$e_0$"]
         self._labeller_latent = MapLabeller(dict(zip(self._latent_qtys, self._latent_qtys_labs)))
 
@@ -24,10 +23,20 @@ class _QuinlanModelBase(StanModel_2D):
         return self._latent_qtys
 
 
-    def extract_data(self, dir, pars):
+    def extract_data(self, d, pars):
+        """
+        Extract data from HMQcubes required for analysis
+
+        Parameters
+        ----------
+        d : path-like
+            HMQ data directory
+        pars : dict
+            analysis parameters
+        """
         obs = {"t":[], "a":[], "e":[], "e_ini":[]}
         i = 0
-        for f in dir:
+        for f in d:
             _logger.logger.info(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
             status, idx0 = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
@@ -52,11 +61,34 @@ class _QuinlanModelBase(StanModel_2D):
         if not obs["e_ini"]:
             obs.pop("e_ini")
         self.obs = obs
+        self._check_num_groups(pars)
 
         # some transformations we need
         self.transform_obs("a", "inva", lambda x:1/x)
         self.transform_obs("t", "t_shift", lambda x:x-x[0])
         self.collapse_observations(["t_shift", "inva", "e"])
+
+
+    def set_stan_dict(self, e_ini=None):
+        """
+        Set the Stan data dictionary used for sampling
+
+        Parameters
+        ----------
+        e_ini : float, optional
+            initial merger eccentricity, by default None
+        """
+        if e_ini is None:
+            e_ini = np.nanmedian([v for v in self.obs["e_ini"]])
+        self.stan_data = dict(
+            N_tot = self.num_obs,
+            N_groups = self.num_groups,
+            group_id = self.obs_collapsed["label"],
+            t = self.obs_collapsed["t_shift"],
+            e_ini = e_ini,
+            inv_a = self.obs_collapsed["inva"],
+            ecc = self.obs_collapsed["e"]
+        )
 
 
     def plot_latent_distributions(self, figsize=None):
@@ -175,7 +207,6 @@ class QuinlanModelHierarchy(_QuinlanModelBase):
         super().__init__(model_file, prior_file, figname_base, rng)
         self.figname_base = f"{self.figname_base}-hierarchy"
         self._hyper_qtys = ["HGp_s_mean", "HGp_s_std", "inv_a_0_mean", "inv_a_0_std", "K_mean", "K_std", "e0_mean", "e0_std"]
-        #self._hyper_qtys_labs = [r"$\mu_{HG\rho/\sigma} / (\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\sigma_{HG\rho/\sigma} / (\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\mu_{1/a_0} / \mathrm{kpc}^{-1}$", r"$\sigma_{1/a_0} / \mathrm{kpc}^{-1}$", r"$\mu_K$", r"$\sigma_K$", r"$\mu_{e_0}$", r"$\sigma_{e_0}$"]
         self._hyper_qtys_labs = [r"$\mu_{H'}$", r"$\sigma_{H'}$", r"$\mu_{1/a_0}$", r"$\sigma_{1/a_0}$", r"$\mu_K$", r"$\sigma_K$", r"$\mu_{e_0}$", r"$\sigma_{e_0}$"]
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qtys_labs)))
 

@@ -18,3 +18,5 @@ from .KeplerModels import KeplerModelSimple, KeplerModelHierarchy
 from .QuinlanModels import QuinlanModelSimple, QuinlanModelHierarchy
 
 from .PQModels import PQModelSimple, PQModelHierarchy
+
+from .DeflectionAngleGP import DeflectionAngleGP

@@ -6,6 +6,7 @@ from matplotlib import rcParams
 from datetime import datetime
 import cmdstanpy
 import arviz as az
+import yaml
 
 from ...plotting import savefig, create_normed_colours
 from ...utils import load_data
@@ -40,15 +41,16 @@ class _StanModel:
         else:
             self._rng = rng
         self._num_obs = None
-        self._stan_data = None
+        self._stan_data = {}
         self._model = None
         self._fit = None
         self._fit_for_az = None
-        self._prior_stan_data = None
+        self._prior_stan_data = {}
         self._prior_model = None
         self._prior_fit = None
         self._prior_fit_for_az = None
         self._parameter_diagnostic_plots_counter = 0
+        self._gq_distribution_plot_counter = 0
         # corner plot method doesn't save figure --> ensures first plot index 0
         self._parameter_corner_plot_counter = -1 
         self._trace_plot_cols = None
@@ -60,6 +62,8 @@ class _StanModel:
         self._generated_quantities = None
         self._obs_collapsed = {}
         self._obs_collapsed_names = []
+        self._input_data_file_count = 0
+        self._input_data_files = {}
 
 
     @property
@@ -129,6 +133,32 @@ class _StanModel:
     @property
     def sample_diagnosis(self):
         return self._sample_diagnosis
+
+    @property
+    def stan_data(self):
+        return self._stan_data
+
+    @stan_data.setter
+    def stan_data(self, d):
+        try:
+            assert isinstance(d, dict)
+        except AssertionError:
+            _logger.logger.exception("Input to property `stan_data` must be a dict!", exc_info=True)
+            raise
+        self._stan_data.update(d)
+
+    @property
+    def prior_stan_data(self):
+        return self._prior_stan_data
+
+    @prior_stan_data.setter
+    def prior_stan_data(self, d):
+        try:
+            assert isinstance(d, dict)
+        except AssertionError:
+            _logger.logger.exception("Input to property `prior_stan_data` must be a dict!", exc_info=True)
+            raise
+        self._prior_stan_data.update(d)
 
 
     def _make_fig_name(self, fname, tag):
@@ -366,6 +396,56 @@ class _StanModel:
         self.collapse_observations(obs_names)
 
 
+    def _check_num_groups(self, pars):
+        """
+        Ensure a mininmum number of groups exist
+
+        Parameters
+        ----------
+        pars : dict
+            analysis parameters (with 'stan' block)
+        """
+        try:
+            assert self.num_groups >= pars["stan"]["min_num_samples"]
+        except AssertionError:
+            _logger.logger.exception(f"There are not enough groups to form a valid hierarchical model. Minimum number of groups is {pars['stan']['min_num_samples']}, and we have {self.num_groups}!", exc_info=True)
+            raise
+
+
+    def _add_input_data_file(self, f):
+        """
+        Save the path to a HMQ file used in the sampling
+
+        Parameters
+        ----------
+        f : path-like
+            path to HMQ file
+        """
+        self._input_data_files.update(
+            {
+                f"file{self._input_data_file_count:03d}" : {
+                    "path": f,
+                    "created": os.path.getmtime(f)
+                }
+            }
+        )
+        self._input_data_file_count += 1
+
+
+    def _write_input_data_yml(self, d, csvfile):
+        """
+        Save list of HMQ files used to .yml file
+
+        Parameters
+        ----------
+        d : path-like
+            stan output directory
+        """
+        tstamp = os.path.basename(csvfile).split("-")[-1].split("_")[0]
+        with open(os.path.join(d, f"input_data-{tstamp}.yml"), "w") as f:
+            yaml.dump(self._input_data_files, f)
+
+
     def _sampler(self, data, prior=False, sample_kwargs={}):
         """
         Sample a stan model
@@ -407,6 +487,7 @@ class _StanModel:
             else:
                 _logger.logger.info(f"exe info: {self._model.exe_info()}")
                 fit = self._model.sample(data=data, **default_sample_kwargs)
+                self._write_input_data_yml(default_sample_kwargs["output_dir"], fit.runset.csv_files[0])
             _logger.logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
             self._sample_diagnosis = fit.diagnose()
             _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
@@ -429,7 +510,7 @@ class _StanModel:
             self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)#, cpp_options={"STAN_THREADS":"true", "STAN_CPP_OPTIMS":"true"})
 
 
-    def sample_model(self, data, sample_kwargs={}):
+    def sample_model(self, sample_kwargs={}):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
 
@@ -440,15 +521,14 @@ class _StanModel:
         sample_kwargs : dict, optional
              kwargs to be passed to CmdStanModel.sample(), by default {}
         """
-        self._stan_data = data
         if self._model is None and not self._loaded_from_file:
             self.build_model()
-        self._fit = self._sampler(data=self._stan_data, sample_kwargs=sample_kwargs)
+        self._fit = self._sampler(data=self.stan_data, sample_kwargs=sample_kwargs)
         # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
 
 
-    def sample_prior(self, data, sample_kwargs={}):
+    def sample_prior(self, sample_kwargs={}):
         """
         Wrapper function around _sampler() to sample a stan prior model.
 
@@ -459,10 +539,9 @@ class _StanModel:
         sample_kwargs : dict, optional
             kwargs to be passed to CmdStanModel.sample(), by default {}
         """
-        self._prior_stan_data = data
         if self._prior_model is None and not self._loaded_from_file:
             self.build_model(prior=True)
-        self._prior_fit = self._sampler(data=self._prior_stan_data, sample_kwargs=sample_kwargs, prior=True)
+        self._prior_fit = self._sampler(data=self.prior_stan_data, sample_kwargs=sample_kwargs, prior=True)
         self._prior_fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
 
 
@@ -490,7 +569,7 @@ class _StanModel:
             _fit = self._fit
             _logger.logger.debug("Generated quantities will be taken from the posterior model")
         if self.generated_quantities is None or force_resample:
-            if self._stan_data is None:
+            if not self._stan_data:
                 _logger.logger.warning(f"Required stan data does not exist, so generated quantities cannot be resampled! We will set the generated quantities to the values determined during sampling: this will be a static sample!")
                 self._generated_quantities = _fit
             else:
@@ -659,7 +738,8 @@ class _StanModel:
         ax.reshape(ax_shape)
         if save:
             suffix = "prior" if self._fit is None else "posterior"
-            savefig(self._make_fig_name(self.figname_base, f"gqs_{suffix}"), fig=fig)
+            savefig(self._make_fig_name(self.figname_base, f"gqs_{suffix}_{self._gq_distribution_plot_counter}"), fig=fig)
+            self._gq_distribution_plot_counter += 1
         return ax
     
 
@@ -740,6 +820,7 @@ class _StanModel:
         """
         # initiate a class instance
         C = cls(model_file=model_file, prior_file=None, figname_base=figname_base, rng=rng)
+
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
         C._fit = cmdstanpy.from_csv(fit_files)
@@ -749,6 +830,14 @@ class _StanModel:
             print("==========================================")
             _logger.logger.error(f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC")
             print("==========================================")
+
+        # load path to observation data
+        tstamp = os.path.basename(fit_files).split("-")[-1].split("_")[0]
+        with open(os.path.join(os.path.dirname(fit_files), f"input_data-{tstamp}.yml"), "r") as f:
+            C._input_data_files = yaml.safe_load(f)
+        for v in C._input_data_files.values():
+            if os.path.getmtime(v["path"]) > v["created"]:
+                _logger.logger.error(f"HMQ file {v['path']} has been modified since the Stan model was run, proceed with caution!")
         C._loaded_from_file = True
         return C
 
