@@ -186,6 +186,30 @@ class _StanModel:
         return f"{fname_parts[0]}_{tag}{fname_parts[1]}"
 
 
+    def _get_data_dir(self, d):
+        """
+        Get the observed data directories for a Stan model
+
+        Parameters
+        ----------
+        d : path-like, list
+            (list of) path(s) to data, by default None
+
+        Returns
+        -------
+        d : path-like, list
+            observed data directories
+        """
+        if d is None:
+            try:
+                assert self._loaded_from_file
+                d = [[f["path"] for f in self._input_data_files.values()]]
+            except AssertionError:
+                _logger.logger.exception(f"HMQ directory must be given if not loaded from file!", exc_info=True)
+                raise
+        return d
+
+
     def _check_observation_validity(self, d, set_categorical=False):
         """
         Ensure that an observation is numerically valid: it is a dict, no NaN 

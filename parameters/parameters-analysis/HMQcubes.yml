@@ -10,7 +10,7 @@ bh_binary:
   # semimajor axis used to 'synchronise' simulations for fair comparison
   target_semimajor_axis:
     unit: kpc
-    value: 0.01
+    value: 0.002
   num_orbital_periods: 5
 
 # info on galaxy properties and quantities needed to determine those properties
@@ -47,5 +47,7 @@ stan:
   density_sample_kwargs:
     adapt_delta: 0.99
     max_treedepth: 15
+    show_progress: *ssp
+  deflection_GP_kwargs:
     show_progress: *ssp
 ...

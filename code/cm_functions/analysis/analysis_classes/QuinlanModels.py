@@ -4,6 +4,7 @@ from arviz.labels import MapLabeller
 from . import StanModel_2D, HMQuantitiesData
 from ...env_config import _cmlogger
 from ...plotting import savefig
+from ...utils import get_files_in_dir
 
 
 __all__ = ["QuinlanModelSimple", "QuinlanModelHierarchy"]
@@ -17,26 +18,37 @@ class _QuinlanModelBase(StanModel_2D):
         self._latent_qtys = ["HGp_s", "inv_a_0", "K", "e0"]
         self._latent_qtys_labs = [r"$H'(\mathrm{kpc}^{-1} \mathrm{Myr}^{-1})$", r"$\mathrm{kpc}/a_0$", r"$K$", r"$e_0$"]
         self._labeller_latent = MapLabeller(dict(zip(self._latent_qtys, self._latent_qtys_labs)))
+        self._merger_id = None
 
     @property
     def latent_qtys(self):
         return self._latent_qtys
 
+    @property
+    def merger_id(self):
+        return self._merger_id
 
-    def extract_data(self, d, pars):
+
+    def extract_data(self, pars, d=None):
         """
         Extract data from HMQcubes required for analysis
 
         Parameters
         ----------
-        d : path-like
-            HMQ data directory
         pars : dict
             analysis parameters
+        d : path-like, optional
+            HMQ data directory, by default None (paths read from 
+            `_input_data_files`)
         """
+        d = self._get_data_dir(d)
         obs = {"t":[], "a":[], "e":[], "e_ini":[]}
-        i = 0
-        for f in d:
+        if self._loaded_from_file:
+            fnames = d
+        else:
+            fnames = get_files_in_dir(d)
+            _logger.logger.debug(f"Reading from dir: {d}")
+        for f in fnames:
             _logger.logger.info(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
             status, idx0 = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
@@ -46,18 +58,18 @@ class _QuinlanModelBase(StanModel_2D):
             try:
                 assert idx0 < idx1
             except AssertionError:
-                _logger.logger.exception(f"Lower index {idx0} is not less than upper index {idx1}!", exc_info=True)
+                _logger.logger.exception(f"Lower index {idx0} (value: {np.nanmedian(hmq.hardening_radius):.3f}) is not less than upper index {idx1} (value: {pars['bh_binary']['target_semimajor_axis']['value']:.3f})!", exc_info=True)
                 raise
             idxs = np.r_[idx0:idx1]
             obs["t"].append(hmq.binary_time[idxs])
             obs["a"].append(hmq.semimajor_axis[idxs])
             obs["e"].append(hmq.eccentricity[idxs])
-            try:
-                obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
-            except AttributeError:
-                _logger.logger.warning(f"File {f} is missing the 'initial_galaxy_orbit' attribute. Ideally, re-run HMQ extraction process.")
+            obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
+            if self._merger_id is None:
+                self._merger_id = hmq.merger_id
 
-            i += 1
+            if not self._loaded_from_file:
+                self._add_input_data_file(f)
         if not obs["e_ini"]:
             obs.pop("e_ini")
         self.obs = obs
@@ -69,23 +81,16 @@ class _QuinlanModelBase(StanModel_2D):
         self.collapse_observations(["t_shift", "inva", "e"])
 
 
-    def set_stan_dict(self, e_ini=None):
+    def set_stan_dict(self):
         """
         Set the Stan data dictionary used for sampling
-
-        Parameters
-        ----------
-        e_ini : float, optional
-            initial merger eccentricity, by default None
         """
-        if e_ini is None:
-            e_ini = np.nanmedian([v for v in self.obs["e_ini"]])
         self.stan_data = dict(
             N_tot = self.num_obs,
             N_groups = self.num_groups,
             group_id = self.obs_collapsed["label"],
             t = self.obs_collapsed["t_shift"],
-            e_ini = e_ini,
+            e_ini = np.nanmedian([v for v in self.obs["e_ini"]]),
             inv_a = self.obs_collapsed["inva"],
             ecc = self.obs_collapsed["e"]
         )

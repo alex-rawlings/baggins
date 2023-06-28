@@ -144,7 +144,7 @@ class HDF5Base:
                         msg = f" > Successfully loaded dataset {kk}"
                         _logger.logger.debug(msg)
                         C.add_to_log(msg)
-            _logger.logger.debug(f"File {f} loaded")
+            _logger.logger.debug(f"File {fname} loaded")
         return C
     
 

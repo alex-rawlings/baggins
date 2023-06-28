@@ -40,19 +40,13 @@ class DeflectionAngleGP(StanModel_2D):
         ----------
         pars : dict
             analysis parameters
-        dirs : list
+        dirs : list, optional
             HMQ data directories to include, by default None (paths read from 
             `_input_data_files`)
         tol : float
             relative tolerance for merger orbit consistency, by default 1e-5
         """
-        if dirs is None:
-            try:
-                assert self._loaded_from_file
-                dirs = [[f["path"] for f in self._input_data_files.values()]]
-            except AssertionError:
-                _logger.logger.exception(f"Parameter 'dirs' must be given if not loaded from file!", exc_info=True)
-                raise
+        dirs = self._get_data_dir(dirs)
         obs = {"theta":[], "a":[], "e":[]}
         # dummy variables for consistency checks between directories
         ini_merger = {}

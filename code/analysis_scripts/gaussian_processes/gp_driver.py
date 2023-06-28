@@ -43,7 +43,7 @@ GP.figname_base = os.path.join(GP.figname_base, f"{e_ini}/{e_ini}")
 
 GP.set_stan_dict(args.num_predpoints)
 
-outdir = os.path.join(cmf.DATADIR, f"stan_files/gps/{e_ini}")
+analysis_params["stan"]["deflection_GP_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/gps/{e_ini}")
 
-GP.sample_model(sample_kwargs={"output_dir":outdir})
+GP.sample_model(sample_kwargs=analysis_params["stan"]["deflection_GP_kwargs"])
 GP.all_plots()

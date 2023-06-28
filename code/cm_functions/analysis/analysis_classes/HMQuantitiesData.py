@@ -1,5 +1,5 @@
 import warnings
-import numpy as np
+import h5py
 from . import HDF5Base
 from ...general import get_idx_in_array
 from ...env_config import _cmlogger
@@ -18,7 +18,8 @@ class HMQuantitiesData(HDF5Base):
         file.
         """
         super().__init__()
-    
+        self.merger_id = None
+
     ##--------------------- Binary Quantities ---------------------##
     # time when binary is bound
     @property
@@ -284,6 +285,18 @@ class HMQuantitiesData(HDF5Base):
     @initial_galaxy_orbit.setter
     def initial_galaxy_orbit(self, v):
         self._initial_galaxy_orbit = v
+
+
+    @classmethod
+    def load_from_file(cls, fname, decode="utf-8"):
+        """
+        See docs for HDF5Base load_from_file() method
+        """
+        C = super().load_from_file(fname, decode=decode)
+        with h5py.File(fname, "r") as f:
+            C.merger_id = f["/meta"].attrs["merger_id"]
+        return C
+
 
     ##--------------------- Some General Functions ---------------------##
     def get_idx_in_vec(self, t, tarr):
