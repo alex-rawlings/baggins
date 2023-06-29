@@ -40,7 +40,7 @@ if args.model == "simple":
         except AssertionError:
             SL.logger.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
             raise
-        quinlan_model = cmf.analysis.QuinlanModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
+        quinlan_model = cmf.analysis.QuinlanModelSimple.load_fit(model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base)
     else:
         # sample
         quinlan_model = cmf.analysis.QuinlanModelSimple(model_file=stan_model_file, prior_file="stan/hardening/quinlan_simple_prior.stan", figname_base=figname_base)
@@ -54,13 +54,12 @@ else:
         except AssertionError:
             SL.logger.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
             raise
-        quinlan_model = cmf.analysis.QuinlanModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
+        quinlan_model = cmf.analysis.QuinlanModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base)
     else:
         # sample
         quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/hardening/quinlan_hierarchy_prior.stan", figname_base=figname_base)
 
 quinlan_model.extract_data(analysis_params, hmq_dir)
-quinlan_model.figname_base = os.path.join(quinlan_model.figname_base, f"{quinlan_model.merger_id}/quinlan-hardening-{quinlan_model.merger_id}")
 
 SL.logger.info(f"Number of simulations with usable data: {quinlan_model.num_groups}")
 

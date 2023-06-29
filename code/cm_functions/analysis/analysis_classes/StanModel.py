@@ -127,8 +127,7 @@ class _StanModel:
     @figname_base.setter
     def figname_base(self, f):
         self._figname_base = os.path.join(figure_dir, f)
-        d = os.path.join(figure_dir, f[::-1].partition("/")[-1][::-1])
-        os.makedirs(d, exist_ok=True)
+        os.makedirs(os.path.dirname(self._figname_base), exist_ok=True)
     
     @property
     def sample_diagnosis(self):

@@ -311,7 +311,7 @@ def linear_fit_get_K(t, e, t0, tspan, H, Gps, a):
     return delta_e / (Gps * H * integral_a) 
 
 
-def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
+def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, HGp_s, K):
     """
     Analytically evolve a BH binary assuming hardening due to both stellar 
     scattering and GW emission
@@ -330,10 +330,8 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
         mass of particle 1
     m2 : float
         mass of particle 2
-    Gps : float
-        constant G * density / sigma  [(pc * yr)^-1]
-    H : float
-        hardening constant
+    HGp_s : float
+        hardening constant * G * density / sigma  [(pc * yr)^-1]
     K : float
         eccentricity constant
 
@@ -350,7 +348,7 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
     Gps = Gps / (ketjugw.units.pc * ketjugw.units.yr)
 
     def quinlan_derivatives(a, e, m1, m2):
-        dadt = -a**2 * H * Gps
+        dadt = -a**2 * HGp_s
         dedt = -dadt / a * K
         return dadt, dedt
 

@@ -89,44 +89,19 @@ model {
 
 
 generated quantities {
-    array[N_groups] real HGp_s_posterior;
-    array[N_groups] real inv_a_0_posterior;
-    array[N_groups] real K_posterior;
-    array[N_groups] real e0_posterior;
-
     // posterior predictive check
     array[N_tot] real inv_a_posterior;
     array[N_tot] real ecc_posterior;
 
-    // use rejection sampling to constrain to positive values
-    for(i in 1:N_groups){
-        HGp_s_posterior[i] = normal_rng(HGp_s_mean, HGp_s_std);
-        while(HGp_s_posterior[i] < 0){
-            HGp_s_posterior[i] = normal_rng(HGp_s_mean, HGp_s_std);
-        }
-
-        inv_a_0_posterior[i] = normal_rng(inv_a_0_mean, inv_a_0_std);
-        while(inv_a_0_posterior[i] < 0){
-            inv_a_0_posterior[i] = normal_rng(inv_a_0_mean, inv_a_0_std);
-        }
-
-        K_posterior[i] = normal_rng(K_mean, K_std);
-
-        e0_posterior[i] = normal_rng(e0_mean, e0_std);
-        while(e0_posterior[i] <= 0 || e0_posterior[i] >= 1){
-            e0_posterior[i] = normal_rng(e0_mean, e0_std);
-        }
-    }
-
     for(i in 1:N_tot){
         {
-            real inva_temp = quinlan_inva(t[i], HGp_s_posterior[group_id[i]], inv_a_0_posterior[group_id[i]]);
+            real inva_temp = quinlan_inva(t[i], HGp_s[group_id[i]], inv_a_0[group_id[i]]);
             inv_a_posterior[i] = normal_rng(inva_temp, a_err);
             while(inv_a_posterior[i] < 0){
                 inv_a_posterior[i] = normal_rng(inva_temp, a_err);
             }
 
-            real e_temp = quinlan_e(inv_a_posterior[i], K_posterior[group_id[i]], inv_a_0_posterior[group_id[i]], e0_posterior[group_id[i]]);
+            real e_temp = quinlan_e(inv_a_posterior[i], K[group_id[i]], inv_a[group_id[i]], e0[group_id[i]]);
             real e_temp2 = normal_rng(e_temp, e_err);
             real n = 0;
             int breakflag = 0;
