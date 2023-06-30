@@ -1,7 +1,5 @@
 import argparse
 import os.path
-import numpy as np
-import h5py
 import cm_functions as cmf
 
 
@@ -11,9 +9,9 @@ parser.add_argument(type=str, help="directory to HMQuantity HDF5 files or csv fi
 parser.add_argument(type=str, help="new sample or load previous", choices=["new", "loaded"], dest="type")
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
 parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
-parser.add_argument("-t", "--thin", type=int, help="thin data", dest="thin", default=10)
 parser.add_argument("-s", "--sample", help="sample set", type=str, dest="sample", choices=["mcs", "perturb"], default="mcs")
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
+parser.add_argument("-N", "--NumSamples", type=int, help="number OOS values", dest="NOOS", default=1000)
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
@@ -65,7 +63,7 @@ SL.logger.info(f"Number of simulations with usable data: {quinlan_model.num_grou
 
 # thin data
 SL.logger.debug(f"{quinlan_model.num_obs} data points before thinning")
-quinlan_model.thin_observations(args.thin)
+quinlan_model.thin_observations(analysis_params["stan"]["thin_data"])
 SL.logger.debug(f"{quinlan_model.num_obs} data points after thinning")
 
 # initialise the data dictionary
@@ -85,7 +83,9 @@ else:
 
     quinlan_model.determine_loo()
 
-    ax = quinlan_model.all_posterior_plots(full_figsize)
+    ax = quinlan_model.all_posterior_pred_plots(full_figsize)
+    quinlan_model.all_posterior_OOS_plots(args.NOOS, full_figsize)
+    quinlan_model.plot_merger_timescale()
 
 quinlan_model.print_parameter_percentiles(quinlan_model.latent_qtys)
 

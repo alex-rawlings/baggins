@@ -455,16 +455,20 @@ class _StanModel:
         self._input_data_file_count += 1
 
 
-    def _write_input_data_yml(self, d, csvfile):
+    def _get_timestamp_from_csv(self, csvfile):
+        return os.path.basename(csvfile).split("-")[-1].split("_")[0]
+
+    def _write_input_data_yml(self, csvfile):
         """
         Save list of HMQ files used to .yml file
 
         Parameters
         ----------
-        d : path-like
-            stan output directory
+        csvfile : path-like
+            a stan output csv file
         """
-        tstamp = os.path.basename(csvfile).split("-")[-1].split("_")[0]
+        d = os.path.dirname(csvfile)
+        tstamp = self._get_timestamp_from_csv(csvfile)
         with open(os.path.join(d, f"input_data-{tstamp}.yml"), "w") as f:
             yaml.dump(self._input_data_files, f)
 
@@ -498,8 +502,7 @@ class _StanModel:
             else:
                 # protect against inability to parallelise, for prior model
                 # this shouldn't be so expensive anyway
-                pass
-                #default_sample_kwargs["force_one_process_per_chain"] = True
+                default_sample_kwargs["force_one_process_per_chain"] = True
             # update user given sample kwargs
             for k, v in sample_kwargs.items():
                 default_sample_kwargs[k] = v
@@ -510,7 +513,7 @@ class _StanModel:
             else:
                 _logger.logger.info(f"exe info: {self._model.exe_info()}")
                 fit = self._model.sample(data=data, **default_sample_kwargs)
-                self._write_input_data_yml(default_sample_kwargs["output_dir"], fit.runset.csv_files[0])
+                self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
             self._sample_diagnosis = fit.diagnose()
             _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
@@ -600,6 +603,31 @@ class _StanModel:
         return self.generated_quantities.stan_variable(gq)
 
 
+    def calculate_mode(self, v):
+        """
+        Determine the mode of a Stan variable, following the method defined in
+        arviz.plot_utils package.
+
+        Parameters
+        ----------
+        v : str
+            stan variable to determine the mode for
+
+        Returns
+        -------
+        : float
+            mode of variable
+        """
+        if self._fit is None:
+            _fit = self._prior_fit
+            _logger.logger.debug("Generated quantities will be taken from the prior model")
+        else:
+            _fit = self._fit
+            _logger.logger.debug("Generated quantities will be taken from the posterior model")
+        x, dens = az.kde(self._fit[v])
+        return x[np.nanargmax(dens)]
+
+
     def _parameter_corner_plot(self, var_names, figsize=None, labeller=None, levels=None, combine_dims=None, backend_kwargs=None):
         """
         Base method to create parameter corner plots. This method should not be
@@ -673,6 +701,7 @@ class _StanModel:
             HDI intervals to plot, by default None
         """
         # TODO choose good figsize always, also labeller sometimes still not working...
+        # seems to be to occur when axis label is longer than the axis
         if figsize is None:
             max_dim = max(rcParams["figure.figsize"])
             figsize = (max_dim, max_dim)
@@ -922,22 +951,22 @@ class StanModel_2D(_StanModel):
         super().__init__(model_file, prior_file, figname_base, rng)
 
 
-    def _plot_predictive(self, xobs, yobs, dataset, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True):
+    def _plot_predictive(self, dataset, xmodel, ymodel, xobs=None, yobs=None, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True):
         """
         Plot a predictive check for a regression stan model.
 
         Parameters
         ----------
-        xobs : str
-            dictionary key for observed independent variable
-        yobs : str
-            dictionary key for observed dependent variable
         dataset : dict
             dictionary containing observed data points
         xmodel : str
             dictionary key for modelled independent variable
         ymodel : str
             dictionary key for modelled dependent variable
+        xobs : str, optional
+            dictionary key for observed independent variable, by default None
+        yobs : str, optional
+            dictionary key for observed dependent variable, by default None
         yobs_err : str, optional
              dictionary key for observed dependent variable scatter, by default 
              None
@@ -957,45 +986,59 @@ class StanModel_2D(_StanModel):
             fig, ax = plt.subplots(1,1)
         else:
             fig = ax.get_figure()
-        obs = self.obs_collapsed if collapsed else self.obs
         ys = self.sample_generated_quantity(ymodel)
         cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", normalisation="LogNorm")
         for l in levels:
             _logger.logger.debug(f"Fitting level {l}")
             az.plot_hdi(dataset[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
-        # overlay data
-        if self._num_groups < 2:
-            self._plot_obs_data_kwargs["cmap"] = "Set1"
-        if yobs_err is None:
-            ax.scatter(obs[xobs], obs[yobs], c=obs["label"], **self._plot_obs_data_kwargs)
-        else:
-            colvals = np.unique(obs["label"])
-            ncols = len(colvals)
-            cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
-            for i, c in enumerate(colvals):
-                col = cmapper(c)
-                mask = obs["label"]==c
-                ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Sims." if i==ncols-1 else ""))
+        if xobs is not None and yobs is not None:
+            # overlay data
+            obs = self.obs_collapsed if collapsed else self.obs
+            if self._num_groups < 2:
+                self._plot_obs_data_kwargs["cmap"] = "Set1"
+            if yobs_err is None:
+                ax.scatter(obs[xobs], obs[yobs], c=obs["label"], **self._plot_obs_data_kwargs)
+            else:
+                colvals = np.unique(obs["label"])
+                ncols = len(colvals)
+                cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
+                for i, c in enumerate(colvals):
+                    col = cmapper(c)
+                    mask = obs["label"]==c
+                    ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Sims." if i==ncols-1 else ""))
         if show_legend:
             ax.legend()
         return ax
 
 
-    def prior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
+    def prior_plot(self, xmodel, ymodel, xobs, yobs, yobs_err=None, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
         """
         See docs for _plot_predictive()
         """
-        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._prior_stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
+        ax = self._plot_predictive(dataset=self._prior_stan_data, xmodel=xmodel, ymodel=ymodel, xobs=xobs, yobs=yobs, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
         fig = ax.get_figure()
         if save:
             savefig(self._make_fig_name(self.figname_base, f"prior_pred_{yobs}"), fig=fig)
-    
 
-    def posterior_plot(self, xobs, yobs, xmodel, ymodel, yobs_err=None, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
+
+    def posterior_pred_plot(self, xmodel, ymodel, xobs, yobs, yobs_err=None, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
         """
+        Posterior predictive plot.
         See docs for _plot_predictive()
         """
-        ax = self._plot_predictive(xobs=xobs, yobs=yobs, dataset=self._stan_data, xmodel=xmodel, ymodel=ymodel, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
+        ax = self._plot_predictive(dataset=self._stan_data, xmodel=xmodel, ymodel=ymodel, xobs=xobs, yobs=yobs, yobs_err=yobs_err, levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
         fig = ax.get_figure()
         if save:
             savefig(self._make_fig_name(self.figname_base, f"posterior_pred_{yobs}"), fig=fig)
+
+
+    def posterior_OOS_plot(self, xmodel, ymodel, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
+        """
+        Posterior out-of-sample plot, observed data is not added to plot.
+        See docs for _plot_predictive()
+        """
+        ax = self._plot_predictive(dataset=self._stan_data, xmodel=xmodel, ymodel=ymodel, levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
+        fig = ax.get_figure()
+        if save:
+            savefig(self._make_fig_name(self.figname_base, f"posterior_OOS_{ymodel}"), fig=fig)
+

@@ -33,6 +33,7 @@ plotting:
 # info for stan settings
 stan:
   min_num_samples: 5
+  thin_data: 30
   general_sample_kwargs:
     show_progress: &ssp False
     #threads_per_chain: 128

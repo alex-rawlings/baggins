@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
-from ..general import get_idx_in_array
+from ..general import get_idx_in_array, units
 from ..mathematics import radial_separation, angle_between_vectors, project_orthogonal
 from ..env_config import _cmlogger
 
-__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass", "deflection_angle", "first_major_deflection_angle"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "determine_merger_timescale", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass", "deflection_angle", "first_major_deflection_angle"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -345,7 +345,7 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, HGp_s, K):
         integrated semimajor axis
     """
     #convert Gps to units used by ketjugw
-    Gps = Gps / (ketjugw.units.pc * ketjugw.units.yr)
+    HGp_s /= (ketjugw.units.pc * ketjugw.units.yr)
 
     def quinlan_derivatives(a, e, m1, m2):
         dadt = -a**2 * HGp_s
@@ -355,6 +355,36 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, HGp_s, K):
     propagate_time = 8*(tf-t0) + t0
     ap, ep, _,_, tp = ketjugw.orbit.peters_evolution(a0, e0, m1, m2, (t0, propagate_time, 5), ext_derivs=quinlan_derivatives)
     return tp, ap, ep
+
+
+def determine_merger_timescale(a0, e0, t0, tf, m1, m2, HGp_s, K, atol=1e-3, etol=1e-3):
+    """
+    Determine the merger timescale for a system. If the system mergers over a period longer than the Hubble time, the merger time is set to infinity. 
+    Parameters are as function `analytic_evolve_peters_quinlan()` with the addition of:
+
+    Parameters
+    ----------
+    atol : float, optional
+        semimajor axis below which merger assumed [pc], by default 1e-3
+    etol : float, optional
+        eccentricity below which merger assumed, by default 1e-3
+
+    Returns
+    -------
+    : float
+        merger timescale in Myr
+    """
+    af = np.inf
+    ef = np.inf
+    while af > atol and ef > etol:
+        tp, ap, ep = analytic_evolve_peters_quinlan(a0=a0, e0=e0, t0=t0, tf=tf, m1=m1, m2=m2, HGp_s=HGp_s, K=K)
+        af = ap[-1] / ketjugw.units.pc
+        ef = ep[-1]
+        if tp[-1] / (1e3 * units.Myr) > 14:
+            return np.inf
+        tf *= 2
+    return tp[-1] / units.Myr
+
 
 
 def get_hard_timespan(t, a, t_s, ah_s):

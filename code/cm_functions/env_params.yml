@@ -10,5 +10,5 @@ logging:
   file_level: WARNING
 ...
 ---
-git_hash: heads/gaussian_processes-0-ga4a2696
+git_hash: heads/gaussian_processes-0-ge2fb1da
 ...
