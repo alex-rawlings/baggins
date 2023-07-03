@@ -189,6 +189,9 @@ class HDF5Base:
             except AssertionError:
                 _logger.logger.exception(f"Error saving {attr}: cannot save {type(attr_val)} type!")
                 raise
+            except:
+                _logger.logger.exception(f"Unable to save <{attr}> (type {type(attr_val)} with values {attr_val})", exc_info=True)
+                raise
         # check that everything was saved
         not_saved = list(set(l)-set(saved_list))
         if not not_saved:
@@ -245,6 +248,9 @@ class HDF5Base:
                     self._recursive_dict_save(gnew, val, key)
             except AssertionError:
                 _logger.logger.exception(f"Error saving {key}: cannot save {type(val)} type!")
+                raise
+            except:
+                _logger.logger.exception(f"Unable to save <{key}> (type {type(val)} with values {val})", exc_info=True)
                 raise
 
 
