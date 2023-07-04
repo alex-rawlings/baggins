@@ -144,13 +144,15 @@ for j in range(2):
             cbar.ax.yaxis.set_major_locator(MaxNLocator(integer=True))
 
     if j==0:
-        axins1.set_xlim(-0.015, 0.032)
+        axins1.set_xlim(-0.015, 0.033)
         axins1.set_ylim(-0.03, 0.04)
-        cmf.plotting.draw_sizebar(axins1, 0.01, "pc", location="lower right", **sizebar_kwargs)
+        for axins in (axins1, axins2):
+            cmf.plotting.draw_sizebar(axins, 0.01, "pc", location="lower right", **sizebar_kwargs)
     else:
         axins1.set_xlim(-0.06, 0.05)
         axins1.set_ylim(-0.08, 0.03)
-        cmf.plotting.draw_sizebar(axins1, 0.01, "pc", location="lower right", **sizebar_kwargs)
+        for axins in (axins1, axins2):
+            cmf.plotting.draw_sizebar(axins, 0.01, "pc", location="lower right", **sizebar_kwargs)
     axins2.set_xlim(*axins1.get_xlim())
     axins2.set_ylim(*axins1.get_ylim())
     axins1.set_aspect("equal")

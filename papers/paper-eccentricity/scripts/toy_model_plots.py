@@ -242,7 +242,7 @@ def paper_th_e_curve_plot():
     axins.set_yticks([])
     axdict["D"].indicate_inset_zoom(axins, edgecolor="k")
 
-    axdict["E"].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right')
+    axdict["E"].legend(ncol=1, title=r'$M_\bullet/m_\star$', loc='lower right', fontsize='small')
     fig.savefig(fig_path('theta_e_sim_and_model.pdf'))
 
 def paper_orbit_plot():
