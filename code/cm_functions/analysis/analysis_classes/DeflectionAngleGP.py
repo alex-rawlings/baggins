@@ -158,7 +158,7 @@ class DeflectionAngleGP(StanModel_2D):
         return ax
 
 
-    def all_plots(self, figsize=None, prior=False):
+    def all_plots(self, figsize=None):
         """
         Plots generally required for predictive checks
 
@@ -167,24 +167,18 @@ class DeflectionAngleGP(StanModel_2D):
         figsize : tuple, optional
             figure size, by default None
         """
-        if prior:
-            plot_func = self.prior_plot
-            type_str = "prior"
-        else:
-            plot_func = self.posterior_plot
-            type_str = "posterior"
+        type_str = "prior" if self._fit is None else "posterior"
         self.rename_dimensions({"eta_dim_0":"dim"})
 
         self.parameter_diagnostic_plots(self.latent_qtys, labeller=self._labeller_latent)
 
         # expand variables along a new dimension to match eta
-        for k in ("alpha", "rho", "sigma"):
-            self._fit_for_az[type_str][k] = self._fit_for_az[type_str][k].expand_dims({"dim":np.arange(self._fit_for_az[type_str].dims["dim"])}, axis=-1)
+        self._expand_dimension(["alpha", "rho", "sigma"], "dim")
 
         fig, ax = plt.subplots(1,1, figsize=figsize)
         ax.set_xlabel(r"$\theta\degree$")
         ax.set_ylabel(r"$e_\mathrm{h}$")
-        plot_func(xobs="theta_deg", yobs="e", xmodel="theta2_deg", ymodel="y", ax=ax)
+        self.plot_predictive(xmodel="theta2_deg", ymodel="y", xobs="theta_deg", yobs="e", ax=ax)
         
         # latent quantities
         self.plot_latent_distributions(figsize=figsize)
@@ -194,3 +188,4 @@ class DeflectionAngleGP(StanModel_2D):
 
         # marginal distribution of e_h
         self.plot_generated_quantity_dist(["y"], xlabels=[r"$e_\mathrm{h}$"])
+

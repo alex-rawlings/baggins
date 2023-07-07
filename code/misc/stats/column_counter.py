@@ -15,12 +15,13 @@ with open(args.file, "r") as f:
     while True:
         count += 1
         line  = f.readline()
-        if count < args.jump: continue
+        if count < args.jump or (len(line)>0 and line[0]=="#"): continue
         if not line:
             break
         colcount.append(line.count(args.sep))
+uniq_col_count = np.unique(colcount)
+print(f"Unique column length: {uniq_col_count}")
 
-print(f"Unique column lengths: {np.unique(colcount)}")
-
-plt.plot(np.arange(len(colcount))+args.jump, colcount)
-plt.show()
+if len(uniq_col_count)>1:
+    plt.plot(np.arange(len(colcount))+args.jump, colcount)
+    plt.show()

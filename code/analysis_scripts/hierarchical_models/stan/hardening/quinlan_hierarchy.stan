@@ -20,8 +20,15 @@ data {
     array[N_tot] real<lower=0, upper=1> ecc;
     // total number of out-of-sample points
     int<lower=1> N_OOS;
+    // group ids for generated quantities
+    array[N_OOS] int<lower=1> group_id_OOS;
     // out-of-sample time values
     array[N_OOS] real<lower=0, upper=max(t)> t_OOS;
+}
+
+
+transformed data {
+    int N_GQ = N_tot + N_OOS;
 }
 
 
@@ -99,9 +106,10 @@ generated quantities {
     array[N_groups] real e0_posterior;
 
     // generate data replication
-    // to do posterior predictive checking, set N_OOS = N_tot and t_OOS = t
-    array[N_OOS] real inv_a_posterior;
-    array[N_OOS] real ecc_posterior;
+    array[N_GQ] real t_GQ = append_array(t, t_OOS);
+    array[N_GQ] int group_id_GQ = append_array(group_id, group_id_OOS);
+    array[N_GQ] real inv_a_posterior;
+    array[N_GQ] real ecc_posterior;
 
     for(i in 1:N_groups){
         HGp_s_posterior[i] = lower_trunc_norm_rng(HGp_s_mean, HGp_s_std, 0.0);
@@ -110,10 +118,10 @@ generated quantities {
         e0_posterior[i] = trunc_norm_rng(e0_mean, e0_std, 0.0, 1.0);
     }
 
-    for(i in 1:N_OOS){
-            inv_a_posterior[i] = lower_trunc_norm_rng(quinlan_inva(t_OOS[i], HGp_s_posterior[group_id[i]], inv_a_0_posterior[group_id[i]]), a_err, 0.0);
+    for(i in 1:N_GQ){
+            inv_a_posterior[i] = lower_trunc_norm_rng(quinlan_inva(t_GQ[i], HGp_s_posterior[group_id_GQ[i]], inv_a_0_posterior[group_id_GQ[i]]), a_err, 0.0);
 
-            ecc_posterior[i] = trunc_norm_rng(quinlan_e(inv_a_posterior[i], K_posterior[group_id[i]], inv_a_0_posterior[group_id[i]], e0_posterior[group_id[i]]), e_err, 0.0, 1.0);
+            ecc_posterior[i] = trunc_norm_rng(quinlan_e(inv_a_posterior[i], K_posterior[group_id_GQ[i]], inv_a_0_posterior[group_id_GQ[i]], e0_posterior[group_id_GQ[i]]), e_err, 0.0, 1.0);
     }
 
     // determine log likelihood function

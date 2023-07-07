@@ -8,7 +8,8 @@ logging:
   console_level: INFO
   file: logs/cm_funcs.log
   file_level: WARNING
+tmp_dir: tmp_dir
 ...
 ---
-git_hash: heads/gaussian_processes-0-ge2fb1da
+git_hash: heads/gaussian_processes-0-g19b354f
 ...

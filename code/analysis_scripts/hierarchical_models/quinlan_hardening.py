@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(args.publish, full=True)
+full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=[1.7, 1.7])
 
 if args.type == "new":
     hmq_dir = args.dir
@@ -41,7 +41,7 @@ if args.model == "simple":
         quinlan_model = cmf.analysis.QuinlanModelSimple.load_fit(model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base)
     else:
         # sample
-        quinlan_model = cmf.analysis.QuinlanModelSimple(model_file=stan_model_file, prior_file="stan/hardening/quinlan_simple_prior.stan", figname_base=figname_base)
+        quinlan_model = cmf.analysis.QuinlanModelSimple(model_file=stan_model_file, prior_file="stan/hardening/quinlan_simple_prior.stan", figname_base=figname_base, num_OOS=args.NOOS)
 else:
     stan_model_file = "stan/hardening/quinlan_hierarchy.stan"
     if args.type == "loaded":
@@ -55,7 +55,7 @@ else:
         quinlan_model = cmf.analysis.QuinlanModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base)
     else:
         # sample
-        quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/hardening/quinlan_hierarchy_prior.stan", figname_base=figname_base)
+        quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/hardening/quinlan_hierarchy_prior.stan", figname_base=figname_base, num_OOS=args.NOOS)
 
 quinlan_model.extract_data(analysis_params, hmq_dir)
 
@@ -84,8 +84,8 @@ else:
     quinlan_model.determine_loo()
 
     ax = quinlan_model.all_posterior_pred_plots(full_figsize)
-    quinlan_model.all_posterior_OOS_plots(args.NOOS, full_figsize)
-    quinlan_model.plot_merger_timescale()
+    quinlan_model.all_posterior_OOS_plots(full_figsize)
+quinlan_model.plot_merger_timescale()
 
 quinlan_model.print_parameter_percentiles(quinlan_model.latent_qtys)
 
