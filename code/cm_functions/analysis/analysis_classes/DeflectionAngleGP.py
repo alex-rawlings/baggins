@@ -15,8 +15,11 @@ _logger = _cmlogger.copy(__file__)
 
 
 class DeflectionAngleGP(StanModel_2D):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        """
+        See StanModel_2D for parameters.
+        """
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self._latent_qtys = ["rho", "alpha", "sigma", "eta"]
         self._latent_qtys_labs = [r"$\rho$", r"$\alpha$", r"$\sigma$", r"$\eta$"]
         self._labeller_latent = MapLabeller(dict(zip(self._latent_qtys, self._latent_qtys_labs)))
@@ -109,34 +112,55 @@ class DeflectionAngleGP(StanModel_2D):
         self.collapse_observations(["theta", "theta_deg", "a", "e"])
 
 
-    def set_stan_dict(self, num_outsamples):
+    def _set_stan_data_OOS(self):
+        """
+        Set the out-of-sample Stan data variables
+        """
+        try:
+            assert self.num_OOS is not None
+        except AssertionError:
+            _logger.logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
+            raise
+        self.stan_data = dict(
+            N2 = self.num_OOS,
+            theta2 = np.linspace(
+                        min(self.stan_data["theta1"]),
+                        max(self.stan_data["theta1"]),
+                        self.num_OOS
+            )
+        )
+        self.stan_data = dict(
+            theta2_deg = self.stan_data["theta2"] * 180/np.pi
+        )
+
+
+    def set_stan_data(self):
         """
         Set the Stan data dictionary used for sampling
-
-        Parameters
-        ----------
-        num_outsamples : int
-            Number of predictive out-of-sample points to use
         """
         self.stan_data = dict(
             theta1 = self.obs_collapsed["theta"],
             theta_deg = self.obs_collapsed["theta_deg"],
             ecc = self.obs_collapsed["e"],
-            N1 = self.num_obs,
-            N2 = num_outsamples
+            N1 = self.num_obs
         )
+        if not self._loaded_from_file:
+            self._set_stan_data_OOS()
 
-        self.stan_data = dict(
-            theta2 = np.linspace(
-                        min(self.stan_data["theta1"]),
-                        max(self.stan_data["theta1"]),
-                        self.stan_data["N2"]
-            )
-        )
 
-        self.stan_data = dict(
-            theta2_deg = self.stan_data["theta2"] * 180/np.pi
-        )
+    def sample_model(self, sample_kwargs=...):
+        """
+        Wrapper around StanModel.sample_model() to handle determining num_OOS 
+        from previous sample.
+        """
+        super().sample_model(sample_kwargs)
+        if self._loaded_from_file:
+            self._determine_num_OOS("y")
+            self._set_stan_data_OOS()
+
+
+    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
+        return super().sample_generated_quantity(gq, force_resample, state)
 
 
     def plot_latent_distributions(self, figsize=None):

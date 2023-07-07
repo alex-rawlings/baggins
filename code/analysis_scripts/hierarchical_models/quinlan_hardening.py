@@ -3,21 +3,13 @@ import os.path
 import cm_functions as cmf
 
 
-parser = argparse.ArgumentParser(description="Run Stan model for Quinlan hardening parameter", allow_abbrev=False)
-parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
-parser.add_argument(type=str, help="directory to HMQuantity HDF5 files or csv files", dest="dir")
-parser.add_argument(type=str, help="new sample or load previous", choices=["new", "loaded"], dest="type")
+parser = cmf.utils.argparse_for_stan("Run Stan model for Quinlan hardening model")
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
-parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
-parser.add_argument("-s", "--sample", help="sample set", type=str, dest="sample", choices=["mcs", "perturb"], default="mcs")
-parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
-parser.add_argument("-N", "--NumSamples", type=int, help="number OOS values", dest="NOOS", default=1000)
-parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=[1.7, 1.7])
+full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=[1.9, 1.9])
 
 if args.type == "new":
     hmq_dir = args.dir
@@ -67,7 +59,7 @@ quinlan_model.thin_observations(analysis_params["stan"]["thin_data"])
 SL.logger.debug(f"{quinlan_model.num_obs} data points after thinning")
 
 # initialise the data dictionary
-quinlan_model.set_stan_dict()
+quinlan_model.set_stan_data()
 
 if args.prior:
     # create the push-forward distribution for the prior model

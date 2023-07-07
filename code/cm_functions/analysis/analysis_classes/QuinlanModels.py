@@ -130,7 +130,7 @@ class _QuinlanModelBase(StanModel_2D):
         self.collapse_observations(["t_shift", "inva", "e"])
 
 
-    def _set_stan_dict_OOS(self):
+    def _set_stan_data_OOS(self):
         """
         Set the out-of-sample Stan data variables
         """
@@ -148,7 +148,7 @@ class _QuinlanModelBase(StanModel_2D):
         )
 
 
-    def set_stan_dict(self):
+    def set_stan_data(self):
         """
         Set the Stan data dictionary used for sampling
         """
@@ -162,7 +162,7 @@ class _QuinlanModelBase(StanModel_2D):
             ecc = self.obs_collapsed["e"]
         )
         if not self._loaded_from_file:
-            self._set_stan_dict_OOS()
+            self._set_stan_data_OOS()
 
 
     def sample_model(self, sample_kwargs={}):
@@ -173,7 +173,7 @@ class _QuinlanModelBase(StanModel_2D):
         super().sample_model(sample_kwargs)
         if self._loaded_from_file:
             self._determine_num_OOS("inv_a_posterior")
-            self._set_stan_dict_OOS()
+            self._set_stan_data_OOS()
 
 
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
@@ -432,7 +432,7 @@ class QuinlanModelHierarchy(_QuinlanModelBase):
         # posterior predictive checks
         fig1, ax1 = plt.subplots(2,1, figsize=figsize, sharex="all")
         ax1[1].set_xlabel(r"$t'/\mathrm{Myr}$")
-        for axi,l in zip(ax, self._folded_qtys_labs):
+        for axi,l in zip(ax1, self._folded_qtys_labs):
             axi.set_ylabel(l)
         self.plot_predictive(xobs="t_shift", yobs="inva", xmodel="t", ymodel="inv_a_posterior", ax=ax1[0], save=False)
         self.plot_predictive(xobs="t_shift", yobs="e", xmodel="t", ymodel="ecc_posterior", ax=ax1[1], show_legend=False)

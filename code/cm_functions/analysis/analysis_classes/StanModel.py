@@ -154,6 +154,16 @@ class _StanModel(ABC):
         self._stan_data.update(d)
 
 
+    @abstractmethod
+    def set_stan_data(self):
+        pass
+
+
+    @abstractmethod
+    def _set_stan_data_OOS(self):
+        pass
+
+
     def _make_fig_name(self, fname, tag):
         """
         Make figure names by appending a tag to a base name.
@@ -957,6 +967,16 @@ class StanModel_1D(_StanModel):
 
 
     @abstractmethod
+    def set_stan_data(self):
+        return super().set_stan_data()
+
+
+    @abstractmethod
+    def _set_stan_data_OOS(self):
+        return super()._set_stan_data_OOS()
+
+
+    @abstractmethod
     def sample_model(self, sample_kwargs={}):
         return super().sample_model(sample_kwargs)
 
@@ -1057,6 +1077,16 @@ class StanModel_2D(_StanModel):
     @abstractmethod
     def extract_data(self):
         return super().extract_data()
+
+
+    @abstractmethod
+    def set_stan_data(self):
+        return super().set_stan_data()
+
+
+    @abstractmethod
+    def _set_stan_data_OOS(self):
+        return super()._set_stan_data_OOS()
 
 
     @abstractmethod
