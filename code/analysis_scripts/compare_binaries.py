@@ -84,8 +84,8 @@ for j, d in enumerate(ketju_dirs):
         SL.logger.warning(f"No bound BHs present in {d}")
 
 try:
-    if total_sim_count < 10:
-        ax[0].legend(loc="upper right", **legend_kwargs)
+    #if total_sim_count < 10:
+    ax[0].legend(loc="upper right", **legend_kwargs)
     ax[0].set_xscale("log")
     if args.save:
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
