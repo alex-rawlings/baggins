@@ -67,12 +67,20 @@ class HardScatter:
             self.ax[k].set_xlabel(r"$x/\mathrm{pc}$")
             self.ax[k].set_ylabel(r"$z/\mathrm{pc}$")
             self.ax[k].set_facecolor(self.background_col)
+            self.ax[k].set_xticklabels([])
+            self.ax[k].set_yticklabels([])
+            self.ax[k].set_xticks([])
+            self.ax[k].set_yticks([])
         self.ax["A"].set_xlim(-700, 1200)
         self.ax["A"].set_ylim(-500, 2000)
+        cmf.plotting.draw_sizebar(self.ax["A"], 500, "pc", color="w", fmt=".0f", sep=4)
         for k in "BC":
             self.ax[k].set_xlim(-35, 35)
             self.ax[k].set_ylim(-40, 40)
-
+            cmf.plotting.draw_sizebar(self.ax[k], 10, "pc", color="w", fmt=".0f", sep=4)
+        self.ax["A"].set_title("Overview")
+        self.ax["B"].set_title("Realisation A")
+        self.ax["C"].set_title("Realisation B")
 
         self._init_lists()
         self.line1 = dict.fromkeys(self.ax, None)
@@ -100,8 +108,6 @@ class HardScatter:
         # uncomment to see frame number
         #self.ax["A"].set_title(i)
         self.fig.suptitle(f"$e_0=0.90$, $t={self.bhA1.t[i]:>5.2f} \,\mathrm{{Myr}}$", fontsize="x-large")
-        self.ax["B"].set_title("Realisation A")
-        self.ax["C"].set_title("Realisation B")
         for j, bh in enumerate((self.bhA1, self.bhA2, self.bhB1, self.bhB2)):
             self.xdataA[j].append(bh.x[i,0])
             self.ydataA[j].append(bh.x[i,2])
