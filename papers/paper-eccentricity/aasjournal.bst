@@ -1098,17 +1098,21 @@ FUNCTION {format.aaspublisher}
 
 STRINGS {oldname}
 
+%FUNCTION {name.or.dash}
+%{ 's :=
+%  oldname empty$
+%    { s 'oldname := s }
+%    { s oldname =
+%        { "---" }
+%        { s 'oldname := s }
+%      if$
+%    }
+%  if$
+%}
+% XXX Hack to disable dashes for repeated authors
 FUNCTION {name.or.dash}
-{ 's :=
-  oldname empty$
-    { s 'oldname := s }
-    { s oldname =
-        { "---" }
-        { s 'oldname := s }
-      if$
-    }
-  if$
-}
+{}
+
 
 %%%%%%%%  Functions added from astrobib
 
