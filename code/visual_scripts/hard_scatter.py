@@ -31,9 +31,7 @@ class HardScatter:
 
 
     def _init_lists(self):
-        self.xdataA, self.ydataA = [[], [], [], []], [[], [], [], []]
-        self.xdataB, self.ydataB = [[], []], [[], []]
-        self.xdataC, self.ydataC = [[], []], [[], []]
+        self.xdata, self.ydata = [[], [], [], []], [[], [], [], []]
 
 
     def _init_frames(self, N):
@@ -58,27 +56,29 @@ class HardScatter:
 
         self.fig, self.ax = plt.subplot_mosaic(
                                     """
-                                    BAC
+                                    BC
                                     """,
-                                    figsize=(7,3)
+                                    figsize=(5,3)
         )
-        for k in "ABC":
+        self.ax["b"] = self.ax["B"].inset_axes([0.005, 0.552, 0.3, 0.454])
+        self.ax["c"] = self.ax["C"].inset_axes([0.005, 0.552, 0.3, 0.454])
+        for k in "bcBC":
             self.ax[k].set_aspect("equal")
-            self.ax[k].set_xlabel(r"$x/\mathrm{pc}$")
-            self.ax[k].set_ylabel(r"$z/\mathrm{pc}$")
             self.ax[k].set_facecolor(self.background_col)
             self.ax[k].set_xticklabels([])
             self.ax[k].set_yticklabels([])
             self.ax[k].set_xticks([])
             self.ax[k].set_yticks([])
-        self.ax["A"].set_xlim(-700, 1200)
-        self.ax["A"].set_ylim(-500, 2000)
-        cmf.plotting.draw_sizebar(self.ax["A"], 500, "pc", color="w", fmt=".0f", sep=4)
+        for k in "bc":
+            for edge in self.ax[k].spines.keys():
+                self.ax[k].spines[edge].set_color("w")
+            self.ax[k].set_xlim(-700, 800)
+            self.ax[k].set_ylim(-500, 1800)
+            cmf.plotting.draw_sizebar(self.ax[k], 500, "pc", color="w", fmt=".0f", sep=4, location="upper left")
         for k in "BC":
             self.ax[k].set_xlim(-35, 35)
             self.ax[k].set_ylim(-40, 40)
             cmf.plotting.draw_sizebar(self.ax[k], 10, "pc", color="w", fmt=".0f", sep=4)
-        self.ax["A"].set_title("Overview")
         self.ax["B"].set_title("Realisation A")
         self.ax["C"].set_title("Realisation B")
 
@@ -87,50 +87,49 @@ class HardScatter:
         self.line2 = dict.fromkeys(self.ax, None)
 
         col_list = color_palette("icefire", 50).as_hex()
+        plotkwargs = dict.fromkeys(self.ax, {"lw":0.5})
+        for k in "BC":
+            plotkwargs[k] = {"marker":"o", "markevery":[-1], "mec":self.background_col, "mew":0.5, "lw":2}
 
         for k in self.ax.keys():
-            self.line1[k], = self.ax[k].plot([], [], lw=2, markevery=[-1], marker="o", c=col_list[5], mec=self.background_col, mew=0.5)
-            self.line2[k], = self.ax[k].plot([], [], lw=2, markevery=[-1], marker="o", c=col_list[-5], mec=self.background_col, mew=0.5)
-        self.rectangle = Rectangle(
-                                (self.ax["B"].get_xlim()[0], self.ax["B"].get_ylim()[0]),
-                                np.diff(self.ax["B"].get_xlim())[0],
-                                np.diff(self.ax["B"].get_ylim())[0],
-                                lw=0.5, ec="w", fc="none", zorder=10
-                                )
+            self.line1[k], = self.ax[k].plot([], [], c=col_list[5], **plotkwargs[k])
+            self.line2[k], = self.ax[k].plot([], [], c=col_list[-5], **plotkwargs[k])
+
         self.frames = self._init_frames(self.max_N)
 
 
     def __call__(self, i) -> Any:
         if i == 0:
             self._init_lists()
-        else:
-            self.ax["A"].patches.pop()
+        print(f"Generating frame {i:05d} of {self.max_N}...              ", end="\r")
         # uncomment to see frame number
-        #self.ax["A"].set_title(i)
+        #self.ax["B"].set_title(i)
         self.fig.suptitle(f"$e_0=0.90$, $t={self.bhA1.t[i]:>5.2f} \,\mathrm{{Myr}}$", fontsize="x-large")
         for j, bh in enumerate((self.bhA1, self.bhA2, self.bhB1, self.bhB2)):
-            self.xdataA[j].append(bh.x[i,0])
-            self.ydataA[j].append(bh.x[i,2])
+            self.xdata[j].append(bh.x[i,0])
+            self.ydata[j].append(bh.x[i,2])
             if j%2==0:
-                self.line1["A"].set_data(self.xdataA[j], self.ydataA[j])
                 if j==0:
-                    self.line1["B"].set_data(self.xdataA[j], self.ydataA[j])
+                    self.line1["b"].set_data(self.xdata[j], self.ydata[j])
+                    self.line1["B"].set_data(self.xdata[j], self.ydata[j])
                 else:
-                    self.line1["C"].set_data(self.xdataA[j], self.ydataA[j])
+                    self.line1["c"].set_data(self.xdata[j], self.ydata[j])
+                    self.line1["C"].set_data(self.xdata[j], self.ydata[j])
             else:
-                self.line2["A"].set_data(self.xdataA[j], self.ydataA[j])
                 if j==1:
-                    self.line2["B"].set_data(self.xdataA[j], self.ydataA[j])
+                    self.line2["b"].set_data(self.xdata[j], self.ydata[j])
+                    self.line2["B"].set_data(self.xdata[j], self.ydata[j])
                 else:
-                    self.line2["C"].set_data(self.xdataA[j], self.ydataA[j])
-        self.ax["A"].add_patch(self.rectangle)
+                    self.line2["c"].set_data(self.xdata[j], self.ydata[j])
+                    self.line2["C"].set_data(self.xdata[j], self.ydata[j])
         return self.line1, self.line2
 
 
-hd = HardScatter(4.75e4, 4.5e4)
+if __name__ == "__main__":
+    hd = HardScatter(4.75e4, 4.5e4)
 
 
-ani = animation.FuncAnimation(hd.fig, hd, frames=hd.frames, repeat=True, interval=50, repeat_delay=500)
-ani.save(os.path.join(cmf.DATADIR, "hard_scatter.gif"))
+    ani = animation.FuncAnimation(hd.fig, hd, frames=hd.frames, repeat=True, interval=30, repeat_delay=500)
+    ani.save(os.path.join(cmf.DATADIR, "hard_scatter.gif"))
 
 #plt.show()
