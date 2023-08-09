@@ -1,11 +1,11 @@
 import numpy as np
 import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
 import ketjugw
-from ..general import get_idx_in_array
+from ..general import get_idx_in_array, units
 from ..mathematics import radial_separation, angle_between_vectors, project_orthogonal
 from ..env_config import _cmlogger
 
-__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass", "deflection_angle", "first_major_deflection_angle"]
+__all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "determine_merger_timescale", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass", "deflection_angle", "first_major_deflection_angle"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -311,7 +311,7 @@ def linear_fit_get_K(t, e, t0, tspan, H, Gps, a):
     return delta_e / (Gps * H * integral_a) 
 
 
-def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
+def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, HGp_s, K, N_orbits=2):
     """
     Analytically evolve a BH binary assuming hardening due to both stellar 
     scattering and GW emission
@@ -330,12 +330,12 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
         mass of particle 1
     m2 : float
         mass of particle 2
-    Gps : float
-        constant G * density / sigma  [(pc * yr)^-1]
-    H : float
-        hardening constant
+    HGp_s : float
+        hardening constant * G * density / sigma  [(pc * yr)^-1]
     K : float
         eccentricity constant
+    N_orbits : float, optional
+        number of orbits to store values for, by default 2
 
     Returns
     -------
@@ -347,16 +347,59 @@ def analytic_evolve_peters_quinlan(a0, e0, t0, tf, m1, m2, Gps, H, K):
         integrated semimajor axis
     """
     #convert Gps to units used by ketjugw
-    Gps = Gps / (ketjugw.units.pc * ketjugw.units.yr)
+    HGp_s = HGp_s / (ketjugw.units.pc * ketjugw.units.yr)
 
     def quinlan_derivatives(a, e, m1, m2):
-        dadt = -a**2 * H * Gps
+        dadt = -a**2 * HGp_s
         dedt = -dadt / a * K
         return dadt, dedt
 
     propagate_time = 8*(tf-t0) + t0
-    ap, ep, _,_, tp = ketjugw.orbit.peters_evolution(a0, e0, m1, m2, (t0, propagate_time, 5), ext_derivs=quinlan_derivatives)
+    ap, ep, _,_, tp = ketjugw.orbit.peters_evolution(a0=a0, e0=e0, m1=m1, m2=m2, ts=(t0, propagate_time, N_orbits), ext_derivs=quinlan_derivatives)
     return tp, ap, ep
+
+
+def determine_merger_timescale(a0, e0, t0, tf, m1, m2, HGp_s, K, atol=1e-3, N_orbits=2, etol=1e-3, nrep=1000):
+    """
+    Determine the merger timescale for a system. If the system mergers over a period longer than the Hubble time, the merger time is set to infinity. 
+    Parameters are as function `analytic_evolve_peters_quinlan()` with the addition of:
+
+    Parameters
+    ----------
+    atol : float, optional
+        semimajor axis below which merger assumed [pc], by default 1e-3
+    etol : float, optional
+        eccentricity below which merger assumed, by default 1e-3
+
+    Returns
+    -------
+    : float
+        merger timescale in Myr
+    """
+    try:
+        assert nrep > 0
+    except AttributeError:
+        _logger.logger.exception(f"Number of search repetitions must be greater than 0!", exc_info=True)
+        raise
+    af = np.inf
+    ef = np.inf
+    n = 0
+    atol *= ketjugw.units.pc
+    while af > atol and ef > etol and n<nrep:
+        tp, ap, ep = analytic_evolve_peters_quinlan(a0=a0, e0=e0, t0=t0, tf=tf, m1=m1, m2=m2, HGp_s=HGp_s, K=K, N_orbits=N_orbits)
+        af = ap[-1] / ketjugw.units.pc
+        ef = ep[-1]
+        if tp[-1] / units.Gyr > 14:
+            return np.inf
+        n += 1
+        tf *= 2
+    try:
+        assert n < nrep
+    except AssertionError:
+        _logger.logger.exception(f"Merger timescale has not converged: system has final a={af:.3e} and e={ef:.3e}", exc_info=True)
+        raise
+    return tp[-1] / units.Myr
+
 
 
 def get_hard_timespan(t, a, t_s, ah_s):
@@ -564,7 +607,7 @@ def deflection_angle(bh1, bh2, peri_idx=None):
     return 2 * np.arctan(M[peri_idx] / (L[peri_idx] * np.sqrt(2*E[peri_idx])))
 
 
-def first_major_deflection_angle(angles, threshold=np.pi/2):
+def first_major_deflection_angle(angles, threshold=np.pi/6):
     """
     Determine the value of the first major deflection
 
@@ -573,7 +616,7 @@ def first_major_deflection_angle(angles, threshold=np.pi/2):
     angles : array-like
         deflection angles at pericentre
     threshold : float, optional
-        minimum angle for a 'major' deflection, by default np.pi/2
+        minimum angle for a 'major' deflection, by default np.pi/6
 
     Returns
     -------

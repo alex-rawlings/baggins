@@ -39,14 +39,8 @@ class _KeplerModelBase(StanModel_1D):
         for f in dir:
             _logger.logger.debug(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
-            try:
-                idx = hmq.get_idx_in_vec(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
-            except ValueError:
-                _logger.logger.warning(f"No data prior to merger! The requested semimajor axis value is {np.nanmedian(hmq.hardening_radius)}, semimajor_axis attribute is: {hmq.semimajor_axis}. This run will not form part of the analysis.")
-                continue
-            except AssertionError:
-                _logger.logger.warning(f"Trying to search for value {np.nanmedian(hmq.hardening_radius)}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis)} - {max(hmq.semimajor_axis)}. This run will not form part of the analysis.")
-                continue
+            status, idx = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
+            if not status: continue
             t_target = hmq.binary_time[idx]
             _logger.logger.debug(f"Target time: {t_target} Myr")
             try:

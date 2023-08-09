@@ -17,136 +17,40 @@ data {
 }
 
 
+
 generated quantities {
-    /****** parameters of the parent distributions ******/
-    // slope
+    // hyperparameters
+    real HGp_s_mean = lower_trunc_norm_rng(0, 100, 0);
+    real HGp_s_std = lower_trunc_norm_rng(0, 20, 0);
+    real inv_a_0_mean = lower_trunc_norm_rng(0, 500, 0);
+    real inv_a_0_std = lower_trunc_norm_rng(0, 10, 0);
+    real K_mean = normal_rng(0, 0.1);
+    real K_std = lower_trunc_norm_rng(0, 0.1, 0);
+    real e0_mean = trunc_norm_rng(e_ini, 0.2, 0, 1);
+    real e0_std = lower_trunc_norm_rng(0, 0.1, 0);
+    real a_err = lower_trunc_norm_rng(0, 0.2, 0);
+    real e_err = lower_trunc_norm_rng(0, 2, 0);
+
+    // latent parameters
     array[N_groups] real HGp_s;
-    real HGp_s_mean;
-    real HGp_s_std;
-
-    // y intercept (initial 1/a)
     array[N_groups] real inv_a_0;
-    real inv_a_0_mean;
-    real inv_a_0_std;
-
-    // K parameter
     array[N_groups] real K;
-    real K_mean;
-    real K_std;
-
-    // y intercept (initial e)
     array[N_groups] real e0;
-    real e0_mean;
-    real e0_var;
 
-    // general scatter
-    real a_err;
-    real e_err;
-
-    // forward folded values
-    array[N_tot] real inv_a_prior;
-    array[N_tot] real e_prior;
-
-
-    /****** sample parameters ******/
-    // slope
-    HGp_s_mean = normal_rng(0, 0.3);
-    while(HGp_s_mean < 0){
-        HGp_s_mean = normal_rng(0, 0.3);
-    }
-    HGp_s_std = normal_rng(0, 0.3);
-    while(HGp_s_std < 0){
-        HGp_s_std = normal_rng(0, 0.3);
-    }
-
-    // intercept
-    inv_a_0_mean = normal_rng(0, 50);
-    while(inv_a_0_mean < 0){
-        inv_a_0_mean = normal_rng(0, 50);
-    }
-    inv_a_0_std = normal_rng(0, 10);
-    while(inv_a_0_std < 0){
-        inv_a_0_std = normal_rng(0, 10);
-    }
-
-    // K parameter
-    K_mean = normal_rng(0, 0.2);
-    K_std = normal_rng(0, 0.05);
-    while(K_std < 0){
-        K_std = normal_rng(0, 0.05);
-    }
-
-    // initial eccentricity
-    e0_mean = normal_rng(e_ini, 0.2);
-    while(e0_mean <=0 || e0_mean >= 1){
-        e0_mean = beta_proportion_rng(e_ini, 0.2);
-    }
-    e0_var = normal_rng(0, 0.1);
-    while(e0_var < 0){
-        e0_var = normal_rng(0, 0.1);
-    }
-
-
-    // inva error
-    a_err = normal_rng(0, 20);
-    while(a_err < 0){
-        a_err = normal_rng(0, 20);
-    }
-
-    // e error
-    e_err = normal_rng(0, 2);
-    while(e_err < 0){
-        e_err = normal_rng(0, 2);
-    }
-
-    // sample latent parameters
     for(i in 1:N_groups){
-        HGp_s[i] = normal_rng(HGp_s_mean, HGp_s_std);
-        while(HGp_s[i] < 0){
-            HGp_s[i] = normal_rng(HGp_s_mean, HGp_s_std);
-        }
-
-        inv_a_0[i] = normal_rng(inv_a_0_mean, inv_a_0_std);
-        while(inv_a_0[i] < 0){
-            inv_a_0[i] = normal_rng(inv_a_0_mean, inv_a_0_std);
-        }
-
+        HGp_s[i] = lower_trunc_norm_rng(HGp_s_mean, HGp_s_std, 0);
+        inv_a_0[i] = lower_trunc_norm_rng(inv_a_0_mean, inv_a_0_std, 0);
         K[i] = normal_rng(K_mean, K_std);
-
-        e0[i] = normal_rng(e0_mean, e0_var);
-        while(e0[i] <= 0 || e0[i] >= 1){
-            e0[i] = normal_rng(e0_mean, e0_var);
-        }
+        e0[i] = trunc_norm_rng(e0_mean, e0_std, 0, 1);
     }
 
-    // push forward distributions
+    // generate data replication
+    array[N_tot] real inv_a_prior;
+    array[N_tot] real ecc_prior;
+
     for(i in 1:N_tot){
-        {
-            // cache means to save computation
-            real inv_a_mean_temp = quinlan_inva(t[i], HGp_s[group_id[i]], inv_a_0[group_id[i]]);
-
-            inv_a_prior[i] = normal_rng(inv_a_mean_temp, a_err);
-            while(inv_a_prior[i] < 0){
-                inv_a_prior[i] = normal_rng(inv_a_mean_temp, a_err);
-            }
-
-            real e_mean_temp = quinlan_e(inv_a_prior[i], K[group_id[i]], inv_a_0[group_id[i]], e0[group_id[i]]);
-            real ep_temp;
-            
-            ep_temp = normal_rng(e_mean_temp, e_err);
-            real n = 0;
-            int breakflag = 0;
-            while((ep_temp <= 0 || ep_temp >= 1) && n < 1000){
-                if(n > 1000){
-                    breakflag = 1;
-                    break;
-                }
-                ep_temp = normal_rng(e_mean_temp, e_err);
-                n += 1;
-            }
-            if(breakflag == 0){
-                e_prior[i] = ep_temp;
-            }
-        }
+            inv_a_prior[i] = lower_trunc_norm_rng(quinlan_inva(t[i], HGp_s[group_id[i]], inv_a_0[group_id[i]]), a_err, 0);
+            ecc_prior[i] = trunc_norm_rng(quinlan_e(inv_a_prior[i], K[group_id[i]], inv_a_0[group_id[i]], e0[group_id[i]]), e_err, 0, 1);
     }
+
 }

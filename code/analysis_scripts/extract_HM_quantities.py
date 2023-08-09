@@ -10,7 +10,7 @@ import cm_functions as cmf
 # set up command line arguments
 parser = argparse.ArgumentParser(description="Extract key quantities from a simulation run for use in later Bayesian hierarchical modelling.", allow_abbrev=False)
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
-parser.add_argument(type=str, help="path to merger parameter file", dest="mpf")
+parser.add_argument(type=str, help="path to merger parameter file(s)", dest="mpf")
 parser.add_argument("-m", "--method", help="method used to generate sample", type=str, dest="method", choices=["mc", "bump"], default="bump")
 parser.add_argument("-n", "--number", help="perturbation number", dest="pnum", action="append")
 parser.add_argument("-o", "--overwrite", help="allow overwriting", dest="overwrite", action="store_true")

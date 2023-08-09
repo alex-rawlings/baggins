@@ -95,7 +95,7 @@ def set_publishing_style():
 
 
 
-def get_figure_size(publishing=False, full=False):
+def get_figure_size(publishing=False, full=False, multiplier=[1,1]):
     """
     Determine the figure size appropriate for publishing mode or normal mode
 
@@ -106,6 +106,8 @@ def get_figure_size(publishing=False, full=False):
     full : bool, optional
         double the width of the figure in addition to the height, by default 
         False
+    multiplier : list-like, optional
+        scale figure axes, by default [1,1]
 
     Returns
     -------
@@ -115,9 +117,11 @@ def get_figure_size(publishing=False, full=False):
     figsize = None
     if publishing:
         set_publishing_style()
-        figsize = rcParams["figure.figsize"]
-        figsize[0] *= 2
-        if full:
-            figsize[1] *= 2
+    figsize = tuple(rcParams["figure.figsize"][i]*multiplier[i] for i in range(2))
+    if full:
+        m = max(figsize)
+        if publishing:
+            m *= 2
+        figsize = (m,m)
     return figsize
 

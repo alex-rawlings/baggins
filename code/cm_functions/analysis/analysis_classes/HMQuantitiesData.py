@@ -1,5 +1,5 @@
 import warnings
-import numpy as np
+import h5py
 from . import HDF5Base
 from ...general import get_idx_in_array
 from ...env_config import _cmlogger
@@ -18,7 +18,8 @@ class HMQuantitiesData(HDF5Base):
         file.
         """
         super().__init__()
-    
+        self.merger_id = None
+
     ##--------------------- Binary Quantities ---------------------##
     # time when binary is bound
     @property
@@ -285,10 +286,22 @@ class HMQuantitiesData(HDF5Base):
     def initial_galaxy_orbit(self, v):
         self._initial_galaxy_orbit = v
 
+
+    @classmethod
+    def load_from_file(cls, fname, decode="utf-8"):
+        """
+        See docs for HDF5Base load_from_file() method
+        """
+        C = super().load_from_file(fname, decode=decode)
+        with h5py.File(fname, "r") as f:
+            C.merger_id = f["/meta"].attrs["merger_id"]
+        return C
+
+
     ##--------------------- Some General Functions ---------------------##
     def get_idx_in_vec(self, t, tarr):
-        warnings.warn("This function is a now called through general.get_idx_in_array()", DeprecationWarning)
-        return get_idx_in_array(t, tarr)
+        warnings.warn("This function should be called using idx_finder()", DeprecationWarning)
+        return self.idx_finder(t, tarr)
 
 
     def mass_resolution(self):
@@ -310,3 +323,36 @@ class HMQuantitiesData(HDF5Base):
         else:
             field_part_mass = self.particle_masses["stars"]
         return self.particle_masses["bh"]/field_part_mass
+
+
+    def idx_finder(self, val, vec):
+        """
+        Wrapper around general.get_idx_in_array(), better suited for data from
+        this class
+
+        Parameters
+        ----------
+        val : float
+            value to search for
+        vec : array-like
+            array to search in
+
+        Returns
+        -------
+        status : bool
+            was search successful
+        idx : int
+            index of val in vec
+        """
+        try:
+            idx = get_idx_in_array(val, vec)
+            status = True
+        except ValueError:
+            _logger.logger.warning(f"No data prior to merger! The requested semimajor axis value is {val}, semimajor_axis attribute is: {vec}. This run will not form part of the analysis.")
+            status = False
+            idx = -9999
+        except AssertionError:
+            _logger.logger.warning(f"Trying to search for value {val}, but an AssertionError was thrown. The array bounds are {min(vec)} - {max(vec)}. This run will not form part of the analysis.")
+            status = False
+            idx = -9999
+        return status, idx

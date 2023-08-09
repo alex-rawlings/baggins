@@ -273,7 +273,7 @@ class BHBinary(BHBinaryData):
         if idxs[1] != -1: assert idxs[0] < idxs[1]
         a0 = self.orbit_params["a_R"][idxs[0]]
         e0 = np.nanquantile(self.orbit_params["e_t"][idxs[0]:idxs[1]], q)
-        t, a, e = analytic_evolve_peters_quinlan(a0, e0, self.orbit_params["t"][idxs[0]], self.orbit_params["t"][-1], self.orbit_params["m0"][0], self.orbit_params["m1"][0], self.G_rho_per_sigma, self.H, self.K)
+        t, a, e = analytic_evolve_peters_quinlan(a0, e0, self.orbit_params["t"][idxs[0]], self.orbit_params["t"][-1], self.orbit_params["m0"][0], self.orbit_params["m1"][0], self.G_rho_per_sigma*self.H, self.K)
         t /= myr
         a /= ketjugw.units.pc
         return t, a, e

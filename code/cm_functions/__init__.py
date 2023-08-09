@@ -1,4 +1,9 @@
 from . import env_config
+#set up some global environment variables
+HOME = env_config.home_dir
+FIGDIR = env_config.figure_dir
+DATADIR = env_config.data_dir
+VERBOSITY = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 from . import analysis
 from . import cosmology
@@ -12,8 +17,3 @@ from . import visualisation
 
 from ._backend import ScriptLogger
 
-#set up some global environment variables
-HOME = env_config.home_dir
-FIGDIR = env_config.figure_dir
-DATADIR = env_config.data_dir
-VERBOSITY = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
