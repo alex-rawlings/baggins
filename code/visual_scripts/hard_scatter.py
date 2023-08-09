@@ -36,7 +36,7 @@ class HardScatter:
 
     def _init_frames(self, N):
         split = int(self.split)
-        f1 = np.arange(0, split, 500)
+        f1 = np.arange(0, split, 250)
         f2 = np.arange(split, N, 4)
         return np.concatenate((f1, f2))
 
@@ -60,8 +60,8 @@ class HardScatter:
                                     """,
                                     figsize=(5,3)
         )
-        self.ax["b"] = self.ax["B"].inset_axes([0.005, 0.552, 0.3, 0.454])
-        self.ax["c"] = self.ax["C"].inset_axes([0.005, 0.552, 0.3, 0.454])
+        self.ax["b"] = self.ax["B"].inset_axes([0.007, 0.565, 0.3, 0.454])
+        self.ax["c"] = self.ax["C"].inset_axes([0.007, 0.565, 0.3, 0.454])
         for k in "bcBC":
             self.ax[k].set_aspect("equal")
             self.ax[k].set_facecolor(self.background_col)
@@ -81,7 +81,7 @@ class HardScatter:
             cmf.plotting.draw_sizebar(self.ax[k], 10, "pc", color="w", fmt=".0f", sep=4)
         self.ax["B"].set_title("Realisation A")
         self.ax["C"].set_title("Realisation B")
-
+        
         self._init_lists()
         self.line1 = dict.fromkeys(self.ax, None)
         self.line2 = dict.fromkeys(self.ax, None)
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     hd = HardScatter(4.75e4, 4.5e4)
 
 
-    ani = animation.FuncAnimation(hd.fig, hd, frames=hd.frames, repeat=True, interval=30, repeat_delay=500)
+    ani = animation.FuncAnimation(hd.fig, hd, frames=hd.frames, repeat=True, interval=20, repeat_delay=500)
     ani.save(os.path.join(cmf.DATADIR, "hard_scatter.gif"))
 
 #plt.show()
