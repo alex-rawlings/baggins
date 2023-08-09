@@ -179,9 +179,14 @@ class _DMComponent(_GalaxyICBase):
         super().__init__(parameter_file=parameter_file)
         self.particle_mass = self.parameters["dm"]["particle_mass"]["value"]
         self.softening = self.parameters["dm"]["softening"]["value"]
-        self.dm_scaling_relation = self.parameters["dm"]["mass_relation"].lower()
+        try:
+            self.dm_scaling_relation = self.parameters["dm"]["mass_relation"].lower()
+        except AttributeError:
+            self.dm_scaling_relation = None
         self._stellar_mass = stellar_mass
-        self.peak_mass = None
+        self.peak_mass = self.parameters["dm"]["peak_mass"]["value"]
+        if self.peak_mass is not None:
+            _logger.logger.warning(f"DM peak mass set to user-defined value!")
 
     @property
     def peak_mass(self):
@@ -294,7 +299,11 @@ class _SMBH(_GalaxyICBase):
         self._log_stellar_mass = log_stellar_mass
         self._sahu_legacy = sahu_legacy
         self.mass = None
-        self.spin_relation = self.parameters["bh"]["spin_relation"].lower()
+        try:
+            self.spin_relation = self.parameters["bh"]["spin_relation"].lower()
+        except AttributeError:
+            self.spin_relation = None
+            self.spin = self.parameters["bh"]["set_spin"]
         try:
             self.spin = self.parameters["calculated"]["bh"]["spin"]
         except KeyError:

@@ -60,6 +60,10 @@ else:
         SL.logger.warning(f"File {new_filename} created")
         # generate the galaxy
         galaxy = cmf.initialise.GalaxyIC(parameter_file=new_filename, sahu_legacy=args.bh_legacy)
+        plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
+        if plot_flag:
+            galaxy.plot_mass_scaling_relations()
         galaxy.generate_galaxy()
-
+        if plot_flag:
+            galaxy.plot_ic_kinematics(num_rots=args.nrot)
 

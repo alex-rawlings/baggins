@@ -5,75 +5,81 @@
 # velocity: km/s
 # unless otherwise stated
 
+# replicate IC-3 of Rantala 2019
+
 ---
 # general info about the galaxy
 general:
-  galaxy_name: hernquist_PR_SO_a
+  galaxy_name: hernquist_2M
   simulation_start_time:
-    unit: 'Gyr'
+    unit: Gyr
     # set to -1 to use redshift 0
     value: -1
-  random_seed: 1181
+  random_seed: 18357
   minimum_radius: 
-    unit: 'kpc'
+    unit: kpc
     value: 1.5e-3
   maximum_radius: 
-    unit: 'kpc'
+    unit: kpc
     value: 8000
+  recentre_to_com: false
 
 # info about file locations
 file_locations:
-  save_location: '/scratch/pjohanss/arawling/collisionless_merger/galaxies/nasim/stars_only'
+  save_location: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_2M
   # relative to save_location/
-  figure_location: 'figures'
-  data_location: 'output'
+  figure_location: figures
+  data_location: output
 
 # info about the stars
 stars:
   use_cored: false
   particle_mass:
-    unit: 'Msol'
-    value: 1.962e+6
+    unit: Msol
+    value: 5.e+4
   anisotropy_radius:
-    unit: 'kpc'
+    unit: kpc
     value:
   softening:
-    unit: 'kpc'
-    value: 20.e-3
+    unit: kpc
+    value: 5.e-3
   # parameters specific to cored profiles
   cored:
     distance_modulus:
     sersic_n:
     effective_radius:
-      unit: 'arcsec'
+      unit: arcsec
       value:
     log_core_density:
-      unit: 'mag/arcsec^2'
+      unit: mag/arcsec^2
       value:
     core_radius:
-      unit: 'arcsec'
+      unit: arcsec
       value: 
     core_slope:
     transition_index:
     mass_light_ratio: 4.0
   # parameters specific to cuspy profiles
   cuspy:
-    log_total_mass: 11.4
+    log_total_mass: 11.141
     scale_radius:
-      unit: 'kpc'
-      value: 3.0
+      unit: kpc
+      value: 3.9
     gamma: 1.0
 
 # info about DM
 dm:
   use_NFW: false
   particle_mass:
-    unit: 'Msol'
-    value:
+    unit: Msol
+    value: 5.e+6
   softening:
-    unit: 'kpc'
-    value: 0.4
-  mass_relation: 'Behroozi'
+    unit: kpc
+    value:
+  mass_relation:
+  peak_mass:
+      unit: Msol
+      value: 2.5e+13
   # parameters specific to NFW profiles
   NFW:
     cut_pars:
@@ -84,32 +90,16 @@ dm:
   Dehnen:
     gamma: 1.0
     scale_radius:
-      unit: 'kpc'
-      value: 300
+      unit: kpc
+      value: 245
 
 bh:
   mass:
     unit: Msol
-    value:
+    value: 2.93e+9
   softening:
-    unit: 'kpc'
+    unit: kpc
     value: 3.0e-3
-  set_spin: 'random'
-  spin_relation: 'zlochower_dry'
+  set_spin: [0,0,0]
+  spin_relation:
 ...
-
----
-bh:
-  mass: 3.04220233e+09
-  particle_count: 1.0
-  spin:
-  - 0.028238074858994835
-  - -0.4482939760116773
-  - -0.7648153394170869
-dm: {}
-last_update: '2023-04-14 21:38:17'
-redshift: 0
-stars:
-  particle_count: 1.27931000e+05
-...
-
