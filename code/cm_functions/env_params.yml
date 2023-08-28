@@ -11,5 +11,5 @@ logging:
 tmp_dir: tmp_dir
 ...
 ---
-git_hash: heads/master-0-g02fec0d
+git_hash: heads/master-0-g26dfd65
 ...

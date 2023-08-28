@@ -100,6 +100,26 @@ class _KeplerModelBase(StanModel_1D):
         self.collapse_observations(["log10_angmom_corr_red", "log10_energy_corr_red", "a", "e", "total_mass_long", "log10_total_mass_long"])
 
 
+    def _set_stan_data_OOS(self):
+        _logger.logger.error("Method not implemented!")
+        return super()._set_stan_data_OOS()
+
+
+    def set_stan_data(self):
+        _logger.logger.error("Method not implemented!")
+        return super().set_stan_data()
+
+
+    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
+        _logger.logger.error("Method not implemented!")
+        return super().sample_generated_quantity(gq, force_resample, state)
+
+
+    def sample_model(self, sample_kwargs=...):
+        _logger.logger.error("Method not implemented!")
+        return super().sample_model(sample_kwargs)
+
+
     def plot_latent_distributions(self, figsize=None):
         """
         Plot distributions of the latent parameters of the model
