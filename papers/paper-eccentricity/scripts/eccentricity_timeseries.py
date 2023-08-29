@@ -62,3 +62,4 @@ for i, (data_path, col) in enumerate(zip((e90_data_path, e99_data_path), cmf.plo
     ax.annotate("", (mean_t_h, 1-5e-4), (mean_t_h, 1), arrowprops={"arrowstyle":"-|>", "fc":col, "ec":col})
 
 cmf.plotting.savefig(figure_config.fig_path("eccentricities.pdf"), force_ext=True)
+plt.show()
