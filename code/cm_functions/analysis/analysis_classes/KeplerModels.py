@@ -1,3 +1,7 @@
+from abc import abstractmethod
+import os.path
+import re
+import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
@@ -13,16 +17,37 @@ _logger = _cmlogger.copy(__file__)
 
 
 class _KeplerModelBase(StanModel_1D):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
-        self._latent_qtys = ["a_hard", "e_hard"]
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+        self._folded_qtys = ["log10_angmom", "log10_energy"]
+        self._folded_qtys_labs = [r"$\log_{10}\left( \left(l/\sqrt{GM}\right)/\sqrt{\mathrm{pc}} \right)$", r"$\log_{10}\left(\left(|E|/\left(GM_1M_2 \right)\right)/\left( \mathrm{M}_\odot \mathrm{pc}^2\mathrm{yr}^{-2} \right) \right)$"]
+        self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
+        self._latent_qtys = ["a_hard", "e_hard", "a_err", "e_err"]
         self._latent_qtys_labs = [r"$a_\mathrm{h}/\mathrm{pc}$", "$e_\mathrm{h}$"]
         self._labeller_latent = MapLabeller(dict(zip(self._latent_qtys, self._latent_qtys_labs)))
-    
+        self._latent_qtys_posterior = [f"{v}_posterior" if "_err" not in v else v for v in self.latent_qtys]
+        self._labeller_latent_posterior = MapLabeller(dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs)))
+        self._merger_id = None
+
+
+    @property
+    def folded_qtys(self):
+        return self._folded_qtys
+
+    @property
+    def folded_qtys_posterior(self):
+        return self._folded_qtys_posterior
+
     @property
     def latent_qtys(self):
         return self._latent_qtys
-    
+
+    @property
+    def merger_id(self):
+        return self._merger_id
+
+
+    @abstractmethod
     def extract_data(self, dir, pars):
         """
         Extract data and manipulations required for the Kepler binary model
@@ -35,7 +60,6 @@ class _KeplerModelBase(StanModel_1D):
             analysis parameters
         """
         obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[], "t":[]}
-        i = 0
         for f in dir:
             _logger.logger.debug(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
@@ -63,18 +87,12 @@ class _KeplerModelBase(StanModel_1D):
                 _logger.logger.error(f"Attribute 'particle_masses' does not exist for {f}! Will assume equal-mass BHs!")
                 obs["mass1"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
                 obs["mass2"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
-            try:
-                obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
-            except AttributeError:
-                _logger.logger.warning(f"File {f} is missing the 'initial_galaxy_orbit' attribute. Ideally, re-run HMQ extraction process.")
+            obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
             obs["star_mass"].append([hmq.particle_masses["stars"]])
-            i += 1
-        try:
-            assert i >= pars["stan"]["min_num_samples"]
-        except AssertionError:
-            _logger.logger.exception(f"We require no less than {pars['stan']['min_num_samples']} samples groups, but have only {i}!", exc_info=True)
-            raise
+            if self._merger_id is None:
+                self._merger_id = re.sub("_[a-z]-", "-", hmq.merger_id)
         self.obs = obs
+        self._check_num_groups(pars)
 
         # some transformations we need
         # G in correct units
@@ -101,23 +119,49 @@ class _KeplerModelBase(StanModel_1D):
 
 
     def _set_stan_data_OOS(self):
-        _logger.logger.error("Method not implemented!")
-        return super()._set_stan_data_OOS()
+        """
+        Set the out-of-sample Stan data variables
+        """
+        try:
+            assert self.num_OOS is not None
+        except AssertionError:
+            _logger.logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
+            raise
+        self.stan_data["N_OOS"] = self.num_OOS
+        self.stan_data["group_id_OOS"] = self._rng.integers(1, self.num_groups, size=self.num_OOS, endpoint=True)
+        # TODO add out of sample quantities
 
 
     def set_stan_data(self):
-        _logger.logger.error("Method not implemented!")
-        return super().set_stan_data()
+        """
+        Set the Stan data dictionary used for sampling
+        """
+        self.stan_data = dict(
+            N_obs = self.num_obs,
+            N_groups = self.num_groups,
+            group_id = self.obs_collapsed["label"],
+            e0 = self.obs["e_ini"],
+            log10_angmom = self.obs_collapsed["log10_angmom_corr_red"],
+            log10_energy = self.obs_collapsed["log10_energy_corr_red"]
+        )
+        if not self._loaded_from_file:
+            self._set_stan_data_OOS()
+
+
+    def sample_model(self, sample_kwargs={}):
+        super().sample_model(sample_kwargs)
+        if self._loaded_from_file:
+            self._determine_num_OOS("log10_angmom_posterior")
+            self._set_stan_data_OOS()
 
 
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        _logger.logger.error("Method not implemented!")
-        return super().sample_generated_quantity(gq, force_resample, state)
-
-
-    def sample_model(self, sample_kwargs=...):
-        _logger.logger.error("Method not implemented!")
-        return super().sample_model(sample_kwargs)
+        v = super().sample_generated_quantity(gq, force_resample, state)
+        if gq in self.folded_qtys or gq in self.folded_qtys_posterior:
+            idxs = self._get_GQ_indices(state)
+            return v[...,idxs]
+        else:
+            return v
 
 
     def plot_latent_distributions(self, figsize=None):
@@ -160,9 +204,18 @@ class _KeplerModelBase(StanModel_1D):
 
 
 class KeplerModelSimple(_KeplerModelBase):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self.figname_base = f"{self.figname_base}-simple"
+
+
+    def extract_data(self, pars, d=None):
+        """
+        See docs for `_KeplerModelBase.extract_data()"
+        Update figname_base to include merger ID and keyword 'simple'
+        """
+        super().extract_data(pars, d)
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/binary_properties-{self.merger_id}-simple")
 
 
     def all_posterior_plots(self, figsize=None):
@@ -200,15 +253,34 @@ class KeplerModelSimple(_KeplerModelBase):
 
 
 class KeplerModelHierarchy(_KeplerModelBase):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self.figname_base = f"{self.figname_base}-hierarchy"
         self._hyper_qtys = ["a_hard_mu", "a_hard_sigma", "e_hard_mu", "e_hard_sigma"]
         self._hyper_qtys_labs = [r"$\mu_{a_\mathrm{h}}$", r"$\sigma_{a_\mathrm{h}}$", r"$\mu_{e_\mathrm{h}}$", r"$\sigma_{e_\mathrm{h}}$"]
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qtys_labs)))
 
 
-    def all_posterior_plots(self, figsize=None):
+    def extract_data(self, pars, d=None):
+        """
+        See docs for `_KeplerModelBase.extract_data()"
+        Update figname_base to include merger ID and keyword 'hierarchy'
+        """
+        super().extract_data(pars, d)
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/binary_properties-{self.merger_id}-hierarchy")
+
+
+    def _prep_dims(self):
+        """
+        Rename dimensions for collapsing.
+        """
+        _rename_dict = {}
+        for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
+            _rename_dict[f"{k}_dim_0"] = "group"
+        self.rename_dimensions(_rename_dict)
+
+
+    def all_posterior_pred_plots(self, figsize=None):
         """
         Posterior plots generally required for predictive checks and parameter convergence
 
@@ -223,25 +295,36 @@ class KeplerModelHierarchy(_KeplerModelBase):
             array of plotting axes for latent parameter corner plot
         """
         # rename dimensions for collapsing
-        self.rename_dimensions({"a_hard_dim_0":"group", "e_hard_dim_0":"group"})
+        self._prep_dims()
+        self._expand_dimension(["a_err", "e_err"], "group")
 
         # hyper parameter plots (corners, chains, etc)
         self.parameter_diagnostic_plots(self._hyper_qtys, labeller=self._labeller_hyper)
 
         # posterior predictive checks
         fig1, ax1 = plt.subplots(2,1, figsize=figsize)
-        ax1[0].set_xlabel(r"$\log_{10}\left( \left(l/\sqrt{GM}\right)/\sqrt{\mathrm{pc}} \right)$")
-        ax1[0].set_ylabel("PDF")
-        self.posterior_plot(xobs="log10_angmom_corr_red", xmodel="log10_angmom_posterior", ax=ax1[0], save=False)
-        ax1[1].set_xlabel(r"$\log_{10}\left(\left(|E|/\left(GM_1M_2 \right)\right)/\left( \mathrm{M}_\odot \mathrm{pc}^2\mathrm{yr}^{-2} \right) \right)$")
-        self.posterior_plot(xobs="log10_energy_corr_red", xmodel="log10_energy_posterior", ax=ax1[1])
+        for axi,l in zip(ax1, self._folded_qtys_labs):
+            axi.set_xlabel(l)
+            axi.set_ylabel("PDF")
+        self.plot_predictive(xobs="log10_angmom_corr_red", xmodel="log10_angmom_posterior", ax=ax1[0], save=False)
+        self.plot_predictive(xobs="log10_energy_corr_red", xmodel="log10_energy_posterior", ax=ax1[1])
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)
-        # append a boundary value of e to data? Ensures 
+
+        # TODO append a boundary value of e to data? Ensures full domain seen
         ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent, combine_dims={"group"})
-        #ax[1,0].set_ylim(0,1)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"corner_{self._parameter_corner_plot_counter}"), fig=fig)
         return ax
+
+
+    def all_posterior_OOS_plots(self, figsize=None):
+        self._prep_dims()
+        fig, ax = plt.subplots(2,1,figsize=figsize)
+        for axi,l in zip(ax, self._folded_qtys_labs):
+            axi.set_xlabel(l)
+            axi.set_ylabel("PDF")
+        for i, (q,s) in enumerate(zip(self._folded_qtys_posterior, (False, True))):
+            self.posterior_OOS_plot(xmodel=q, ax=ax[i], save=s)
 

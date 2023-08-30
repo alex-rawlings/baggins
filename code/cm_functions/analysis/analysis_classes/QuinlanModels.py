@@ -59,7 +59,6 @@ class _QuinlanModelBase(StanModel_2D):
     def merger_id(self):
         return self._merger_id
 
-
     @property
     def merger_time_file(self):
         return self._merger_time_file

@@ -12,17 +12,28 @@ _logger = _cmlogger.copy(__file__)
 
 
 class _GrahamModelBase(StanModel_2D):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+        self._folded_qtys = ["log10_surf_rho"]
+        self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
         self._latent_qtys = ["r_b", "Re", "log10_I_b", "g", "n", "a"]
         self._latent_qtys_labs = [r"$r_\mathrm{b}/\mathrm{kpc}$", r"$R_\mathrm{e}/\mathrm{kpc}$", r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$", r"$\gamma$", r"$n$", r"$a$"]
         self._labeller_latent = MapLabeller(dict(zip(self._latent_qtys, self._latent_qtys_labs)))
-    
+
+
+    @property
+    def folded_qtys(self):
+        return self._folded_qtys
+
+    @property
+    def folded_qtys_posterior(self):
+        return self._folded_qtys_posterior
 
     @property
     def latent_qtys(self):
         return self._latent_qtys
-    
+
+
     def extract_data(self, dir, pars):
         """
         Data extraction and manipulation required for the Graham density model
@@ -56,7 +67,9 @@ class _GrahamModelBase(StanModel_2D):
         self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
         self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
         self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
-    
+
+
+
 
     def plot_latent_distributions(self, figsize=None):
         """
@@ -102,8 +115,8 @@ class _GrahamModelBase(StanModel_2D):
 
 
 class GrahamModelSimple(_GrahamModelBase):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self.figname_base = f"{self.figname_base}-simple"
 
     def all_posterior_plots(self, figsize=None):
@@ -137,8 +150,8 @@ class GrahamModelSimple(_GrahamModelBase):
 
 
 class GrahamModelHierarchy(_GrahamModelBase):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self.figname_base = f"{self.figname_base}-hierarchy"
         self._hyper_qtys = ["r_b_mean", "r_b_std", "Re_mean", "Re_std", "log10_I_b_mean", "log10_I_b_std", "g_mean", "g_std", "n_mean", "n_std", "a_mean", "a_std"]
         self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", r"$\mu_{g}$", r"$\sigma_{g}$", r"$\mu_{n}$", r"$\sigma_{n}$", r"$\mu_{a}$", r"$\sigma_{a}$"]
