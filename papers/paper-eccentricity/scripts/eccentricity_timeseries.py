@@ -72,13 +72,5 @@ ax.set_xlim(5e-2, 50)
 ax.set_ylim(0,1)
 print("\nComplete         ")
 
-'''for i, (data_path, col) in enumerate(zip((e90_data_path, e99_data_path), cmf.plotting.mplColours())):
-    # extract data
-    HMQ_files = cmf.utils.get_files_in_dir(data_path)
-    km = cmf.analysis.KeplerModelHierarchy("", "", "")
-    km.extract_data(HMQ_files, analysis_params)
-    mean_t_h = np.median([np.mean(t)-np.mean(t0[:,i]) for t in km.obs["t"]])
-    ax.annotate("", (mean_t_h, 1-5e-4), (mean_t_h, 1), arrowprops={"arrowstyle":"-|>", "fc":col, "ec":col})'''
-
 cmf.plotting.savefig(figure_config.fig_path("eccentricities.pdf"), force_ext=True)
 plt.show()
