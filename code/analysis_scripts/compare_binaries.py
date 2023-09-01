@@ -45,7 +45,9 @@ if args.orbits:
         ax2[i,0].set_xlabel(f"{s}x/{u}".lstrip())
         ax2[i,0].set_ylabel(f"{s}z/{u}".lstrip())
         ax2[i,1].set_xlabel(f"{s}x/{u}".lstrip())
-        ax2[i,1].set_xlabel(f"{s}y/{u}".lstrip())
+        ax2[i,1].set_ylabel(f"{s}y/{u}".lstrip())
+else:
+    ax2 = None
 
 myr = cmf.general.units.Myr
 kpc = cmf.general.units.kpc
@@ -55,14 +57,18 @@ num_dirs = len(ketju_dirs)
 total_sim_count = 0
 SL.logger.debug(f"We will be plotting {num_dirs} different families...")
 
+
 @dask.delayed
-def dask_helper(kf, i, j, ax, ax2):
+def dask_data_loader(kf):
+    """Dask helper to load data and calculate quantities"""
     SL.logger.debug(f"Reading: {kf}")
     try:
         bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
+        if merged.merged:
+            SL.logger.info(merged)
     except:
         SL.logger.warning(f"No binaries found in: {kf} --> skipping...")
-        return 0
+        return [None, None, None, None]
     if args.t0 is None:
         toffset = 0
     else:
@@ -71,28 +77,42 @@ def dask_helper(kf, i, j, ax, ax2):
         bh1 = bh1[bh1.t/myr+toffset < args.mask]
         bh2 = bh2[bh2.t/myr+toffset < args.mask]
     op = ketjugw.orbital_parameters(bh1, bh2)
-    zorder = 0.1*(num_dirs * j + i)
+    return [bh1, bh2, op, toffset]
 
-    def _orbit_plotter(bh, c):
-        pos = (bh.x - op["x_CM"])/kpc
-        vel = (bh.v - op["v_CM"])/ketjugw.units.km_per_s
-        for axidx, q in enumerate((pos, vel)):
-            ax2[axidx,0].plot(q[:,0], q[:,2], c=c, alpha=0.7, markevery=[-1], marker="o", zorder=zorder)
-            ax2[axidx,1].plot(q[:,0], q[:,1], c=c, alpha=0.7, markevery=[-1], marker="o", zorder=zorder)
 
-    if num_dirs == 1:
-        cmf.plotting.binary_param_plot(op, ax=ax, label=f"{kf.split('/')[-3]}", ls=linestyles[line_count//len(cols)], toffset=toffset, zorder=zorder)
-        if args.orbits:
-            c = cols[i%len(cols)]
-            for bh in (bh1, bh2):
-                _orbit_plotter(bh,c)
-    else:
-        cmf.plotting.binary_param_plot(op, ax=ax, label=(labels[j] if i==0 else ""), c=cols[j], alpha=0.6, markevery=1000, ls=linestyles[line_count//len(cols)], toffset=toffset, zorder=zorder)
-        if args.orbits:
-            c = cols[j%len(cols)]
-            for bh in (bh1, bh2):
-                _orbit_plotter(bh,c)
-    return 1
+def plotter(d, ax, ax2, j):
+    """Serial plotting"""
+    kfs = cmf.utils.get_ketjubhs_in_dir(d)
+    results = []
+    line_count = 0
+    for i, k in enumerate(kfs):
+        results.append(dask_data_loader(k))
+    results = dask.compute(*results)
+    for i, (r, kf) in enumerate(zip(results, kfs)):
+        bh1, bh2 = r[0], r[1]
+        op = r[2]
+        toffset = r[3]
+        if any([x is None for x in r]):
+            continue
+        def _orbit_plotter(bh1, bh2, c):
+            pos = (bh1.x - bh2.x)/kpc
+            vel = (bh1.v - bh2.v)/ketjugw.units.km_per_s
+            for axidx, q in enumerate((pos, vel)):
+                ax2[axidx,0].plot(q[:,0], q[:,2], c=c, alpha=0.7, markevery=[-1], marker="o")
+                ax2[axidx,1].plot(q[:,0], q[:,1], c=c, alpha=0.7, markevery=[-1], marker="o")
+        if num_dirs == 1:
+            cmf.plotting.binary_param_plot(op, ax=ax, label=f"{kf.split('/')[-3]}", ls=linestyles[line_count//len(cols)], toffset=toffset)
+            if args.orbits:
+                c = cols[i%len(cols)]
+                _orbit_plotter(bh1, bh2, c)
+        else:
+            cmf.plotting.binary_param_plot(op, ax=ax, label=(labels[j] if i==0 else ""), c=cols[j], alpha=0.6, markevery=1000, ls=linestyles[line_count//len(cols)], toffset=toffset)
+            if args.orbits:
+                c = cols[j%len(cols)]
+                _orbit_plotter(bh1, bh2 ,c)
+        line_count += 1
+    return line_count
+
 
 # initialise the plot
 ax = cmf.plotting.binary_param_plot({"t":np.nan, "a_R":np.nan, "e_t":np.nan}, ax)
@@ -100,16 +120,15 @@ for axi in ax:
     axi.set_prop_cycle(None)
 
 for j, d in enumerate(ketju_dirs):
-    ketju_files = cmf.utils.get_ketjubhs_in_dir(d)
-    line_count = 0
+    try:
+        assert os.path.exists(d)
+    except AssertionError:
+        SL.logger.exception(f"Path {d} does not exist!", exc_info=True)
+        raise
     bound_bhs_present = False
-    res = []
-    for i, k in enumerate(ketju_files):
-        res.append(dask_helper(k,i,j, ax, ax2))
-    res_sum = sum(dask.compute(res)[0])
-    line_count += res_sum
-    total_sim_count += res_sum
-    bound_bhs_present = bool(res_sum) or bound_bhs_present
+    lc = plotter(d, ax, ax2, j)
+    total_sim_count += lc
+    bound_bhs_present = bool(lc) or bound_bhs_present
     if not bound_bhs_present:
         SL.logger.warning(f"No bound BHs present in {d}")
 
@@ -117,8 +136,11 @@ try:
     ax[0].legend(loc="upper right", **legend_kwargs)
     if args.logt: ax[0].set_xscale("log")
     if args.save:
+        fig = ax[0].get_figure()
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"), save_kwargs=fig_kwargs)
+        cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"), fig=fig, save_kwargs=fig_kwargs)
+        if args.orbits:
+            cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}_orbit.png"), fig=fig2, save_kwargs=fig_kwargs)
     plt.show()
 except (IndexError, TypeError):
     SL.logger.error("No bound BHs found!")

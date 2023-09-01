@@ -60,7 +60,7 @@ class _KeplerModelBase(StanModel_1D):
             analysis parameters
         """
         obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[], "t":[]}
-        for f in dir:
+        for i, f in enumerate(dir):
             _logger.logger.debug(f"Loading file: {f}")
             hmq = HMQuantitiesData.load_from_file(f)
             status, idx = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
