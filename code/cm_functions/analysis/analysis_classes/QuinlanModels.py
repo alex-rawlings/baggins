@@ -115,11 +115,8 @@ class _QuinlanModelBase(StanModel_2D):
             obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
             if self._merger_id is None:
                 self._merger_id = re.sub("_[a-z]-", "-", hmq.merger_id)
-
             if not self._loaded_from_file:
                 self._add_input_data_file(f)
-        if not obs["e_ini"]:
-            obs.pop("e_ini")
         self.obs = obs
         self._check_num_groups(pars)
 
@@ -368,7 +365,7 @@ class QuinlanModelSimple(_QuinlanModelBase):
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)
-        
+
         ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent)
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"corner_{self._parameter_corner_plot_counter}"), fig=fig)
