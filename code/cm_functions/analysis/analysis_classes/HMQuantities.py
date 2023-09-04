@@ -170,7 +170,7 @@ class HMQuantities(HMQuantitiesData):
                 idx = self.get_idx_in_vec(t, self.binary_time)
                 self.semimajor_axis_of_snapshot.append(self.semimajor_axis[idx])
             else:
-                self.semimajor_axis_of_snapshot.append(np.nan)
+                self.semimajor_axis_of_snapshot.append(np.array([np.nan]))
 
             # some important radii
             self.influence_radius.append(

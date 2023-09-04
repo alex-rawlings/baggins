@@ -5,12 +5,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cm_functions as cmf
 
-parser = argparse.ArgumentParser(description="Plot deflection angle and median eccentricity of merger runs")
+parser = argparse.ArgumentParser(description="Plot deflection angle and median eccentricity of merger runs", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(type=str, help="path to HMQ directory", dest="path")
+parser.add_argument(type=str, dest="label", help="labelling method", choices=["e", "res"], default="e")
 parser.add_argument("-d", "--dir", type=str, action="append", default=[], dest="extra_dirs", help="other HMQ directories to compare")
 parser.add_argument("-a", "--angle", type=float, dest="angle", help="minimum deflection angle", default=30)
 parser.add_argument("-o", "--orbits", type=int, dest="orbits", help="number of orbits to determine eccentricity over", default=5)
-parser.add_argument("-l", "--label", type=str, dest="label", help="labelling method", choices=["e", "res"], default=None)
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-s", "--save", action="store_true", dest="save", help="save figure")
 parser.add_argument("-sd", "--save-data", dest="save_data", type=str, default=None, help="directory to save data to")
@@ -57,8 +57,8 @@ data = dict(
 
 fig, ax = plt.subplots(2,1, sharex="all")
 ax[1].set_xlabel(r"$\theta\degree_\mathrm{defl}$")
-ax[0].set_ylabel(r"$a/\mathrm{pc}$")
-ax[1].set_ylabel("$e$")
+ax[0].set_ylabel(r"$a_\mathrm{h}/\mathrm{pc}$")
+ax[1].set_ylabel(r"$e_\mathrm{h}$")
 ax[0].set_title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
 
 
@@ -77,7 +77,7 @@ for j, datdir in enumerate(data_dirs):
     for i, HMQfile in enumerate(HMQfiles):
         SL.logger.debug(f"Reading file: {HMQfile}")
         hmq = cmf.analysis.HMQuantitiesData.load_from_file(HMQfile)
-        if i==0 and args.label is not None:
+        if i==0:
             if args.label == "e":
                 labels[j] = f"{hmq.initial_galaxy_orbit['e0']:.3f}"
                 legend_title = r"$e_\mathrm{ini}$"
