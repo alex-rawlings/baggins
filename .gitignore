@@ -211,3 +211,9 @@ code/analysis_scripts/gaussian_processes/stan/*
 
 # code logging
 code/cm_functions/logs
+
+# documentation
+code/cm_functions/docs/_build
+
+# evironment parameters: template available already, no need to track changes
+code/cm_functions/env_params.yml
