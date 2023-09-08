@@ -33,7 +33,7 @@ class HDF5Base:
         now = datetime.datetime.now()
         now = now.strftime(date_format)
         self._log += f"{now}: {msg}\n"
-    
+
 
     @classmethod
     def load_from_file(cls, fname, decode="utf-8"):
@@ -146,7 +146,7 @@ class HDF5Base:
                         C.add_to_log(msg)
             _logger.logger.debug(f"File {fname} loaded")
         return C
-    
+
 
     def _saver(self, g, l):
         """
@@ -158,22 +158,16 @@ class HDF5Base:
             group to add elements to
         l : list
             attribute names to add to group
-
-        Raises
-        ------
-        ValueError
-            _description_
         """
         # attributes defined with the @property method are not in __dict__, 
         # but their _members are. Append an underscore to all things in l
         l = ["_" + x for x in l]
         saved_list = []
-        for attr in self.__dict__:
-            if attr not in l:
+        for _attr in self.__dict__:
+            if _attr not in l:
                 continue
             # now we strip the leading underscore if this should be saved
-            saved_list.append(attr)
-            attr = attr.lstrip("_")
+            attr = _attr.lstrip("_")
             attr_val = getattr(self, attr)
             try:
                 assert isinstance(attr_val, self.allowed_types) or isinstance(attr_val, dict) or attr_val is None
@@ -192,6 +186,7 @@ class HDF5Base:
             except:
                 _logger.logger.exception(f"Unable to save <{attr}> (type {type(attr_val)} with values {attr_val})", exc_info=True)
                 raise
+            saved_list.append(_attr)
         # check that everything was saved
         not_saved = list(set(l)-set(saved_list))
         if not not_saved:
@@ -199,7 +194,7 @@ class HDF5Base:
                 msg = f"Property {i.lstrip('_')} was not saved!"
                 _logger.logger.warning(msg)
                 self.add_to_log(msg)
-    
+
 
     def _add_attr(self, dg, aname, aval):
         """
@@ -331,7 +326,7 @@ class HDF5Base:
                 meta.create_dataset("logs", data=self._log)
             else:
                 f["/meta/logs"][...] = self._log
-    
+
 
     def print_logs(self):
         """

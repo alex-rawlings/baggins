@@ -47,7 +47,7 @@ def argparse_for_stan(description=""):
         argument parser for other arguments specific to the script to be parsed
         to
     """
-    parser = argparse.ArgumentParser(description=description, allow_abbrev=False)
+    parser = argparse.ArgumentParser(description=description, allow_abbrev=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
     parser.add_argument(type=str, help="directory to HMQuantity HDF5 files or csv files", dest="dir")
     parser.add_argument(type=str, help="new sample or load previous", choices=["new", "loaded"], dest="type")

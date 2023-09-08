@@ -171,7 +171,7 @@ def get_unique_path_part(path_list):
     common_path_len = len(os.path.commonpath(path_list))
     unique_parts = []
     for s in path_list:
-        unique_parts.append(s[common_path_len:].lstrip("/"))
+        unique_parts.append(s[common_path_len:].strip("/"))
     return unique_parts
 
 
