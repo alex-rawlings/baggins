@@ -120,6 +120,7 @@ def get_snapshots_in_dir(path, ext=".hdf5", exclude=[]):
         all_files = [f for f in all_files if e not in f]
     # filter out corrupt snaps
     bad_snaps = []
+    has_bak_snaps = False
     for s in all_files:
         try:
             with h5py.File(s, "r") as f:
@@ -128,6 +129,9 @@ def get_snapshots_in_dir(path, ext=".hdf5", exclude=[]):
         except KeyError:
             _logger.logger.warning(f"Snapshot {s} potentially corrupt. Removing it from the list of snapshots!")
             bad_snaps.append(s)
+        if not has_bak_snaps and "bak-" in s:
+            _logger.logger.warning(f"A 'bak-' file has been detected! The alphabetical order of the snapshot list cannot be guaranteed!")
+            has_bak_snaps = True
     return [a for a in all_files if a not in bad_snaps]
 
 

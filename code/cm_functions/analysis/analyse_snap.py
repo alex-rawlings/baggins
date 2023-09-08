@@ -308,7 +308,8 @@ def calculate_Hamiltonian(snap, chunk=1e5, return_parts=False):
 
 def determine_if_merged(snap):
     """
-    Determine if a merger has occurred by identifying a BH with 0 mass
+    Determine if a merger has occurred by identifying a BH with 0 mass or 
+    only one BH present.
 
     Parameters
     ----------
@@ -323,7 +324,7 @@ def determine_if_merged(snap):
         ID of the remnant BH (the one with non-zero mass)
     """
     # Gadget4 cleans up merged BHs, so there are no ghost particles
-    if np.any(snap.bh["mass"]<1e-15) or len(snap.bh) < 2:
+    if len(snap.bh) < 2 or np.any(snap.bh["mass"]<1e-15):
         merged = True
         remnant_id = snap.bh["ID"][snap.bh["mass"]>1e-15][0]
     else:
