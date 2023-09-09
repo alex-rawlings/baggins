@@ -1,6 +1,6 @@
 ---
-cmdstan:
-data_dir:
+cmdstan: /projappl/pjohanss/stan-env/cmdstan-2.31.0
+data_dir: /scratch/pjohanss/arawling/collisionless_merger
 date_format: '%Y-%m-%d %H:%M:%S'
 figure_dir: figures
 figure_ext: .png
@@ -10,7 +10,6 @@ logging:
   file_level: WARNING
 tmp_dir: tmp_dir
 ...
-
 ---
-git_hash:
+git_hash: heads/master-0-g4723c97
 ...
