@@ -10,6 +10,7 @@ import cm_functions as cmf
 parser = argparse.ArgumentParser(description="Determine if a merger remnant has settled", allow_abbrev=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(help="Path to simulation output", dest="path", type=str)
 parser.add_argument("-t", "--threshold", help="velocity threshold", type=float, dest="threshold", default=10)
+parser.add_argument("-n", "--num", help="number of snapshots to analyse", type=int, dest="num", default=30)
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbosity", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
@@ -51,12 +52,16 @@ def _helper(_snap, i):
 
 
 res = []
+if args.num < 0:
+    start_snap = 0
+else:
+    start_snap = max(len(snapfiles)-args.num, 0)
 
 # read the first snapshot to see if we can enable parallelism
-for i, s in enumerate(snapfiles):
+for i, s in enumerate(snapfiles[start_snap:], start=start_snap):
     snap = pygad.Snapshot(s, physical=True)
     if cmf.analysis.determine_if_merged(snap)[0]:
-        SL.logger.info(f"First snapshot after merger: {i:03d}")
+        SL.logger.info(f"First snapshot to analyse: {i:03d}")
         res.append(_helper(snap, i))
         start_i = i+1
         break
@@ -69,16 +74,19 @@ for i, s in enumerate(snapfiles[start_i:], start=start_i):
     snap = pygad.Snapshot(s, physical=True)
     SL.logger.debug(f"Adding snapshot {i:03d} to dask queue...")
     res.append(_helper(snap, i))
+SL.logger.info(f"{len(res)+1} snapshots to analyse")
 results.extend(dask.compute(*res))
 
 results = np.array(results)
 idx = np.argsort(results[:,0])
 results = results[idx,:]
 
-if results.shape[0] > 5 and all(results[-5:,2] < args.threshold):
+idx_minus01 = np.argmax(results[-1,1]-0.1 < results[:,1])
+med_vel = np.median(results[idx_minus01:,2])
+if results.shape[0] > 5 and med_vel < args.threshold:
     SL.logger.warning("System has settled!")
 else:
-    SL.logger.warning("System has not settled!")
+    SL.logger.warning(f"System has not settled! Median velocity over the past 0.1 Gyr is {med_vel:.2f} km/s")
 
 # plot
 fig, ax = plt.subplots(2, 1, sharex="all")
@@ -102,7 +110,9 @@ cmap, sm = cmf.plotting.create_normed_colours(
                 10**np.floor(np.log10(min(results[:,5]))),
                 10**np.ceil(np.log10(min(results[:,5]))),
                 normalisation="LogNorm")
-sc = ax[1].scatter(results[:,1], results[:,4], c=cmap(results[:,5]), ec="k", lw=0.5)
+ax[1].scatter(results[:,1], results[:,4], c=cmap(results[:,5]), ec="k", lw=0.5)
 cbar = plt.colorbar(sm, ax=ax[1], label=r"$\rho_\star / \mathrm{M}_\odot/\mathrm{kpc}^{-3}$")
+if max(results[:,4]) > 5e-2:
+    ax[1].set_yscale("log")
 plt.show()
 
