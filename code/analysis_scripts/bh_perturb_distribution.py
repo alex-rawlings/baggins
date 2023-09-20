@@ -1,63 +1,166 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats
-import seaborn as sns
 import os
 import pygad
 import cm_functions as cmf
 
 
 #set up command line arguments
-parser = argparse.ArgumentParser(description="Determine the deviation of the BH from the CoM for an isolated galaxy", allow_abbrev=False)
+parser = argparse.ArgumentParser(description="Determine the deviation of the BH from the CoM", allow_abbrev=False)
 parser.add_argument(type=str, help="path to snapshot directory or previous dataset", dest="path")
-parser.add_argument("-n", "--new", help="analyse a new dataset", dest="new", action="store_true")
-parser.add_argument("-r", "--radius", type=float, help="radius to calculate density within [kpc]", dest="radius", default=0.1)
+parser.add_argument("-p", "--path2", help="path to second .pickle file for plotting purposes", type=str, dest="path2", action="append")
 parser.add_argument("-t", "--time", type=float, help="plot times after this [Gyr]", dest="time", default=-1)
+# TODO better handling of all snaps
+parser.add_argument("-l", "--lastsnap", help="last snap number to analyse", type=int, dest="last_snap", default=9999)
+parser.add_argument("-v", "--verbose", help="verbose printing", dest="verbose", action="store_true")
 args = parser.parse_args()
 
-if args.new:
-    ball_radius = pygad.UnitScalar(args.radius, "kpc")
+new_data = False if args.path.endswith(".pickle") else True
+
+
+# simple class to hold data
+class Brownian:
+    def __init__(self, bhid, n, verbose=False) -> None:
+        self.bhid = bhid
+        self.n = n
+        self.count = 0
+        self.verbose = verbose
+        self.times = np.full(self.n, np.nan, dtype=float)
+        self.x_offset = np.full((self.n, 3), np.nan, dtype=float)
+        self.v_offset = np.full_like(self.x_offset, np.nan, dtype=float)
+        self.id_mask_bh = pygad.IDMask(self.bhid)
+        self.x_offset_mag = np.full_like(self.times, np.nan, dtype=float)
+        self.v_offset_mag = np.full_like(self.times, np.nan, dtype=float)
+        self.bh_sep = np.full_like(self.times, np.nan, dtype=float)
+    
+    @property
+    def count(self):
+        return self._count
+    
+    @count.setter
+    def count(self, v):
+        assert 0 <= v <= self.n
+        self._count  = v
+
+    def add_data(self, snap, xcom=None, vcom=None):
+        if self.verbose: print(f"{self.count}: {self.bhid}")
+        assert snap.phys_units_requested
+        self.times[self.count] = cmf.general.convert_gadget_time(snap)
+        id_masks_stars = cmf.analysis.get_all_id_masks(snap)
+        if xcom is None:
+            xcom = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", masks=id_masks_stars, family="stars", verbose=self.verbose)
+        if vcom is None:
+            vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=id_masks_stars, verbose=self.verbose)
+        self.x_offset[self.count, :] = xcom[self.bhid] - snap.bh[self.id_mask_bh]["pos"]
+        self.v_offset[self.count, :] = vcom[self.bhid] - snap.bh[self.id_mask_bh]["vel"]
+        self.bh_sep[self.count] = pygad.utils.geo.dist(snap.bh["pos"][0,:], snap.bh["pos"][1,:])
+        self.count += 1
+        if self.count == self.n:
+            self.compute_offset_magnitude()
+        return xcom, vcom
+    
+    def compute_offset_magnitude(self):
+        self.x_offset_mag = cmf.mathematics.radial_separation(self.x_offset)
+        self.v_offset_mag = cmf.mathematics.radial_separation(self.v_offset)
+    
+    def save(self, fname=None):
+        data_dict = dict(
+            times = self.times,
+            x_offset = self.x_offset,
+            x_offset_mag = self.x_offset_mag,
+            v_offset = self.v_offset,
+            v_offset_mag = self.v_offset_mag,
+            bh_sep = self.bh_sep
+        )
+        if fname is None:
+            fname = f"my_galaxy_{self.bhid}.pickle"
+        else:
+            fpre, fext = os.path.splitext(fname)
+            assert fext == ".pickle"
+            fname = fpre + f"_{self.bhid}" + fext
+        savepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"pickle/bh_perturb_merger/{fname}")
+        cmf.utils.save_data(data_dict, savepath)
+    
+    @classmethod
+    def load(cls, fname):
+        c = cls(None, 0)
+        data = cmf.utils.load_data(fname)
+        for k, v in data.items():
+            setattr(c, k, v)
+        return c
+
+    def plot(self, ax=None, xval="time", **kwargs):
+        if xval == "time":
+            xlabel = "Time / Gyr"
+            xs = self.times
+        elif xval=="sep":
+            xlabel = "Separation / kpc"
+            xs = self.bh_sep
+        else:
+            raise ValueError("xval must be 'times' or 'sep'")
+        sc_kw = {"linewidth":0.5, "edgecolor":"k"}
+        if ax is None:
+            newax = True
+            fig, ax = plt.subplots(1,3, figsize=(10,4))
+            ax[0].set_xlabel(xlabel)
+            ax[0].set_ylabel("BH position offset [kpc]")
+            ax[1].set_xlabel(xlabel)
+            ax[1].set_ylabel("BH velocity offset [km/s]")
+            ax[2].set_xlabel("BH position offset [kpc]")
+            ax[2].set_ylabel("BH velocity offset [km/s]")
+            fig.suptitle("BH Brownian Motion")
+        else:
+            newax = False
+        ax[0].scatter(xs, self.x_offset_mag, **sc_kw, **kwargs)
+        ax[1].scatter(xs, self.v_offset_mag, **sc_kw, **kwargs)
+        ax[2].scatter(self.x_offset_mag, self.v_offset_mag, **sc_kw, **kwargs)
+        if newax:
+            return ax, fig
+        else:
+            return ax
+
+
+brownian_objects = []
+
+if new_data:
     snapfiles = cmf.utils.get_snapshots_in_dir(args.path)
-    times = np.full_like(snapfiles, np.nan, dtype=float)
-    diff_x = np.full((len(snapfiles),3), np.nan, dtype=float)
-    diff_v = np.full_like(diff_x, np.nan, dtype=float)
-    stellar_density = np.full_like(times, np.nan, dtype=float)
 
     for ind, snapfile in enumerate(snapfiles):
-        print("Reading {:.2f}% done".format(ind/(len(snapfiles)-1)*100), end="\r")
-        snap = pygad.Snapshot(snapfile)
-        snap.to_physical_units()
-        times[ind] = cmf.general.convert_gadget_time(snap)
-        #ensure this is an isolated system
-        assert len(snap.bh["ID"])==1, "The system must be isolated!"
-        #get com motions
-        xcom = cmf.analysis.get_com_of_each_galaxy(snap, verbose=False)
-        diff_x[ind, :] = list(xcom.values())[0] - snap.bh["pos"]
-        vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, verbose=False)
-        diff_v[ind, :] = list(vcom.values())[0] - snap.bh["vel"]
-        #get stellar density
-        ball_mask = pygad.BallMask(ball_radius, center=list(xcom.values())[0])
-        stellar_ball_mass = len(snap.stars[ball_mask])*snap.stars["mass"][0]
-        stellar_density[ind] = cmf.mathematics.density_sphere(stellar_ball_mass, ball_radius)
-        snap.delete_blocks()
-    galaxy_name = args.path.rstrip("/").split("/")[-2]
-    data_dict = {"times":times, "diff_x":diff_x, "diff_v":diff_v, "stellar_density": stellar_density, "ball_radius":args.radius, "galaxy_name":galaxy_name}
-    savepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pickle/bh_perturb")
-    os.makedirs(savepath, exist_ok=True)
-    savefile = os.path.join(savepath, "{}_bhperturb.pickle".format(galaxy_name))
-    cmf.utils.save_data(data_dict, savefile)
-else:
-    data_dict = cmf.utils.load_data(args.path)
+        if ind <= args.last_snap:
+            snap = pygad.Snapshot(snapfile, physical=True)
+            if ind==0:
+                for bhid in snap.bh["ID"]:
+                    brownian_objects.append(Brownian(bhid, len(snapfiles)))
+            for ind2, b in enumerate(brownian_objects):
+                if ind2==0:
+                    xcom, vcom = b.add_data(snap)
+                else:
+                    b.add_data(snap, xcom=xcom, vcom=vcom)
+            snap.delete_blocks()
+            del snap
+            pygad.gc_full_collect()
+    for b in brownian_objects:
+        b.compute_offset_magnitude()
+        b.save()
 
-#create a mask to limit to the desired time span
-time_mask = data_dict["times"] > args.time
-#determine Brownian magnitudes
-displacement = cmf.mathematics.radial_separation(data_dict["diff_x"])
-vel_mag = cmf.mathematics.radial_separation(data_dict["diff_v"])
-#plot the displacement and velocity magnitudes, with a kernel-density estimate
-p = sns.jointplot(x=displacement[time_mask], y=vel_mag[time_mask], kind="reg")
-p.set_axis_labels("Radial Displacement [kpc]", "Velocity Magnitude [km/s]")
-p.figure.suptitle(data_dict["galaxy_name"])
-plt.subplots_adjust(left=0.1, bottom=0.07, top=0.95)
-plt.savefig(os.path.join(cmf.FIGDIR, "brownian/{}_brownian.png".format(data_dict["galaxy_name"])))
+else:
+    print("Previous data set being read!")
+    brownian_objects.append(Brownian.load(args.path))
+    if args.path2 is not None:
+        for p in args.path2:
+            brownian_objects.append(Brownian.load(p))
+    for b in brownian_objects:
+        b.compute_offset_magnitude()
+
+
+for i, b in enumerate(brownian_objects):
+    if i==0:
+        ax, *_ = b.plot()
+    else:
+        ax = b.plot(ax=ax)
+for i in range(2):
+    ax[i].axvline(1.71071, c="k", alpha=0.7, ls=":", label=r"$t_\mathrm{peri}$")
+ax[0].legend()
+
+plt.show()

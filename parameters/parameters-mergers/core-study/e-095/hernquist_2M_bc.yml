@@ -1,0 +1,85 @@
+# always assume units of:
+# mass: solar masses
+# distance: kpc
+# time: Gyr
+# velocity: km/s
+# unless otherwise stated
+
+---
+# general info about the merger
+general:
+  galaxy_name_1: H_2M_b
+  galaxy_name_2: H_2M_c
+  random_seed: 50798
+  recentre_progens_to_com: false
+  recentre_merger_to_com: false
+
+# info about where files are to be read from and saved to
+file_locations:
+  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_2M/hernquist_2M_b/hernquist_2M_b.hdf5
+  galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_2M/hernquist_2M_c/hernquist_2M_c.hdf5
+  # file will be saved to 
+  # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
+  save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/trail_blazer
+  perturb_sub_dir:
+
+# info about the original orbit of the merger
+orbital_properties:
+  mass_radius_fac:
+  r0:
+    # initial separation of systems
+    unit: kpc
+    value: 30.0
+    # distance at first pericentre passage
+  rperi:
+    unit: kpc
+    value: 2.0
+  a0:
+    unit: kpc
+    value:
+  e0: 0.97
+
+# info about how the system should be perturbed
+perturb_properties:
+  # when to apply the perturbation
+  perturb_time:
+    unit: Gyr
+    value:
+  number_perturbs: 10
+  # perturb BH particles with a Gaussian distribution
+  perturb_bhs:
+    perturb_position:
+      unit: kpc
+      # Gaussian standard deviation
+      value:
+    perturb_velocity:
+      unit: km/s
+      # Gaussian standard deviation
+      value:
+  perturb_field_particles:
+    family: stars
+    perturb_position:
+      unit: kpc
+      value:
+    radial_bounds:
+      unit: kpc
+      value:
+  gadget_parameters_to_update:
+  # create a copy of a gadget paramfile with changes made to these vars
+  # InitCondFile, SnapshotFileBase are always updated
+    SofteningStars:
+    ketju_disable_integration:
+    ErrTolIntAccuracy:
+...
+
+---
+e0: 0.97
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/trail_blazer/H_2M_b-H_2M_c-30.000-2.000
+last_update: '2023-08-16 10:46:06'
+mass_resolution: 5.86000039e+04
+r0_physical: 30.0
+rperi_physical: 2.0
+time_to_pericentre: 0.07543526931601069
+virial_radius_large: 330.5409064175464
+...
+

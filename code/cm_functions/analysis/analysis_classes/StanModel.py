@@ -3,7 +3,7 @@ import os
 from operator import itemgetter
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import rcParams
+from matplotlib import rcParams, collections, patches
 from datetime import datetime
 import cmdstanpy
 import arviz as az
@@ -54,6 +54,7 @@ class _StanModel(ABC):
         self._prior_fit_for_az = None
         self._parameter_diagnostic_plots_counter = 0
         self._gq_distribution_plot_counter = 0
+        self._group_par_counter = 0
         # corner plot method doesn't save figure --> ensures first plot index 0
         self._parameter_corner_plot_counter = -1 
         self._trace_plot_cols = None
@@ -762,6 +763,38 @@ class _StanModel(ABC):
         savefig(self._make_fig_name(self.figname_base, f"pair_{self._parameter_diagnostic_plots_counter}"), fig=fig)
         plt.close(fig)
         self._parameter_diagnostic_plots_counter += 1
+
+
+    def group_parameter_plot(self, var_names, figsize=None, labeller=None, levels=None):
+        # TODO add labeller to axis
+        if figsize is None:
+            max_dim = max(rcParams["figure.figsize"])
+            figsize = (max_dim, max_dim)
+        if levels is None:
+            levels = self._default_hdi_levels
+        levels = [l/100 for l in levels]
+        az_group = "posterior" if self._fit_for_az is not None else "prior"
+        cmapper, sm = create_normed_colours(-0.1, 0.5)
+        # loop through variables
+        p = []
+        for i, v in enumerate(var_names):
+            # loop through HDI levels
+            for l in levels:
+                hdi = az.hdi(self._fit_for_az[az_group][v], l, skipna=True)
+                r = patches.Rectangle(
+                    (i-0.5, hdi[0]),
+                    1, hdi[1] - hdi[0],
+                    fc = cmapper(0.5*(1-l)),
+                    alpha = 0.7
+                )
+                p.append(r)
+        fig, ax  =plt.subplots(1,1)
+        ax.add_collection(collections.PatchCollection(p))
+        ax.autoscale_view()
+        savefig(self._make_fig_name(self.figname_base, f"group_par_{self._group_par_counter}"), fig=fig)
+        plt.close(fig)
+        self._group_par_counter += 1
+
 
 
     @abstractmethod
