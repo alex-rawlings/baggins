@@ -38,7 +38,7 @@ ax_twin.set_xlabel(r"$N_{\star,\mathrm{tot}}$")
 # plot data
 marker_list = figure_config.marker_cycle.by_key()["marker"]
 col_list = figure_config.color_cycle_shuffled.by_key()["color"]
-for i, (d, lab, marker, col) in enumerate(zip((data_e090, data_e099, nasim), (r"$e_0=0.90$", r"$e_0=0.99$", "Nasim+20"), marker_list, col_list)):
+for i, (d, lab, marker, col) in enumerate(zip((data_e090, data_e099, nasim), (r"$e_0=0.90$", r"$e_0=0.99$", r"$\mathrm{Nasim+20}$"), marker_list, col_list)):
     l = ax.plot(d["mass_res"], d["sigma_e"], label=f"{lab}", zorder=1, ls="", marker=marker, c=col)
 
 # add the sqrt{resolution} scaling line
