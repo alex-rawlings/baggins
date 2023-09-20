@@ -85,6 +85,13 @@ idx_minus01 = np.argmax(results[-1,1]-0.1 < results[:,1])
 med_vel = np.median(results[idx_minus01:,2])
 if results.shape[0] > 5 and med_vel < args.threshold:
     SL.logger.warning("System has settled!")
+    # TODO now we need to find which snapshot to analyse
+    i = 0
+    while i<20:
+        med_vel = np.median(results[idx_minus01-i:-i,2])
+        if med_vel > args.threshold:
+            SL.logger.warning(f"Snapshot to analyse: {len(snapfiles)-i}")
+            break
 else:
     SL.logger.warning(f"System has not settled! Median velocity over the past 0.1 Gyr is {med_vel:.2f} km/s")
 
