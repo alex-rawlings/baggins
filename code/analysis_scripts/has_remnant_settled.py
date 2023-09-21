@@ -1,4 +1,3 @@
-import os.path
 import argparse
 import dask
 import numpy as np
@@ -24,6 +23,7 @@ def _cleanup(sf):
 
 # get a list of snapshots
 snapfiles = cmf.utils.get_snapshots_in_dir(args.path)
+LENGTH = len(snapfiles)
 
 @dask.delayed
 def _helper(_snap, i):
@@ -55,7 +55,7 @@ res = []
 if args.num < 0:
     start_snap = 0
 else:
-    start_snap = max(len(snapfiles)-args.num, 0)
+    start_snap = max(LENGTH-args.num, 0)
 
 # read the first snapshot to see if we can enable parallelism
 for i, s in enumerate(snapfiles[start_snap:], start=start_snap):
@@ -85,13 +85,17 @@ idx_minus01 = np.argmax(results[-1,1]-0.1 < results[:,1])
 med_vel = np.median(results[idx_minus01:,2])
 if results.shape[0] > 5 and med_vel < args.threshold:
     SL.logger.warning("System has settled!")
-    # TODO now we need to find which snapshot to analyse
-    i = 0
-    while i<20:
-        med_vel = np.median(results[idx_minus01-i:-i,2])
+    analyse_idx_r = 1
+    max_iter = min(20, LENGTH)
+    while analyse_idx_r < max_iter:
+        med_vel = np.median(results[idx_minus01-analyse_idx_r:-analyse_idx_r,2])
+        SL.logger.debug(f"Median velocity from {results[idx_minus01-analyse_idx_r,1]:.2f} to {results[-analyse_idx_r,1]:.2f} (snap {results[idx_minus01-analyse_idx_r,0]}-{results[-analyse_idx_r,0]}) is {med_vel:.2f} km/s")
         if med_vel > args.threshold:
-            SL.logger.warning(f"Snapshot to analyse: {len(snapfiles)-i}")
+            SL.logger.warning(f"Snapshot to analyse: {LENGTH-analyse_idx_r}")
             break
+        analyse_idx_r += 1
+    if analyse_idx_r==max_iter:
+        SL.logger.warning(f"Max iterations {analyse_idx_r} have been reached, and no clear snapshot to analyse! Try increasing the number of snapshots analysed from {LENGTH}")
 else:
     SL.logger.warning(f"System has not settled! Median velocity over the past 0.1 Gyr is {med_vel:.2f} km/s")
 
@@ -103,6 +107,7 @@ ax[0].set_xlabel(r"$t/\mathrm{Gyr}$")
 ax[0].set_ylabel(r"$v/\mathrm{kms}^{-1}$")
 ax_twin1.set_xlabel("Snap number")
 ax[0].plot(results[:,1], results[:,2], marker="o", ls="", mec="k", mew=0.5)
+ax[0].scatter(results[-analyse_idx_r,1], results[-analyse_idx_r,2], marker="s", s=90, c="tab:orange", ec="k", lw=0.5, label="Chosen")
 ax[0].axhline(args.threshold, c="tab:red", lw=2, label="Threshold")
 ax[0].legend(fontsize="small")
 if results[0,2] > 50:
