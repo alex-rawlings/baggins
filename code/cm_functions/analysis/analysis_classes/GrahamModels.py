@@ -1,11 +1,12 @@
 from abc import abstractmethod
 import os.path
 import re
+import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from . import StanModel_2D
-from . import HMQuantitiesBinaryData
+from . import HMQuantitiesBinaryData, HMQuantitiesSingleData
 from ...mathematics import get_histogram_bin_centres
 from ...env_config import _cmlogger
 from ...plotting import savefig
@@ -52,7 +53,7 @@ class _GrahamModelBase(StanModel_2D):
 
 
     @abstractmethod
-    def extract_data(self, pars, d=None):
+    def extract_data(self, pars, d=None, binary=True):
         """
         Data extraction and manipulation required for the Graham density model
 
@@ -73,8 +74,12 @@ class _GrahamModelBase(StanModel_2D):
             _logger.logger.debug(f"Reading from dir: {d}")
         for f in fnames:
             _logger.logger.info(f"Loading file: {f}")
-            hmq = HMQuantitiesBinaryData.load_from_file(f)
-            status, idx = hmq.idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)
+            if binary:
+                hmq = HMQuantitiesBinaryData.load_from_file(f)
+                status, idx = hmq.idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)
+            else:
+                hmq = HMQuantitiesSingleData.load_from_file(f)
+                idx = 0
             if not status: continue
             r = get_histogram_bin_centres(hmq.radial_edges)
             obs["R"].append(r)
@@ -251,17 +256,45 @@ class GrahamModelSimple(_GrahamModelBase):
         return ax
 
 
-# TODO update this class!!
+
 class GrahamModelHierarchy(_GrahamModelBase):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
-        self.figname_base = f"{self.figname_base}-hierarchy"
-        self._hyper_qtys = ["r_b_mean", "r_b_std", "Re_mean", "Re_std", "log10_I_b_mean", "log10_I_b_std", "g_mean", "g_std", "n_mean", "n_std", "a_mean", "a_std"]
-        self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", r"$\mu_{g}$", r"$\sigma_{g}$", r"$\mu_{n}$", r"$\sigma_{n}$", r"$\mu_{a}$", r"$\sigma_{a}$"]
+        self._hyper_qtys = ["r_b_mean", "r_b_std", 
+                            "Re_mean", "Re_std", 
+                            "log10_I_b_mean", "log10_I_b_std", 
+                            "g_mean", "g_std", 
+                            "n_mean", "n_std", 
+                            "a_mean", "a_std"]
+        self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
+                                r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", 
+                                r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", 
+                                r"$\mu_{g}$", r"$\sigma_{g}$", 
+                                r"$\mu_{n}$", r"$\sigma_{n}$", 
+                                r"$\mu_{a}$", r"$\sigma_{a}$"]
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
 
 
-    def all_posterior_plots(self, figsize=None):
+    def extract_data(self, pars, d=None, binary=True):
+        """
+        See docs for `_GrahamModelBase.extract_data()"
+        Update figname_base to include merger ID and keyword 'simple'
+        """
+        super().extract_data(pars, d, binary)
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-hierarchy")
+
+
+    def _prep_dims(self):
+        """
+        Rename dimensions for collapsing
+        """
+        _rename_dict = {}
+        for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
+            _rename_dict[f"{k}_dim_0"] = "group"
+        self.rename_dimensions(_rename_dict)
+
+
+    def all_posterior_pred_plots(self, figsize=None, ylim=(6,10)):
         """
         Posterior plots generally required for predictive checks and parameter convergence
 
@@ -269,6 +302,8 @@ class GrahamModelHierarchy(_GrahamModelBase):
         ----------
         figsize : tuple, optional
             figure size, by default None
+        ylim : tuple, optional
+            figure y-limits, by default (6, 10)
 
         Returns
         -------
@@ -276,19 +311,70 @@ class GrahamModelHierarchy(_GrahamModelBase):
             plotting axis
         """
         # hyper parameter plots (corners, chains, etc)
-        self.parameter_diagnostic_plots(["r_b_mean", "r_b_std", "Re_mean", "Re_std"], labeller=self._labeller_hyper)
-        self.parameter_diagnostic_plots(["log10_I_b_mean", "log10_I_b_std", "a_mean", "a_std"], labeller=self._labeller_hyper)
-        self.parameter_diagnostic_plots(["g_mean", "g_std", "n_mean", "n_std"], labeller=self._labeller_hyper)
+        self.parameter_diagnostic_plots(self._hyper_qtys, labeller=self._labeller_hyper)
 
         # posterior predictive check
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)
         ax1.set_xlabel(r"log($R$/kpc)")
-        ax1.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
-        ax1.set_ylim(6, 10)
-        self.posterior_plot("log10_R", "log10_proj_density_mean", "log10_surf_rho_posterior", yobs_err="log10_proj_density_std", ax=ax1)
+        ax1.set_ylabel(self._folded_qtys_labs[0])
+        ax1.set_ylim(*ylim)
+        self.plot_predictive(xmodel="R", ymodel=f"{self._folded_qtys_posterior[0]}", xobs="R", yobs="log10_proj_density_mean", yobs_err="log10_proj_density_std", ax=ax1)
 
         # latent parameter distributions
-        ax = self.plot_latent_distributions(figsize=figsize)
+        self.plot_latent_distributions(figsize=figsize)
+
+        ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent)
+        fig = ax.flatten()[0].get_figure()
+        savefig(self._make_fig_name(self.figname_base, f"corner_{self._parameter_corner_plot_counter}"), fig=fig)
         return ax
+
+
+    def all_posterior_OOS_plots(self, figsize=None, ylim=(6,10)):
+        """
+        Posterior plots for out of sample points
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ylim : tuple, optional
+            figure y-limits, by default (6, 10)
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        self._prep_dims()
+        # out of sample posterior
+        fig, ax = plt.subplots(1,1, figsize=figsize)
+        ax.set_xlabel(r"log($R$/kpc)")
+        # TODO check ymodel name
+        self.posterior_OOS_plot(xmodel="R_OOS", ymodel="rho_posterior", ax=ax)
+        ax.set_ylim(*ylim)
+        return ax
+
+
+
+class GrahamModelKick(GrahamModelHierarchy):
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+        self._hyper_qtys.extend(["p", "q"])
+        self._hyper_qts_labs.extend([r"$p$", r"$q$"])
+        self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
+
+
+    def extract_data(self, pars, d=None, binary=False):
+        super().extract_data(pars, d, binary)
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-kick")
+
+
+    def all_posterior_pred_plots(self, figsize=None, ylim=(6, 10)):
+        # TODO how to handle that the folded quantity is now part of the
+        # hierarchy? 
+        # will potentially require rethinking how to do predictive plots
+        # maybe passing a list of indices to the StanModel method?
+        raise NotImplementedError
+        return super().all_posterior_pred_plots(figsize, ylim)
 
 
