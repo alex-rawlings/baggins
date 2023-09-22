@@ -1,0 +1,238 @@
+% mnras_template.tex 
+%
+% LaTeX template for creating an MNRAS paper
+%
+% v3.0 released 14 May 2015
+% (version numbers match those of mnras.cls)
+%
+% Copyright (C) Royal Astronomical Society 2015
+% Authors:
+% Keith T. Smith (Royal Astronomical Society)
+
+% Change log
+%
+% v3.0 May 2015
+%    Renamed to match the new package name
+%    Version number matches mnras.cls
+%    A few minor tweaks to wording
+% v1.0 September 2013
+%    Beta testing only - never publicly released
+%    First version: a simple (ish) template for creating an MNRAS paper
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Basic setup. Most papers should leave these options alone.
+\documentclass[fleqn,usenatbib]{mnras}
+
+% MNRAS is set in Times font. If you don't have this installed (most LaTeX
+% installations will be fine) or prefer the old Computer Modern fonts, comment
+% out the following line
+\usepackage{newtxtext,newtxmath}
+% Depending on your LaTeX fonts installation, you might get better results with one of these:
+%\usepackage{mathptmx}
+%\usepackage{txfonts}
+
+% Use vector fonts, so it zooms properly in on-screen viewing software
+% Don't change these lines unless you know what you are doing
+\usepackage[T1]{fontenc}
+
+% Allow "Thomas van Noord" and "Simon de Laguarde" and alike to be sorted by "N" and "L" etc. in the bibliography.
+% Write the name in the bibliography as "\VAN{Noord}{Van}{van} Noord, Thomas"
+\DeclareRobustCommand{\VAN}[3]{#2}
+\let\VANthebibliography\thebibliography
+\def\thebibliography{\DeclareRobustCommand{\VAN}[3]{##3}\VANthebibliography}
+
+
+%%%%% AUTHORS - PLACE YOUR OWN PACKAGES HERE %%%%%
+
+% Only include extra packages if you really need them. Common packages are:
+\usepackage{graphicx}	% Including figure files
+\usepackage{amsmath}	% Advanced maths commands
+%\usepackage{amssymb}	% Extra maths symbols
+\usepackage{bm}         % Bold math fonts
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%% AUTHORS - PLACE YOUR OWN COMMANDS HERE %%%%%
+% drafting macros
+\usepackage{xcolor}
+\newcommand{\drafting}[1]{
+{\leavevmode\color[RGB]{224, 77, 24}#1}
+}
+
+% Please keep new commands to a minimum, and use \newcommand not \def to avoid
+% overwriting existing commands. Example:
+%\newcommand{\pcm}{\,cm$^{-2}$}	% per cm-squared
+\newcommand{\ketju}{\textsc{Ketju}}
+\newcommand{\mstar}{\textsc{mstar}}
+\newcommand{\gadget}{\textsc{gadget-4}}
+
+\newcommand{\Msun}{\ensuremath{M_{\sun}}}
+
+\newcommand{\dd}[1]{\ensuremath{\mathrm{d}#1}}
+\newcommand{\dv}[2]{\ensuremath{\frac{\dd{#1}}{\dd{#2}}}}
+\newcommand{\vb}[1]{\ensuremath{\bm{#1}}} %vectors
+
+\graphicspath{{figures/}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%% TITLE PAGE %%%%%%%%%%%%%%%%%%%
+
+% Title of the paper, and the short title which is used in the headers.
+% Keep the title short and informative.
+\title[Cores from kicks]{Cores from kicks: constraints for observations of gravitational recoil in elliptical galaxies}
+
+% The list of authors, and the short list which is used in the headers.
+% If you need two or more lines of authors, add an extra line using \newauthor
+\author[A. Rawlings et al.]{
+Alexander Rawlings,$^{1}$\thanks{E-mail: alexander.rawlings@helsinki.fi}
+et al.
+\vspace*{0.1cm}\\%
+% List of institutions
+$^{1}$
+Department of Physics,
+Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
+\\%
+$^{2}$
+Max-Planck-Institut f\"ur Astrophysik, Karl-Schwarzchild-Str 1, D-85748 Garching, Germany
+}
+
+% These dates will be filled out by the publisher
+\date{Accepted XXX. Received YYY; in original form ZZZ}
+
+% Enter the current year, for the copyright statements etc.
+\pubyear{2023}
+
+% Don't change these lines
+\begin{document}
+\label{firstpage}
+\pagerange{\pageref{firstpage}--\pageref{lastpage}}
+\maketitle
+
+% Abstract of the paper
+\begin{abstract}
+\drafting{Investigate the relationship between core size and kick velocity}
+\end{abstract}
+
+% Select between one and six entries from the list of approved keywords.
+% Don't make up new ones.
+\begin{keywords}
+black hole physics -- galaxies: kinematics and dynamics -- methods: numerical -- software: simulations
+\end{keywords}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%% BODY OF PAPER %%%%%%%%%%%%%%%%%%
+
+
+% INTRODUCTION
+\section{Introduction}
+\drafting{Some general intro here}
+
+% NUMERICAL
+\section{Numerical Simulations}
+\label{sec:num_sims}
+
+\drafting{Taken from eccentricity paper, leave here as a guide for a similar description about Ketju}
+We construct a number of idealised galaxy merger simulations, which we evolve with our new version of the \ketju{} code \citep{mannerkoski2023,rantala2017}.
+The dynamics of
+SMBHs, and stars in a small region around them, are integrated with an algorithmically regularised integrator \citep{rantala2020}, whereas the dynamics of the remaining particles
+is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) with second order multipoles. Together with hierarchical time integration this allows for
+symmetric interactions and manifest momentum conservation. \ketju{} also includes post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{blanchet2014}. 
+
+\drafting{Rantala 2018 ICs}
+\begin{equation}\label{eq:dehnen}
+    \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
+\end{equation}
+
+\drafting{We then construct isolated merger initial conditions}. 
+Interactions between stellar particles are softened with a softening length of \drafting{$\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.}
+
+
+
+% RESULTS
+\section{Results}\label{sec:results}
+\drafting{
+    Things to show:
+    \begin{enumerate}
+        \item DAG for hierarchical model
+        \item Density profiles 
+        \item Scatter plot $v_k\mathrm{--}r_b$ with best fit function
+        \item Relation $v_k\mathrm{--}r_b$ model comparison (elpd?)
+        \item MC-sampled distribution of $r_b$
+        \item $h_4$ maps
+    \end{enumerate}
+}
+
+
+% DISCUSSION
+\section{Discussion}
+\label{sec:discussion}
+
+
+
+% CONCLUSION
+\section{Conclusions}
+\label{sec:conclusions}
+
+% FINAL BITS
+\section*{acknowledgments}
+A.R. acknowledges the support by the University of Helsinki Research Foundation.
+A.R., acknowledge the support
+by the European Research Council via ERC Consolidator Grant KETJU (no. 818930) and the support of the Academy of Finland grant 339127.
+
+The numerical simulations used computational resources provided by
+the CSC -- IT centre for Science, Finland.
+
+\section*{Author contributions}
+We list here the roles and contributions of the authors according to the Contributor Roles Taxonomy (\href{https://credit.niso.org}{CRediT}). 
+\textbf{AR}:
+
+\section*{Software}
+\ketju{} \citep{mannerkoski2023,rantala2017},
+\gadget{} \citep{springel2021},
+NumPy \citep{harris2020},
+SciPy \citep{virtanen2020},
+Matplotlib \citep{hunter2007},
+pygad \citep{rottgers2020}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Data Availability}
+The data underlying this article will be shared on reasonable request to the corresponding author.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%% REFERENCES %%%%%%%%%%%%%%%%%%
+
+% The best way to enter references is to use BibTeX:
+
+\bibliographystyle{mnras}
+\bibliography{ref} % if your bibtex file is called example.bib
+
+
+% Alternatively you could enter them by hand, like this:
+% This method is tedious and prone to error if you have lots of references
+%\begin{thebibliography}{99}
+%\bibitem[\protect\citeauthoryear{Author}{2012}]{Author2012}
+%Author A.~N., 2013, Journal of Improbable Astronomy, 1, 1
+%\bibitem[\protect\citeauthoryear{Others}{2013}]{Others2013}
+%Others S., 2012, Journal of Interesting Stuff, 17, 198
+%\end{thebibliography}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%% APPENDICES %%%%%%%%%%%%%%%%%%%%%
+
+%\appendix
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% Don't change these lines
+\bsp	% typesetting comment
+\label{lastpage}
+\end{document}
+
+% End of mnras_template.tex
