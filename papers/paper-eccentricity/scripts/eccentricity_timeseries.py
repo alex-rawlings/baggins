@@ -44,7 +44,7 @@ for j, (suite, dp, label) in enumerate(zip(
         print(f"Plotting data from directory {j} run {i}...         ", end="\r")
         bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
         op = ketjugw.orbital_parameters(bh1, bh2)
-        hmq = cmf.analysis.HMQuantitiesData.load_from_file(hf)
+        hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(hf)
         after_hard_mask = op["a_R"]/kpc < np.nanmedian(hmq.hardening_radius)
         afm0 = after_hard_mask[0]
         t = (op["t"] - op["t"][0]) / cmf.general.units.Myr

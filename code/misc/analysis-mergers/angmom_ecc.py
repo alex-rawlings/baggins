@@ -15,7 +15,7 @@ myr = ketjugw.units.yr * 1e6
 pc = ketjugw.units.pc
 
 bh1, bh2, merged = cmf.analysis.get_bound_binary(kfile[0])
-hmq = cmf.analysis.HMQuantitiesData.load_from_file(hmqfile)
+hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(hmqfile)
 
 orbit_pars = ketjugw.orbital_parameters(bh1, bh2)
 t = orbit_pars["t"]/myr

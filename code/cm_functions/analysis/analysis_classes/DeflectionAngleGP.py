@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_2D, HMQuantitiesData
+from . import StanModel_2D, HMQuantitiesBinaryData
 from .. import first_major_deflection_angle, find_idxs_of_n_periods
 from ...env_config import _cmlogger
 from ...plotting import savefig
@@ -60,7 +60,7 @@ class DeflectionAngleGP(StanModel_2D):
                 fnames = get_files_in_dir(d)
             for f in fnames:
                 _logger.logger.info(f"Loading file: {f}")
-                hmq = HMQuantitiesData.load_from_file(f)
+                hmq = HMQuantitiesBinaryData.load_from_file(f)
                 # protect against instances where no data for bound binary
                 try:
                     hmq.hardening_radius

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import cm_functions as cmf
 import ketjugw
 
-# code hacked from HMQuantities
+# code hacked from HMQuantitiesBinary
 
 data_dirs = [
     "/scratch/pjohanss/attekeit/df_test/galaxy_mergers/ketju/output_gasless_merger_10000_run_",

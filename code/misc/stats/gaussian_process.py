@@ -15,7 +15,7 @@ theta = []
 e_hard = []
 
 for f in cmf.utils.get_files_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/eccentricity_study/H_500K-H_500K-11.000-0.825"):
-    hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
+    hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(f)
     try:
         hmq.hardening_radius
     except AttributeError:

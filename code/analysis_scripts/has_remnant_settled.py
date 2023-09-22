@@ -83,10 +83,12 @@ results = results[idx,:]
 
 idx_minus01 = np.argmax(results[-1,1]-0.1 < results[:,1])
 med_vel = np.median(results[idx_minus01:,2])
+has_settled = False
 if results.shape[0] > 5 and med_vel < args.threshold:
     SL.logger.warning("System has settled!")
+    has_settled = True
     analyse_idx_r = 1
-    max_iter = min(20, LENGTH)
+    max_iter = min(args.num-1, LENGTH)
     while analyse_idx_r < max_iter:
         med_vel = np.median(results[idx_minus01-analyse_idx_r:-analyse_idx_r,2])
         SL.logger.debug(f"Median velocity from {results[idx_minus01-analyse_idx_r,1]:.2f} to {results[-analyse_idx_r,1]:.2f} (snap {results[idx_minus01-analyse_idx_r,0]}-{results[-analyse_idx_r,0]}) is {med_vel:.2f} km/s")
@@ -95,7 +97,7 @@ if results.shape[0] > 5 and med_vel < args.threshold:
             break
         analyse_idx_r += 1
     if analyse_idx_r==max_iter:
-        SL.logger.warning(f"Max iterations {analyse_idx_r} have been reached, and no clear snapshot to analyse! Try increasing the number of snapshots analysed from {LENGTH}")
+        SL.logger.error(f"Max iterations {analyse_idx_r} have been reached, and no clear snapshot to analyse! Try increasing the number of snapshots analysed from {args.num}")
 else:
     SL.logger.warning(f"System has not settled! Median velocity over the past 0.1 Gyr is {med_vel:.2f} km/s")
 
@@ -107,7 +109,8 @@ ax[0].set_xlabel(r"$t/\mathrm{Gyr}$")
 ax[0].set_ylabel(r"$v/\mathrm{kms}^{-1}$")
 ax_twin1.set_xlabel("Snap number")
 ax[0].plot(results[:,1], results[:,2], marker="o", ls="", mec="k", mew=0.5)
-ax[0].scatter(results[-analyse_idx_r,1], results[-analyse_idx_r,2], marker="s", s=90, c="tab:orange", ec="k", lw=0.5, label="Chosen")
+if has_settled:
+    ax[0].scatter(results[-analyse_idx_r,1], results[-analyse_idx_r,2], marker="s", s=90, c="tab:orange", ec="k", lw=0.5, label="Chosen")
 ax[0].axhline(args.threshold, c="tab:red", lw=2, label="Threshold")
 ax[0].legend(fontsize="small")
 if results[0,2] > 50:

@@ -9,7 +9,7 @@ hmq_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_dat
 hmq_files = cmf.utils.get_files_in_dir(hmq_dir)
 merger_times = []
 for f in hmq_files:
-    hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
+    hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(f)
     if hmq.merger_remnant["merged"]:
         status, idx0 = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
         if not status: continue

@@ -8,7 +8,7 @@ from arviz.labels import MapLabeller
 from arviz import plot_kde
 import dask
 from datetime import datetime
-from . import StanModel_2D, HMQuantitiesData
+from . import StanModel_2D, HMQuantitiesBinaryData
 from ..orbit import determine_merger_timescale
 from ...env_config import _cmlogger, date_format
 from ...general import units
@@ -96,7 +96,7 @@ class _QuinlanModelBase(StanModel_2D):
             _logger.logger.debug(f"Reading from dir: {d}")
         for f in fnames:
             _logger.logger.info(f"Loading file: {f}")
-            hmq = HMQuantitiesData.load_from_file(f)
+            hmq = HMQuantitiesBinaryData.load_from_file(f)
             status, idx0 = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             if not status: continue
             status, idx1 = hmq.idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)

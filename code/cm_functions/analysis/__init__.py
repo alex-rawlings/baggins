@@ -5,4 +5,4 @@ from .masks import *
 from .orbit import *
 from .voronoi import *
 
-from .analysis_classes import BHBinaryData, BHBinary, ChildSimData, ChildSim, StanModel_1D, StanModel_2D, HMQuantitiesData, HMQuantities, GrahamModelSimple, GrahamModelHierarchy, KeplerModelSimple, KeplerModelHierarchy, QuinlanModelSimple, QuinlanModelHierarchy, PQModelSimple, PQModelHierarchy, DeflectionAngleGP
+from .analysis_classes import BHBinaryData, BHBinary, ChildSimData, ChildSim, StanModel_1D, StanModel_2D, HMQuantitiesSingleData, HMQuantitiesSingle, HMQuantitiesBinaryData, HMQuantitiesBinary, GrahamModelSimple, GrahamModelHierarchy, KeplerModelSimple, KeplerModelHierarchy, QuinlanModelSimple, QuinlanModelHierarchy, PQModelSimple, PQModelHierarchy, DeflectionAngleGP

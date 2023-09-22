@@ -6,8 +6,10 @@ from .ChildSimData import ChildSimData
 from .ChildSim import ChildSim
 from .StanModel import StanModel_1D, StanModel_2D
 
-from .HMQuantitiesData import HMQuantitiesData
-from .HMQuantities import HMQuantities
+from .HMQuantitiesSingleData import HMQuantitiesSingleData
+from .HMQuantitiesSingle import HMQuantitiesSingle
+from .HMQuantitiesBinaryData import HMQuantitiesBinaryData
+from .HMQuantitiesBinary import HMQuantitiesBinary
 
 from .BrownianData import BrownianData
 

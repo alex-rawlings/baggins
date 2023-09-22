@@ -38,7 +38,7 @@ try:
             colour_var.append(float(k.split("-")[-1]))
         elif args.cvar == "res":
             c = cmf.utils.get_files_in_dir(f["cube"])[0]
-            _hmq = cmf.analysis.HMQuantitiesData.load_from_file(c)
+            _hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(c)
             # TODO give actual values instead of fraction?
             s = k.split("-")[0]
             if len(s)==1: s=f"{s}1000"

@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_1D, HMQuantitiesData
+from . import StanModel_1D, HMQuantitiesBinaryData
 from ..orbit import find_idxs_of_n_periods
 from ...env_config import _cmlogger
 from ...plotting import savefig
@@ -62,7 +62,7 @@ class _KeplerModelBase(StanModel_1D):
         obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[], "t":[]}
         for i, f in enumerate(dir):
             _logger.logger.debug(f"Loading file: {f}")
-            hmq = HMQuantitiesData.load_from_file(f)
+            hmq = HMQuantitiesBinaryData.load_from_file(f)
             status, idx = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             if not status: continue
             t_target = hmq.binary_time[idx]

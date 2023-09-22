@@ -73,7 +73,7 @@ if __name__ == "__main__":
         cnames = list(data.keys())
         cnames.sort()
         for (cname, hmqfile) in zip(cnames, cmf.utils.get_files_in_dir(hmq_dir)):
-            hmq = cmf.analysis.HMQuantitiesData.load_from_file(hmqfile)
+            hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(hmqfile)
             child_data = list(data[cname].values())[-2]
             ax.scatter(child_data["beta"], child_data["Sigma"], label=cname, alpha=(1 if hmq.merger_remnant["merged"] else 0.3), linewidth=0.3, ec="k")
         ax.legend(fontsize="x-small")

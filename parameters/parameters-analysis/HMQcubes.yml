@@ -3,7 +3,7 @@
 ---
 # info on file locations
 file_locations:
-  cube_dir: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/eccentricity_study
+  cube_dir: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study
 
 # info on BH Binary properties
 bh_binary:

@@ -76,7 +76,7 @@ for j, datdir in enumerate(data_dirs):
     # loop through each bh file in the directory
     for i, HMQfile in enumerate(HMQfiles):
         SL.logger.debug(f"Reading file: {HMQfile}")
-        hmq = cmf.analysis.HMQuantitiesData.load_from_file(HMQfile)
+        hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(HMQfile)
         if i==0:
             if args.label == "e":
                 labels[j] = f"{hmq.initial_galaxy_orbit['e0']:.3f}"

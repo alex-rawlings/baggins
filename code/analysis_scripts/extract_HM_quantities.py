@@ -8,10 +8,11 @@ import cm_functions as cmf
 
 
 # set up command line arguments
-parser = argparse.ArgumentParser(description="Extract key quantities from a simulation run for use in later Bayesian hierarchical modelling.", allow_abbrev=False)
+parser = argparse.ArgumentParser(description="Extract key quantities from a simulation run for use in later Bayesian hierarchical modelling.", allow_abbrev=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
 parser.add_argument(type=str, help="path to merger parameter file(s)", dest="mpf")
-parser.add_argument("-m", "--method", help="method used to generate sample", type=str, dest="method", choices=["mc", "bump"], default="bump")
+parser.add_argument("-k", "--kickinfo", type=str, help="path to parameter file describing which kick snapshots to run", dest="kpf", default=None)
+parser.add_argument("-m", "--method", help="method used to generate sample", type=str, dest="method", choices=["mc", "bump", "kick"], default="mc")
 parser.add_argument("-n", "--number", help="perturbation number", dest="pnum", action="append")
 parser.add_argument("-o", "--overwrite", help="allow overwriting", dest="overwrite", action="store_true")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
@@ -91,7 +92,8 @@ class _Extractor:
 
     def extract(self, i):
         try:
-            hmq = cmf.analysis.HMQuantities(self.analysis_params_file, self.merger_params_files[i], self.child_dirs[i], self.merger_ids[i])
+            hmq = cmf.analysis.HMQuantitiesBinary(self.analysis_params_file, self.merger_params_files[i], self.child_dirs[i], self.merger_ids[i])
+            hmq.calculate()
             hmq.make_hdf5(self.cube_files[i], self.overwrite)
         except:
             SL.logger.exception(f"UNABLE TO EXTRACT FROM CHILD {self.child_dirs[i]}", exc_info=True)
@@ -154,6 +156,55 @@ class ExtractorPS(_Extractor):
         self._create_cube_names()
 
 
+class ExtractorKick(_Extractor):
+    def __init__(self, apf, mpf, kickinfo, overwrite=False) -> None:
+        """
+        Data extraction class for core-kick relation. A single snapshot is
+        analysed, and no binary quantities are determined.
+
+        Parameters
+        ----------
+        apf : path-like
+            path to analysis parameter file
+        mpf : list
+            list of merger parameter files
+        kickinfo : path-like
+            path to .yml file with snapshot number to analyse for each run
+        overwrite : bool, optional
+            allow output directory overwriting, by default False
+        """
+        super().__init__(apf, mpf, overwrite)
+        run_details = cmf.utils.read_parameters(kickinfo)
+        run_dir = run_details["parent_dir"]
+        self.snap_nums = list(run_details["snap_nums"].values())
+        all_dirs = os.scandir(run_dir)
+        for d in all_dirs:
+            if "kick-vel" in d.name and run_details["snap_nums"][f"v{d.name.lstrip('kick-vel-')}"] is not None:
+                self._child_dirs.append(os.path.join(d.path, "output"))
+        self._child_dirs.sort()
+        for v in run_details["snap_nums"].keys():
+            self._merger_ids.append(
+                    f'{self.merger_params[0]["calculated"]["full_save_location"].rstrip("/").split("/")[-1]}-{v}'
+                    )
+        self._create_cube_names()
+
+
+    def extract(self, i):
+        try:
+            hmq = cmf.analysis.HMQuantitiesSingle(
+                        self.analysis_params_file,
+                        self.merger_params_files[0],
+                        self.child_dirs[i],
+                        self.merger_ids[0],
+                        snaps = [self.snap_nums[i]]
+            )
+            hmq.calculate()
+            hmq.make_hdf5(self.cube_files[i], self.overwrite)
+        except:
+            SL.logger.exception(f"UNABLE TO EXTRACT FROM CHILD {self.child_dirs[i]}", exc_info=True)
+
+
+
 
 if __name__ == "__main__":
     if args.method == "mc":
@@ -170,8 +221,11 @@ if __name__ == "__main__":
             except AssertionError:
                 SL.logger.exception("A merger parameter file or a directory of merger parameter files must be specified", exc_info=True)
                 raise
-    else:
+    elif args.method == "bump":
         extractor = ExtractorPS(args.apf, [args.mpf], args.overwrite, args.pnum)
+    else:
+        extractor = ExtractorKick(args.apf,[args.mpf], args.kpf, args.overwrite)
+
 
     SL.logger.debug(f"Directories to analyse ({len(extractor.child_dirs)}):\n{extractor.child_dirs}")
 

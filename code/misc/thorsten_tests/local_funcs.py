@@ -11,7 +11,7 @@ def HMQ_generator(dirs, merged=False, kick="None"):
         HMQ_files = cmf.utils.get_files_in_dir(d)
         for f in HMQ_files:
             count += 1
-            hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
+            hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(f)
             if merged:
                 # highlight mergers
                 if hmq.merger_remnant["merged"]:

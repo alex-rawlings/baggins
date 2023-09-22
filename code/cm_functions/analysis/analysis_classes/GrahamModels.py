@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from . import StanModel_2D
-from . import HMQuantitiesData
+from . import HMQuantitiesBinaryData
 from ...mathematics import get_histogram_bin_centres
 from ...env_config import _cmlogger
 from ...plotting import savefig
@@ -73,7 +73,7 @@ class _GrahamModelBase(StanModel_2D):
             _logger.logger.debug(f"Reading from dir: {d}")
         for f in fnames:
             _logger.logger.info(f"Loading file: {f}")
-            hmq = HMQuantitiesData.load_from_file(f)
+            hmq = HMQuantitiesBinaryData.load_from_file(f)
             status, idx = hmq.idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)
             if not status: continue
             r = get_histogram_bin_centres(hmq.radial_edges)

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_2D, HMQuantitiesData
+from . import StanModel_2D, HMQuantitiesBinaryData
 from ...env_config import _cmlogger
 
 __all__ = ["PQModelSimple", "PQModelHierarchy"]
@@ -35,7 +35,7 @@ class _PQModelBase(StanModel_2D):
             i = 0
             for f in dir:
                 _logger.logger.info(f"Loading file: {f}")
-                hmq = HMQuantitiesData.load_from_file(f)
+                hmq = HMQuantitiesBinaryData.load_from_file(f)
                 try:
                     idx = hmq.get_idx_in_vec(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
                 except ValueError:

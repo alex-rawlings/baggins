@@ -45,7 +45,7 @@ for i, d in enumerate(datapaths):
     ecc.append([v for v in k.obs["var_e"]])
     Nhalf.append(k.obs["var_e"])
     for f in HMQ_files:
-        hmq = cmf.analysis.HMQuantitiesData.load_from_file(f)
+        hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(f)
         Nhalf[i].append(np.nanmedian(hmq.masses_in_galaxy_radius["stars"])/hmq.particle_masses["stars"])
 
 print(f"counts: {counts}")

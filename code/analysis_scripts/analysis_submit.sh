@@ -10,9 +10,9 @@
 module purge
 module restore py393
 
-python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-099/dehnen_1M_0001BH_mergers -m mc
+python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/core-study/e-097/hernquist_2M_bc.yml -m kick -k /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml -o
 
-python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-099/dehnen_1M_0005BH_mergers -m mc
+#python extract_HM_quantities.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/eccentricity-study/e-099/dehnen_1M_0005BH_mergers -m mc
 
 #cd hierarchical_models
 
