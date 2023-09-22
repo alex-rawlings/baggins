@@ -66,7 +66,8 @@
 \newcommand{\mstar}{\textsc{mstar}}
 \newcommand{\gadget}{\textsc{gadget-4}}
 
-\newcommand{\Msun}{\ensuremath{M_{\sun}}}
+\newcommand{\Msun}{\ensuremath{\mathrm{M}_{\sun}}}
+\newcommand{\kmps}{\ensuremath{\mathrm{km}\,\mathrm{s}^{-1}}}
 
 \newcommand{\dd}[1]{\ensuremath{\mathrm{d}#1}}
 \newcommand{\dv}[2]{\ensuremath{\frac{\dd{#1}}{\dd{#2}}}}
@@ -141,12 +142,26 @@ is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) w
 symmetric interactions and manifest momentum conservation. \ketju{} also includes post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{blanchet2014}. 
 
 \drafting{Rantala 2018 ICs}
+We model the merger of two gas-poor elliptical galaxies using collisionless merger simulations.
+Our galaxy initial conditions are chosen to match the model IC-3 presented in \citet{rantala2019}. 
+The galaxy is thus represented as a multicomponent sphere, including a stellar component of total mass $M_\star\sim 1.38\times10^{11}\,\Msun$ embedded within a DM \drafting{ensure abbreviation stated} component of total mass $M_\mathrm{DM}=2.5\times10^{13}\,\Msun$, and at the centre a SMBH with mass $M_\bullet=2.93\times10^{9}\,\Msun$.
+The stellar and DM components each follow a \citet{dehnen1993} profile with shape parameter $\gamma=1$, and scale radius $a_\star=3.9\,\mathrm{kpc}$ and $a_\mathrm{DM}=245\,\mathrm{kpc}$, respectively\footnote{A Dehnen profile with $\gamma=1$ is commonly referred to as a Hernquist profile.}.
+The density profile is given by:
 \begin{equation}\label{eq:dehnen}
     \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
 \end{equation}
+The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the mass of a DM particle is set to $m_\mathrm{DM}=5\times10^6\,\Msun$.
 
-\drafting{We then construct isolated merger initial conditions}. 
-Interactions between stellar particles are softened with a softening length of \drafting{$\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.}
+We create six independently Monte Carlo sampled galaxy ICs, and merge each combination of galaxies on a radial orbit.
+The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
+We select a merger combination that results in a rapid coalescence of the BH binary, noting that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
+We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $v_\mathrm{kick}$ prescribed, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
+The upper limit on $v_\mathrm{kick}$ is chosen to match the escape velocity of the centre of the merger remnant.
+We additionally run one simulation with a recoil kick above the escape velocity, with $v_\mathrm{kick}=2000\,\kmps$.
+Each child simulation is run until the median remnant SMBH velocity relative to the galaxy CoM \drafting{check abbreviation} velocity is less than $10\,\kmps$ for at least $0.1\,\mathrm{Gyr}$.
+Interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
+
+\drafting{Atte: mergers of unequal mass ratio?}
 
 
 
@@ -157,8 +172,8 @@ Interactions between stellar particles are softened with a softening length of \
     \begin{enumerate}
         \item DAG for hierarchical model
         \item Density profiles 
-        \item Scatter plot $v_k\mathrm{--}r_b$ with best fit function
-        \item Relation $v_k\mathrm{--}r_b$ model comparison (elpd?)
+        \item Scatter plot $v_k\mathrm{-}r_b$ with best fit function
+        \item Relation $v_k\mathrm{-}r_b$ model comparison (elpd?)
         \item MC-sampled distribution of $r_b$
         \item $h_4$ maps
     \end{enumerate}
