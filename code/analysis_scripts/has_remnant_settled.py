@@ -1,4 +1,5 @@
 import argparse
+import os.path
 import dask
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ parser = argparse.ArgumentParser(description="Determine if a merger remnant has 
 parser.add_argument(help="Path to simulation output", dest="path", type=str)
 parser.add_argument("-t", "--threshold", help="velocity threshold", type=float, dest="threshold", default=10)
 parser.add_argument("-n", "--num", help="number of snapshots to analyse", type=int, dest="num", default=30)
+parser.add_argument("-s", "--save", help="save data", action="store_true", dest="save")
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbosity", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
@@ -84,7 +86,13 @@ results = results[idx,:]
 idx_minus01 = np.argmax(results[-1,1]-0.1 < results[:,1])
 med_vel = np.median(results[idx_minus01:,2])
 has_settled = False
-if results.shape[0] > 5 and med_vel < args.threshold:
+has_escaped = False
+
+if np.any(results[:, 4] > 30):
+    SL.logger.warning("BH has escaped the system (r>30kpc)")
+    has_escaped = True
+
+if not has_escaped and results.shape[0] > 5 and med_vel < args.threshold:
     SL.logger.warning("System has settled!")
     has_settled = True
     analyse_idx_r = 1
@@ -100,6 +108,17 @@ if results.shape[0] > 5 and med_vel < args.threshold:
         SL.logger.error(f"Max iterations {analyse_idx_r} have been reached, and no clear snapshot to analyse! Try increasing the number of snapshots analysed from {args.num}")
 else:
     SL.logger.warning(f"System has not settled! Median velocity over the past 0.1 Gyr is {med_vel:.2f} km/s")
+    analyse_idx_r = np.nan
+
+
+if args.save:
+    cmf.utils.save_data(dict(
+                            data_dir = args.path,
+                            results = results,
+                            chosen_snap = LENGTH-analyse_idx_r,
+                            has_settled = has_settled,
+                            has_escaped = has_escaped
+    ), os.path.join(args.path, "../processed_data.pickle"))
 
 # plot
 fig, ax = plt.subplots(2, 1, sharex="all")

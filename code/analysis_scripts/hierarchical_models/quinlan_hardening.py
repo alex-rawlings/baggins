@@ -1,6 +1,7 @@
 import argparse
 import os.path
 import cm_functions as cmf
+from .helpers import stan_model_selector
 
 
 parser = cmf.utils.argparse_for_stan("Run Stan model for Quinlan hardening model")
@@ -21,33 +22,19 @@ analysis_params = cmf.utils.read_parameters(args.apf)
 figname_base = f"hierarchical_models/hardening/{args.sample}/"
 
 if args.model == "simple":
-    stan_model_file = "stan/hardening/quinlan_simple.stan"
-    if args.type == "loaded":
-        # load a previous sample for improved performance: no need to resample 
-        # the likelihood function
-        try:
-            assert "simple" in args.dir
-        except AssertionError:
-            SL.logger.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
-            raise
-        quinlan_model = cmf.analysis.QuinlanModelSimple.load_fit(model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base)
-    else:
-        # sample
-        quinlan_model = cmf.analysis.QuinlanModelSimple(model_file=stan_model_file, prior_file="stan/hardening/quinlan_simple_prior.stan", figname_base=figname_base, num_OOS=args.NOOS)
+    quinlan_model = stan_model_selector(
+                    args, 
+                    cmf.analysis.QuinlanModelSimple, 
+                    "stan/hardening/quinlan_simple.stan", 
+                    "stan/hardening/quinlan_simple_prior.stan", 
+                    figname_base, SL)
 else:
-    stan_model_file = "stan/hardening/quinlan_hierarchy.stan"
-    if args.type == "loaded":
-        # load a previous sample for improved performance: no need to resample 
-        # the likelihood function
-        try:
-            assert "hierarchy" in args.dir
-        except AssertionError:
-            SL.logger.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
-            raise
-        quinlan_model = cmf.analysis.QuinlanModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base)
-    else:
-        # sample
-        quinlan_model = cmf.analysis.QuinlanModelHierarchy(model_file=stan_model_file, prior_file="stan/hardening/quinlan_hierarchy_prior.stan", figname_base=figname_base, num_OOS=args.NOOS)
+    quinlan_model = stan_model_selector(
+                    args, 
+                    cmf.analysis.QuinlanModelHierarchy, 
+                    "stan/hardening/quinlan_hierarchy.stan", 
+                    "stan/hardening/quinlan_hierarchy_prior.stan", 
+                    figname_base, SL)
 
 quinlan_model.extract_data(analysis_params, hmq_dir)
 

@@ -40,7 +40,10 @@ extent = dict(
     stars = {"xz":args.starextent, "xy":args.starextent},
     dm = {"xz":args.haloextent, "xy":args.haloextent}
 )
-cmf.plotting.plot_galaxies_with_pygad(snap, extent=extent, orientate=orientate_snap)
+fig, ax = cmf.plotting.plot_galaxies_with_pygad(snap, extent=extent, orientate=orientate_snap)
+for i in range(2):
+    ax[i,0].scatter(snap.bh["pos"][:,0], snap.bh["pos"][:,2], c="w")
+    ax[i,1].scatter(snap.bh["pos"][:,0], snap.bh["pos"][:,1], c="w")
 if not args.snapview:
     cmf.plotting.savefig(os.path.join(fig_loc, pfv.galaxyName))
 if args.view:

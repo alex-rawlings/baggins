@@ -1,106 +1,64 @@
 import argparse
-from datetime import datetime
 import os.path
 import numpy as np
 import scipy.optimize
-import h5py
-from matplotlib import rcParams
 import cm_functions as cmf
+from .helpers import stan_model_selector
 
 
-parser = argparse.ArgumentParser(description="Run stan model for Core-Sersic model.", allow_abbrev=False)
-parser.add_argument(type=str, help="directory to HMQuantity HDF5 files", dest="dir")
-parser.add_argument(type=str, help="path to analysis parameter file", dest="apf")
+parser = cmf.utils.argparse_for_stan("Run stan model for Core-Sersic model")
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
-parser.add_argument("-p", "--prior", help="plot for prior", action="store_true", dest="prior")
-parser.add_argument("-l", "--load", type=str, help="load previous stan file", dest="load_file", default=None)
 parser.add_argument("-c", "--compare", help="compare to naive statistics", action="store_true", dest="compare")
-parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
-parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
 SL = cmf.ScriptLogger("script", console_level=args.verbose)
 
-if args.publish:
-    cmf.plotting.set_publishing_style()
-    full_figsize = rcParams["figure.figsize"]
-    full_figsize[0] *= 2
+full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=[1.9, 1.9])
+
+if args.type == "new":
+    hmq_dir = args.dir
 else:
-    full_figsize = None
-
-HMQ_files = cmf.utils.get_files_in_dir(args.dir)
-with h5py.File(HMQ_files[0], mode="r") as f:
-    merger_id = f["/meta"].attrs["merger_id"]
-
-figname_base = f"hierarchical_models/density/{merger_id}/graham_density-{merger_id}"
-
+    hmq_dir = None
+SL.logger.debug(f"Input data read from {hmq_dir}")
 analysis_params = cmf.utils.read_parameters(args.apf)
 
+figname_base = f"hierarchical_models/density/"
+
 if args.model == "simple":
-    stan_model_file = "stan/density/graham_simple.stan"
-    if args.load_file is not None:
-        # load a previous sample for improved performance: no need to resample 
-        # the likelihood function
-        try:
-            assert "simple" in args.load_file
-        except AssertionError:
-            SL.logger.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
-            raise
-        graham_model = cmf.analysis.GrahamModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
-    else:
-        # sample
-        graham_model = cmf.analysis.GrahamModelSimple(model_file=stan_model_file, prior_file="stan/density/graham_prior_simple.stan", figname_base=figname_base)
+    graham_model = stan_model_selector(
+                    args, 
+                    cmf.analysis.GrahamModelSimple, 
+                    "stan/density/graham_simple.stan", 
+                    "stan/density/graham_prior_simple.stan", 
+                    figname_base, SL)
 else:
-    stan_model_file = "stan/density/graham_hierarchy_0.stan"
-    if args.load_file is not None:
-        # load a previous sample for improved performance: no need to resample 
-        # the likelihood function
-        try:
-            assert "hierarchy" in args.load_file
-        except AssertionError:
-            SL.logger.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
-            raise
-        graham_model = cmf.analysis.GrahamModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
-    else:
-        # sample
-        graham_model = cmf.analysis.GrahamModelHierarchy(model_file=stan_model_file, prior_file="stan/density/graham_prior_hierarchy_0.stan", figname_base=figname_base)
+    graham_model = stan_model_selector(
+                    args, 
+                    cmf.analysis.GrahamModelHierarchy, 
+                    "stan/density/graham_hierarchy_0.stan", 
+                    "stan/density/graham_prior_hierarchy_0.stan", 
+                    figname_base, SL)
+
 
 # load the observational data
-graham_model.extract_data(HMQ_files, analysis_params)
+graham_model.extract_data(analysis_params, hmq_dir)
 
 SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
-try:
-    assert graham_model.num_groups >= analysis_params["stan"]["min_num_samples"]
-except AssertionError:
-    SL.logger.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {graham_model.num_groups}!', exc_info=True)
-    raise
 
 # initialise the data dictionary
-stan_data = dict(
-                N_tot = graham_model.obs_len,
-                N_groups = len(np.unique(graham_model.obs_collapsed["label"])),
-                group_id = graham_model.obs_collapsed["label"],
-                R = graham_model.obs_collapsed["R"]
-)
+graham_model.set_stan_data()
 
 if args.prior:
     # create the push-forward distribution for the prior model
-
-    graham_model.sample_prior(data=stan_data, sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
+    graham_model.sample_prior(sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
 
     # prior predictive check
     graham_model.all_prior_plots(full_figsize)
-
 else:
-    # create the push-forward distribution for the posterior model
-    stan_data.update(dict(
-                log10_surf_rho = graham_model.obs_collapsed["log10_proj_density_mean"],
-                log10_surf_rho_err = graham_model.obs_collapsed["log10_proj_density_std"],
-    ))
+    analysis_params["stan"]["density_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{args.sample}/{graham_model.merger_id}")
 
-    analysis_params["stan"]["density_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{merger_id}")
     # run the model
-    graham_model.sample_model(data=stan_data, sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
+    graham_model.sample_model(sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
 
     graham_model.determine_loo()
 
