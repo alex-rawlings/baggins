@@ -10,13 +10,13 @@ data {
     // array of radial values
     array[N_tot] real<lower=0.0> R;
     // array of surface density values
-    array[N_tot] real<lower=0.0> log10_surf_rho;
+    array[N_tot] real log10_surf_rho;
 
     // Individual Contexts
     // total number of individual contexts
     int<lower=1> N_contexts;
     // indexing of observations to context level
-    array[N_tot] int<lower=1> context_idx;
+    array[N_tot] int<lower=1, upper=N_contexts> context_idx;
 
     // Factor levels
     // number of factors
@@ -29,15 +29,24 @@ data {
     // kick velocity magnitudes normalised to escape velocity
     array[N_factors] real<lower=0> vkick_normed;
 
-    // total number of out-of-sample points
+    // Out of Sample points
+    // follows same structure as above
+    // total number of OOS points
     int<lower=1> N_OOS;
-    // TODO do we need N_contexts_OOS and N_factors_OOS?
+    // OOS radii values
+    array[N_OOS] real<lower=0, upper=max(R)> R_OOS;
+
+    // OOS contexts
+    // total number of individual OOS contexts
+    //int<lower=1> N_contexts_OOS;
     // context ids for generated quantities
     array[N_OOS] int<lower=1> context_idx_OOS;
+
+    // OOS factors
+    // total number of individual OOS factors
+    //int<lower=1> N_factors_OOS;
     // factor ids for generated quantities
     array[N_contexts] int<lower=1> factor_idx_OOS;
-    // out-of-sample radii values
-    array[N_OOS] real<lower=0, upper=max(R)> R_OOS;
 }
 
 
@@ -63,7 +72,7 @@ parameters {
     array[N_factors] real<lower=0> g_mean;
     array[N_factors] real<lower=0> g_std;
     array[N_factors] real log10densb_mean;
-    array[N_factors] real log10densb_std;
+    array[N_factors] real<lower=0> log10densb_std;
     array[N_factors] real<lower=0> a_mean;
     array[N_factors] real<lower=0> a_std;
     array[N_factors] real<lower=0> err;
@@ -117,6 +126,33 @@ transformed parameters {
     for(i in 1:N_contexts){
         rb_calc[i] = core_radius(vkick_normed[factor_idx[i]], rb_0, p, q);
     }
+
+    // pre definition of calculated density for log-likelihood calculation
+    // in generated quantities block
+    array[N_tot] real log10_surf_rho_calc;
+    {
+        // no need to track these helper variables, so put in private scope
+        array[N_contexts] real pre_term;
+        array[N_contexts] real b_param;
+        for(i in 1:N_contexts){
+            b_param[i] = sersic_b_parameter(n[i]);
+            pre_term[i] = graham_preterm(g[i], a[i], n[i], b_param[i], rb[i], Re[i]);
+        }
+        // surface density calculation
+        for(i in 1:N_tot){
+            log10_surf_rho_calc[i] = graham_surf_density(
+                                        R[i],
+                                        pre_term[context_idx[i]],
+                                        g[context_idx[i]],
+                                        a[context_idx[i]],
+                                        rb[context_idx[i]],
+                                        n[context_idx[i]],
+                                        b_param[context_idx[i]],
+                                        Re[context_idx[i]],
+                                        log10densb[context_idx[i]]
+            );
+        }
+    }
 }
 
 
@@ -139,33 +175,14 @@ model {
     target += normal_lpdf(log10(rb) | log10(rb_calc), rb_err);
 
     // connect factor parameters to context parameters
-    target += normal_lpdf(Re | Re_mean, Re_std);
-    target += normal_lpdf(n | n_mean, n_std);
-    target += normal_lpdf(g | g_mean, g_std);
-    target += normal_lpdf(log10densb | log10densb_mean, log10densb_std);
-    target += normal_lpdf(a | a_mean, a_std);
-
-    array[N_contexts] real pre_term;
-    array[N_contexts] real b_param;
     for(i in 1:N_contexts){
-        b_param[i] = sersic_b_parameter(n[i]);
-        pre_term[i] = graham_preterm(g[i], a[i], n[i], b_param[i], rb[i], Re[i]);
+        target += normal_lpdf(Re[i] | Re_mean[factor_idx[i]], Re_std[factor_idx[i]]);
+        target += normal_lpdf(n[i] | n_mean[factor_idx[i]], n_std[factor_idx[i]]);
+        target += normal_lpdf(g[i] | g_mean[factor_idx[i]], g_std[factor_idx[i]]);
+        target += normal_lpdf(log10densb[i] | log10densb_mean[factor_idx[i]], log10densb_std[factor_idx[i]]);
+        target += normal_lpdf(a[i] | a_mean[factor_idx[i]], a_std[factor_idx[i]]);
     }
 
-    // surface density calculation
-    array[N_tot] real log10_surf_rho_calc;
-    for(i in 1:N_tot){
-        log10_surf_rho_calc[i] = graham_surf_density(
-                                    R[i],
-                                    pre_term[context_idx[i]],
-                                    g[context_idx[i]],
-                                    a[context_idx[i]],
-                                    rb[context_idx[i]],
-                                    b_param[context_idx[i]],
-                                    Re[context_idx[i]],
-                                    log10densb[context_idx[i]]
-        );
-    }
     target += normal_lpdf(log10_surf_rho | log10_surf_rho_calc, err[factor_idx[context_idx]]);
 }
 
@@ -200,14 +217,14 @@ generated quantities {
     for(i in 1:N_factors){
         Re_mean_posterior[i] = lower_trunc_norm_rng(0, Re_mean_GS, 0.);
         Re_std_posterior[i] = lower_trunc_norm_rng(0, Re_std_GS, 0.);
-        n_mean_posterior[i] = trunc_norm_rng(0, n_mean_GS);
+        n_mean_posterior[i] = trunc_norm_rng(0, n_mean_GS, 0., 20.);
         n_std_posterior[i] = lower_trunc_norm_rng(0, n_std_GS, 0.);
         g_mean_posterior[i] = lower_trunc_norm_rng(0, g_mean_GS, 0.);
         g_std_posterior[i] = lower_trunc_norm_rng(0, g_std_GS, 0.);
         log10densb_mean_posterior[i] = normal_rng(log10densb_mean_GM, log10densb_mean_GS);
-        log10densb_std_posterior[i] = lower_trunc_norm_rng(0, log10densb_std_GS);
-        a_mean_posterior[i] = lower_trunc_norm_rng(0, a_mean_GS);
-        a_std_posterior[i] = lower_trunc_norm_rng(0, a_std_GS);
+        log10densb_std_posterior[i] = lower_trunc_norm_rng(0, log10densb_std_GS, 0.);
+        a_mean_posterior[i] = lower_trunc_norm_rng(0, a_mean_GS, 0.);
+        a_std_posterior[i] = lower_trunc_norm_rng(0, a_std_GS, 0.);
     }
 
     // context level quantities
@@ -215,11 +232,11 @@ generated quantities {
         array[N_contexts] real pre_term;
         array[N_contexts] real b_param;
         for(i in 1:N_contexts){
-            log10(rb_posterior) = normal_rng(log10(rb_calc[i]), rb_err[factor_idx[i]]);
+            rb_posterior[i] = pow(10, normal_rng(log10(rb_calc[i]), rb_err));
             Re_posterior[i] = lower_trunc_norm_rng(Re_mean[factor_idx[i]], Re_std[factor_idx[i]], 0.);
             n_posterior[i] = trunc_norm_rng(n_mean[factor_idx[i]], n_std[factor_idx[i]], 0., 20.);
             g_posterior[i] = lower_trunc_norm_rng(g_mean[factor_idx[i]], g_std[factor_idx[i]], 0.);
-            log10densb_posterior[i] = lower_trunc_norm_rng(log10densb_mean[factor_idx[i]], log10densb_std[factor_idx[i]], 0.);
+            log10densb_posterior[i] = normal_rng(log10densb_mean[factor_idx[i]], log10densb_std[factor_idx[i]]);
             a_posterior[i] = lower_trunc_norm_rng(a_mean[factor_idx[i]], a_std[factor_idx[i]], 0.);
 
             b_param[i] = sersic_b_parameter(n_posterior[i]);
@@ -233,6 +250,7 @@ generated quantities {
                                             g_posterior[context_idx_GQ[i]],
                                             a_posterior[context_idx_GQ[i]],
                                             rb_posterior[context_idx_GQ[i]],
+                                            n_posterior[context_idx_GQ[i]],
                                             b_param[context_idx_GQ[i]],
                                             Re_posterior[context_idx_GQ[i]],
                                             log10densb_posterior[context_idx_GQ[i]]
@@ -243,7 +261,7 @@ generated quantities {
     // determine log likelihood function
     vector[N_tot] log_lik;
     for(i in 1:N_tot){
-        log_lik[i] = normal_lpdf(log10_surf_rho[i[i], err[factor_idx[context_idx[i]]]);
+        log_lik[i] = normal_lpdf(log10_surf_rho[i] | log10_surf_rho_calc[i], err[factor_idx[context_idx[i]]]);
     }
 }
 

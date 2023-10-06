@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_2D
+from . import HierarchicalModel_2D, FactorModel_2D
 from . import HMQuantitiesBinaryData, HMQuantitiesSingleData
 from ...mathematics import get_histogram_bin_centres
 from ...env_config import _cmlogger
@@ -17,7 +17,7 @@ __all__ = ["GrahamModelSimple", "GrahamModelHierarchy"]
 _logger = _cmlogger.copy(__file__)
 
 
-class _GrahamModelBase(StanModel_2D):
+class _GrahamModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self._folded_qtys = ["log10_surf_rho"]
@@ -64,8 +64,10 @@ class _GrahamModelBase(StanModel_2D):
         d : path-like, optional
             HMQ data directory, by default None (paths read from 
             `_input_data_files`)
+        binary: bool, optional
+            system before merger (2 BHs present), by default True
         """
-        obs = {"R":[], "proj_density":[]}
+        obs = {"R":[], "proj_density":[], "vkick":[]}
         d = self._get_data_dir(d)
         if self._loaded_from_file:
             fnames = d[0]
@@ -80,22 +82,24 @@ class _GrahamModelBase(StanModel_2D):
             else:
                 hmq = HMQuantitiesSingleData.load_from_file(f)
                 idx = 0
+                status = True
             if not status: continue
             r = get_histogram_bin_centres(hmq.radial_edges)
             obs["R"].append(r)
             obs["proj_density"].append(list(hmq.projected_mass_density.values())[idx])
+            # get median escape velocity within some radius
+            vesc = np.nanmedian(list(hmq.escape_velocity.values())[idx][hmq.radial_edges < 1])
+            obs["vkick"].append([hmq.merger_remnant['kick']/vesc])
             if self._merger_id is None:
                 self._merger_id = re.sub("_[a-z]-", "-", hmq.merger_id)
+                # remove vXXXX from merger ID
+                self._merger_id = re.sub("-v[0-9]*", "", self._merger_id)
             if not self._loaded_from_file:
                 self._add_input_data_file(f)
         self.obs = obs
-
         # some transformations we need
         self.transform_obs("R", "log10_R", lambda x: np.log10(x))
         self.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
-        self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
-        self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
-        self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
 
 
     def _set_stan_data_OOS(self):
@@ -116,17 +120,16 @@ class _GrahamModelBase(StanModel_2D):
         )
 
 
+    @abstractmethod
     def set_stan_data(self):
         """
-        Set the Stan data dictionary used for sampling
+        Set the Stan data dictionary used for sampling.
         """
         self.stan_data = dict(
             N_tot = self.num_obs,
             N_groups = self.num_groups,
             group_id = self.obs_collapsed["label"],
             R = self.obs_collapsed["R"],
-            log10_surf_rho = self.obs_collapsed["log10_proj_density_mean"],
-            log10_surf_rho_err = self.obs_collapsed["log10_proj_density_std"]
         )
         if not self._loaded_from_file:
             self._set_stan_data_OOS()
@@ -217,7 +220,19 @@ class GrahamModelSimple(_GrahamModelBase):
         Update figname_base to include merger ID and keyword 'simple'
         """
         super().extract_data(pars, d)
+        self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
+        self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
+        self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
         self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-simple")
+
+
+    def set_stan_data(self):
+        """See docs for `_GrahamModelBase.set_stan_data()"""
+        super().set_stan_data()
+        self.stan_data.update(dict(
+            log10_surf_rho = self.obs_collapsed["log10_proj_density_mean"],
+            log10_surf_rho_err = self.obs_collapsed["log10_proj_density_std"]
+        ))
 
 
     def all_posterior_plots(self, figsize=None, ylim=(6, 10)):
@@ -278,10 +293,22 @@ class GrahamModelHierarchy(_GrahamModelBase):
     def extract_data(self, pars, d=None, binary=True):
         """
         See docs for `_GrahamModelBase.extract_data()"
-        Update figname_base to include merger ID and keyword 'simple'
+        Update figname_base to include merger ID and keyword 'hierarchy'
         """
         super().extract_data(pars, d, binary)
+        self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
+        self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
+        self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
         self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-hierarchy")
+
+
+    def set_stan_data(self):
+        """See docs for `_GrahamModelBase.set_stan_data()"""
+        super().set_stan_data()
+        self.stan_data.update(dict(
+            log10_surf_rho = self.obs_collapsed["log10_proj_density_mean"],
+            log10_surf_rho_err = self.obs_collapsed["log10_proj_density_std"]
+        ))
 
 
     def _prep_dims(self):
@@ -356,17 +383,88 @@ class GrahamModelHierarchy(_GrahamModelBase):
 
 
 
-class GrahamModelKick(GrahamModelHierarchy):
+class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
-        self._hyper_qtys.extend(["p", "q"])
-        self._hyper_qts_labs.extend([r"$p$", r"$q$"])
+        _GrahamModelBase.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
+        FactorModel_2D.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
+        self._hyper_qtys = ["r_b_mean", "r_b_std", 
+                            "Re_mean", "Re_std", 
+                            "log10_I_b_mean", "log10_I_b_std", 
+                            "g_mean", "g_std", 
+                            "n_mean", "n_std", 
+                            "a_mean", "a_std",
+                            "p", "q"]
+        self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
+                                r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", 
+                                r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", 
+                                r"$\mu_{g}$", r"$\sigma_{g}$", 
+                                r"$\mu_{n}$", r"$\sigma_{n}$", 
+                                r"$\mu_{a}$", r"$\sigma_{a}$",
+                                r"$p$", r"$q$"]
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
+        self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
+        self.rb_0 = None
 
 
     def extract_data(self, pars, d=None, binary=False):
-        super().extract_data(pars, d, binary)
+        """
+        See docs for `_GrahamModelBase.extract_data()"
+        Update figname_base to include merger ID and keyword 'kick'
+        """
+        _GrahamModelBase.extract_data(self, pars, d, binary)
+        self.rb_0 = pars["core_model_pars"]["rb_0"]["value"]
         self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-kick")
+        self.collapse_observations(["R", "log10_R", "proj_density", "log10_proj_density"])
+
+
+    def _set_stan_data_OOS_Kick(self):
+        _GrahamModelBase._set_stan_data_OOS(self)
+        """
+        See docs for `_GrahamModelBase._set_stan_data_OOS()"
+        """
+        self.stan_data["context_idx_OOS"] = self.stan_data.pop("group_id_OOS")
+        self.stan_data["factor_idx_OOS"] = np.arange(self.stan_data["N_contexts"])+1 #self._rng.integers(1, self.stan_data["N_contexts"], size=self.num_OOS, endpoint=True)
+
+
+    def set_stan_data(self):
+        """
+        See docs for `_GrahamModelBase.set_stan_data()"
+        """
+        self.stan_data = dict(
+            N_tot = self.num_obs_collapsed,
+            N_factors = self.num_groups,
+            R = self.obs_collapsed["R"],
+            log10_surf_rho = self.obs_collapsed["log10_proj_density"],
+            N_contexts = sum([x.shape[0] for x in self.obs["proj_density"]])
+        )
+        # TODO somehow make factor indexing a general method?
+        factor_idx = np.full(self.stan_data["N_contexts"], -99)
+        idxf0, idxf1 = 0, 0
+        context_idx = np.full(self.num_obs_collapsed, -99)
+        idxc0, idxc1, last_idxc = 0, 0, 0
+        for i, v in enumerate(self.obs["proj_density"], start=1):
+            idxf1 += v.shape[0]
+            factor_idx[idxf0:idxf1] = i
+            idxc1 += np.dot(*v.shape)
+            _idxc = np.arange(1, v.shape[0]+1) + last_idxc
+            last_idxc = _idxc[-1]
+            context_idx[idxc0:idxc1] = np.repeat(_idxc, v.shape[1])
+            idxc0 = idxc1
+            idxf0 = idxf1
+        self.stan_data.update(dict(
+            factor_idx = factor_idx,
+            context_idx = context_idx,
+            vkick_normed = np.concatenate(self.obs["vkick"]),
+            rb_0 = self.rb_0
+        ))
+        if not self._loaded_from_file:
+            self._set_stan_data_OOS_Kick()
+
+
+    def sample_model(self, sample_kwargs={}):
+        _GrahamModelBase.sample_model(self, sample_kwargs)
+        if self._loaded_from_file:
+            self._set_stan_data_OOS_Kick()
 
 
     def all_posterior_pred_plots(self, figsize=None, ylim=(6, 10)):

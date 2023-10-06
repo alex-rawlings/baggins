@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_2D, HMQuantitiesBinaryData
+from . import HierarchicalModel_2D, HMQuantitiesBinaryData
 from .. import first_major_deflection_angle, find_idxs_of_n_periods
 from ...env_config import _cmlogger
 from ...plotting import savefig
@@ -14,10 +14,10 @@ _logger = _cmlogger.copy(__file__)
 
 
 
-class DeflectionAngleGP(StanModel_2D):
+class DeflectionAngleGP(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         """
-        See StanModel_2D for parameters.
+        See HierarchicalModel_2D for parameters.
         """
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self._latent_qtys = ["rho", "alpha", "sigma", "eta"]

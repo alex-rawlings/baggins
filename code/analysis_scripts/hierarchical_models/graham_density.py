@@ -3,11 +3,11 @@ import os.path
 import numpy as np
 import scipy.optimize
 import cm_functions as cmf
-from .helpers import stan_model_selector
+from helpers import stan_model_selector
 
 
 parser = cmf.utils.argparse_for_stan("Run stan model for Core-Sersic model")
-parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
+parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy", "factor"], dest="model", default="hierarchy")
 parser.add_argument("-c", "--compare", help="compare to naive statistics", action="store_true", dest="compare")
 args = parser.parse_args()
 
@@ -31,6 +31,13 @@ if args.model == "simple":
                     "stan/density/graham_simple.stan", 
                     "stan/density/graham_prior_simple.stan", 
                     figname_base, SL)
+elif args.model == "factor":
+    graham_model = stan_model_selector(
+                    args,
+                    cmf.analysis.GrahamModelKick,
+                    "stan/density/graham_factor.stan",
+                    "stan/density/graham_factor.stan", # TODO update this
+                    figname_base, SL)
 else:
     graham_model = stan_model_selector(
                     args, 
@@ -45,6 +52,9 @@ graham_model.extract_data(analysis_params, hmq_dir)
 
 SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
 
+if args.verbose == "DEBUG":
+    graham_model.print_obs_summary()
+
 # initialise the data dictionary
 graham_model.set_stan_data()
 
@@ -56,7 +66,7 @@ if args.prior:
     graham_model.all_prior_plots(full_figsize)
 else:
     analysis_params["stan"]["density_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/density/{args.sample}/{graham_model.merger_id}")
-
+    
     # run the model
     graham_model.sample_model(sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
 

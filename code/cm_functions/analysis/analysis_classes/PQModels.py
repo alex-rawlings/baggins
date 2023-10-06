@@ -1,14 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_2D, HMQuantitiesBinaryData
+from . import HierarchicalModel_2D, HMQuantitiesBinaryData
 from ...env_config import _cmlogger
 
 __all__ = ["PQModelSimple", "PQModelHierarchy"]
 
 _logger = _cmlogger.copy(__file__)
 
-class _PQModelBase(StanModel_2D):
+class _PQModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
         self._latent_qtys = ["Hps", "K"]

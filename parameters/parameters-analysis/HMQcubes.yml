@@ -22,13 +22,19 @@ galaxy:
   radial_edges:
     unit: kpc
     numpy_method: geomspace
-    args: [0.2, *gr, 51]
-  num_projection_rotations: 10
+    args: [0.1, *gr, 21]
+  num_projection_rotations: 5
 
 # some plotting parameters
 plotting:
   kepler_model:
     a_hard_lims: [10, 350]
+
+# info about pre-merger remnant for core analysis
+core_model_pars:
+  rb_0:
+    unit: kpc
+    value: 0.1
 
 # info for stan settings
 stan:

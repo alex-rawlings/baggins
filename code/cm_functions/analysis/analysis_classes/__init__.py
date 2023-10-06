@@ -4,7 +4,7 @@ from .BHBinaryData import BHBinaryData
 from .BHBinary import *
 from .ChildSimData import ChildSimData
 from .ChildSim import ChildSim
-from .StanModel import StanModel_1D, StanModel_2D
+from .StanModel import HierarchicalModel_1D, HierarchicalModel_2D, FactorModel_2D
 
 from .HMQuantitiesSingleData import HMQuantitiesSingleData
 from .HMQuantitiesSingle import HMQuantitiesSingle
@@ -13,7 +13,7 @@ from .HMQuantitiesBinary import HMQuantitiesBinary
 
 from .BrownianData import BrownianData
 
-from .GrahamModels import GrahamModelSimple, GrahamModelHierarchy
+from .GrahamModels import GrahamModelSimple, GrahamModelHierarchy, GrahamModelKick
 
 from .KeplerModels import KeplerModelSimple, KeplerModelHierarchy
 

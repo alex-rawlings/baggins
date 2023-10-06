@@ -5,7 +5,7 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from . import StanModel_1D, HMQuantitiesBinaryData
+from . import HierarchicalModel_1D, HMQuantitiesBinaryData
 from ..orbit import find_idxs_of_n_periods
 from ...env_config import _cmlogger
 from ...plotting import savefig
@@ -16,7 +16,7 @@ __all__ = ["KeplerModelSimple", "KeplerModelHierarchy"]
 _logger = _cmlogger.copy(__file__)
 
 
-class _KeplerModelBase(StanModel_1D):
+class _KeplerModelBase(HierarchicalModel_1D):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self._folded_qtys = ["log10_angmom", "log10_energy"]

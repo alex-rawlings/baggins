@@ -12,7 +12,7 @@ import yaml
 from ...plotting import savefig, create_normed_colours
 from ...env_config import figure_dir, data_dir, tmp_dir, _cmlogger
 
-__all__ = ["StanModel_1D", "StanModel_2D"]
+__all__ = ["HierarchicalModel_1D", "HierarchicalModel_2D", "FactorModel_2D"]
 
 _logger = _cmlogger.copy(__file__)
 
@@ -100,6 +100,8 @@ class _StanModel(ABC):
         # set categorical label
         # access the first value of the dict
         v = next(iter(d.values()))
+        while v[0].ndim > 1:
+            v = next(iter(d.values()))
         self._num_groups = len(v)
         _label = []
         for j, vv in enumerate(v, start=1):
@@ -107,23 +109,27 @@ class _StanModel(ABC):
         self._num_obs = sum(len(sublist) for sublist in _label)
         d["label"] = _label
         self._obs = d
-    
+
     @property
     def obs_collapsed(self):
         return self._obs_collapsed
-    
+
     @property
     def num_obs(self):
         return self._num_obs
-    
+
+    @property
+    def num_obs_collapsed(self):
+        return self._num_obs_collapsed
+
     @property
     def num_groups(self):
         return self._num_groups
-    
+
     @property
     def points_per_group(self):
         return [len(o) for o in self.obs["label"]]
-    
+
     @property
     def generated_quantities(self):
         return self._generated_quantities
@@ -131,7 +137,7 @@ class _StanModel(ABC):
     @property
     def figname_base(self):
         return self._figname_base
-    
+
     @figname_base.setter
     def figname_base(self, f):
         self._figname_base = os.path.join(figure_dir, f)
@@ -324,7 +330,7 @@ class _StanModel(ABC):
             print(f"  {k}:  {v.shape}")
 
 
-    def collapse_observations(self, obs_names):
+    def collapse_observations(self, obs_names, order="F"):
         """
         Collapse a 2D observed quantity to a 1D representation.
 
@@ -332,13 +338,18 @@ class _StanModel(ABC):
         ----------
         obs_name : list
             observation(s) to collapse
+        include_label : bool
+            should key `label` be collapsed (sometimes not desired if 2D arrays 
+            have been flattened), by default True
         """
-        dim = []
+        if "label" not in obs_names: obs_names.append("label")
+        dim = {}
+        order = order.upper()
         for obs_name in obs_names:
             try:
                 assert obs_name not in self._obs_collapsed_names
                 self._obs_collapsed_names.append(obs_name)
-                dim.append(len(self.obs[obs_name][0].shape))
+                dim[obs_name] = self.obs[obs_name][0].ndim
             except AssertionError:
                 _logger.logger.exception(f"Observation {obs_name} has already been collapsed! Cannot collapse again!", exc_info=True)
                 raise
@@ -346,40 +357,30 @@ class _StanModel(ABC):
                 _logger.logger.exception(f"Error collapsing {obs_name}, {self.obs[obs_name]}")
                 raise
         try:
-            assert len(np.unique(dim)) == 1
+            assert max(dim.values()) < 3
         except AssertionError:
-            _logger.logger.exception(f"Collapsing multiple observations requires these to have the same dimensions! Current dimensions are {dim}", exc_info=True)
+            _logger.logger.exception(f"Error collapsing observation {max(dim, key=dim.get)}: data cannot have more than 2 dimensions", exc_info=True)
             raise
-        dim = np.unique(dim)[0]
-        try:
-            assert dim < 3
-        except AssertionError:
-            _logger.logger.exception(f"Error collapsing observation {obs_name}: data cannot have more than 2 dimensions", exc_info=True)
-            raise
-        if "label" not in obs_names: obs_names.append("label")
-        if dim == 1:
+        if max(dim.values()) == 1:
+            # all observations are 1D, can just concatenate
             for k, v in self.obs.items():
-                if len(v[0].shape) > 1 or k not in obs_names:
+                if k not in obs_names:
                     _logger.logger.debug(f"Observation {k} will not be collapsed.")
                     continue
                 self._obs_collapsed[k] = np.concatenate(v)
                 _logger.logger.debug(f"Collapsing variable {k}")
         else:
             # collapse the desired variable
-            for obs_name in obs_names:
-                self._obs_collapsed[obs_name] = np.concatenate([v.flatten() for v in self.obs[obs_name]])
-            reps = [vv.shape[0] for vv in self.obs[obs_names[0]]]
-            for k, v in self.obs.items():
-                if k in obs_names:
-                    continue
-                if len(v[0].shape) > 1:
-                    _logger.logger.debug(f"Observation {k} will not be collapsed.")
-                    continue
-                _logger.logger.debug(f"Collapsing variable {k}")
-                self._obs_collapsed[k] = []
-                for rep, vv in zip(reps, v):
-                    self._obs_collapsed[k].extend(np.tile(vv, rep))
-                self._obs_collapsed[k] = np.array(self._obs_collapsed[k])
+            # need to collapse 2D variables first so we know how many tiles to 
+            # make of 1D variables
+            dim = dict(sorted(dim.items(), key=lambda item: item[1], reverse=True))
+            reps = [v.shape[0 if order=="F" else 1] for v in self.obs[list(dim.keys())[0]]]
+            for obs_name, ndim in dim.items():
+                if ndim == 2:
+                    self._obs_collapsed[obs_name] = np.concatenate([v.flatten(order=order) for v in self.obs[obs_name]])
+                else:
+                    self._obs_collapsed[obs_name] = np.concatenate([np.tile(vv, r) for vv,r in zip(self.obs[obs_name], reps)])
+            self._num_obs_collapsed = len(self.obs_collapsed[obs_name])
         # data consistency checks
         try:
             for k, v in self._obs_collapsed.items():
@@ -387,6 +388,14 @@ class _StanModel(ABC):
         except AssertionError:
             _logger.logger.exception(f"Data lengths are inconsistent in collapsed observations! Observation '{k}' has shape {v.shape}, must have shape {self._obs_collapsed[obs_names[0]].shape}", exc_info=True)
             raise
+
+
+    def reset_obs_collapsed(self):
+        """
+        Reset the obs_collapsed attribute.
+        """
+        self._obs_collapsed = {}
+        self._obs_collapsed_names = []
 
 
     def thin_observations(self, spacing):
@@ -989,7 +998,7 @@ class _StanModel(ABC):
 
 
 
-class StanModel_1D(_StanModel):
+class HierarchicalModel_1D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
 
@@ -1102,7 +1111,7 @@ class StanModel_1D(_StanModel):
 
 
 
-class StanModel_2D(_StanModel):
+class HierarchicalModel_2D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
 
@@ -1217,3 +1226,47 @@ class StanModel_2D(_StanModel):
         if save:
             savefig(self._make_fig_name(self.figname_base, f"posterior_OOS_{ymodel}"), fig=fig)
 
+
+
+
+class FactorModel_2D(_StanModel):
+    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+
+
+    @abstractmethod
+    def extract_data(self):
+        return super().extract_data()
+
+
+    @abstractmethod
+    def set_stan_data(self):
+        return super().set_stan_data()
+
+
+    @abstractmethod
+    def _set_stan_data_OOS(self):
+        return super()._set_stan_data_OOS()
+
+
+    @abstractmethod
+    def sample_model(self, sample_kwargs={}):
+        return super().sample_model(sample_kwargs)
+
+
+    @abstractmethod
+    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
+        return super().sample_generated_quantity(gq, force_resample, state)
+
+
+    def _plot_predictive(self, xmodel, ymodel, state, xobs=None, yobs=None, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True):
+        if levels is None:
+            levels = self._default_hdi_levels
+        levels.sort(reverse=True)
+        if ax is None:
+            fig, ax = plt.subplots(1,1)
+        else:
+            fig = ax.get_figure()
+        idxs = self._get_GQ_indices(state)
+        ys = self.sample_generated_quantity(ymodel, state=state)
+        print(ys)

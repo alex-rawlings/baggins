@@ -8,7 +8,7 @@ from arviz.labels import MapLabeller
 from arviz import plot_kde
 import dask
 from datetime import datetime
-from . import StanModel_2D, HMQuantitiesBinaryData
+from . import HierarchicalModel_2D, HMQuantitiesBinaryData
 from ..orbit import determine_merger_timescale
 from ...env_config import _cmlogger, date_format
 from ...general import units
@@ -21,10 +21,10 @@ __all__ = ["QuinlanModelSimple", "QuinlanModelHierarchy"]
 _logger = _cmlogger.copy(__file__)
 
 
-class _QuinlanModelBase(StanModel_2D):
+class _QuinlanModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         """
-        Abstract class for Quinlan models. See StanModel_2D for parameters.
+        Abstract class for Quinlan models. See HierarchicalModel_2D for parameters.
         """
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self._folded_qtys = ["inv_a", "ecc"]
@@ -324,7 +324,7 @@ class _QuinlanModelBase(StanModel_2D):
 class QuinlanModelSimple(_QuinlanModelBase):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         """
-        Non-hierarchical Quinlan model. See StanModel_2D for parameters.
+        Non-hierarchical Quinlan model. See HierarchicalModel_2D for parameters.
         """
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
 
@@ -377,7 +377,7 @@ class QuinlanModelSimple(_QuinlanModelBase):
 class QuinlanModelHierarchy(_QuinlanModelBase):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         """
-        Hierarchical Quinlan model. See StanModel_2D for parameters.
+        Hierarchical Quinlan model. See HierarchicalModel_2D for parameters.
         """
         super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
         self._hyper_qtys = ["HGp_s_mean", "HGp_s_std", "inv_a_0_mean", "inv_a_0_std", "K_mean", "K_std", "e0_mean", "e0_std"]

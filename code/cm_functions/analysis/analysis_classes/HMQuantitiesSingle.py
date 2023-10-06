@@ -6,7 +6,7 @@ import h5py
 import pygad
 
 from . import HMQuantitiesSingleData
-from ..analyse_snap import get_com_of_each_galaxy, get_com_velocity_of_each_galaxy, get_massive_bh_ID, projected_quantities, inner_DM_fraction, velocity_anisotropy
+from ..analyse_snap import get_com_of_each_galaxy, get_com_velocity_of_each_galaxy, get_massive_bh_ID, projected_quantities, inner_DM_fraction, velocity_anisotropy, escape_velocity
 from ..orbit import get_bh_particles
 from ...env_config import _cmlogger, date_format, username
 from ...general import convert_gadget_time
@@ -71,6 +71,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         self.projected_vel_dispersion_2 = {}
         self.inner_DM_fraction = {}
         self.velocity_anisotropy = {}
+        self.escape_velocity = {}
         self.masses_in_galaxy_radius = {"stars":[], "dm":[], "bh":[]}
         self.particle_masses = {"stars":None, "dm":None, "bh":None}
 
@@ -172,6 +173,9 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         # beta profile
         self.velocity_anisotropy[k], *_ = velocity_anisotropy(s.stars[ball_mask], r_edges=self.radial_edges, xcom=xcom, vcom=vcom)
 
+        # escape velocity as a function of raduius
+        self.escape_velocity[k] = escape_velocity(s)(self.radial_edges)
+
         # masses
         self.masses_in_galaxy_radius["stars"].append(
                     np.sum(s.stars[ball_mask]["mass"])
@@ -245,6 +249,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
                     "virial_radius",
                     "inner_DM_fraction",
                     "velocity_anisotropy",
+                    "escape_velocity",
                     "masses_in_galaxy_radius",
                     "particle_masses",
                     "initial_galaxy_orbit"

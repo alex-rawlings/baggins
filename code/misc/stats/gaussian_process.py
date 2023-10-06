@@ -9,7 +9,7 @@ import cm_functions as cmf
 avg_over_idxs = 50
 
 # load the data
-GP = cmf.analysis.StanModel_2D("stan/gp.stan", "", "gaussian_processes/gp")
+GP = cmf.analysis.HierarchicalModel_2D("stan/gp.stan", "", "gaussian_processes/gp")
 
 theta = []
 e_hard = []

@@ -170,6 +170,16 @@ class HMQuantitiesSingleData(HDF5Base):
         self._initial_galaxy_orbit = v
 
 
+    # initial orbital parameters
+    @property
+    def escape_velocity(self):
+        return self._escape_velocity
+    
+    @escape_velocity.setter
+    def escape_velocity(self, v):
+        self._escape_velocity = v
+
+
     @classmethod
     def load_from_file(cls, fname, decode="utf-8"):
         """
