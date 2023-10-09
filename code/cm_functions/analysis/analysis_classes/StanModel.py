@@ -1181,7 +1181,7 @@ class HierarchicalModel_2D(_StanModel):
             fig = ax.get_figure()
         ys = self.sample_generated_quantity(ymodel, state=state)
         idxs = self._get_GQ_indices(state)
-        cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", normalisation="LogNorm")
+        cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", norm="LogNorm")
         for l in levels:
             _logger.logger.debug(f"Fitting level {l}")
             az.plot_hdi(self.stan_data[xmodel][...,idxs], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})

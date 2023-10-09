@@ -1,9 +1,10 @@
 import pickle
 import os
+import inspect
 import shutil
 import h5py
 from multiprocessing import managers
-from ..env_config import _cmlogger
+from ..env_config import _cmlogger, git_hash
 
 
 __all__ = ["save_data", "load_data", "get_files_in_dir", "get_snapshots_in_dir", "get_ketjubhs_in_dir", "create_file_copy"]
@@ -33,8 +34,23 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
         filename must have .pickle extension
 
     """
-    assert(isinstance(data, (dict, managers.DictProxy)))
-    assert(filename.endswith(".pickle"))
+    try:
+        assert isinstance(data, (dict, managers.DictProxy))
+    except AssertionError:
+        _logger.logger.exception(f"Input data must be a dict!", exc_info=True)
+        raise
+    try:
+        assert filename.endswith(".pickle")
+    except AssertionError:
+        _logger.logger.exception(f"Filename must be a .pickle file, not type {os.path.splitext(filename)[1]}", exc_info=True)
+        raise
+    try:
+        assert all([k not in data for k in ["__githash", "__script"]])
+        data["__githash"] = git_hash
+        data["__script"] = inspect.stack()[-1].filename
+    except AssertionError:
+        _logger.logger.exception("Reserved keyword has been used in input data!", exc_info=True)
+        raise
     with open(filename, 'wb') as f:
         pickle.dump(data, f, protocol=protocol)
     _logger.logger.info(f"File {filename} saved")

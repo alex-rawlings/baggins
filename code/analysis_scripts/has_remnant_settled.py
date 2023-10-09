@@ -143,7 +143,7 @@ ax_twin2.set_xlabel("Snap number")
 cmap, sm = cmf.plotting.create_normed_colours(
                 10**np.floor(np.log10(min(results[:,5]))),
                 10**np.ceil(np.log10(min(results[:,5]))),
-                normalisation="LogNorm")
+                norm="LogNorm")
 ax[1].scatter(results[:,1], results[:,4], c=cmap(results[:,5]), ec="k", lw=0.5)
 cbar = plt.colorbar(sm, ax=ax[1], label=r"$\rho_\star / \mathrm{M}_\odot/\mathrm{kpc}^{-3}$")
 if max(results[:,4]) > 5e-2:

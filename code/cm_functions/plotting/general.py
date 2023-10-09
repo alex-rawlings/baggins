@@ -53,7 +53,7 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
         ax.axes.yaxis.set_visible(False)
 
 
-def create_normed_colours(vmin, vmax, cmap="cividis", normalisation="Normalize", norm_kwargs={}):
+def create_normed_colours(vmin, vmax, cmap="cividis", norm="Normalize", norm_kwargs={}):
     """
     Convenience wrapper for creating colour normalisation and colourbar 
     requirements for pyplot.plot()
@@ -66,7 +66,7 @@ def create_normed_colours(vmin, vmax, cmap="cividis", normalisation="Normalize",
         maximum value of colour variable
     cmap : str, optional
         pyplot colour map name, by default "cividis"
-    normalisation: str, optional
+    norm: str, optional
         matplotlib.color attribute for normalisation
     norm_kwargs: dict, optional
         additional keyword arguments for normalisation initialisation
@@ -85,9 +85,9 @@ def create_normed_colours(vmin, vmax, cmap="cividis", normalisation="Normalize",
         _logger.logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
         cmapv = plt.cm.cividis
     try:
-        _norm = getattr(colors, normalisation)
+        _norm = getattr(colors, norm)
     except AttributeError:
-        _logger.logger.warning(f"Normalisation {normalisation} is not valid. Using default (Linear).")
+        _logger.logger.warning(f"Normalisation {norm} is not valid. Using default (Linear).")
         _norm = colors.Normalize()
     norm = _norm(vmin=vmin, vmax=vmax, **norm_kwargs)
     sm = plt.cm.ScalarMappable(norm=norm, cmap=cmapv)
