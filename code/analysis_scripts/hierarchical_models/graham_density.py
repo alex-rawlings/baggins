@@ -36,7 +36,7 @@ elif args.model == "factor":
                     args,
                     cmf.analysis.GrahamModelKick,
                     "stan/density/graham_factor.stan",
-                    "stan/density/graham_factor.stan", # TODO update this
+                    "stan/density/graham_factor_prior_novk.stan",
                     figname_base, SL)
 else:
     graham_model = stan_model_selector(

@@ -1,5 +1,6 @@
 functions {
     #include funcs_graham.stan
+    #include ../custom_rngs.stan
 }
 
 
@@ -56,80 +57,61 @@ transformed data {
 
 
 parameters {
-    // latent parameters for each context
-    array[N_contexts] real<lower=0> rb;
-    array[N_contexts] real<lower=0> Re;
-    array[N_contexts] real<lower=0, upper=20> n;
-    array[N_contexts] real<lower=0> g;
-    array[N_contexts] real log10densb;
-    array[N_contexts] real<lower=0> a;
+    // hyperpriors
+    real log10densb_mean_hyp1;
+    real<lower=0> log10densb_mean_hyp2;
+    real<lower=0> log10densb_std_hyp;
+    real<lower=0> g_hyp;
+    real<lower=0> rb_hyp;
+    real<lower=0, upper=20> n_mean_hyp1;
+    real<lower=0> n_mean_hyp2;
+    real<lower=0> n_std_hyp1;
+    real<lower=0> n_std_hyp2;
+    real<lower=0> a_hyp;
+    real<lower=0> Re_hyp;
 
-    // latent parameters for each factor
-    array[N_factors] real<lower=0> Re_mean;
-    array[N_factors] real<lower=0> Re_std;
-    array[N_factors] real<lower=0> n_mean;
-    array[N_factors] real<lower=0> n_std;
-    array[N_factors] real<lower=0> g_mean;
-    array[N_factors] real<lower=0> g_std;
+    // parameters for each factor level
     array[N_factors] real log10densb_mean;
     array[N_factors] real<lower=0> log10densb_std;
-    array[N_factors] real<lower=0> a_mean;
-    array[N_factors] real<lower=0> a_std;
+    array[N_factors] real<lower=0> g_lam;
+    array[N_factors] real<lower=0> rb_sig;
+    array[N_factors] real<lower=0, upper=15> n_mean;
+    array[N_factors] real<lower=0, upper=15> n_std;
+    array[N_factors] real<lower=0> a_sig;
+    array[N_factors] real<lower=0> Re_sig;
     array[N_factors] real<lower=0> err;
 
-    // global hyperpriors
-    // for positive-constrained quantities, only need to worry about the 
-    // variance. Suffix GM: global mean, GS: global std
-    real<lower=0> Re_mean_GS;
-    real<lower=0> Re_std_GS;
-    real<lower=0> n_mean_GS;
-    real<lower=0> n_std_GS;
-    real<lower=0> g_mean_GS;
-    real<lower=0> g_std_GS;
-    real log10densb_mean_GM;
-    real<lower=0> log10densb_mean_GS;
-    real<lower=0> log10densb_std_GS;
-    real<lower=0> a_mean_GS;
-    real<lower=0> a_std_GS;
-
-    // rb is a deterministic quantity
-    // these parameters are for the fit
-    real p;
-    real q;
-    real<lower=0> rb_err;
+    // latent parameters for each context
+    array[N_contexts] real<lower=0, upper=5> rb;
+    array[N_contexts] real<lower=0, upper=20> Re;
+    array[N_contexts] real<lower=0, upper=20> n;
+    array[N_contexts] real<lower=0, upper=2> g;
+    array[N_contexts] real<lower=-5, upper=15> log10densb;
+    array[N_contexts] real<lower=0> a;
 }
 
 
 transformed parameters {
     // prior information for sensitivity analysis
-    array[14+N_factors] real lprior;
-    lprior[1] = normal_lpdf(Re_mean_GS | 0, 20);
-    lprior[2] = normal_lpdf(Re_std_GS | 0, 12);
-    lprior[3] = normal_lpdf(n_mean_GS | 0, 16);
-    lprior[4] = normal_lpdf(n_std_GS | 0, 10);
-    lprior[5] = normal_lpdf(g_mean_GS | 0, 1);
-    lprior[6] = normal_lpdf(g_std_GS | 0, 2);
-    lprior[7] = normal_lpdf(log10densb_mean_GM | 8, 4);
-    lprior[8] = normal_lpdf(log10densb_mean_GS | 0, 8);
-    lprior[9] = normal_lpdf(log10densb_std_GS | 0, 2);
-    lprior[10] = normal_lpdf(a_mean_GS | 0, 20);
-    lprior[11] = normal_lpdf(a_std_GS | 0, 15);
-    lprior[12] = normal_lpdf(rb_err | 0, 1);
-    lprior[13] = normal_lpdf(p | 0, 1);
-    lprior[14] = normal_lpdf(q | 0, 5);
+    array[11+N_factors] real lprior;
+    lprior[1] = normal_lpdf(log10densb_mean_hyp1 | 10, 0.5);
+    lprior[2] = normal_lpdf(log10densb_mean_hyp2 | 0, 0.05);
+    lprior[3] = normal_lpdf(log10densb_std_hyp | 0, 0.05);
+    lprior[4] = exponential_lpdf(g_hyp | 10);
+    lprior[5] = rayleigh_lpdf(rb_hyp | 0.1);
+    lprior[6] = normal_lpdf(n_mean_hyp1 | 4, 2);
+    lprior[7] = normal_lpdf(n_mean_hyp2 | 0, 0.1);
+    lprior[8] = exponential_lpdf(n_std_hyp1 | 0.1);
+    lprior[9] = normal_lpdf(n_std_hyp2 | 0, 0.1);
+    lprior[10] = rayleigh_lpdf(a_hyp | 10);
+    lprior[11] = rayleigh_lpdf(Re_hyp | 10);
     for(i in 1:N_factors){
-        lprior[14+i] = normal_lpdf(err | 0, 1);
-    }
-
-    // deterministic rb
-    array[N_contexts] real<lower=0> rb_calc;
-    for(i in 1:N_contexts){
-        rb_calc[i] = core_radius(vkick_normed[factor_idx[i]], rb_0, p, q);
+        lprior[11+i] = normal_lpdf(err | 0, 0.1);
     }
 
     // pre definition of calculated density for log-likelihood calculation
     // in generated quantities block
-    array[N_tot] real log10_surf_rho_calc;
+    array[N_tot] real<lower=-5, upper=15> log10_surf_rho_calc;
     {
         // no need to track these helper variables, so put in private scope
         array[N_contexts] real pre_term;
@@ -161,26 +143,25 @@ model {
     target += sum(lprior);
 
     // connect hyperparameters to factor parameters
-    target += normal_lpdf(Re_mean | 0, Re_mean_GS);
-    target += normal_lpdf(Re_std | 0, Re_std_GS);
-    target += normal_lpdf(n_mean | 0, n_mean_GS);
-    target += normal_lpdf(n_std | 0, n_std_GS);
-    target += normal_lpdf(g_mean | 0, g_mean_GS);
-    target += normal_lpdf(g_std | 0, g_std_GS);
-    target += normal_lpdf(log10densb_mean | log10densb_mean_GM, log10densb_mean_GS);
-    target += normal_lpdf(log10densb_std | 0, log10densb_std_GS);
-    target += normal_lpdf(a_mean | 0, a_mean_GS);
-    target += normal_lpdf(a_std | 0, a_std_GS);
-
-    target += normal_lpdf(log10(rb) | log10(rb_calc), rb_err);
+    for(i in 1:N_factors){
+        target += normal_lpdf(log10densb_mean[i] | log10densb_mean_hyp1, log10densb_mean_hyp2);
+        target += normal_lpdf(log10densb_std[i] | 0, log10densb_std_hyp);
+        target += rayleigh_lpdf(g_lam[i] | g_hyp);
+        target += rayleigh_lpdf(rb_sig[i] | rb_hyp);
+        target += normal_lpdf(n_mean[i] | n_mean_hyp1, n_mean_hyp2);
+        target += normal_lpdf(n_std[i] | n_std_hyp1, n_std_hyp2);
+        target += rayleigh_lpdf(a_sig[i] | a_hyp);
+        target += rayleigh_lpdf(Re_sig[i] | Re_hyp);
+    }
 
     // connect factor parameters to context parameters
     for(i in 1:N_contexts){
-        target += normal_lpdf(Re[i] | Re_mean[factor_idx[i]], Re_std[factor_idx[i]]);
+        target += normal_lpdf(log10densb[i] | log10densb_mean, log10densb_std);
+        target += exponential_lpdf(g[i] | g_lam[factor_idx[i]]);
+        target += rayleigh_lpdf(rb[i] | rb_sig[factor_idx[i]]);
         target += normal_lpdf(n[i] | n_mean[factor_idx[i]], n_std[factor_idx[i]]);
-        target += normal_lpdf(g[i] | g_mean[factor_idx[i]], g_std[factor_idx[i]]);
-        target += normal_lpdf(log10densb[i] | log10densb_mean[factor_idx[i]], log10densb_std[factor_idx[i]]);
-        target += normal_lpdf(a[i] | a_mean[factor_idx[i]], a_std[factor_idx[i]]);
+        target += rayleigh_lpdf(a[i] | a_sig[factor_idx[i]]);
+        target += rayleigh_lpdf(Re[i] | Re_sig[factor_idx[i]]);
     }
 
     target += normal_lpdf(log10_surf_rho | log10_surf_rho_calc, err[factor_idx[context_idx]]);
@@ -188,19 +169,17 @@ model {
 
 
 generated quantities {
-    // posterior parameters for each factor level
-    array[N_factors] real Re_mean_posterior;
-    array[N_factors] real Re_std_posterior;
-    array[N_factors] real n_mean_posterior;
-    array[N_factors] real n_std_posterior;
-    array[N_factors] real g_mean_posterior;
-    array[N_factors] real g_std_posterior;
+    // parameters for each factor level
     array[N_factors] real log10densb_mean_posterior;
     array[N_factors] real log10densb_std_posterior;
-    array[N_factors] real a_mean_posterior;
-    array[N_factors] real a_std_posterior;
+    array[N_factors] real g_lam_posterior;
+    array[N_factors] real rb_sig_posterior;
+    array[N_factors] real n_mean_posterior;
+    array[N_factors] real n_std_posterior;
+    array[N_factors] real a_sig_posterior;
+    array[N_factors] real Re_sig_posterior;
 
-    // posterior parameters for each context
+    // parameters for each context
     array[N_contexts] real rb_posterior;
     array[N_contexts] real Re_posterior;
     array[N_contexts] real n_posterior;
@@ -215,16 +194,14 @@ generated quantities {
 
     // factor level quantities
     for(i in 1:N_factors){
-        Re_mean_posterior[i] = lower_trunc_norm_rng(0, Re_mean_GS, 0.);
-        Re_std_posterior[i] = lower_trunc_norm_rng(0, Re_std_GS, 0.);
-        n_mean_posterior[i] = trunc_norm_rng(0, n_mean_GS, 0., 20.);
-        n_std_posterior[i] = lower_trunc_norm_rng(0, n_std_GS, 0.);
-        g_mean_posterior[i] = lower_trunc_norm_rng(0, g_mean_GS, 0.);
-        g_std_posterior[i] = lower_trunc_norm_rng(0, g_std_GS, 0.);
-        log10densb_mean_posterior[i] = normal_rng(log10densb_mean_GM, log10densb_mean_GS);
-        log10densb_std_posterior[i] = lower_trunc_norm_rng(0, log10densb_std_GS, 0.);
-        a_mean_posterior[i] = lower_trunc_norm_rng(0, a_mean_GS, 0.);
-        a_std_posterior[i] = lower_trunc_norm_rng(0, a_std_GS, 0.);
+        log10densb_mean_posterior[i] = normal_rng(log10densb_mean_hyp1, log10densb_mean_hyp2);
+        log10densb_std_posterior[i] = lower_trunc_normal_rng(0, log10densb_std_hyp, 0);
+        g_lam_posterior[i] = rayleigh_rng(g_hyp);
+        rb_sig_posterior[i] = rayleigh_rng(rb_hyp);
+        n_mean_posterior[i] = trunc_normal_rng(n_mean_hyp1, n_mean_hyp2, 0, 15);
+        n_std_posterior[i] = trunc_normal_rng(0, n_std_hyp2, 0, 15);
+        a_sig_posterior[i] = rayleigh_rng(a_hyp);
+        Re_sig_posterior[i] = rayleigh_rng(Re_hyp);
     }
 
     // context level quantities
@@ -232,29 +209,32 @@ generated quantities {
         array[N_contexts] real pre_term;
         array[N_contexts] real b_param;
         for(i in 1:N_contexts){
-            rb_posterior[i] = pow(10, normal_rng(log10(rb_calc[i]), rb_err));
-            Re_posterior[i] = lower_trunc_norm_rng(Re_mean[factor_idx[i]], Re_std[factor_idx[i]], 0.);
-            n_posterior[i] = trunc_norm_rng(n_mean[factor_idx[i]], n_std[factor_idx[i]], 0., 20.);
-            g_posterior[i] = lower_trunc_norm_rng(g_mean[factor_idx[i]], g_std[factor_idx[i]], 0.);
-            log10densb_posterior[i] = normal_rng(log10densb_mean[factor_idx[i]], log10densb_std[factor_idx[i]]);
-            a_posterior[i] = lower_trunc_norm_rng(a_mean[factor_idx[i]], a_std[factor_idx[i]], 0.);
-
-            b_param[i] = sersic_b_parameter(n_posterior[i]);
-            pre_term[i] = graham_preterm(g_posterior[i], a_posterior[i], n_posterior[i], b_param[i], rb[i], Re_posterior[i]);
+            log10densb_posterior[i] = trunc_normal_rng(log10densb_mean_posterior[factor_idx[i]], log10densb_std_posterior[factor_idx[i]], -5, 15);
+            g_posterior[i] = trunc_exponential_rng(g_lam_posterior[factor_idx[i]], 0, 2);
+            rb_posterior[i] = trunc_rayleigh_rng(rb_sig_posterior[factor_idx[i]], 0, 5);
+            n_posterior[i] = trunc_normal_rng(n_mean_posterior[factor_idx[i]], n_std_posterior[factor_idx[i]], 0, 20);
+            a_posterior[i] = rayleigh_rng(a_sig_posterior[factor_idx[i]]);
+            Re_posterior[i] = trunc_rayleigh_rng(Re_sig_posterior[factor_idx[i]], 0, 20);
+            // some helper quantities
+            b_param[i] = sersic_b_parameter(n[i]);
+            pre_term[i] = graham_preterm(g[i], a[i], n[i], b_param[i], rb[i], Re[i]);
         }
 
+        // push forward data
+        real mean_gsd;
         for(i in 1:N_GQ){
-            log10_surf_rho_posterior[i] = normal_rng(graham_surf_density(
-                                            R_OOS[i],
-                                            pre_term[context_idx_GQ[i]],
-                                            g_posterior[context_idx_GQ[i]],
-                                            a_posterior[context_idx_GQ[i]],
-                                            rb_posterior[context_idx_GQ[i]],
-                                            n_posterior[context_idx_GQ[i]],
-                                            b_param[context_idx_GQ[i]],
-                                            Re_posterior[context_idx_GQ[i]],
-                                            log10densb_posterior[context_idx_GQ[i]]
-                                            ), err[factor_idx[context_idx_GQ[i]]]);
+            mean_gsd = graham_surf_density(
+                            R_OOS[i],
+                            pre_term[context_idx_GQ[i]],
+                            g_posterior[context_idx_GQ[i]],
+                            a_posterior[context_idx_GQ[i]],
+                            rb_posterior[context_idx_GQ[i]],
+                            n_posterior[context_idx_GQ[i]],
+                            b_param[context_idx_GQ[i]],
+                            Re_posterior[context_idx_GQ[i]],
+                            log10densb_posterior[context_idx_GQ[i]]
+                        );
+            log10_surf_rho_posterior[i] = trunc_normal_rng(mean_gsd, err[factor_idx[context_idx_GQ[i]]], -5, 15);
         }
     }
 

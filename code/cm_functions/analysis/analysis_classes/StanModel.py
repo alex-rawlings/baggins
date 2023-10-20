@@ -514,7 +514,7 @@ class _StanModel(ABC):
             self._sample_diagnosis = self._fit.diagnose()
             return self._fit
         else:
-            default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "show_console":False, "max_treedepth":12}
+            default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "max_treedepth":12}
             if not prior:
                 default_sample_kwargs["output_dir"] = os.path.join(data_dir, "stan_files")
             else:
@@ -526,13 +526,15 @@ class _StanModel(ABC):
                 default_sample_kwargs[k] = v
             if "output_dir" in default_sample_kwargs:
                 os.makedirs(default_sample_kwargs["output_dir"], exist_ok=True)
+            start_time = datetime.now()
             if prior:
                 fit = self._prior_model.sample(self.stan_data, **default_sample_kwargs)
             else:
                 _logger.logger.debug(f"exe info: {self._model.exe_info()}")
                 fit = self._model.sample(self.stan_data, **default_sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
-            _logger.logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
+            _logger.logger.info(f"Sampling completed in {datetime.now()-start_time}")
+            _logger.logger.debug(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
             self._sample_diagnosis = fit.diagnose()
             _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
             _logger.logger.info(f"\n{self.sample_diagnosis}")
@@ -595,8 +597,9 @@ class _StanModel(ABC):
         self._prior_fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
 
 
-    def _get_GQ_indices(self, state):
-        return np.r_[0:self.num_obs] if state == "pred" else np.r_[self.num_obs:-1]
+    def _get_GQ_indices(self, state, collapsed=False):
+        dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
+        return np.r_[0:dividing_idx] if state == "pred" else np.r_[dividing_idx:-1]
 
     @abstractmethod
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
@@ -634,7 +637,7 @@ class _StanModel(ABC):
         try:
             self.generated_quantities.stan_variable(gq)
         except ValueError:
-            _logger.logger.error(f"Value error trying to read generated quantities data: creating temporary directory {tmp_dir} ...")
+            _logger.logger.error(f"Value error trying to read generated quantities data: creating temporary directory {tmp_dir}")
             os.makedirs(tmp_dir, exist_ok=True)
             self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit, gq_output_dir=tmp_dir)
         return self.generated_quantities.stan_variable(gq)
@@ -661,7 +664,7 @@ class _StanModel(ABC):
         else:
             _fit = self._fit
             _logger.logger.debug("Generated quantities will be taken from the posterior model")
-        x, dens = az.kde(self._fit[v])
+        x, dens = az.kde(_fit[v])
         return x[np.nanargmax(dens)]
 
 
@@ -694,6 +697,7 @@ class _StanModel(ABC):
         """
         if levels is None:
             levels = self._default_hdi_levels
+        levels.sort(reverse=True)
         levels = [l/100 for l in levels]
         # show divergences on plots where no dimension combination has 
         # occurred: combining dimensions changes the length of boolean mask 
@@ -706,10 +710,16 @@ class _StanModel(ABC):
         else:
             data = self._fit_for_az
             group = "posterior"
-        # first lay down the markers
-        ax = az.plot_pair(data, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
-        # then add the KDE
-        az.plot_pair(data, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+        num_vars = len(var_names)
+        with az.rc_context({"plot.max_subplots":num_vars**2-np.sum(np.arange(num_vars))+1}):
+            # first lay down the markers
+            ax = az.plot_pair(data, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+            # then add the KDE
+            try:
+                az.plot_pair(data, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+            except ValueError:
+                _logger.logger.error(f"HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults")
+                az.plot_pair(data, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
         return ax
 
 
@@ -1151,6 +1161,8 @@ class HierarchicalModel_2D(_StanModel):
             dictionary key for modelled independent variable
         ymodel : str
             dictionary key for modelled dependent variable
+        state : str
+            predictive or OOS samples, must be one of 'pred' or 'OOS'
         xobs : str, optional
             dictionary key for observed independent variable, by default None
         yobs : str, optional
@@ -1180,7 +1192,7 @@ class HierarchicalModel_2D(_StanModel):
         else:
             fig = ax.get_figure()
         ys = self.sample_generated_quantity(ymodel, state=state)
-        idxs = self._get_GQ_indices(state)
+        idxs = self._get_GQ_indices(state, collapsed)
         cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", norm="LogNorm")
         for l in levels:
             _logger.logger.debug(f"Fitting level {l}")
@@ -1257,6 +1269,40 @@ class FactorModel_2D(_StanModel):
     @abstractmethod
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
         return super().sample_generated_quantity(gq, force_resample, state)
+
+
+    def _set_factor_context_idxs(self, k):
+        """
+        Determine the factor and context indexing based off the dependent 
+        quantity being modelled.
+
+        Parameters
+        ----------
+        k : str
+            dependent variable used in the factor modelling
+        """
+        factor_idx = np.full(self.stan_data["N_contexts"], -99)
+        idxf0, idxf1 = 0, 0
+        context_idx = np.full(self.num_obs_collapsed, -99)
+        idxc0, idxc1, last_idxc = 0, 0, 0
+        for i, v in enumerate(self.obs[k], start=1):
+            try:
+                assert v.ndim == 2
+            except AssertionError:
+                _logger.logger.exception(f"Dependent quantity to be modelled must be two dimensional! Currently has {v.ndim} dimensions.", exc_info=True)
+                raise
+            idxf1 += v.shape[0]
+            factor_idx[idxf0:idxf1] = i
+            idxc1 += np.dot(*v.shape)
+            _idxc = np.arange(1, v.shape[0]+1) + last_idxc
+            last_idxc = _idxc[-1]
+            context_idx[idxc0:idxc1] = np.repeat(_idxc, v.shape[1])
+            idxc0 = idxc1
+            idxf0 = idxf1
+        self.stan_data.update(dict(
+            factor_idx = factor_idx,
+            context_idx = context_idx
+        ))
 
 
     def _plot_predictive(self, xmodel, ymodel, state, xobs=None, yobs=None, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True):

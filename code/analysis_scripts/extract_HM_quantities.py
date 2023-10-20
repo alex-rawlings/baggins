@@ -176,7 +176,7 @@ class ExtractorKick(_Extractor):
         super().__init__(apf, mpf, overwrite)
         run_details = cmf.utils.read_parameters(kickinfo)
         run_dir = run_details["parent_dir"]
-        self.snap_nums = list(run_details["snap_nums"].values())
+        self.snap_nums = [i for i in list(run_details["snap_nums"].values()) if i is not None]
         all_dirs = os.scandir(run_dir)
         for d in all_dirs:
             if "kick-vel" in d.name and run_details["snap_nums"][f"v{d.name.lstrip('kick-vel-')}"] is not None:

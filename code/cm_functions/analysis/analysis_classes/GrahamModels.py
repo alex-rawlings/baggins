@@ -10,7 +10,7 @@ from . import HMQuantitiesBinaryData, HMQuantitiesSingleData
 from ...mathematics import get_histogram_bin_centres
 from ...env_config import _cmlogger
 from ...plotting import savefig
-from ...utils import get_files_in_dir
+from ...utils import get_files_in_dir, save_data
 
 __all__ = ["GrahamModelSimple", "GrahamModelHierarchy"]
 
@@ -23,9 +23,9 @@ class _GrahamModelBase(HierarchicalModel_2D):
         self._folded_qtys = ["log10_surf_rho"]
         self._folded_qtys_labs = [r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = ["r_b", "Re", "log10_I_b", "g", "n", "a", "err"]
-        self._latent_qtys_posterior = [f"{v}_posterior" if "err" not in v else v for v in self.latent_qtys]
-        self._latent_qtys_labs = [r"$r_\mathrm{b}/\mathrm{kpc}$", r"$R_\mathrm{e}/\mathrm{kpc}$", r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$", r"$\gamma$", r"$n$", r"$a$", r"$\sigma$"]
+        self._latent_qtys = ["rb", "Re", "log10densb", "g", "n", "a"]
+        self._latent_qtys_posterior = [f"{v}_posterior" for v in self.latent_qtys]
+        self._latent_qtys_labs = [r"$r_\mathrm{b}/\mathrm{kpc}$", r"$R_\mathrm{e}/\mathrm{kpc}$", r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$", r"$\gamma$", r"$n$", r"$a$"]
         self._labeller_latent = MapLabeller(dict(zip(self._latent_qtys, self._latent_qtys_labs)))
         self._labeller_latent_posterior = MapLabeller(dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs)))
         self._merger_id = None
@@ -100,6 +100,8 @@ class _GrahamModelBase(HierarchicalModel_2D):
         # some transformations we need
         self.transform_obs("R", "log10_R", lambda x: np.log10(x))
         self.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
+        self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
+        self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
 
 
     def _set_stan_data_OOS(self):
@@ -169,15 +171,17 @@ class _GrahamModelBase(HierarchicalModel_2D):
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        fig, ax = plt.subplots(2,3, figsize=figsize)
+        ncol = int(np.ceil(len(self.latent_qtys)/2))
+        fig, ax = plt.subplots(2,ncol, figsize=figsize)
         try:
             self.plot_generated_quantity_dist(self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs)
-        except ValueError:
+        except:
             self.plot_generated_quantity_dist(self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs)
         ax[1,0].set_xscale("log")
         return ax
 
 
+    @abstractmethod
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
         """
         Prior plots generally required for predictive checks
@@ -189,12 +193,10 @@ class _GrahamModelBase(HierarchicalModel_2D):
         ylim : tuple, optional
             figure y-limits, by default (-1, 15.1)
         """
-        self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys if "err" not in k]), "group")
-        self._expand_dimension(["err"], "group")
-
         # prior predictive check
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)
-        ax1.set_ylim(*ylim)
+        if ylim is not None:
+            ax1.set_ylim(*ylim)
         ax1.set_xlabel("R/kpc")
         ax1.set_ylabel(self._folded_qtys_labs[0])
         ax1.set_xscale("log")
@@ -233,6 +235,12 @@ class GrahamModelSimple(_GrahamModelBase):
             log10_surf_rho = self.obs_collapsed["log10_proj_density_mean"],
             log10_surf_rho_err = self.obs_collapsed["log10_proj_density_std"]
         ))
+
+
+    def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
+        self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys if "err" not in k]), "group")
+        self._expand_dimension(["err"], "group")
+        return super().all_prior_plots(figsize, ylim)
 
 
     def all_posterior_plots(self, figsize=None, ylim=(6, 10)):
@@ -281,13 +289,13 @@ class GrahamModelHierarchy(_GrahamModelBase):
                             "g_mean", "g_std", 
                             "n_mean", "n_std", 
                             "a_mean", "a_std"]
-        self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
+        self._hyper_qtys_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
                                 r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", 
                                 r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", 
                                 r"$\mu_{g}$", r"$\sigma_{g}$", 
                                 r"$\mu_{n}$", r"$\sigma_{n}$", 
                                 r"$\mu_{a}$", r"$\sigma_{a}$"]
-        self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
+        self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qtys_labs)))
 
 
     def extract_data(self, pars, d=None, binary=True):
@@ -319,6 +327,12 @@ class GrahamModelHierarchy(_GrahamModelBase):
         for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
             _rename_dict[f"{k}_dim_0"] = "group"
         self.rename_dimensions(_rename_dict)
+
+
+    def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
+        self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"))
+        self._expand_dimension(["err"], "group")
+        return super().all_prior_plots(figsize, ylim)
 
 
     def all_posterior_pred_plots(self, figsize=None, ylim=(6,10)):
@@ -387,22 +401,35 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
         _GrahamModelBase.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
         FactorModel_2D.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
-        self._hyper_qtys = ["r_b_mean", "r_b_std", 
+        '''self._hyper_qtys = ["r_b_mean", "r_b_std", 
                             "Re_mean", "Re_std", 
                             "log10_I_b_mean", "log10_I_b_std", 
                             "g_mean", "g_std", 
                             "n_mean", "n_std", 
                             "a_mean", "a_std",
-                            "p", "q"]
-        self._hyper_qts_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
+                            "rb_mean", "rb_std"]
+        self._hyper_qtys_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
                                 r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", 
                                 r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", 
                                 r"$\mu_{g}$", r"$\sigma_{g}$", 
                                 r"$\mu_{n}$", r"$\sigma_{n}$", 
                                 r"$\mu_{a}$", r"$\sigma_{a}$",
-                                r"$p$", r"$q$"]
-        self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
-        self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qts_labs)))
+                                r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$"]'''
+        self._hyper_qtys = ["log10densb_mean", "log10densb_std",
+                            "g_lam",
+                            "rb_sig",
+                            "n_mean", "n_std",
+                            "a_sig",
+                            "Re_sig",
+                            "err"]
+        self._hyper_qtys_labs = [r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$",
+                                 r"$\lambda_\gamma$",
+                                 r"$\sigma_{r_\mathrm{b}}$",
+                                 r"$\mu_n$", r"$\sigma_n$",
+                                 r"$\sigma_a$",
+                                 r"$\sigma_{R_\mathrm{e}}$",
+                                 r"$\sigma$"]
+        self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qtys_labs)))
         self.rb_0 = None
 
 
@@ -414,7 +441,7 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
         _GrahamModelBase.extract_data(self, pars, d, binary)
         self.rb_0 = pars["core_model_pars"]["rb_0"]["value"]
         self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-kick")
-        self.collapse_observations(["R", "log10_R", "proj_density", "log10_proj_density"])
+        self.collapse_observations(["R", "log10_R", "proj_density", "log10_proj_density", "log10_proj_density_mean", "log10_proj_density_std"])
 
 
     def _set_stan_data_OOS_Kick(self):
@@ -437,23 +464,8 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
             log10_surf_rho = self.obs_collapsed["log10_proj_density"],
             N_contexts = sum([x.shape[0] for x in self.obs["proj_density"]])
         )
-        # TODO somehow make factor indexing a general method?
-        factor_idx = np.full(self.stan_data["N_contexts"], -99)
-        idxf0, idxf1 = 0, 0
-        context_idx = np.full(self.num_obs_collapsed, -99)
-        idxc0, idxc1, last_idxc = 0, 0, 0
-        for i, v in enumerate(self.obs["proj_density"], start=1):
-            idxf1 += v.shape[0]
-            factor_idx[idxf0:idxf1] = i
-            idxc1 += np.dot(*v.shape)
-            _idxc = np.arange(1, v.shape[0]+1) + last_idxc
-            last_idxc = _idxc[-1]
-            context_idx[idxc0:idxc1] = np.repeat(_idxc, v.shape[1])
-            idxc0 = idxc1
-            idxf0 = idxf1
+        self._set_factor_context_idxs("proj_density")
         self.stan_data.update(dict(
-            factor_idx = factor_idx,
-            context_idx = context_idx,
             vkick_normed = np.concatenate(self.obs["vkick"]),
             rb_0 = self.rb_0
         ))
@@ -465,6 +477,17 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
         _GrahamModelBase.sample_model(self, sample_kwargs)
         if self._loaded_from_file:
             self._set_stan_data_OOS_Kick()
+
+
+    def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
+        self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys], "group"))
+        self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._hyper_qtys], "groupH"))
+        # hyper prior corner plot
+        ax1 = self.parameter_corner_plot(self._hyper_qtys, figsize=figsize, labeller=self._labeller_hyper, combine_dims={"groupH"})
+        fig1 = ax1[0,0].get_figure()
+        savefig(self._make_fig_name(self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"), fig=fig1)
+        # regular prior predictive plots
+        return super().all_prior_plots(figsize, None)
 
 
     def all_posterior_pred_plots(self, figsize=None, ylim=(6, 10)):
