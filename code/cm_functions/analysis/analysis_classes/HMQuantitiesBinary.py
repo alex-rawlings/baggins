@@ -15,7 +15,7 @@ from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 
 __all__ = ["HMQuantitiesBinary"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
@@ -77,7 +77,7 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
             _, peri_idxs = find_pericentre_time(bh1_pb, bh2_pb, prominence=0.005)
             self.prebound_deflection_angles = deflection_angle(bh1_pb, bh2_pb, peri_idxs)
         except:
-            _logger.logger.exception(f"Unable to determine pericentre times before binary is bound!", exc_info=True)
+            _logger.exception(f"Unable to determine pericentre times before binary is bound!", exc_info=True)
             self.prebound_deflection_angles = []
 
 
@@ -93,7 +93,7 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
             t = convert_gadget_time(snap, new_unit="Myr")
             if t < self.binary_time[0]:
                 # snapshot is from before binary is bound, let's skip
-                _logger.logger.debug(f"Snapshot {snapfile} is before the binary is bound --> skipping.")
+                _logger.debug(f"Snapshot {snapfile} is before the binary is bound --> skipping.")
                 snap.delete_blocks()
                 pygad.gc_full_collect()
                 del snap
@@ -133,7 +133,7 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
             del snap
             # increment counter
             self._snap_counter += 1
-            _logger.logger.debug(f"Analysed {self._snap_counter} from {N} snapshots.")
+            _logger.debug(f"Analysed {self._snap_counter} from {N} snapshots.")
 
 
     def make_hdf5(self, fname, exist_ok=False):
@@ -152,7 +152,7 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
             try:
                 assert exist_ok
             except AssertionError:
-                _logger.logger.exception("HDF5 file already exists!", exc_info=True)
+                _logger.exception("HDF5 file already exists!", exc_info=True)
                 raise
         
         with h5py.File(fname, mode="w") as f:
@@ -171,7 +171,7 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
                         "prebound_deflection_angles"
             ]
             self._saver(bhb, _bhb_dl)
-            _logger.logger.info(f"BH binary quantities saved to {fname}")
+            _logger.info(f"BH binary quantities saved to {fname}")
 
             gpb = f.create_group("galaxy_binary_properties")
             _gpb_dl = [
@@ -181,7 +181,7 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
                 "G_rho_per_sigma"
             ]
             self._saver(gpb, _gpb_dl)
-            _logger.logger.info(f"Galaxy binary property quantities saved to {fname}")
+            _logger.info(f"Galaxy binary property quantities saved to {fname}")
 
 
     @classmethod
@@ -189,6 +189,6 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
         try:
             raise NotImplementedError
         except NotImplementedError:
-            _logger.logger.exception(f"Class {self.__name__} does not inherit the method <load_from_file> from {self.__base__.__name__}", exc_info=True)
+            _logger.exception(f"Class {self.__name__} does not inherit the method <load_from_file> from {self.__base__.__name__}", exc_info=True)
             raise
 

@@ -13,7 +13,7 @@ from ..env_config import _cmlogger
 
 __all__ = ["plot_galaxies_with_pygad", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere", "heatmap", "annotate_heatmap"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False, black_background=True):
@@ -78,14 +78,14 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
             _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"][proj], ax=ax[i,0], **kwargs)
             ims.append(imstars)
         except RuntimeError:
-            _logger.logger.error("No stars in snapshot!")
+            _logger.error("No stars in snapshot!")
         try:
             _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"][proj], ax=ax[i,1], **kwargs)
             ims.append(imdm)
         except RuntimeError:
-            _logger.logger.error("No DM in snapshot!")
+            _logger.error("No DM in snapshot!")
     if black_background:
-        _logger.logger.debug("Setting black background")
+        _logger.debug("Setting black background")
         for axi in np.concatenate(ax): axi.set_facecolor("k")
     if return_ims:
         return fig, ax, ims
@@ -149,7 +149,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
         assert np.all(np.diff(x1) > 0)
         assert np.all(np.sign(np.diff(x2)) == np.sign(x2[1]-x2[0]))
     except AssertionError:
-        _logger.logger.exception(f"Original x-datasets must be strictly increasing!", exc_info=True)
+        _logger.exception(f"Original x-datasets must be strictly increasing!", exc_info=True)
         raise
     # set up forward and inverse functions with masked array handling
     def _forward(x):
@@ -300,7 +300,7 @@ def heatmap(data, row_labels, col_labels, ax=None, cmap="cividis", show_cbar=Tru
     try:
         cmapv = getattr(plt.cm, cmap)
     except AttributeError:
-        _logger.logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
+        _logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
         cmapv = plt.cm.cividis
     # set bad grids to a specified colour
     cmapv.set_bad(color=bad_colour)

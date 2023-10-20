@@ -8,7 +8,7 @@ from ..utils import create_error_col
 
 __all__ = ["LiteratureTables"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class LiteratureTables:
@@ -39,7 +39,7 @@ class LiteratureTables:
         elif self.table_name == "vdBosch_2016":
             self.table = self.load_vdBosch_2016_data()
         else:
-            _logger.logger.error(f"Unrecgonised table name {self.table_name}!")
+            _logger.error(f"Unrecgonised table name {self.table_name}!")
             raise ValueError
 
     

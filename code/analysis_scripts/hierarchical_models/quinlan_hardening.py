@@ -8,7 +8,7 @@ parser = cmf.utils.argparse_for_stan("Run Stan model for Quinlan hardening model
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", console_level=args.verbose)
+SL = cmf.setup_logger("script", console_level=args.verbose)
 
 full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=[1.9, 1.9])
 
@@ -16,7 +16,7 @@ if args.type == "new":
     hmq_dir = args.dir
 else:
     hmq_dir = None
-SL.logger.debug(f"Input data read from {hmq_dir}")
+SL.debug(f"Input data read from {hmq_dir}")
 analysis_params = cmf.utils.read_parameters(args.apf)
 
 figname_base = f"hierarchical_models/hardening/{args.sample}/"
@@ -38,12 +38,12 @@ else:
 
 quinlan_model.extract_data(analysis_params, hmq_dir)
 
-SL.logger.info(f"Number of simulations with usable data: {quinlan_model.num_groups}")
+SL.info(f"Number of simulations with usable data: {quinlan_model.num_groups}")
 
 # thin data
-SL.logger.debug(f"{quinlan_model.num_obs} data points before thinning")
+SL.debug(f"{quinlan_model.num_obs} data points before thinning")
 quinlan_model.thin_observations(analysis_params["stan"]["thin_data"])
-SL.logger.debug(f"{quinlan_model.num_obs} data points after thinning")
+SL.debug(f"{quinlan_model.num_obs} data points after thinning")
 
 # initialise the data dictionary
 quinlan_model.set_stan_data()

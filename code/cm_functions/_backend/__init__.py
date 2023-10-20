@@ -6,4 +6,4 @@ The .py files in this directory should not contain any references to other
 modules within the cm_functions package.
 """
 
-from .Loggers import *
+from .Logging import setup_logger

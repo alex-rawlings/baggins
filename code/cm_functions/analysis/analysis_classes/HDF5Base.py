@@ -8,7 +8,7 @@ from ...env_config import _cmlogger, date_format
 
 __all__ = ["HDF5Base"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class HDF5Base:
@@ -139,12 +139,12 @@ class HDF5Base:
                                 dict_val = _recursive_dict_load(vv)
                                 setattr(C, kk, dict_val)
                         except AssertionError:
-                            _logger.logger.exception(f"{kk}: Unkown type for unpacking!", exc_info=True)
+                            _logger.exception(f"{kk}: Unkown type for unpacking!", exc_info=True)
                             raise
                         msg = f" > Successfully loaded dataset {kk}"
-                        _logger.logger.debug(msg)
+                        _logger.debug(msg)
                         C.add_to_log(msg)
-            _logger.logger.debug(f"File {fname} loaded")
+            _logger.debug(f"File {fname} loaded")
         return C
 
 
@@ -181,10 +181,10 @@ class HDF5Base:
                 else:
                     self._recursive_dict_save(g, attr_val, attr)
             except AssertionError:
-                _logger.logger.exception(f"Error saving {attr}: cannot save {type(attr_val)} type!")
+                _logger.exception(f"Error saving {attr}: cannot save {type(attr_val)} type!")
                 raise
             except:
-                _logger.logger.exception(f"Unable to save <{attr}> (type {type(attr_val)} with values {attr_val})", exc_info=True)
+                _logger.exception(f"Unable to save <{attr}> (type {type(attr_val)} with values {attr_val})", exc_info=True)
                 raise
             saved_list.append(_attr)
         # check that everything was saved
@@ -192,7 +192,7 @@ class HDF5Base:
         if not not_saved:
             for i in not_saved:
                 msg = f"Property {i.lstrip('_')} was not saved!"
-                _logger.logger.warning(msg)
+                _logger.warning(msg)
                 self.add_to_log(msg)
 
 
@@ -242,10 +242,10 @@ class HDF5Base:
                 else:
                     self._recursive_dict_save(gnew, val, key)
             except AssertionError:
-                _logger.logger.exception(f"Error saving {key}: cannot save {type(val)} type!")
+                _logger.exception(f"Error saving {key}: cannot save {type(val)} type!")
                 raise
             except:
-                _logger.logger.exception(f"Unable to save <{key}> (type {type(val)} with values {val})", exc_info=True)
+                _logger.exception(f"Unable to save <{key}> (type {type(val)} with values {val})", exc_info=True)
                 raise
 
 
@@ -280,10 +280,10 @@ class HDF5Base:
                     # TODO this may not work...
                     self._recursive_dict_save(f[field], val, n)
             except AssertionError:
-                _logger.logger.exception(f"Error saving {n}: cannot save {type(val)} type!")
+                _logger.exception(f"Error saving {n}: cannot save {type(val)} type!")
                 raise
             msg = f"Attribute {n} has been added"
-            _logger.logger.info(msg)
+            _logger.info(msg)
             self.add_to_log(msg)
             if "/meta" not in f:
                 meta = f.create_group("/meta")
@@ -314,9 +314,9 @@ class HDF5Base:
                 else:
                     f[d] = "NONE_TYPE"
             except AssertionError:
-                _logger.logger.exception(f"Error saving {d}: cannot update {type(val)} type!", exc_info=True)
+                _logger.exception(f"Error saving {d}: cannot update {type(val)} type!", exc_info=True)
             msg = f"Data {d} has been updated"
-            _logger.logger.info(msg)
+            _logger.info(msg)
             self.add_to_log(msg)
             if "/meta" not in f:
                 meta = f.create_group("/meta")

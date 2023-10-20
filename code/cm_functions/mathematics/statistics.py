@@ -5,7 +5,7 @@ from ..env_config import _cmlogger
 
 __all__ = ["iqr", "quantiles_relative_to_median", "smooth_bootstrap", "smooth_bootstrap_pval", "permutation_sample_test", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 def iqr(x, axis=-1):
@@ -54,7 +54,7 @@ def quantiles_relative_to_median(x, lower=0.25, upper=0.75, axis=-1):
     try:
         assert lower < 0.5 and upper > 0.5
     except AssertionError:
-        _logger.logger.exception(f"Lower quantile {lower} must be less than 0.5 Upper quantile {upper} must be greater than 0.5", exc_info=True)
+        _logger.exception(f"Lower quantile {lower} must be less than 0.5 Upper quantile {upper} must be greater than 0.5", exc_info=True)
     l = m - np.nanquantile(x, lower, axis=axis)
     u = np.nanquantile(x, upper, axis=axis) - m
     # convert to shape convenient for plotting with pyplot.errorbar
@@ -107,7 +107,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
         resampled_data = rng.choice(data, data.shape[0], replace=True, axis=0)
         bootstrap_data = rng.normal(resampled_data, sigma)
         bootstrap_stat[i, :] = statistic(bootstrap_data, axis=0)
-    _logger.logger.info("Bootstrap complete                                ")
+    _logger.info("Bootstrap complete                                ")
     return bootstrap_stat, np.nanmean(bootstrap_stat, axis=0)
 
 
@@ -174,7 +174,7 @@ def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
     try:
         assert len(data1.shape) == len(data2.shape) == 1
     except AssertionError:
-        _logger.logger.exception(f"Data must be 1 dimensional!", exc_info=True)
+        _logger.exception(f"Data must be 1 dimensional!", exc_info=True)
     number_resamples = int(number_resamples)
     if rng is None:
         rng = np.random.default_rng()
@@ -196,7 +196,7 @@ def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
         print(f"Shuffling {i/(number_resamples-1)*100:.1f}% complete           ", end="\r")
         shuffled_groups = rng.choice(group, group.shape[0], replace=False)
         bootstrap_stat[i] = tstatfun(shuffled_groups)
-    _logger.logger.info("Permutations complete                                ")
+    _logger.info("Permutations complete                                ")
     return 2 * min(np.nanmean(bootstrap_stat < tstat), np.nanmean(bootstrap_stat > tstat))
 
 
@@ -224,12 +224,12 @@ def stat_interval(x, y, type="conf", conf_lev=0.68):
     try:
         assert(conf_lev<1 and conf_lev>0)
     except AssertionError:
-        _logger.logger.exception(f"Confidence level must be between 0 and 1, not {conf_lev}!", exc_info=True)
+        _logger.exception(f"Confidence level must be between 0 and 1, not {conf_lev}!", exc_info=True)
         raise
     try:
         assert type in ("conf", "pred")
     except AssertionError:
-        _logger.logger.exception(f"Type {type} is not valid! Must be one of 'conf' or 'pred'!", exc_info=True)
+        _logger.exception(f"Type {type} is not valid! Must be one of 'conf' or 'pred'!", exc_info=True)
         raise
     #clean data
     x = x[~np.isnan(x) & ~np.isnan(y)]

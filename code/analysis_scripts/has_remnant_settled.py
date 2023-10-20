@@ -16,7 +16,7 @@ parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="
 args = parser.parse_args()
 
 # set up a logger
-SL = cmf.ScriptLogger("script", args.verbosity)
+SL = cmf.setup_logger("script", args.verbosity)
 
 # helper function to keep memory manageable
 def _cleanup(sf):
@@ -29,7 +29,7 @@ LENGTH = len(snapfiles)
 
 @dask.delayed
 def _helper(_snap, i):
-    SL.logger.debug(f"Reading snapshot {_snap.filename}")
+    SL.debug(f"Reading snapshot {_snap.filename}")
     t = cmf.general.convert_gadget_time(_snap)
     # recentre
     xcom = cmf.analysis.get_com_of_each_galaxy(_snap, method="ss", family="stars")
@@ -63,7 +63,7 @@ else:
 for i, s in enumerate(snapfiles[start_snap:], start=start_snap):
     snap = pygad.Snapshot(s, physical=True)
     if cmf.analysis.determine_if_merged(snap)[0]:
-        SL.logger.info(f"First snapshot to analyse: {i:03d}")
+        SL.info(f"First snapshot to analyse: {i:03d}")
         res.append(_helper(snap, i))
         start_i = i+1
         break
@@ -74,9 +74,9 @@ res = []
 
 for i, s in enumerate(snapfiles[start_i:], start=start_i):
     snap = pygad.Snapshot(s, physical=True)
-    SL.logger.debug(f"Adding snapshot {i:03d} to dask queue...")
+    SL.debug(f"Adding snapshot {i:03d} to dask queue...")
     res.append(_helper(snap, i))
-SL.logger.info(f"{len(res)+1} snapshots to analyse")
+SL.info(f"{len(res)+1} snapshots to analyse")
 results.extend(dask.compute(*res))
 
 results = np.array(results)
@@ -89,25 +89,25 @@ has_settled = False
 has_escaped = False
 
 if np.any(results[:, 4] > 30):
-    SL.logger.warning("BH has escaped the system (r>30kpc)")
+    SL.warning("BH has escaped the system (r>30kpc)")
     has_escaped = True
 
 if not has_escaped and results.shape[0] > 5 and med_vel < args.threshold:
-    SL.logger.warning("System has settled!")
+    SL.warning("System has settled!")
     has_settled = True
     analyse_idx_r = 1
     max_iter = min(args.num-1, LENGTH)
     while analyse_idx_r < max_iter:
         med_vel = np.median(results[idx_minus01-analyse_idx_r:-analyse_idx_r,2])
-        SL.logger.debug(f"Median velocity from {results[idx_minus01-analyse_idx_r,1]:.2f} to {results[-analyse_idx_r,1]:.2f} (snap {results[idx_minus01-analyse_idx_r,0]}-{results[-analyse_idx_r,0]}) is {med_vel:.2f} km/s")
+        SL.debug(f"Median velocity from {results[idx_minus01-analyse_idx_r,1]:.2f} to {results[-analyse_idx_r,1]:.2f} (snap {results[idx_minus01-analyse_idx_r,0]}-{results[-analyse_idx_r,0]}) is {med_vel:.2f} km/s")
         if med_vel > args.threshold:
-            SL.logger.warning(f"Snapshot to analyse: {LENGTH-analyse_idx_r}")
+            SL.warning(f"Snapshot to analyse: {LENGTH-analyse_idx_r}")
             break
         analyse_idx_r += 1
     if analyse_idx_r==max_iter:
-        SL.logger.error(f"Max iterations {analyse_idx_r} have been reached, and no clear snapshot to analyse! Try increasing the number of snapshots analysed from {args.num}")
+        SL.error(f"Max iterations {analyse_idx_r} have been reached, and no clear snapshot to analyse! Try increasing the number of snapshots analysed from {args.num}")
 else:
-    SL.logger.warning(f"System has not settled! Median velocity over the past 0.1 Gyr is {med_vel:.2f} km/s")
+    SL.warning(f"System has not settled! Median velocity over the past 0.1 Gyr is {med_vel:.2f} km/s")
     analyse_idx_r = np.nan
 
 

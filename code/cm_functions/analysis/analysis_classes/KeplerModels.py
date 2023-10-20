@@ -13,7 +13,7 @@ from ketjugw.units import unit_length_in_pc, unit_time_in_years
 
 __all__ = ["KeplerModelSimple", "KeplerModelHierarchy"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class _KeplerModelBase(HierarchicalModel_1D):
@@ -61,18 +61,18 @@ class _KeplerModelBase(HierarchicalModel_1D):
         """
         obs = {"angmom":[], "energy":[], "a":[], "e":[], "mass1":[], "mass2":[], "star_mass":[], "e_ini":[], "t":[]}
         for i, f in enumerate(dir):
-            _logger.logger.debug(f"Loading file: {f}")
+            _logger.debug(f"Loading file: {f}")
             hmq = HMQuantitiesBinaryData.load_from_file(f)
             status, idx = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             if not status: continue
             t_target = hmq.binary_time[idx]
-            _logger.logger.debug(f"Target time: {t_target} Myr")
+            _logger.debug(f"Target time: {t_target} Myr")
             try:
                 target_idx, delta_idxs = find_idxs_of_n_periods(t_target, hmq.binary_time, hmq.binary_separation, num_periods=pars["bh_binary"]["num_orbital_periods"])
             except IndexError:
-                _logger.logger.warning(f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis.")
+                _logger.warning(f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis.")
                 continue
-            _logger.logger.debug(f"For observation {i} found target time between indices {delta_idxs[0]} and {delta_idxs[1]}")
+            _logger.debug(f"For observation {i} found target time between indices {delta_idxs[0]} and {delta_idxs[1]}")
             period_idxs = np.r_[delta_idxs[0]:delta_idxs[1]]
             obs["angmom"].append(hmq.binary_angular_momentum[period_idxs])
             obs["energy"].append(-hmq.binary_energy[period_idxs])
@@ -84,7 +84,7 @@ class _KeplerModelBase(HierarchicalModel_1D):
                 obs["mass1"].append([hmq.binary_masses[0]])
                 obs["mass2"].append([hmq.binary_masses[1]])
             except AttributeError:
-                _logger.logger.error(f"Attribute 'particle_masses' does not exist for {f}! Will assume equal-mass BHs!")
+                _logger.error(f"Attribute 'particle_masses' does not exist for {f}! Will assume equal-mass BHs!")
                 obs["mass1"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
                 obs["mass2"].append([hmq.masses_in_galaxy_radius["bh"][0]/2])
             obs["e_ini"].append([hmq.initial_galaxy_orbit["e0"]])
@@ -125,7 +125,7 @@ class _KeplerModelBase(HierarchicalModel_1D):
         try:
             assert self.num_OOS is not None
         except AssertionError:
-            _logger.logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
+            _logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
             raise
         self.stan_data["N_OOS"] = self.num_OOS
         self.stan_data["group_id_OOS"] = self._rng.integers(1, self.num_groups, size=self.num_OOS, endpoint=True)

@@ -14,7 +14,7 @@ parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="
 args = parser.parse_args()
 
 
-SL = cmf.ScriptLogger("script", console_level=args.verbose)
+SL = cmf.setup_logger("script", console_level=args.verbose)
 rng = np.random.default_rng()
 
 
@@ -31,7 +31,7 @@ if args.method == "new":
         try:
             assert args.batch < total_combins
         except AssertionError:
-            SL.logger.exception(f"Can create a maximum of 26 galaxy ICs, {len(total_combins)} is too great!", exc_info=True)
+            SL.exception(f"Can create a maximum of 26 galaxy ICs, {len(total_combins)} is too great!", exc_info=True)
             raise
         for i, s1 in enumerate(suffixes[:args.batch], start=1):
             for s2 in suffixes[i:args.batch]:
@@ -39,7 +39,7 @@ if args.method == "new":
                 try:
                     new_filename = cmf.utils.create_file_copy(args.paramfile, suffix=f"_{s1}{s2}", exist_ok=False)
                 except AssertionError:
-                    SL.logger.warning(f"Merger realisation {s1}-{s2} already exists, skipping...")
+                    SL.warning(f"Merger realisation {s1}-{s2} already exists, skipping...")
                     continue
                 with open(new_filename, "r+") as f:
                     contents = f.read()
@@ -48,14 +48,14 @@ if args.method == "new":
                     try:
                         assert sc == 1
                     except AssertionError:
-                        SL.logger.exception(f"Parameter 'random_seed' not updated properly! {sc} replacements were made!", exc_info=True)
+                        SL.exception(f"Parameter 'random_seed' not updated properly! {sc} replacements were made!", exc_info=True)
                         raise
                     for k, v in zip(("  galaxy_name_1:", "  galaxy_name_2:"), (s1, s2)):
                         # update the galaxy names
                         try:
                             assert isinstance(v, str)
                         except AssertionError:
-                            SL.logger.exception(f"Only datatypes 'str' is supported, not type {type(v)}", exc_info=True)
+                            SL.exception(f"Only datatypes 'str' is supported, not type {type(v)}", exc_info=True)
                             raise
                         match = re.search(f"{k}.*", contents, flags=re.MULTILINE)
                         gal_name = match.group(0).replace(f"{k}", "").strip(" '")
@@ -64,7 +64,7 @@ if args.method == "new":
                         try:
                             assert sc == 1
                         except AssertionError:
-                            SL.logger.exception(f"Parameter '{k}' not updated properly! {sc} replacements were made!", exc_info=True)
+                            SL.exception(f"Parameter '{k}' not updated properly! {sc} replacements were made!", exc_info=True)
                             raise
                     for k, v in zip(("  galaxy_file_1:", "  galaxy_file_2:"), (s1, s2)):
                         # update the galaxy IC files to use
@@ -77,27 +77,27 @@ if args.method == "new":
                         try:
                             assert os.path.exists(gal_file_full)
                         except AssertionError:
-                            SL.logger.exception(f"File {gal_file_full} does not exist!", exc_info=True)
+                            SL.exception(f"File {gal_file_full} does not exist!", exc_info=True)
                             raise
                         contents, sc = re.subn(f"{k}.*", f"{k} {gal_file_full}", contents, flags=re.MULTILINE)
                         try:
                             assert sc == 1
                         except AssertionError:
-                            SL.logger.exception(f"Parameter '{k}' not updated properly! {sc} replacements were made!", exc_info=True)
+                            SL.exception(f"Parameter '{k}' not updated properly! {sc} replacements were made!", exc_info=True)
                             raise
                     # overwrite copied parameter file
                     cmf.utils.overwrite_parameter_file(f, contents)
-                SL.logger.warning(f"File {new_filename} created")
+                SL.warning(f"File {new_filename} created")
                 # generate the merger
                 merger = cmf.initialise.MergerIC(new_filename, exist_ok=args.overwrite)
                 merger.setup()
 elif args.method == "field":
     if args.batch > 1:
-        SL.logger.error(f"Perturbation methods can only be performed for non-batch mode.")
+        SL.error(f"Perturbation methods can only be performed for non-batch mode.")
     merger = cmf.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
     merger.perturb_field_particle()
 else:
     if args.batch > 1:
-        SL.logger.error(f"Perturbation methods can only be performed for non-batch mode.")
+        SL.error(f"Perturbation methods can only be performed for non-batch mode.")
     merger = cmf.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
     merger.perturb_bhs()

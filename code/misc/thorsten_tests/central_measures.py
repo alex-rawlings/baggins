@@ -22,7 +22,7 @@ def extract_helper(i, data):
 
         xcom = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", family="stars")
         vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
-        SL.logger.debug(xcom)
+        SL.debug(xcom)
         bh_id = cmf.analysis.get_massive_bh_ID(snap.bh)
         beta, bc = cmf.analysis.velocity_anisotropy(snap, r_edges=r_edges, xcom=xcom[bh_id], vcom=vcom[bh_id])
         
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         data = manager.dict()
         extract_helper_P = partial(extract_helper, data=data)
 
-        SL = cmf.ScriptLogger("script_logger", console_level="INFO")
+        SL = cmf.setup_logger("script_logger", console_level="INFO")
         for d in data_dirs:
             merger_class = d.rstrip("/").split("/")[-1]
 

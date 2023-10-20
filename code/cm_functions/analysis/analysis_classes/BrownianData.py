@@ -4,7 +4,7 @@ from ...mathematics import radial_separation
 
 __all__ = ["BrownianData"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 class BrownianData(HDF5Base):
     def __init__(self) -> None:
@@ -56,18 +56,18 @@ class BrownianData(HDF5Base):
         try:
             assert isinstance(v, dict)
         except AssertionError:
-            _logger.logger.exception(f"BH Data must be of type 'dict'", exc_info=True)
+            _logger.exception(f"BH Data must be of type 'dict'", exc_info=True)
         try:
             for k in ("id", "xoffset", "voffset"):
                 assert k in v
         except AssertionError:
-            _logger.logger.exception(f"BH Data must have key {k}", exc_info=True)
+            _logger.exception(f"BH Data must have key {k}", exc_info=True)
 
     def _offset_mag_helper(self, k):
         try:
             assert self._data_loaded
         except AssertionError:
-            _logger.logger.exception(f"Data must be loaded before operations are performed on it!", exc_info=True)
+            _logger.exception(f"Data must be loaded before operations are performed on it!", exc_info=True)
             raise
         return radial_separation(self.bh1[k]), radial_separation(self.bh2[k])
 

@@ -14,7 +14,7 @@ from ..env_config import _cmlogger
 
 __all__ = ['get_com_of_each_galaxy', 'get_com_velocity_of_each_galaxy', 'get_galaxy_axis_ratios', 'get_virial_info_of_each_galaxy', "virial_ratio", "calculate_Hamiltonian", "determine_if_merged", "get_massive_bh_ID", "enclosed_mass_radius", "influence_radius", "hardening_radius", "gravitational_radiation_radius", "get_inner_rho_and_sigma", "get_G_rho_per_sigma", "shell_com_motions_each_galaxy", "projected_quantities", "inner_DM_fraction", "shell_flow_velocities", "angular_momentum_difference_gal_BH", "loss_cone_angular_momentum", "escape_velocity", "count_new_hypervelocity_particles", "velocity_anisotropy", "softened_inverse_r", "softened_acceleration", "add_to_loss_cone_refill"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 def get_com_of_each_galaxy(snap, method="pot", masks=None, family="all", initial_radius=20):
     """
@@ -81,12 +81,12 @@ def get_com_of_each_galaxy(snap, method="pot", masks=None, family="all", initial
             if snap.bh[bh_id_mask]["mass"] < 1e-15:
                 #the BH has 0 mass, most likley due to a merger -> skip this
                 zero_mass_flag = True
-                _logger.logger.warning(f"Zero-mass BH ({bhid}) detected! Skipping CoM estimate associated with this BH ID")
+                _logger.warning(f"Zero-mass BH ({bhid}) detected! Skipping CoM estimate associated with this BH ID")
                 continue
             if masks is None and i > 0 and not zero_mass_flag:
                 # we don't want to get two CoMs --> break early
                 break
-            _logger.logger.debug(f"Finding CoM associated with BH ID {bhid}")
+            _logger.debug(f"Finding CoM associated with BH ID {bhid}")
             coms[bhid] = pygad.analysis.shrinking_sphere(masked_subsnap, center=pygad.analysis.center_of_mass(masked_subsnap), R=initial_radius)
     return coms
 
@@ -130,7 +130,7 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
         else:
             masked_subsnap = subsnap
         if xcom[idx] is None:
-            _logger.logger.info(f"No estimate for CoM associated with BH {idx}. Skipping velocity estimate")
+            _logger.info(f"No estimate for CoM associated with BH {idx}. Skipping velocity estimate")
             vcoms[idx] = None
             continue
         # for very low resolution snaps
@@ -138,10 +138,10 @@ def get_com_velocity_of_each_galaxy(snap, xcom, masks=None, min_particle_count=5
             n = len(masked_subsnap)
             while min_particle_count > 0.5 * n:
                 min_particle_count *= 0.5
-                _logger.logger.warning(f"Particle count is {n}, which is less than the minimum particle count for CoM velocity calculations. Minimum particle count will be set to {min_particle_count}.")
+                _logger.warning(f"Particle count is {n}, which is less than the minimum particle count for CoM velocity calculations. Minimum particle count will be set to {min_particle_count}.")
         #make a ball about the CoM
         ball_radius = np.sort(pygad.utils.dist(masked_subsnap['pos'], xcom[idx]))[int(min_particle_count)]
-        _logger.logger.debug(f"Maximum radius for velocity CoM set to {ball_radius:.3e} kpc")
+        _logger.debug(f"Maximum radius for velocity CoM set to {ball_radius:.3e} kpc")
         ball_mask = pygad.BallMask(pygad.UnitQty(ball_radius, "kpc"), center=xcom[idx])
         vcoms[idx] = pygad.analysis.mass_weighted_mean(masked_subsnap[ball_mask], qty='vel')
     del subsnap, masked_subsnap
@@ -453,7 +453,7 @@ def hardening_radius(bhms, rm):
     try:
         assert len(bhms) == 2
     except AssertionError:
-        _logger.logger.exception(f"Hardening radius defined for a BH binary, but only one BH is present!", exc_info=True)
+        _logger.exception(f"Hardening radius defined for a BH binary, but only one BH is present!", exc_info=True)
         raise
     q = bhms[0] / bhms[1]
     q = 1/q if q>1 else q #ensure q <= 1
@@ -539,7 +539,7 @@ def get_inner_rho_and_sigma(snap, extent=None):
         extent_mask = pygad.BallMask(extent, center=pygad.analysis.center_of_mass(snap.bh))
         subsnap = snap.stars[extent_mask]
     else:
-        _logger.logger.warning("Inner quantities will be calculated for all stars!")
+        _logger.warning("Inner quantities will be calculated for all stars!")
         subsnap = snap.stars
     inner_density = density_sphere(np.sum(subsnap["mass"]), extent)
     inner_sigma = np.nanmean(np.nanstd(subsnap["vel"], axis=0))
@@ -579,7 +579,7 @@ def get_G_rho_per_sigma(snaplist, t, extent=None):
         sigma_units = sigma_temp.units
         inner_density[i], inner_sigma[i] = rho_temp, sigma_temp
     if t < ts[0] or t > ts[1]:
-        _logger.logger.warning(f"Requested time {t} is not within the bounds {ts}. The boundary value in time range will be used.")
+        _logger.warning(f"Requested time {t} is not within the bounds {ts}. The boundary value in time range will be used.")
     f_rho = scipy.interpolate.interp1d(ts, inner_density, bounds_error=False, fill_value=tuple(inner_density))
     f_sigma = scipy.interpolate.interp1d(ts, inner_sigma, bounds_error=False, fill_value=tuple(inner_sigma))
     G_rho_per_sigma = pygad.physics.G * pygad.UnitScalar(f_rho(t), rho_units) / pygad.UnitScalar(f_sigma(t), sigma_units)
@@ -703,7 +703,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
     try:
         shrink_sphere_r0[family]
     except KeyError:
-        _logger.logger.warning(f"Shrinking sphere initial guess not defined for '{family}', using value for 'stars' instead.")
+        _logger.warning(f"Shrinking sphere initial guess not defined for '{family}', using value for 'stars' instead.")
         shrink_sphere_r0[family] = shrink_sphere_r0["stars"]
     
     #set up rng and distributions 
@@ -757,7 +757,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
         if num_bhs>0:
             bhid = snap.bh["ID"][0]
         else:
-            _logger.logger.info(f"Number of BHs present: {num_bhs}")
+            _logger.info(f"Number of BHs present: {num_bhs}")
             bhid = 0
         centre_guess_dict[bhid] = pygad.analysis.center_of_mass(snap.stars)
         subsnap_dict[bhid] = getattr(snap, family)
@@ -777,7 +777,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
     # for each distinct galaxy in the sim
     for j, bhid in enumerate(centre_guess_dict.keys()):
         centre = pygad.analysis.shrinking_sphere(subsnap_dict[bhid], centre_guess_dict[bhid], shrink_sphere_r0[family])
-        _logger.logger.debug(f"Difference between centre guess and shrinking sphere centre is: {centre_guess_dict[bhid][0] - centre}")
+        _logger.debug(f"Difference between centre guess and shrinking sphere centre is: {centre_guess_dict[bhid][0] - centre}")
         for o in range(obs):
             # rotate the snapshot, and independently the CoM
             rot = pygad.transformation.rot_from_axis_angle(rot_axis[o]-centre, rot_angle[o])
@@ -801,7 +801,7 @@ def projected_quantities(snap, obs=10, family="stars", masks=None, r_edges=np.ge
                 surf_rho[bhid][idx_0:idx_1] = r[3]
         subsnap_dict[bhid].delete_blocks()
         subsnap_dict[bhid] = None
-    _logger.logger.info(f"Projected quantities determined in {datetime.now()-now}")
+    _logger.info(f"Projected quantities determined in {datetime.now()-now}")
     return eff_rad, vsig2_re, vsig2_r, surf_rho
 
 
@@ -956,7 +956,7 @@ def loss_cone_angular_momentum(snap, a, e=0, kappa=None):
     if kappa is None:
         J = np.sqrt(const_G * Mbin * a * (1-e**2)) * starmass
     else:
-        _logger.logger.debug(f"Loss cone angular momentum determined without accounting for eccentricity.")
+        _logger.debug(f"Loss cone angular momentum determined without accounting for eccentricity.")
         J = np.sqrt(2 * const_G * Mbin * kappa * a) * starmass
     return J.in_units_of(J_unit)
 
@@ -1123,7 +1123,7 @@ def softened_acceleration(snap, h={"stars":None, "dm":None, "bh":None}, centre=[
     else:
         id_mask = None
     for family in ["stars", "dm", "bh"]:
-        _logger.logger.debug(f"Determining acceleration for family {family}")
+        _logger.debug(f"Determining acceleration for family {family}")
         subsnap = getattr(snap, family)
         if id_mask is not None:
             subsnap = subsnap[~id_mask]

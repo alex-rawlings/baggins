@@ -15,7 +15,7 @@ from ...utils import get_ketjubhs_in_dir, get_snapshots_in_dir, read_parameters
 
 __all__ = ["HMQuantitiesSingle"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class HMQuantitiesSingle(HMQuantitiesSingleData):
@@ -41,7 +41,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
             assert len(kf) == 1
         except AssertionError:
             error_str = "Multiple" if len(kf)>1 else "No"
-            _logger.logger.exception(f"{error_str} Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantitiesBinary object.", exc_info=True)
+            _logger.exception(f"{error_str} Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantitiesBinary object.", exc_info=True)
             raise
         self.ketju_file = kf[0]
         self.snaplist = get_snapshots_in_dir(self.data_directory)
@@ -50,7 +50,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
                 assert isinstance(snaps, list)
                 self.snaplist = [self.snaplist[i] for i in snaps]
             except AssertionError:
-                _logger.logger.exception(f"Selecting specific snapshots requires `snaps` to be a list, not type <{type(snaps)}>", exc_info=True)
+                _logger.exception(f"Selecting specific snapshots requires `snaps` to be a list, not type <{type(snaps)}>", exc_info=True)
                 raise
         self._analysis_params = read_parameters(parameter_file)
         self._merger_params = read_parameters(merger_file)
@@ -113,7 +113,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         try:
             self.particle_masses["dm"] = max(np.unique(s.dm["mass"]))
         except ValueError:
-            _logger.logger.warning("DM particles do not exist for this run")
+            _logger.warning("DM particles do not exist for this run")
             self._has_dm = False
         self.particle_masses["bh"] = min(np.unique(s.bh["mass"]))
         self._masses_set = True
@@ -131,7 +131,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
             time of snapshot
         """
         self.analysed_snapshots.append(s.filename)
-        _logger.logger.debug(f"Reading: {s.filename}")
+        _logger.debug(f"Reading: {s.filename}")
         # get the centre
         _xcom = get_com_of_each_galaxy(s, method="ss", family="stars")
         bh_id = get_massive_bh_ID(s.bh)
@@ -205,7 +205,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
             del snap
             # increment counter
             self._snap_counter += 1
-            _logger.logger.debug(f"Analysed {self._snap_counter} from {N} snapshots.")
+            _logger.debug(f"Analysed {self._snap_counter} from {N} snapshots.")
 
 
     def _hdf5_save_helper(self, f, fname):
@@ -233,7 +233,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         mgd = f.create_group("merged")
         _mgd_dl = ["merger_remnant"]
         self._saver(mgd, _mgd_dl)
-        _logger.logger.info(f"Merger remnant quantities saved to {fname}")
+        _logger.info(f"Merger remnant quantities saved to {fname}")
 
         gp = f.create_group("galaxy_properties")
         _gp_dl = [
@@ -255,7 +255,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
                     "initial_galaxy_orbit"
         ]
         self._saver(gp, _gp_dl)
-        _logger.logger.info(f"Galaxy property quantities saved to {fname}")
+        _logger.info(f"Galaxy property quantities saved to {fname}")
 
 
     def make_hdf5(self, fname, exist_ok=False):
@@ -274,7 +274,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
             try:
                 assert exist_ok
             except AssertionError:
-                _logger.logger.exception("HDF5 file already exists!", exc_info=True)
+                _logger.exception("HDF5 file already exists!", exc_info=True)
                 raise
         
         with h5py.File(fname, mode="w") as f:
@@ -286,6 +286,6 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         try:
             raise NotImplementedError
         except NotImplementedError:
-            _logger.logger.exception(f"Class {self.__name__} does not inherit the method <load_from_file> from {self.__base__.__name__}", exc_info=True)
+            _logger.exception(f"Class {self.__name__} does not inherit the method <load_from_file> from {self.__base__.__name__}", exc_info=True)
             raise
 

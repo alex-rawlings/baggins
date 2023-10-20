@@ -3,7 +3,7 @@ import scipy.spatial.distance
 from scipy.spatial.transform import Rotation
 from ..env_config import _cmlogger
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 __all__ = ["radial_separation", "volume_sphere", "density_sphere", "angle_between_vectors", "rotate_vec1_to_vec2"]
@@ -87,7 +87,7 @@ def angle_between_vectors(a,b):
     try:
         assert a.shape == b.shape
     except AssertionError:
-        _logger.logger.exception(f"Input a ({a.shape}) and b ({b.shape}) must have the same shape!", exc_info=True)
+        _logger.exception(f"Input a ({a.shape}) and b ({b.shape}) must have the same shape!", exc_info=True)
         raise
     a_hat = a / radial_separation(a)[:,np.newaxis]
     b_hat = b / radial_separation(b)[:,np.newaxis]

@@ -18,7 +18,7 @@ parser.add_argument("-o", "--overwrite", help="allow overwriting", dest="overwri
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args=parser.parse_args()
 
-SL = cmf.ScriptLogger("script", args.verbose)
+SL = cmf.setup_logger("script", args.verbose)
 
 
 class _Extractor:
@@ -96,7 +96,7 @@ class _Extractor:
             hmq.calculate()
             hmq.make_hdf5(self.cube_files[i], self.overwrite)
         except:
-            SL.logger.exception(f"UNABLE TO EXTRACT FROM CHILD {self.child_dirs[i]}", exc_info=True)
+            SL.exception(f"UNABLE TO EXTRACT FROM CHILD {self.child_dirs[i]}", exc_info=True)
 
 
 
@@ -201,7 +201,7 @@ class ExtractorKick(_Extractor):
             hmq.calculate()
             hmq.make_hdf5(self.cube_files[i], self.overwrite)
         except:
-            SL.logger.exception(f"UNABLE TO EXTRACT FROM CHILD {self.child_dirs[i]}", exc_info=True)
+            SL.exception(f"UNABLE TO EXTRACT FROM CHILD {self.child_dirs[i]}", exc_info=True)
 
 
 
@@ -209,7 +209,7 @@ class ExtractorKick(_Extractor):
 if __name__ == "__main__":
     if args.method == "mc":
         if args.pnum is not None:
-            SL.logger.warning(f"Specific perturbation number analysis is not possible for method type 'mc'!")
+            SL.warning(f"Specific perturbation number analysis is not possible for method type 'mc'!")
         if os.path.isfile(args.mpf):
             extractor = ExtractorMCS(args.apf, [args.mpf], args.overwrite)
         elif os.path.isdir(args.mpf):
@@ -219,7 +219,7 @@ if __name__ == "__main__":
             try:
                 assert 0
             except AssertionError:
-                SL.logger.exception("A merger parameter file or a directory of merger parameter files must be specified", exc_info=True)
+                SL.exception("A merger parameter file or a directory of merger parameter files must be specified", exc_info=True)
                 raise
     elif args.method == "bump":
         extractor = ExtractorPS(args.apf, [args.mpf], args.overwrite, args.pnum)
@@ -227,7 +227,7 @@ if __name__ == "__main__":
         extractor = ExtractorKick(args.apf,[args.mpf], args.kpf, args.overwrite)
 
 
-    SL.logger.debug(f"Directories to analyse ({len(extractor.child_dirs)}):\n{extractor.child_dirs}")
+    SL.debug(f"Directories to analyse ({len(extractor.child_dirs)}):\n{extractor.child_dirs}")
 
     # match the number of processes to the number of child runs to process
     num_processes = len(extractor.child_dirs)

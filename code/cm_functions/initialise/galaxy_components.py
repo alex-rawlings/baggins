@@ -12,7 +12,7 @@ from ..env_config import _cmlogger
 
 __all__ = []
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 MSOL = 1.998e30
 
@@ -49,7 +49,7 @@ class _GalaxyICBase:
             #we are using redshift 0
             self.redshift = 0
         except AssertionError:
-            _logger.logger.exception("Only redshift 0 is currently supported", exc_info=True)
+            _logger.exception("Only redshift 0 is currently supported", exc_info=True)
             raise
         self.cosmology = cosmology
         self.mass_units = "msol"
@@ -186,7 +186,7 @@ class _DMComponent(_GalaxyICBase):
         self._stellar_mass = stellar_mass
         self.peak_mass = self.parameters["dm"]["peak_mass"]["value"]
         if self.peak_mass is not None:
-            _logger.logger.warning(f"DM peak mass set to user-defined value!")
+            _logger.warning(f"DM peak mass set to user-defined value!")
 
     @property
     def peak_mass(self):
@@ -199,21 +199,21 @@ class _DMComponent(_GalaxyICBase):
                 self._peak_mass = val
             else:
                 self._peak_mass = self.parameters["calculated"]["dm"]["peak_mass"]
-                _logger.logger.info("DM Mass read from parameter file")
+                _logger.info("DM Mass read from parameter file")
         except KeyError:
-            _logger.logger.info("Setting DM peak mass")
+            _logger.info("Setting DM peak mass")
             if self.dm_scaling_relation == "moster":
-                _logger.logger.info("Using Moster+10 DM scaling relation")
+                _logger.info("Using Moster+10 DM scaling relation")
                 self._peak_mass = 10**Moster10(self._stellar_mass, [1e10, 1e15], z=self.redshift, plotting=False)
             elif self.dm_scaling_relation == "girelli":
-                _logger.logger.info("Using Girelli+20 DM scaling relation")
+                _logger.info("Using Girelli+20 DM scaling relation")
                 self._peak_mass = 10**Girelli20(self._stellar_mass, [1e10, 1e15], z=self.redshift, plotting=False)
             elif self.dm_scaling_relation == "behroozi":
-                _logger.logger.info("Using Behroozi+19 DM scaling relation")
+                _logger.info("Using Behroozi+19 DM scaling relation")
                 self._peak_mass = 10**Behroozi19(self._stellar_mass, [1e10, 1e15], z=self.redshift, plotting=False)
             else:
                 msg = "Invalid scaling relation in parameter file!"
-                _logger.logger.error(msg)
+                _logger.error(msg)
                 raise RuntimeError(msg)
 
     @property
@@ -321,10 +321,10 @@ class _SMBH(_GalaxyICBase):
                 self._mass = val
             else:
                 self._mass = self.parameters["calculated"]["bh"]["mass"]
-                _logger.logger.info("BH Mass read from parameter file")
+                _logger.info("BH Mass read from parameter file")
         except KeyError:
             self._mass = 10**Sahu19(self._log_stellar_mass, old_method=self._sahu_legacy)
-            _logger.logger.info("BH Mass determined from Sahu+19 relation")
+            _logger.info("BH Mass determined from Sahu+19 relation")
 
     @property
     def log_mass(self):
@@ -350,7 +350,7 @@ class _SMBH(_GalaxyICBase):
                 bh_spin_params = None
             # set up random spins
             if valid_str:
-                _logger.logger.info(f"Generating BH spins from {self.spin_relation}")
+                _logger.info(f"Generating BH spins from {self.spin_relation}")
                 spin_mag = scipy.stats.beta.rvs(*bh_spin_params.values(), random_state=self._rng)
                 t, p = uniform_sample_sphere(1, rng=self._rng)
                 self._spin = spin_mag * np.array([
@@ -360,7 +360,7 @@ class _SMBH(_GalaxyICBase):
                                                 ]).flatten()
 
             else:
-                _logger.logger.warning("Invalid spin distribution parameters given: setting spin to [0,0,0]")
+                _logger.warning("Invalid spin distribution parameters given: setting spin to [0,0,0]")
                 self._spin = np.array([0,0,0])
         else:
             assert len(val) == 3

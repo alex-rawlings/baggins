@@ -10,7 +10,7 @@ parser.add_argument("-b", "--bound", help="Plot bound points", dest="bound", act
 parser.add_argument("-o", "--orbit", help="Plot orbital parameters", dest="orbparams", action="store_true")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", console_level="INFO")
+SL = cmf.setup_logger("script", console_level="INFO")
 
 #copy file so it can be read
 new_filename = cmf.utils.create_file_copy(args.file)
@@ -20,7 +20,7 @@ kpc = ketjugw.units.pc * 1e3
 
 bh1, bh2, merged = cmf.analysis.get_bh_particles(new_filename)
 if merged():
-    SL.logger.info("A merger has occured!")
+    SL.info("A merger has occured!")
 
 separation = cmf.mathematics.radial_separation(bh1.x/kpc, bh2.x/kpc)
 energy = ketjugw.orbital_energy(bh1, bh2)

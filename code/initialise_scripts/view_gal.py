@@ -14,15 +14,15 @@ args = parser.parse_args()
 
 print('\nRunning view_gal.py\n')
 
-SL = cmf.ScriptLogger("script", args.verbosity)
+SL = cmf.setup_logger("script", args.verbosity)
 
 if args.snapview:
     #load the snapshot
-    SL.logger.info("Reading from a user-defined snapshot...")
+    SL.info("Reading from a user-defined snapshot...")
     snap = pygad.Snapshot(args.paramFile)
 else:
     #get the parameter file
-    SL.logger.info("Reading from a parameter file...")
+    SL.info("Reading from a parameter file...")
     pfv = cmf.utils.read_parameters(args.paramFile)
     fig_loc = pfv.saveLocation + '/' + pfv.galaxyName + '/' + pfv.figureLocation
     snap = pygad.Snapshot(pfv.saveLocation + '/' + pfv.galaxyName + '/' + pfv.galaxyName + '.hdf5')

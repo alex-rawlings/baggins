@@ -9,7 +9,7 @@ from pygad import UnitArr
 
 from ..env_config import _cmlogger
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 __all__ = ["read_parameters", "write_calculated_parameters", "overwrite_parameter_file", "to_json"]
@@ -82,7 +82,7 @@ def read_parameters(filepath):
             try:
                 if l==0: assert k != "calculated"
             except AssertionError:
-                _logger.logger.exception("Main parameter block cannot contain the top-level reserved key 'calculated'!", exc_info=True)
+                _logger.exception("Main parameter block cannot contain the top-level reserved key 'calculated'!", exc_info=True)
                 raise
             if k == "numpy_method":
                 try:
@@ -90,12 +90,12 @@ def read_parameters(filepath):
                     if not isinstance(args, list):
                         args = [args]
                 except KeyError:
-                    _logger.logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must have a corresponding 'args' key!", exc_info=True)
+                    _logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must have a corresponding 'args' key!", exc_info=True)
                     raise
                 try:
                     assert "value" not in d
                 except AssertionError:
-                    _logger.logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must not have a corresponding 'value' key!", exc_info=True)
+                    _logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must not have a corresponding 'value' key!", exc_info=True)
                     raise
                 method = getattr(np, v)
                 d["value"] = method(*args)

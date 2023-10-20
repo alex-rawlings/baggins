@@ -8,7 +8,7 @@ from ..env_config import _cmlogger
 __all__ = ["GradientLinePlot", "GradientScatterPlot"]
 
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 
@@ -46,7 +46,7 @@ class _GradientPlot:
                 assert cmap in [cm for cm in plt.colormaps() if cm not in dir(plt.cm)]
                 self.cmap = plt.colormaps[cmap]
             except AssertionError:
-                _logger.logger.exception(f"cmap `{cmap}` not present in matplotlib defaults, nor is registered as a custom map!", exc_info=True)
+                _logger.exception(f"cmap `{cmap}` not present in matplotlib defaults, nor is registered as a custom map!", exc_info=True)
                 raise
         self.all_marker = []
         self.norm = [0,1]
@@ -89,7 +89,7 @@ class _GradientPlot:
             dat_len = [len(v) for v in (x,y,c)]
             assert np.allclose(np.diff(dat_len), (0,0))
         except AssertionError:
-            _logger.logger.exception(f"Input data must all be of the same length! Currently has lengths: {dat_len}", exc_info=True)
+            _logger.exception(f"Input data must all be of the same length! Currently has lengths: {dat_len}", exc_info=True)
             raise
         self.all_x.append(x)
         self.all_y.append(y)
@@ -114,7 +114,7 @@ class _GradientPlot:
             vmax = max([np.nanmax(ci) for ci in self.all_c])
         if log:
             if vmin < 0:
-                _logger.logger.warning("Log scale normalisation cannot handle negative values! Using a linear scale")
+                _logger.warning("Log scale normalisation cannot handle negative values! Using a linear scale")
                 self.norm = colors.Normalize(vmin, vmax)
             else:
                 self.norm = colors.LogNorm(vmin, vmax)
@@ -160,7 +160,7 @@ class _GradientPlot:
         try:
             assert self.data_count > 0
         except AssertionError:
-            _logger.logger.exception(f"No data to plot!", exc_info=True)
+            _logger.exception(f"No data to plot!", exc_info=True)
             raise
 
 

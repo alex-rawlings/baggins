@@ -14,7 +14,7 @@ from ...env_config import figure_dir, data_dir, tmp_dir, _cmlogger
 
 __all__ = ["HierarchicalModel_1D", "HierarchicalModel_2D", "FactorModel_2D"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 
@@ -156,7 +156,7 @@ class _StanModel(ABC):
         try:
             assert isinstance(d, dict)
         except AssertionError:
-            _logger.logger.exception("Input to property `stan_data` must be a dict!", exc_info=True)
+            _logger.exception("Input to property `stan_data` must be a dict!", exc_info=True)
             raise
         self._stan_data.update(d)
 
@@ -216,7 +216,7 @@ class _StanModel(ABC):
                 assert self._loaded_from_file
                 d = [[f["path"] for f in self._input_data_files.values()]]
             except AssertionError:
-                _logger.logger.exception(f"HMQ directory must be given if not loaded from file!", exc_info=True)
+                _logger.exception(f"HMQ directory must be given if not loaded from file!", exc_info=True)
                 raise
         return d
 
@@ -237,19 +237,19 @@ class _StanModel(ABC):
         try:
             assert isinstance(d, dict)
         except AssertionError:
-            _logger.logger.exception(f"Observational data must be a dict! Current type is {type(d)}", exc_info=True)
+            _logger.exception(f"Observational data must be a dict! Current type is {type(d)}", exc_info=True)
             raise
         for i, (k,v) in enumerate(d.items()):
             if set_categorical:
                 try:
                     assert k != "label"
                 except AssertionError:
-                    _logger.logger.exception(f"Keyword 'label' is reserved!", exc_info=True)
+                    _logger.exception(f"Keyword 'label' is reserved!", exc_info=True)
                     raise
             try:
                 assert isinstance(v, list)
             except AssertionError:
-                _logger.logger.exception(f"Data format must be a list! Currently '{k}' type {type(v)}", exc_info=True)
+                _logger.exception(f"Data format must be a list! Currently '{k}' type {type(v)}", exc_info=True)
                 raise
             for j, vv in enumerate(v):
                 try:
@@ -257,12 +257,12 @@ class _StanModel(ABC):
                     if isinstance(vv, list):
                         d[k][j] = np.array(vv)
                 except AssertionError:
-                    _logger.logger.exception(f"Observed variable {k} element {j} is not list-like, but type {type(vv)}", exc_info=True)
+                    _logger.exception(f"Observed variable {k} element {j} is not list-like, but type {type(vv)}", exc_info=True)
                     raise
                 try:
                     assert not np.any(np.isnan(d[k][j]))
                 except AssertionError:
-                    _logger.logger.exception(f"NaN values detected in observed variable {k} item {j}! This can lead to undefined behaviour.", exc_info=True)
+                    _logger.exception(f"NaN values detected in observed variable {k} item {j}! This can lead to undefined behaviour.", exc_info=True)
                     raise
 
 
@@ -289,10 +289,10 @@ class _StanModel(ABC):
         """
         for k in self.obs.keys():
             if k == newkey:
-                _logger.logger.warning(f"Requested key {newkey} already exists! Transformation will not be reapplied --> Skipping.")
+                _logger.warning(f"Requested key {newkey} already exists! Transformation will not be reapplied --> Skipping.")
                 break
         else:
-            _logger.logger.debug(f"Applying transformation designated by {newkey}")
+            _logger.debug(f"Applying transformation designated by {newkey}")
             self.obs[newkey] = []
             if isinstance(key, str):
                 for v in self.obs[key]:
@@ -304,7 +304,7 @@ class _StanModel(ABC):
                     dims = np.reshape(dims, (len(vs), self.num_groups))
                     assert (dims == dims[0]).all()
                 except AssertionError:
-                    _logger.logger.exception(f"Observation transformation failed for keys {key}: differing dimensions: {dims}", exc_info=True)
+                    _logger.exception(f"Observation transformation failed for keys {key}: differing dimensions: {dims}", exc_info=True)
                     raise
                 extract = lambda i: list(map(itemgetter(i), vs))
                 for i in range(len(vs[0])):
@@ -351,24 +351,24 @@ class _StanModel(ABC):
                 self._obs_collapsed_names.append(obs_name)
                 dim[obs_name] = self.obs[obs_name][0].ndim
             except AssertionError:
-                _logger.logger.exception(f"Observation {obs_name} has already been collapsed! Cannot collapse again!", exc_info=True)
+                _logger.exception(f"Observation {obs_name} has already been collapsed! Cannot collapse again!", exc_info=True)
                 raise
             except IndexError:
-                _logger.logger.exception(f"Error collapsing {obs_name}, {self.obs[obs_name]}")
+                _logger.exception(f"Error collapsing {obs_name}, {self.obs[obs_name]}")
                 raise
         try:
             assert max(dim.values()) < 3
         except AssertionError:
-            _logger.logger.exception(f"Error collapsing observation {max(dim, key=dim.get)}: data cannot have more than 2 dimensions", exc_info=True)
+            _logger.exception(f"Error collapsing observation {max(dim, key=dim.get)}: data cannot have more than 2 dimensions", exc_info=True)
             raise
         if max(dim.values()) == 1:
             # all observations are 1D, can just concatenate
             for k, v in self.obs.items():
                 if k not in obs_names:
-                    _logger.logger.debug(f"Observation {k} will not be collapsed.")
+                    _logger.debug(f"Observation {k} will not be collapsed.")
                     continue
                 self._obs_collapsed[k] = np.concatenate(v)
-                _logger.logger.debug(f"Collapsing variable {k}")
+                _logger.debug(f"Collapsing variable {k}")
         else:
             # collapse the desired variable
             # need to collapse 2D variables first so we know how many tiles to 
@@ -386,7 +386,7 @@ class _StanModel(ABC):
             for k, v in self._obs_collapsed.items():
                 assert v.shape == self._obs_collapsed[obs_names[0]].shape
         except AssertionError:
-            _logger.logger.exception(f"Data lengths are inconsistent in collapsed observations! Observation '{k}' has shape {v.shape}, must have shape {self._obs_collapsed[obs_names[0]].shape}", exc_info=True)
+            _logger.exception(f"Data lengths are inconsistent in collapsed observations! Observation '{k}' has shape {v.shape}, must have shape {self._obs_collapsed[obs_names[0]].shape}", exc_info=True)
             raise
 
 
@@ -431,7 +431,7 @@ class _StanModel(ABC):
         try:
             assert self.num_groups >= pars["stan"]["min_num_samples"]
         except AssertionError:
-            _logger.logger.exception(f"There are not enough groups to form a valid hierarchical model. Minimum number of groups is {pars['stan']['min_num_samples']}, and we have {self.num_groups}!", exc_info=True)
+            _logger.exception(f"There are not enough groups to form a valid hierarchical model. Minimum number of groups is {pars['stan']['min_num_samples']}, and we have {self.num_groups}!", exc_info=True)
             raise
 
 
@@ -488,7 +488,7 @@ class _StanModel(ABC):
         try:
             assert len(n) == 1
         except AssertionError:
-            _logger.logger.exception(f"Dataset can only have three dimensions: chain, draw, and other. Currently has size {len(n)+2}", exc_info=True)
+            _logger.exception(f"Dataset can only have three dimensions: chain, draw, and other. Currently has size {len(n)+2}", exc_info=True)
             raise
         self._num_OOS = n[0]
 
@@ -510,7 +510,7 @@ class _StanModel(ABC):
             container output from stan sampling
         """
         if self._loaded_from_file:
-            _logger.logger.warning("Instance instantiated from file: sampling the model again is not possible --> Skipping.")
+            _logger.warning("Instance instantiated from file: sampling the model again is not possible --> Skipping.")
             self._sample_diagnosis = self._fit.diagnose()
             return self._fit
         else:
@@ -530,14 +530,14 @@ class _StanModel(ABC):
             if prior:
                 fit = self._prior_model.sample(self.stan_data, **default_sample_kwargs)
             else:
-                _logger.logger.debug(f"exe info: {self._model.exe_info()}")
+                _logger.debug(f"exe info: {self._model.exe_info()}")
                 fit = self._model.sample(self.stan_data, **default_sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
-            _logger.logger.info(f"Sampling completed in {datetime.now()-start_time}")
-            _logger.logger.debug(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
+            _logger.info(f"Sampling completed in {datetime.now()-start_time}")
+            _logger.debug(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
             self._sample_diagnosis = fit.diagnose()
-            _logger.logger.info(f"\n{fit.summary(sig_figs=4)}")
-            _logger.logger.info(f"\n{self.sample_diagnosis}")
+            _logger.info(f"\n{fit.summary(sig_figs=4)}")
+            _logger.info(f"\n{self.sample_diagnosis}")
             return fit
 
 
@@ -625,19 +625,19 @@ class _StanModel(ABC):
         try:
             assert state in ("pred", "OOS")
         except AssertionError:
-            _logger.logger.exception(f"`state` must be one of 'pred' or 'OOS', not {state}!", exc_info=True)
+            _logger.exception(f"`state` must be one of 'pred' or 'OOS', not {state}!", exc_info=True)
             raise
         if self.generated_quantities is None or force_resample:
             if self._model is None:
-                _logger.logger.debug("Generated quantities will be taken from the prior model")
+                _logger.debug("Generated quantities will be taken from the prior model")
                 self._generated_quantities = self._prior_model.generate_quantities(data=self._stan_data, mcmc_sample=self._prior_fit)
             else:
-                _logger.logger.debug("Generated quantities will be taken from the posterior model")
+                _logger.debug("Generated quantities will be taken from the posterior model")
                 self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit, gq_output_dir=None)
         try:
             self.generated_quantities.stan_variable(gq)
         except ValueError:
-            _logger.logger.error(f"Value error trying to read generated quantities data: creating temporary directory {tmp_dir}")
+            _logger.error(f"Value error trying to read generated quantities data: creating temporary directory {tmp_dir}")
             os.makedirs(tmp_dir, exist_ok=True)
             self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit, gq_output_dir=tmp_dir)
         return self.generated_quantities.stan_variable(gq)
@@ -660,10 +660,10 @@ class _StanModel(ABC):
         """
         if self._fit is None:
             _fit = self._prior_fit
-            _logger.logger.debug("Generated quantities will be taken from the prior model")
+            _logger.debug("Generated quantities will be taken from the prior model")
         else:
             _fit = self._fit
-            _logger.logger.debug("Generated quantities will be taken from the posterior model")
+            _logger.debug("Generated quantities will be taken from the posterior model")
         x, dens = az.kde(_fit[v])
         return x[np.nanargmax(dens)]
 
@@ -718,7 +718,7 @@ class _StanModel(ABC):
             try:
                 az.plot_pair(data, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
             except ValueError:
-                _logger.logger.error(f"HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults")
+                _logger.error(f"HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults")
                 az.plot_pair(data, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
         return ax
 
@@ -755,10 +755,10 @@ class _StanModel(ABC):
         try:
             assert len(var_names) > 1
         except AssertionError:
-            _logger.logger.exception("Pair plot requires at least two variables!", exc_info=True)
+            _logger.exception("Pair plot requires at least two variables!", exc_info=True)
             raise
         if len(var_names) > 4:
-            _logger.logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
+            _logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
         
         # plot trace
         if self._parameter_diagnostic_plots_counter == 0:
@@ -862,14 +862,14 @@ class _StanModel(ABC):
             try:
                 assert len(gq) == len(xlabels)
             except AssertionError:
-                _logger.logger.exception(f"There are {len(gq)} generated quantity variables to plot, but only {len(xlabels)} labels!", exc_info=True)
+                _logger.exception(f"There are {len(gq)} generated quantity variables to plot, but only {len(xlabels)} labels!", exc_info=True)
                 raise
         for i, (_gq, l) in enumerate(zip(gq, xlabels)):
             ys = self.sample_generated_quantity(_gq, state=state)
             try:
                 assert len(ys.shape) < 3
             except AssertionError:
-                _logger.logger.exception(f"Generated quantity {_gq} must have shape 2, has shape {len(ys.shape)}", exc_info=True)
+                _logger.exception(f"Generated quantity {_gq} must have shape 2, has shape {len(ys.shape)}", exc_info=True)
                 raise
             az.plot_dist(ys, ax=ax[i], plot_kwargs=plot_kwargs)
             ax[i].set_xlabel(l)
@@ -956,7 +956,7 @@ class _StanModel(ABC):
         try:
             assert isinstance(varnames, (list, tuple))
         except AssertionError:
-            _logger.logger.exception(f"Expanding variables requires first arugment to be a list or tuple, not {type(varnames)}", exc_info=True)
+            _logger.exception(f"Expanding variables requires first arugment to be a list or tuple, not {type(varnames)}", exc_info=True)
             raise
         if self._fit is None:
             _fit = self._prior_fit_for_az
@@ -992,7 +992,7 @@ class _StanModel(ABC):
         model_build_time = datetime.utcfromtimestamp(os.path.getmtime(C._model.exe_file))
         if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
-            _logger.logger.error(f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC")
+            _logger.error(f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC")
             print("==========================================")
 
         # load path to observation data
@@ -1001,7 +1001,7 @@ class _StanModel(ABC):
             C._input_data_files = yaml.safe_load(f)
         for v in C._input_data_files.values():
             if os.path.getmtime(v["path"]) > v["created"]:
-                _logger.logger.error(f"HMQ file {v['path']} has been modified since the Stan model was run, proceed with caution!")
+                _logger.error(f"HMQ file {v['path']} has been modified since the Stan model was run, proceed with caution!")
         C._loaded_from_file = True
         return C
 
@@ -1195,7 +1195,7 @@ class HierarchicalModel_2D(_StanModel):
         idxs = self._get_GQ_indices(state, collapsed)
         cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", norm="LogNorm")
         for l in levels:
-            _logger.logger.debug(f"Fitting level {l}")
+            _logger.debug(f"Fitting level {l}")
             az.plot_hdi(self.stan_data[xmodel][...,idxs], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
         if xobs is not None and yobs is not None:
             # overlay data
@@ -1289,7 +1289,7 @@ class FactorModel_2D(_StanModel):
             try:
                 assert v.ndim == 2
             except AssertionError:
-                _logger.logger.exception(f"Dependent quantity to be modelled must be two dimensional! Currently has {v.ndim} dimensions.", exc_info=True)
+                _logger.exception(f"Dependent quantity to be modelled must be two dimensional! Currently has {v.ndim} dimensions.", exc_info=True)
                 raise
             idxf1 += v.shape[0]
             factor_idx[idxf0:idxf1] = i

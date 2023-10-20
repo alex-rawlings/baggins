@@ -14,7 +14,7 @@ from ...utils import get_files_in_dir, save_data
 
 __all__ = ["GrahamModelSimple", "GrahamModelHierarchy"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class _GrahamModelBase(HierarchicalModel_2D):
@@ -73,9 +73,9 @@ class _GrahamModelBase(HierarchicalModel_2D):
             fnames = d[0]
         else:
             fnames = get_files_in_dir(d)
-            _logger.logger.debug(f"Reading from dir: {d}")
+            _logger.debug(f"Reading from dir: {d}")
         for f in fnames:
-            _logger.logger.info(f"Loading file: {f}")
+            _logger.info(f"Loading file: {f}")
             if binary:
                 hmq = HMQuantitiesBinaryData.load_from_file(f)
                 status, idx = hmq.idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)
@@ -111,7 +111,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
         try:
             assert self.num_OOS is not None
         except AssertionError:
-            _logger.logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
+            _logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
             raise
         self.stan_data["N_OOS"] = self.num_OOS
         self.stan_data["group_id_OOS"] = self._rng.integers(1, self.num_groups, size=self.num_OOS, endpoint=True)

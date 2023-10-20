@@ -18,7 +18,7 @@ from ...utils import get_files_in_dir
 
 __all__ = ["QuinlanModelSimple", "QuinlanModelHierarchy"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class _QuinlanModelBase(HierarchicalModel_2D):
@@ -93,9 +93,9 @@ class _QuinlanModelBase(HierarchicalModel_2D):
             fnames = d[0]
         else:
             fnames = get_files_in_dir(d)
-            _logger.logger.debug(f"Reading from dir: {d}")
+            _logger.debug(f"Reading from dir: {d}")
         for f in fnames:
-            _logger.logger.info(f"Loading file: {f}")
+            _logger.info(f"Loading file: {f}")
             hmq = HMQuantitiesBinaryData.load_from_file(f)
             status, idx0 = hmq.idx_finder(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
             if not status: continue
@@ -104,7 +104,7 @@ class _QuinlanModelBase(HierarchicalModel_2D):
             try:
                 assert idx0 < idx1
             except AssertionError:
-                _logger.logger.exception(f"Lower index {idx0} (value: {np.nanmedian(hmq.hardening_radius):.3f}) is not less than upper index {idx1} (value: {pars['bh_binary']['target_semimajor_axis']['value']:.3f})!", exc_info=True)
+                _logger.exception(f"Lower index {idx0} (value: {np.nanmedian(hmq.hardening_radius):.3f}) is not less than upper index {idx1} (value: {pars['bh_binary']['target_semimajor_axis']['value']:.3f})!", exc_info=True)
                 raise
             idxs = np.r_[idx0:idx1]
             obs["t"].append(hmq.binary_time[idxs])
@@ -133,7 +133,7 @@ class _QuinlanModelBase(HierarchicalModel_2D):
         try:
             assert self.num_OOS is not None
         except AssertionError:
-            _logger.logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
+            _logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
             raise
         self.stan_data["N_OOS"] = self.num_OOS
         self.stan_data["group_id_OOS"] = self._rng.integers(1, self.num_groups, size=self.num_OOS, endpoint=True)
@@ -265,13 +265,13 @@ class _QuinlanModelBase(HierarchicalModel_2D):
             m1 = m1[0]
             m2 = m2[0]
         except AssertionError:
-            _logger.logger.exception(f"BH masses must be the same between runs, but have unique masses {m1} and {m2}", exc_info=True)
+            _logger.exception(f"BH masses must be the same between runs, but have unique masses {m1} and {m2}", exc_info=True)
             raise
 
         # deterministic calculation with Peter's formula
         # parallelise with dask
         start_time = datetime.now()
-        _logger.logger.info(f"Merger timescale calculation started: {start_time.strftime(date_format)}")
+        _logger.info(f"Merger timescale calculation started: {start_time.strftime(date_format)}")
         results = []
         tf = max([t[-1] for t in self.obs["t_shift"]])
         for i, d in enumerate(map(lambda *x: dict(zip(samples.keys(), x)),*samples.values())):
@@ -286,8 +286,8 @@ class _QuinlanModelBase(HierarchicalModel_2D):
         results = dask.compute(*results)
         self.merger_time = np.array(results)
         end_time = datetime.now()
-        _logger.logger.info(f"Merger timescale calculation ended: {end_time.strftime(date_format)}")
-        _logger.logger.info(f"Merger timescale determined in {(end_time-start_time).total_seconds():.1f}s")
+        _logger.info(f"Merger timescale calculation ended: {end_time.strftime(date_format)}")
+        _logger.info(f"Merger timescale determined in {(end_time-start_time).total_seconds():.1f}s")
         if save and self._fit is not None:
             # save merger time to .csv file so we don't have to always 
             # recompute it
@@ -305,7 +305,7 @@ class _QuinlanModelBase(HierarchicalModel_2D):
         """
         if not recalculate and self.merger_time_file is not None and os.path.exists(self.merger_time_file):
             self.merger_time = np.loadtxt(self.merger_time_file, delimiter=",")
-            _logger.logger.info(f"Merger timescale read from file {self.merger_time_file}")
+            _logger.info(f"Merger timescale read from file {self.merger_time_file}")
         else:
             self.determine_merger_timescale_distribution(**calc_kwargs)
         fig, ax = plt.subplots(1,1)

@@ -11,7 +11,7 @@ parser.add_argument("-m", "--model", help="model to run", type=str, choices=["si
 parser.add_argument("-c", "--compare", help="compare to naive statistics", action="store_true", dest="compare")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", console_level=args.verbose)
+SL = cmf.setup_logger("script", console_level=args.verbose)
 
 full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=[1.9, 1.9])
 
@@ -19,7 +19,7 @@ if args.type == "new":
     hmq_dir = args.dir
 else:
     hmq_dir = None
-SL.logger.debug(f"Input data read from {hmq_dir}")
+SL.debug(f"Input data read from {hmq_dir}")
 analysis_params = cmf.utils.read_parameters(args.apf)
 
 figname_base = f"hierarchical_models/density/"
@@ -50,7 +50,7 @@ else:
 # load the observational data
 graham_model.extract_data(analysis_params, hmq_dir)
 
-SL.logger.info(f"Number of simulations with usable data: {graham_model.num_groups}")
+SL.info(f"Number of simulations with usable data: {graham_model.num_groups}")
 
 if args.verbose == "DEBUG":
     graham_model.print_obs_summary()
@@ -83,15 +83,15 @@ else:
         log_core_sersic = lambda x, rb, Re, Ib, gamma, n, a: np.log10(cmf.literature.core_Sersic_profile(x, Re=Re, rb=rb, Ib=Ib, n=n, gamma=gamma, alpha=a))
         p_bounds = ([0, 0, 0, 0, 0, 0], [30, 30, np.inf, 20, 20, 30])
         for i in range(len(graham_model.obs["label"])):
-            SL.logger.debug(f"Curve-fitting on sample {i}")
+            SL.debug(f"Curve-fitting on sample {i}")
             x = graham_model.obs["R"][i]
             y = graham_model.obs["log10_proj_density_mean"][i]
             yerr = graham_model.obs["log10_proj_density_std"][i]
             popt, pcov = scipy.optimize.curve_fit(log_core_sersic, x, y, sigma=yerr, bounds=p_bounds, maxfev=2000*6)
-            SL.logger.debug(f"Optimal parameters are: {popt}")
+            SL.debug(f"Optimal parameters are: {popt}")
             all_optimal_pars[i,:] = popt
         all_optimal_pars[:,2] = np.log10(all_optimal_pars[:,2])
-        SL.logger.debug(f"Least Squares optimal values:\n{all_optimal_pars}")
+        SL.debug(f"Least Squares optimal values:\n{all_optimal_pars}")
         naive_median, naive_spread = cmf.mathematics.quantiles_relative_to_median(all_optimal_pars, axis=0)
         for axi, nm, nsl, nsu in zip(ax, naive_median, naive_spread[0], naive_spread[1]):
             y = axi.get_ylim()[1]*1.1

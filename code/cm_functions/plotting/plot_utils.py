@@ -9,7 +9,7 @@ from ..env_config import _cmlogger, git_hash, username, date_format, fig_ext
 
 __all__ = ["savefig", "get_meta", "set_publishing_style", "get_figure_size"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 # state information
 _PS = PublishingState()
@@ -60,7 +60,7 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
             fig.savefig(figname, metadata=meta_data, **save_kwargs)
     finally:
         del f
-    _logger.logger.info(f"Saved image: {figname}")
+    _logger.info(f"Saved image: {figname}")
 
 
 def get_meta(fname):
@@ -76,7 +76,7 @@ def get_meta(fname):
         ext = os.path.splitext(fname)[1]
         assert ext == ".png"
     except AssertionError:
-        _logger.logger.exception(f"`get_meta()` only available for .png files, not type {ext}", exc_info=True)
+        _logger.exception(f"`get_meta()` only available for .png files, not type {ext}", exc_info=True)
         raise
     with Image.open(fname) as img:
         for k,v in img.text.items():
@@ -91,7 +91,7 @@ def set_publishing_style():
     _PS.turn_on()
     rcdefaults()
     rc_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "matplotlibrc_publish"))
-    _logger.logger.info("Publishing Matplotlib style set")
+    _logger.info("Publishing Matplotlib style set")
 
 
 

@@ -16,7 +16,7 @@ runs = dict(
 
 softenings = {"stars":0.005, "dm":0.3, "bh":0.005}
 
-SL = cmf.ScriptLogger("script", console_level="DEBUG")
+SL = cmf.setup_logger("script", console_level="DEBUG")
 
 cols = cmf.plotting.mplColours()
 
@@ -25,7 +25,7 @@ hamiltonian_dat = {"run":[], "H":[]}
 for i, (key, dir) in enumerate(runs.items()):
     subdirs = [d.path for d in os.scandir(dir) if os.path.isdir(d)]
     for j, subdir in enumerate(subdirs):
-        SL.logger.debug(f"Reading from subdir {subdir}")
+        SL.debug(f"Reading from subdir {subdir}")
         snapfiles = cmf.utils.get_snapshots_in_dir(subdir)
         if not snapfiles:
             continue
@@ -35,12 +35,12 @@ for i, (key, dir) in enumerate(runs.items()):
         assert bhsep > 10
         bhid = snap.bh["ID"][0]
         bhid_mask = pygad.IDMask(bhid)
-        SL.logger.debug(f"Translating by:\n{-snap.bh[bhid_mask]['pos'].flatten()}")
+        SL.debug(f"Translating by:\n{-snap.bh[bhid_mask]['pos'].flatten()}")
         translation = pygad.Translation(-snap.bh[bhid_mask]["pos"].flatten())
         translation.apply(snap, total=True)
         # TODO is this being affected by some extreme value from DM or a BH?
         hamiltonian_dat["H"] = cmf.analysis.calculate_Hamiltonian(snap)
-        SL.logger.debug(f"Hamiltonian:\n{hamiltonian_dat['H'][-1]}")
+        SL.debug(f"Hamiltonian:\n{hamiltonian_dat['H'][-1]}")
         hamiltonian_dat["run"].append(key)
         pygad.gc_full_collect()
         del snap

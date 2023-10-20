@@ -15,7 +15,7 @@ parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", console_level=args.verbose)
+SL = cmf.setup_logger("script", console_level=args.verbose)
 
 if args.publish:
     cmf.plotting.set_publishing_style()
@@ -49,9 +49,9 @@ try:
             # this part of the code should not be reached...
             raise NotImplementedError("Only rperi and res implemented.")
 except KeyError:
-    SL.logger.exception(f"No comparison available for '{args.fam}' in file {args.files}", exc_info=True)
+    SL.exception(f"No comparison available for '{args.fam}' in file {args.files}", exc_info=True)
     raise
-SL.logger.debug(f"Colour values are {colour_var}")
+SL.debug(f"Colour values are {colour_var}")
 
 fig, ax = cmf.plotting.create_odd_number_subplots(2, 3, fkwargs={"figsize":full_figsize})
 fig2, ax2 = cmf.plotting.create_odd_number_subplots(2,3, fkwargs={"figsize":full_figsize})

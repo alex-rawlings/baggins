@@ -9,7 +9,7 @@ from ..env_config import _cmlogger
 
 __all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions", "create_odd_number_subplots", "nice_log10_scale", "arrow_on_line"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, frameon=False, unitconvert="base", remove_ticks=True, textsize=None, fmt=".1f", **kwargs):
@@ -82,12 +82,12 @@ def create_normed_colours(vmin, vmax, cmap="cividis", norm="Normalize", norm_kwa
     try:
         cmapv = plt.get_cmap(cmap)
     except ValueError:
-        _logger.logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
+        _logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
         cmapv = plt.get_cmap("cividis")
     try:
         _norm = getattr(colors, norm)
     except AttributeError:
-        _logger.logger.warning(f"Normalisation {norm} is not valid. Using default (Linear).")
+        _logger.warning(f"Normalisation {norm} is not valid. Using default (Linear).")
         _norm = colors.Normalize()
     norm = _norm(vmin=vmin, vmax=vmax, **norm_kwargs)
     mapcols = lambda x: cmapv(norm(x))
@@ -100,7 +100,7 @@ def create_normed_colours(vmin, vmax, cmap="cividis", norm="Normalize", norm_kwa
         cmapv = colors.LinearSegmentedColormap.from_list("trunc", col_arr)
         mapcols = lambda x: cmapv(norm(x))
         norm = _norm(vmin=tmin, vmax=tmax, **norm_kwargs)
-        _logger.logger.info(f"Truncating colormap from ({vmin:.2f},{vmax:.2f}) --> ({tmin:.2f},{tmax:.2f})")
+        _logger.debug(f"Truncating colormap from ({vmin:.2f},{vmax:.2f}) --> ({tmin:.2f},{tmax:.2f})")
     sm = plt.cm.ScalarMappable(norm=norm, cmap=cmapv)
     return mapcols, sm
 

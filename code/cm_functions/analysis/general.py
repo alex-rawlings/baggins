@@ -8,7 +8,7 @@ from ..env_config import _cmlogger
 
 __all__ = ["snap_num_for_time"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 # TODO add option for a defined binning, and not only have it done internally
 def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
@@ -58,7 +58,7 @@ def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
         else:
             bins = binning
     except AssertionError:
-        _logger.logger.exception(f"Parameter 'binning' must be either an int, float, or array-like! Type {type(binning)} is not valid.", exc_info=True)
+        _logger.exception(f"Parameter 'binning' must be either an int, float, or array-like! Type {type(binning)} is not valid.", exc_info=True)
         raise
     #bin the statistics
     standard_devs, bin_edges, binnumbers = scipy.stats.binned_statistic(r, [vspherical[:,0], vspherical[:,1], vspherical[:,2]], statistic="std", bins=bins)
@@ -134,5 +134,5 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
         prev_time = this_time
     else:
         idx = len(snaplist)-1
-        _logger.logger.warning("Returning the final snapshot in the list!")
+        _logger.warning("Returning the final snapshot in the list!")
     return idx

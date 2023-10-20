@@ -20,7 +20,7 @@ parser.add_argument("-d", "--dir", type=str, action="append", default=[], dest="
 parser.add_argument("-v", "--verbosity", type=str, default="INFO", choices=cmf.VERBOSITY, dest="verbosity", help="set verbosity level")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", args.verbosity)
+SL = cmf.setup_logger("script", args.verbosity)
 
 if args.publish:
     cmf.plotting.set_publishing_style()
@@ -34,9 +34,9 @@ ketju_dirs = []
 ketju_dirs.append(args.path)
 if args.extra_dirs:
     ketju_dirs.extend(args.extra_dirs)
-    SL.logger.debug(f"Directories are: {ketju_dirs}")
+    SL.debug(f"Directories are: {ketju_dirs}")
     labels = cmf.general.get_unique_path_part(ketju_dirs)
-    SL.logger.debug(f"Labels are: {labels}")
+    SL.debug(f"Labels are: {labels}")
 
 ax = None
 if args.orbits:
@@ -55,19 +55,19 @@ cols = cmf.plotting.mplColours()
 linestyles = cmf.plotting.mplLines()
 num_dirs = len(ketju_dirs)
 total_sim_count = 0
-SL.logger.debug(f"We will be plotting {num_dirs} different families...")
+SL.debug(f"We will be plotting {num_dirs} different families...")
 
 
 @dask.delayed
 def dask_data_loader(kf):
     """Dask helper to load data and calculate quantities"""
-    SL.logger.debug(f"Reading: {kf}")
+    SL.debug(f"Reading: {kf}")
     try:
         bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
         if merged.merged:
-            SL.logger.info(merged)
+            SL.info(merged)
     except:
-        SL.logger.warning(f"No binaries found in: {kf} --> skipping...")
+        SL.warning(f"No binaries found in: {kf} --> skipping...")
         return [None, None, None, None]
     if args.t0 is None:
         toffset = 0
@@ -123,14 +123,14 @@ for j, d in enumerate(ketju_dirs):
     try:
         assert os.path.exists(d)
     except AssertionError:
-        SL.logger.exception(f"Path {d} does not exist!", exc_info=True)
+        SL.exception(f"Path {d} does not exist!", exc_info=True)
         raise
     bound_bhs_present = False
     lc = plotter(d, ax, ax2, j)
     total_sim_count += lc
     bound_bhs_present = bool(lc) or bound_bhs_present
     if not bound_bhs_present:
-        SL.logger.warning(f"No bound BHs present in {d}")
+        SL.warning(f"No bound BHs present in {d}")
 
 try:
     ax[0].legend(loc="upper right", **legend_kwargs)
@@ -143,4 +143,4 @@ try:
             cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}_orbit.png"), fig=fig2, save_kwargs=fig_kwargs)
     plt.show()
 except (IndexError, TypeError):
-    SL.logger.error("No bound BHs found!")
+    SL.error("No bound BHs found!")

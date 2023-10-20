@@ -16,7 +16,7 @@ from ..utils import write_calculated_parameters
 
 __all__ = ["GalaxyIC"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 # some plotting parameters
 markersz = 1.5
@@ -65,7 +65,7 @@ class GalaxyIC(_GalaxyICBase):
             else:
                 self.stars = _StellarCusp(parameter_file=parameter_file)
         else:
-            _logger.logger.warning(f"No stellar component generated!")
+            _logger.warning(f"No stellar component generated!")
         # set up DM
         dm_pars = self.parameters["dm"]
         if dm_pars["particle_mass"]["value"] is not None:
@@ -73,7 +73,7 @@ class GalaxyIC(_GalaxyICBase):
                 _star_mass = self.stars.total_mass
             except AttributeError:
                 if stellar_mass is None:
-                    _logger.logger.exception("If no stellar component supplied, a stellar mass must be given to initialise the DM halo", exc_info=True)
+                    _logger.exception("If no stellar component supplied, a stellar mass must be given to initialise the DM halo", exc_info=True)
                     raise
                 else:
                     _star_mass = stellar_mass
@@ -83,7 +83,7 @@ class GalaxyIC(_GalaxyICBase):
                 self.dm = _DMHaloDehnen(stellar_mass=_star_mass, parameter_file=parameter_file)
             self._calc_quants["dm"]["peak_mass"] = self.dm.peak_mass
         else:
-            _logger.logger.warning(f"No DM component generated!")
+            _logger.warning(f"No DM component generated!")
         # set up SMBH
         bh_pars = self.parameters["bh"]
         if bh_pars["set_spin"] is not None:
@@ -91,20 +91,20 @@ class GalaxyIC(_GalaxyICBase):
                 _star_mass = self.stars.total_mass
             except AttributeError:
                 if stellar_mass is None:
-                    _logger.logger.exception("If no stellar component supplied, a stellar mass must be given to initialise the SMBH mass", exc_info=True)
+                    _logger.exception("If no stellar component supplied, a stellar mass must be given to initialise the SMBH mass", exc_info=True)
                     raise
                 else:
                     _star_mass = stellar_mass
             self.bh = _SMBH(np.log10(_star_mass), parameter_file=parameter_file, sahu_legacy=sahu_legacy)
             # manually set BH mass if desired
             if bh_pars["mass"]["value"] is not None:
-                _logger.logger.warning(f"Setting BH mass to user defined value!")
+                _logger.warning(f"Setting BH mass to user defined value!")
                 self.bh.mass = bh_pars["mass"]["value"]
             self._calc_quants["bh"]["mass"] = self.bh.mass
             #save the new spin value
             self._calc_quants["bh"]["spin"] = self.bh.spin
         else:
-            _logger.logger.warning(f"No SMBH component generated!")
+            _logger.warning(f"No SMBH component generated!")
         self.hdf5_file_name = os.path.join(self.save_location, f"{self.name}.hdf5")
     
 
@@ -113,30 +113,30 @@ class GalaxyIC(_GalaxyICBase):
         Convert all masses from default units of Msol to 1e10 Msol, the Gadget
         standard.
         """
-        _logger.logger.warning("Converting mass units to Gadget default (1e10 Msol)")
-        _logger.logger.debug("Masses of galaxy components")
+        _logger.warning("Converting mass units to Gadget default (1e10 Msol)")
+        _logger.debug("Masses of galaxy components")
         assert self.mass_units == "msol"
         try:
             self.stars.particle_mass /= 1e10
-            _logger.logger.debug(f"Stellar particle mass: {self.stars.particle_mass}")
+            _logger.debug(f"Stellar particle mass: {self.stars.particle_mass}")
             self.stars.total_mass /= 1e10
-            _logger.logger.debug(f"Total stellar mass: {self.stars.total_mass}")
+            _logger.debug(f"Total stellar mass: {self.stars.total_mass}")
         except AttributeError:
             pass
         try:
             self.dm.particle_mass /= 1e10
-            _logger.logger.debug(f"DM particle mass: {self.dm.particle_mass}")
+            _logger.debug(f"DM particle mass: {self.dm.particle_mass}")
             self.dm.peak_mass /= 1e10
-            _logger.logger.debug(f"DM peak mass: {self.dm.peak_mass}")
+            _logger.debug(f"DM peak mass: {self.dm.peak_mass}")
         except AttributeError:
             pass
         try:
             self.bh.mass /= 1e10
-            _logger.logger.debug(f"SMBH particle mass: {self.bh.mass}")
+            _logger.debug(f"SMBH particle mass: {self.bh.mass}")
         except AttributeError:
             pass
         self.mass_units = "gadget"
-        _logger.logger.warning(f"Mass units are now in {self.mass_units} standard.")
+        _logger.warning(f"Mass units are now in {self.mass_units} standard.")
 
 
     def write_calculated_parameters(self):
@@ -235,7 +235,7 @@ class GalaxyIC(_GalaxyICBase):
             if os.path.exists(self.hdf5_file_name):
                 assert allow_overwrite
         except AssertionError:
-            _logger.logger.exception(f"File {self.hdf5_file_name} already exists!", exc_info=True)
+            _logger.exception(f"File {self.hdf5_file_name} already exists!", exc_info=True)
             raise
 
         self.convert_to_gadget_mass_units()
@@ -265,14 +265,14 @@ class GalaxyIC(_GalaxyICBase):
             if isinstance(self.dm, _DMHaloNFW):
                 if self.parameters["dm"]["NFW"]["cut_pars"] is not None:
                     cut_params = self.self.parameters["dm"]["NFW"]["cut_pars"]
-                    _logger.logger.info("Using user-defined NFW cut parameters")
+                    _logger.info("Using user-defined NFW cut parameters")
                 else:
                     cut_params = dict(
                                         slope = 1.0,
                                         approx0 = 1e-5,
                                         max_scale_radius = 20.0
                     )
-                    _logger.logger.warning("Using default NFW cut parameters")
+                    _logger.warning("Using default NFW cut parameters")
                 dm_distribution = mg.NFWSphere(Mvir=self.dm.peak_mass, particle_mass=self.dm.particle_mass, particle_type=mg.ParticleType.DM_HALO, z=self.redshift, use_cut=True, cut_params=cut_params)
                 self._calc_quants["dm"]["actial_total_mass"] = dm_distribution.mass * 1e10
                 self._calc_quants["dm"]["concentration"] = self.dm.concentration
@@ -299,7 +299,7 @@ class GalaxyIC(_GalaxyICBase):
             t = str(k).split(".")[1].lower().replace("_halo", "")
             self._calc_quants[t]["particle_count"] = float(particle_count)
             if k != mg.ParticleType.BH and particle_count < 1e3:
-                _logger.logger.warning(f"{k} has: {particle_count} particles!")
+                _logger.warning(f"{k} has: {particle_count} particles!")
         
         # save galaxy
         mg.write_hdf5_ic_file(self.hdf5_file_name, generated_galaxy, center_CoM=self.recentre_to_com)
@@ -488,9 +488,9 @@ class GalaxyIC(_GalaxyICBase):
                 bh_spin_params = zlochower_hot_spins
                 has_spin_distribution = True
             else:
-                _logger.logger.error("Invalid BH spin parameters provided, no distribution will be plotted.")
+                _logger.error("Invalid BH spin parameters provided, no distribution will be plotted.")
         else:
-            _logger.logger.warning("No BH spin distribution provided.")
+            _logger.warning("No BH spin distribution provided.")
         
         spin_seq = np.linspace(0, 1, 1000)
         bhspin_mag = np.linalg.norm(self.bh.spin)
@@ -499,7 +499,7 @@ class GalaxyIC(_GalaxyICBase):
             ax[2,2].plot(spin_seq, bh_chi_dist.pdf(spin_seq), color=cols[0])
         else:
             bh_chi_dist = scipy.stats.uniform()
-        _logger.logger.info(f"SMBH spin magnitude: {bhspin_mag:.3f}")
+        _logger.info(f"SMBH spin magnitude: {bhspin_mag:.3f}")
         ax[2,2].scatter(bhspin_mag, bh_chi_dist.pdf(bhspin_mag), color=cols[3], zorder=10)
         ax[2,2].set_title(r"BH $\chi$", fontsize="small")
         ax[2,2].set_xlabel(r"$\chi$")

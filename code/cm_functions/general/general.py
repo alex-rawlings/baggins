@@ -6,7 +6,7 @@ from ..env_config import _cmlogger
 
 __all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity", "set_seed_time", "get_idx_in_array", "get_unique_path_part", "represent_numeric_in_scientific"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 def arcsec_to_kpc(dist_mod, angle_in_arcsec):
@@ -85,7 +85,7 @@ def xval_of_quantity(val, xvec, yvec, xsorted=False, initial_guess=None, root_kw
     xval, rootresult = scipy.optimize.brentq(f, *initial_guess, full_output=True, **root_kwargs)
     if not rootresult.converged:
         # TODO should the method terminate instead?
-        _logger.logger.warning(f"The root-finding did not converge after {rootresult.iterations} iterations! The input <val> may not be in the domain specified by <xvec>.")
+        _logger.warning(f"The root-finding did not converge after {rootresult.iterations} iterations! The input <val> may not be in the domain specified by <xvec>.")
     return xval
 
 
@@ -129,7 +129,7 @@ def get_idx_in_array(t, tarr):
     try:
         assert not np.isnan(t)
     except AssertionError:
-        _logger.logger.exception("t must not be nan", exc_info=True)
+        _logger.exception("t must not be nan", exc_info=True)
         raise
     try:
         idx = np.nanargmin(np.abs(tarr-t))
@@ -142,10 +142,10 @@ def get_idx_in_array(t, tarr):
         else:
             return idx
     except AssertionError:
-        _logger.logger.exception(f"Value is {s}r than the {s}st array value!", exc_info=True)
+        _logger.exception(f"Value is {s}r than the {s}st array value!", exc_info=True)
         raise
     except ValueError:
-        _logger.logger.exception(f"Array tarr has value {np.unique(tarr)}")
+        _logger.exception(f"Array tarr has value {np.unique(tarr)}")
         raise
 
 
@@ -166,7 +166,7 @@ def get_unique_path_part(path_list):
     try:
         assert len(path_list) > 1
     except AssertionError:
-        _logger.logger.exception(f"Path list must contain more than 1 path!", exc_info=True)
+        _logger.exception(f"Path list must contain more than 1 path!", exc_info=True)
         raise
     common_path_len = len(os.path.commonpath(path_list))
     unique_parts = []
@@ -177,7 +177,7 @@ def get_unique_path_part(path_list):
 
 def represent_numeric_in_scientific(v, mantissa_fmt=".1f"):
     if mantissa_fmt[-1] != "f":
-        _logger.logger.error(f"Mantissa format must be of floating point type! Using default value '.1f'")
+        _logger.error(f"Mantissa format must be of floating point type! Using default value '.1f'")
         mantissa_fmt = ".1f"
     exponent = int(np.floor(np.log10(v)))
     return f"${v/10**exponent:{mantissa_fmt}}\\times 10^{exponent}$"

@@ -13,16 +13,16 @@ parser.add_argument("-v", "--verbosity", type=str, default="INFO", choices=cmf.V
 args = parser.parse_args()
 
 
-SL = cmf.ScriptLogger("script", args.verbosity)
+SL = cmf.setup_logger("script", args.verbosity)
 
 
 ic_dirs = []
 ic_dirs.append(args.path)
 if args.extra_dirs:
     ic_dirs.extend(args.extra_dirs)
-    SL.logger.debug(f"Directories are: {ic_dirs}")
+    SL.debug(f"Directories are: {ic_dirs}")
     labels = cmf.general.get_unique_path_part(ic_dirs)
-    SL.logger.debug(f"Labels are: {labels}")
+    SL.debug(f"Labels are: {labels}")
 else:
     labels = [os.path.basename(args.path)]
 
@@ -40,7 +40,7 @@ for d, label in zip(ic_dirs, labels):
     ic_files = cmf.utils.get_files_in_dir(d, recursive=True)
     for f in ic_files:
         if "output" in f: continue
-        SL.logger.debug(f"Reading {f}")
+        SL.debug(f"Reading {f}")
         snap = pygad.Snapshot(f)
         for i, bhid in enumerate(snap.bh["ID"]):
             id_mask = pygad.IDMask(bhid)

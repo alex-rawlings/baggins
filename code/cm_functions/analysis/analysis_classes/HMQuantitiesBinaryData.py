@@ -5,7 +5,7 @@ from ...general import get_idx_in_array
 from ...env_config import _cmlogger
 
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 __all__ = ["HMQuantitiesBinaryData"]
 
@@ -171,11 +171,11 @@ class HMQuantitiesBinaryData(HMQuantitiesSingleData):
             idx = get_idx_in_array(val, vec)
             status = True
         except ValueError:
-            _logger.logger.warning(f"No data prior to merger! The requested semimajor axis value is {val}, semimajor_axis attribute is: {vec}. This run will not form part of the analysis.")
+            _logger.warning(f"No data prior to merger! The requested semimajor axis value is {val}, semimajor_axis attribute is: {vec}. This run will not form part of the analysis.")
             status = False
             idx = -9999
         except AssertionError:
-            _logger.logger.warning(f"Trying to search for value {val}, but an AssertionError was thrown. The array bounds are {min(vec)} - {max(vec)}. This run will not form part of the analysis.")
+            _logger.warning(f"Trying to search for value {val}, but an AssertionError was thrown. The array bounds are {min(vec)} - {max(vec)}. This run will not form part of the analysis.")
             status = False
             idx = -9999
         return status, idx

@@ -8,7 +8,7 @@ from ...env_config import _cmlogger
 
 __all__ = ["ChildSimData"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 class ChildSimData(BHBinaryData):
     def __init__(self) -> None:
@@ -317,7 +317,7 @@ class ChildSimData(BHBinaryData):
                         else:
                             ValueError(f"{kk}: Unkown type for unpacking!")
                         if verbose:
-                            _logger.logger.info(f" > Successfully loaded dataset {kk}")
+                            _logger.info(f" > Successfully loaded dataset {kk}")
         return C
     
     def _saver(self, g, l):

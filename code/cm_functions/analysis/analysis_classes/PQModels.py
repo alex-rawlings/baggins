@@ -6,7 +6,7 @@ from ...env_config import _cmlogger
 
 __all__ = ["PQModelSimple", "PQModelHierarchy"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 class _PQModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
@@ -34,15 +34,15 @@ class _PQModelBase(HierarchicalModel_2D):
             obs = {"t":[], "a":[], "e":[], "mass1":[], "mass2":[]}
             i = 0
             for f in dir:
-                _logger.logger.info(f"Loading file: {f}")
+                _logger.info(f"Loading file: {f}")
                 hmq = HMQuantitiesBinaryData.load_from_file(f)
                 try:
                     idx = hmq.get_idx_in_vec(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis)
                 except ValueError:
-                    _logger.logger.warning(f"No data prior to merger! The requested semimajor axis value is {np.nanmedian(hmq.hardening_radius)}, semimajor_axis attribute is: {hmq.semimajor_axis}. This run will not form part of the analysis.")
+                    _logger.warning(f"No data prior to merger! The requested semimajor axis value is {np.nanmedian(hmq.hardening_radius)}, semimajor_axis attribute is: {hmq.semimajor_axis}. This run will not form part of the analysis.")
                     continue
                 except AssertionError:
-                    _logger.logger.warning(f"Trying to search for value {np.nanmedian(hmq.hardening_radius)}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis)} - {max(hmq.semimajor_axis)}. This run will not form part of the analysis.")
+                    _logger.warning(f"Trying to search for value {np.nanmedian(hmq.hardening_radius)}, but an AssertionError was thrown. The array bounds are {min(hmq.semimajor_axis)} - {max(hmq.semimajor_axis)}. This run will not form part of the analysis.")
                     continue
                 
                 obs["t"].append(hmq.binary_time[idx:])

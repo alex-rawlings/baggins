@@ -11,7 +11,7 @@ parser.add_argument("-m", "--model", help="model to run", type=str, choices=["si
 parser.add_argument("-t", "--thin", type=int, help="thin data", dest="thin", default=None)
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", console_level=args.verbose)
+SL = cmf.setup_logger("script", console_level=args.verbose)
 
 full_figsize = cmf.plotting.get_figure_size(args.publish, full=True)
 
@@ -19,7 +19,7 @@ if args.type == "new":
     hmq_dir = args.dir
 else:
     hmq_dir = None
-SL.logger.debug(f"Input data read from {hmq_dir}")
+SL.debug(f"Input data read from {hmq_dir}")
 analysis_params = cmf.utils.read_parameters(args.apf)
 
 figname_base = f"hierarchical_models/binary/{args.sample}/"
@@ -33,7 +33,7 @@ if args.model == "simple":
         try:
             assert "simple" in args.dir
         except AssertionError:
-            SL.logger.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
+            SL.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
             raise
         kepler_model = cmf.analysis.KeplerModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
@@ -47,7 +47,7 @@ else:
         try:
             assert "hierarchy" in args.load_file
         except AssertionError:
-            SL.logger.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
+            SL.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
             raise
         kepler_model = cmf.analysis.KeplerModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base)
     else:
@@ -56,20 +56,20 @@ else:
 
 kepler_model.extract_data(analysis_params, hmq_dir)
 
-SL.logger.info(f"Number of simulations with usable data: {kepler_model.num_groups}")
+SL.info(f"Number of simulations with usable data: {kepler_model.num_groups}")
 try:
     assert kepler_model.num_groups >= analysis_params["stan"]["min_num_samples"]
 except AssertionError:
-    SL.logger.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {kepler_model.num_groups}!', exc_info=True)
+    SL.exception(f'There are not enough groups to form a valid hierarchical model. Minimum number of groups is {analysis_params["stan"]["min_num_samples"]}, and we have {kepler_model.num_groups}!', exc_info=True)
     raise
 
 # thin data
-SL.logger.debug(f"{kepler_model.num_obs} data points before thinning")
+SL.debug(f"{kepler_model.num_obs} data points before thinning")
 kepler_model.thin_observations(args.thin)
-SL.logger.debug(f"{kepler_model.num_obs} data points after thinning")
+SL.debug(f"{kepler_model.num_obs} data points after thinning")
 
-SL.logger.debug(f"Median semimajor axis per group: {[np.nanmedian(g) for g in kepler_model.obs['a']]}")
-SL.logger.debug(f"Median eccentricity per group: {[np.nanmedian(g) for g in kepler_model.obs['e']]}")
+SL.debug(f"Median semimajor axis per group: {[np.nanmedian(g) for g in kepler_model.obs['a']]}")
+SL.debug(f"Median eccentricity per group: {[np.nanmedian(g) for g in kepler_model.obs['e']]}")
 
 if args.verbose == "DEBUG":
     kepler_model.print_obs_summary()

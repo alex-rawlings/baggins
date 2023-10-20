@@ -23,7 +23,7 @@ parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="
 args = parser.parse_args()
 
 
-SL = cmf.ScriptLogger("script", args.verbose)
+SL = cmf.setup_logger("script", args.verbose)
 
 
 @dask.delayed
@@ -31,7 +31,7 @@ def dask_helper(s, r):
     """Helper function to parallelise axis ratio calculation over radial values"""
     mask = list(cmf.analysis.get_all_radial_masks(s, r, family=args.family).values())[0]
     if len(s[mask]) < 1000:
-        SL.logger.warning(f"Only {len(s[mask])} particles in {r}")
+        SL.warning(f"Only {len(s[mask])} particles in {r}")
         return (np.nan, np.nan)
     rats = cmf.analysis.get_galaxy_axis_ratios(s, bin_mask=mask, family=args.family)
     del mask
@@ -41,7 +41,7 @@ def dask_helper(s, r):
 def memory_helper():
     """Print the memory being used"""
     proc = psutil.Process()
-    SL.logger.debug(f"Total memory usage (GB): {proc.memory_info().rss/2**30:.3f}")
+    SL.debug(f"Total memory usage (GB): {proc.memory_info().rss/2**30:.3f}")
 
 
 if os.path.isfile(args.path) and os.path.splitext(args.path)[1] == ".pickle":
@@ -63,7 +63,7 @@ else:
             args.radii = np.geomspace(0.1, 6, N_rad)
         else:
             args.radii = np.geomspace(0.001, 0.1, N_rad)
-        SL.logger.info(f"Using a default radial scaling of Rvir*({args.radii[0]}-{args.radii[-1]} in {len(args.radii)}) bins")
+        SL.info(f"Using a default radial scaling of Rvir*({args.radii[0]}-{args.radii[-1]} in {len(args.radii)}) bins")
     else:
         N_rad = len(args.radii)
     if args.method == "shell": N_rad -= 1
@@ -77,7 +77,7 @@ else:
 
     # loop through all snapshots
     for i, snapfile in enumerate(snaplist):
-        SL.logger.info(f"Reading: {snapfile}")
+        SL.info(f"Reading: {snapfile}")
         memory_helper()
         snap = pygad.Snapshot(snapfile, physical=True)
         times[i] = cmf.general.convert_gadget_time(snap)
@@ -89,7 +89,7 @@ else:
 
         # determine radial binning method
         Rvir = pygad.analysis.virial_info(snap)[0]
-        SL.logger.debug(f"Virial radius: {Rvir:.2f}")
+        SL.debug(f"Virial radius: {Rvir:.2f}")
         radii = args.radii * Rvir
         if args.method == "shell":
             radii = list(zip(radii[:-1], radii[1:]))

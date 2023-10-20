@@ -15,5 +15,5 @@ from . import plotting
 from . import utils
 from . import visualisation
 
-from ._backend import ScriptLogger
+from ._backend import setup_logger
 

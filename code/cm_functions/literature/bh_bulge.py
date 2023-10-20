@@ -4,7 +4,7 @@ from ..env_config import _cmlogger
 __all__ = ["Haring04", "Magorrian98", "Sahu19", "Scott13"]
 
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 def Haring04(logMstar):
@@ -61,7 +61,7 @@ def Sahu19(logmstar, old_method=False):
         predicted log of bh mass [log(M/Msol)]
     """
     if old_method:
-        _logger.logger.warning(f"BH mass generated using an incorrect calculation in the scaling! This method should only be used to generate BH masses when consistency with previously-run simulations is desired!")
+        _logger.warning(f"BH mass generated using an incorrect calculation in the scaling! This method should only be used to generate BH masses when consistency with previously-run simulations is desired!")
         uval = 10**(-0.06 * (logmstar-10) - 0.06)
         return 1.27 * (logmstar - np.log10(uval * 5e10)) + 8.41
     else:

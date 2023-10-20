@@ -7,7 +7,7 @@ from ..env_config import _cmlogger
 
 __all__ = ["find_pericentre_time", "interpolate_particle_data", "get_bh_particles", "get_bound_binary", "get_binary_before_bound", "linear_fit_get_H", "linear_fit_get_K", "analytic_evolve_peters_quinlan", "determine_merger_timescale", "get_hard_timespan", "find_idxs_of_n_periods", "impact_parameter", "move_to_centre_of_mass", "deflection_angle", "first_major_deflection_angle"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 #common units
 myr = 1e6 * ketjugw.units.yr
@@ -115,7 +115,7 @@ def get_bh_particles(ketju_file, tol=1e-15):
         # series are in sync by construction, so no merger has occurred here
         # TODO is there a more robust way to ascertain if a merger has (not)
         # occurred that doesn't tie us to how Ketju data output occurs
-        _logger.logger.warning("Particle time series are not consistent with each other: linear interpolation will be performed")
+        _logger.warning("Particle time series are not consistent with each other: linear interpolation will be performed")
         t_arr = np.linspace(max(bh1.t[0], bh2.t[0]), min(bh1.t[-1], bh2.t[-1]), max(len1, len2))
         bh1interp = interpolate_particle_data(bh1, t_arr)
         bh2interp = interpolate_particle_data(bh2, t_arr)
@@ -159,7 +159,7 @@ def get_bound_binary(ketju_file, tol=1e-15):
     try:
         bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[0]
     except IndexError:
-        _logger.logger.exception("No binaries found!", exc_info=True)
+        _logger.exception("No binaries found!", exc_info=True)
         raise
     return bh1, bh2, merged
 
@@ -192,15 +192,15 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
         bound_state = "normal"
     except AssertionError:
         if np.all(energy_mask):
-            _logger.logger.warning("Binary system has not become bound! We will use all data from the BH particles.")
+            _logger.warning("Binary system has not become bound! We will use all data from the BH particles.")
             bound_idx = -1
             bound_state = "never"
         elif np.all(~energy_mask):
             bound_state = "always"
-            _logger.logger.exception("Binary system is never unbound!", exc_info=True)
+            _logger.exception("Binary system is never unbound!", exc_info=True)
             raise
         else:
-            _logger.logger.warning(f"Binary system is oscillating between bound and unbound, and data ends at an unbound point. We will use all data from the BH particles.")
+            _logger.warning(f"Binary system is oscillating between bound and unbound, and data ends at an unbound point. We will use all data from the BH particles.")
             bound_idx = -1
             bound_state = "oscillate"
     return bh1[:bound_idx], bh2[:bound_idx], bound_state
@@ -239,7 +239,7 @@ def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
     #error when t0+tspan==t[-1]
     if t0+tspan >= t[-1]:
         tfidx = -1
-        _logger.logger.warning("Analytical fit to binary evolution done to the end of the time data -> proceed with caution!")
+        _logger.warning("Analytical fit to binary evolution done to the end of the time data -> proceed with caution!")
     # assume dy/dt is a approx. linear
     popt, pcov = scipy.optimize.curve_fit(lambda x, a, b: a*x+b,
                                           t[t0idx:tfidx], y[t0idx:tfidx])
@@ -379,7 +379,7 @@ def determine_merger_timescale(a0, e0, t0, tf, m1, m2, HGp_s, K, atol=1e-3, N_or
     try:
         assert nrep > 0
     except AttributeError:
-        _logger.logger.exception(f"Number of search repetitions must be greater than 0!", exc_info=True)
+        _logger.exception(f"Number of search repetitions must be greater than 0!", exc_info=True)
         raise
     af = np.inf
     ef = np.inf
@@ -396,7 +396,7 @@ def determine_merger_timescale(a0, e0, t0, tf, m1, m2, HGp_s, K, atol=1e-3, N_or
     try:
         assert n < nrep
     except AssertionError:
-        _logger.logger.exception(f"Merger timescale has not converged: system has final a={af:.3e} and e={ef:.3e}", exc_info=True)
+        _logger.exception(f"Merger timescale has not converged: system has final a={af:.3e} and e={ef:.3e}", exc_info=True)
         raise
     return tp[-1] / units.Myr
 
@@ -467,7 +467,7 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1, max_iter=100, strict_
     """
     num_periods = int(num_periods)
     if num_periods%2 == 0:
-        _logger.logger.warning(f"Only odd values of <num_periods> implemented, we will search for {num_periods+1} periods.")
+        _logger.warning(f"Only odd values of <num_periods> implemented, we will search for {num_periods+1} periods.")
     end_idxs = [0,0]
     # find the index of the time we want in the time series
     idx = get_idx_in_array(tval, tarr)
@@ -482,14 +482,14 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1, max_iter=100, strict_
     while not found_peaks:
         idxs = np.r_[max(0, idx-10*multiplier):min(max_idx, idx+10*multiplier)]
         peaks = np.where(y[idxs]==2)[0]
-        _logger.logger.debug(f"Number of peaks: {len(peaks)}")
+        _logger.debug(f"Number of peaks: {len(peaks)}")
         if len(peaks) > 2*num_periods or iter_n == max_iter:
             if iter_n == max_iter:
-                _logger.logger.error(f"Maximum number of iterations ({max_iter}) reached, and only {int(len(peaks)/2)}/{num_periods} have been found!")
+                _logger.error(f"Maximum number of iterations ({max_iter}) reached, and only {int(len(peaks)/2)}/{num_periods} have been found!")
                 try:
                     assert not strict_mode
                 except AssertionError:
-                    _logger.logger.exception(f"Maximum iterations reached in determining orbital periods!", exc_info=True)
+                    _logger.exception(f"Maximum iterations reached in determining orbital periods!", exc_info=True)
                     raise
             # have the number of orbits we want, return indices
             found_peaks = True
@@ -502,9 +502,9 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1, max_iter=100, strict_
                 _idx0 = 0
                 try:
                     assert not strict_mode
-                    _logger.logger.warning(f"Not enough complete orbits before desired time! Number of orbits used will be truncated to {_idx1}")
+                    _logger.warning(f"Not enough complete orbits before desired time! Number of orbits used will be truncated to {_idx1}")
                 except AssertionError:
-                    _logger.logger.exception(f"Not enough complete orbits before desired time!", exc_info=True)
+                    _logger.exception(f"Not enough complete orbits before desired time!", exc_info=True)
                     raise
             else:
                 _idx1 = min(np.where(peaks_rel>=0, peaks_rel, np.inf).argmin()+num_periods//2, len(peaks_rel)-1)
@@ -513,7 +513,7 @@ def find_idxs_of_n_periods(tval, tarr, sep, num_periods=1, max_iter=100, strict_
             try:
                 assert end_idxs[0] < end_idxs[1]
             except AssertionError:
-                _logger.logger.exception(f"Period start index is greater than or equal to the period end index: {end_idxs}. An error has occurred in the calculation! Search mutlitplier was {multiplier}, central index was {idx}, and {len(peaks)} peaks have been identified.", 
+                _logger.exception(f"Period start index is greater than or equal to the period end index: {end_idxs}. An error has occurred in the calculation! Search mutlitplier was {multiplier}, central index was {idx}, and {len(peaks)} peaks have been identified.", 
                 exc_info=True)
                 raise
         else:
@@ -602,7 +602,7 @@ def deflection_angle(bh1, bh2, peri_idx=None):
     L = radial_separation(ketjugw.orbital_angular_momentum(bh1, bh2))
     E = ketjugw.orbital_energy(bh1, bh2)
     if peri_idx is None:
-        _logger.logger.warning(f"Determining pericentre times using default inputs to `find_pericentre_time()`")
+        _logger.warning(f"Determining pericentre times using default inputs to `find_pericentre_time()`")
         _, peri_idx = find_pericentre_time(bh1, bh2)
     return 2 * np.arctan(M[peri_idx] / (L[peri_idx] * np.sqrt(2*E[peri_idx])))
 
@@ -629,7 +629,7 @@ def first_major_deflection_angle(angles, threshold=np.pi/6):
         idx = np.argmax(angles > threshold)
         return angles[idx], idx
     else:
-        _logger.logger.warning(f"No deflection angles were greater than the threshold value of {threshold:.3f}! Largest is {np.max(angles):.3f}")
+        _logger.warning(f"No deflection angles were greater than the threshold value of {threshold:.3f}! Largest is {np.max(angles):.3f}")
         return np.nan, None
 
 

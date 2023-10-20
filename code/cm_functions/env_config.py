@@ -5,12 +5,12 @@ import subprocess
 import yaml
 from datetime import datetime
 from cmdstanpy import set_cmdstan_path
-from ._backend import InternalLogger
+from ._backend import setup_logger
 
 
 __all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "tmp_dir", "date_format", "figure_ext", "username", "git_hash", "_cmlogger"]
 
-
+# set up some aliases
 this_dir = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.path.expanduser("~")
 env_params_file = os.path.join(this_dir, "env_params.yml")
@@ -21,22 +21,26 @@ data_dir = user_params["data_dir"]
 tmp_dir = os.path.join(data_dir, user_params["tmp_dir"])
 date_format = user_params["date_format"]
 fig_ext = user_params["figure_ext"].lstrip(".")
+
+# set the stan path
 set_cmdstan_path(user_params["cmdstan"])
 
 
 username = home_dir.rstrip("/").split("/")[-1]
 
 # create the logger
-_cmlogger = InternalLogger("cm_funcs", user_params["logging"]["console_level"])
-if user_params["logging"]["file_level"] not in ["", " "]:
-    lf = f"{user_params['logging']['file'].rstrip('.log')}_{datetime.now():%Y-%m-%d}.log"
-    _cmlogger.add_file_handler(os.path.join(this_dir, lf), user_params["logging"]["file_level"])
+_cmlogger = setup_logger(
+                    name="cm_funcs", 
+                    console_level=user_params["logging"]["console_level"], 
+                    logfile=os.path.join(this_dir,user_params["logging"]["file"]), 
+                    file_level=user_params["logging"]["file_level"]
+                    )
 
 # ensure valid figure format
 try:
     assert fig_ext in ("pdf", "png")
 except AssertionError:
-    _cmlogger.logger.exception(f"Invalid figure format {fig_ext} given in env_params.yml! Reverting to default format: png")
+    _cmlogger.exception(f"Invalid figure format {fig_ext} given in env_params.yml! Reverting to default format: png")
     fig_ext = "png"
 
 # make the figure directory
@@ -57,7 +61,7 @@ if "collisionless-merger-sample" in os.getcwd():
     with open(env_params_file, "w") as f:
         yaml.safe_dump_all([user_params, internal_params], f, explicit_end=True, explicit_start=True)
 else:
-    _cmlogger.logger.warning("Operating outside the git repo. Git hash read from file.")
+    _cmlogger.warning("Operating outside the git repo. Git hash read from file.")
     git_hash = internal_params["git_hash"]
 
 

@@ -5,7 +5,7 @@ from ...env_config import _cmlogger
 __all__ = []
 
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 
@@ -202,11 +202,11 @@ class HMQuantitiesSingleData(HDF5Base):
             mass resolution
         """
         if "stars" not in self.particle_masses:
-            _logger.logger.error(f"Key 'stars' not present in 'particle_masses', trying 'dm' instead...")
+            _logger.error(f"Key 'stars' not present in 'particle_masses', trying 'dm' instead...")
             try:
                 field_part_mass = self.particle_masses["dm"]
             except KeyError:
-                _logger.logger.exception(f"Key 'dm' not present in 'particle_masses': need one of 'stars' or 'dm'!", exc_info=True)
+                _logger.exception(f"Key 'dm' not present in 'particle_masses': need one of 'stars' or 'dm'!", exc_info=True)
                 raise
         else:
             field_part_mass = self.particle_masses["stars"]

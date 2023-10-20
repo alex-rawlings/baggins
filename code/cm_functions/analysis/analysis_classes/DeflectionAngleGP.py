@@ -10,7 +10,7 @@ from ...utils import get_files_in_dir
 
 __all__ = ["DeflectionAngleGP"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 
@@ -59,31 +59,31 @@ class DeflectionAngleGP(HierarchicalModel_2D):
             else:
                 fnames = get_files_in_dir(d)
             for f in fnames:
-                _logger.logger.info(f"Loading file: {f}")
+                _logger.info(f"Loading file: {f}")
                 hmq = HMQuantitiesBinaryData.load_from_file(f)
                 # protect against instances where no data for bound binary
                 try:
                     hmq.hardening_radius
                 except AttributeError:
-                    _logger.logger.warning(f"No attribute `hardening_radius` for file {f}: skipping.")
+                    _logger.warning(f"No attribute `hardening_radius` for file {f}: skipping.")
                     continue
                 theta = first_major_deflection_angle(hmq.prebound_deflection_angles)[0]
                 if np.isnan(theta):
-                    _logger.logger.warning(f"No prebound deflection angles in file {f}: skipping.")
+                    _logger.warning(f"No prebound deflection angles in file {f}: skipping.")
                     continue
                 a = np.nanmedian(hmq.hardening_radius)
                 status, hard_idx = hmq.idx_finder(a, hmq.semimajor_axis)
                 if not status:
-                    _logger.logger.warning(f"No semimajor axis values correspond to hardening radius in file {f}: skipping.")
+                    _logger.warning(f"No semimajor axis values correspond to hardening radius in file {f}: skipping.")
                     continue
                 t_target = hmq.binary_time[hard_idx]
-                _logger.logger.debug(f"Target time: {t_target} Myr")
+                _logger.debug(f"Target time: {t_target} Myr")
                 try:
                     target_idx, delta_idxs = find_idxs_of_n_periods(t_target, hmq.binary_time, hmq.binary_separation, num_periods=pars["bh_binary"]["num_orbital_periods"])
                 except IndexError:
-                    _logger.logger.warning(f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis.")
+                    _logger.warning(f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis.")
                     continue
-                _logger.logger.debug(f"For observation {self._input_data_file_count} found target time between indices {delta_idxs[0]} and {delta_idxs[1]}")
+                _logger.debug(f"For observation {self._input_data_file_count} found target time between indices {delta_idxs[0]} and {delta_idxs[1]}")
                 period_idxs = np.r_[delta_idxs[0]:delta_idxs[1]]
                 obs["theta"].append([theta])
                 obs["a"].append([a])
@@ -98,7 +98,7 @@ class DeflectionAngleGP(HierarchicalModel_2D):
                         try:
                             assert np.abs(hmq.initial_galaxy_orbit[k] - v)/v < tol
                         except AssertionError:
-                            _logger.logger.exception(f"File {f} has an inconsistent merger orbit! Value of {k} is {hmq.initial_galaxy_orbit[k]}, should be {v}!", exc_info=True)
+                            _logger.exception(f"File {f} has an inconsistent merger orbit! Value of {k} is {hmq.initial_galaxy_orbit[k]}, should be {v}!", exc_info=True)
                             raise
                 if not self._loaded_from_file:
                     self._add_input_data_file(f)
@@ -119,7 +119,7 @@ class DeflectionAngleGP(HierarchicalModel_2D):
         try:
             assert self.num_OOS is not None
         except AssertionError:
-            _logger.logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
+            _logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
             raise
         self.stan_data = dict(
             N2 = self.num_OOS,

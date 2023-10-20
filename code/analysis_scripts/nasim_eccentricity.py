@@ -18,7 +18,7 @@ parser.add_argument("-c", "--cut", type=float, help="eccentricity cut in std.dev
 parser.add_argument("-v", "--verbosity", type=str, default="INFO", choices=cmf.VERBOSITY, dest="verbosity", help="set verbosity level")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", args.verbosity)
+SL = cmf.setup_logger("script", args.verbosity)
 
 if args.publish:
     cmf.plotting.set_publishing_style()
@@ -30,7 +30,7 @@ hmq_dirs = []
 hmq_dirs.append(args.path)
 if args.extra_dirs:
     hmq_dirs.extend(args.extra_dirs)
-    SL.logger.debug(f"Directories are: {hmq_dirs}")
+    SL.debug(f"Directories are: {hmq_dirs}")
 
 # read in the analysis parameters
 analysis_params = cmf.utils.read_parameters(args.apf)
@@ -44,7 +44,7 @@ suite_count = 0
 
 
 for d in hmq_dirs:
-    SL.logger.debug(f"Reading from directory: {d}")
+    SL.debug(f"Reading from directory: {d}")
     # we can hack into the Kepler HM classes to extract the data
     HMQ_files = cmf.utils.get_files_in_dir(d)
     km = cmf.analysis.KeplerModelHierarchy("", "", "")
@@ -58,14 +58,14 @@ for d in hmq_dirs:
     try:
         assert np.allclose(np.diff(np.concatenate(km.obs["e_ini"])), np.zeros(km.num_groups-1))
     except AssertionError:
-        SL.logger.exception(f"All simulations within a suite must have the same initial eccentricity!", exc_info=True)
+        SL.exception(f"All simulations within a suite must have the same initial eccentricity!", exc_info=True)
         raise
     e_ini.append(km.obs["e_ini"][0])
     min_bh_mass = min(min(km.obs["mass1"]), min(km.obs["mass2"]))
     try:
         assert np.allclose(np.diff(np.concatenate(km.obs["star_mass"])), np.zeros(km.num_groups-1))
     except AssertionError:
-        SL.logger.exception(f"Non-unique stellar masses! A fair comparison cannot be made. Stellar masses are {km.obs['star_mass']}", exc_info=True)
+        SL.exception(f"Non-unique stellar masses! A fair comparison cannot be made. Stellar masses are {km.obs['star_mass']}", exc_info=True)
         raise
     mass_res.append(min_bh_mass/km.obs["star_mass"][0])
     suite_count += 1
@@ -77,7 +77,7 @@ if args.groups == "e":
     try:
         assert np.allclose(np.diff(mass_res), np.zeros(suite_count-1))
     except AssertionError:
-        SL.logger.exception(f"Mass resolution must be constant when varying initial eccentricity!", exc_info=True)
+        SL.exception(f"Mass resolution must be constant when varying initial eccentricity!", exc_info=True)
         raise
     x = e_ini
     fig_prefix = f"res-{mass_res[0]:.1e}"
@@ -85,7 +85,7 @@ else:
     try:
         assert np.allclose(np.diff(e_ini), np.zeros(suite_count-1))
     except AssertionError:
-        SL.logger.exception(f"Initial eccentricity must be constant when varying mass resolution!", exc_info=True)
+        SL.exception(f"Initial eccentricity must be constant when varying mass resolution!", exc_info=True)
         raise
     x = mass_res
     fig_prefix = f"e0-{e_ini[0]:.3f}"

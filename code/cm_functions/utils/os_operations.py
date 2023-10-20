@@ -4,7 +4,7 @@ import atexit
 from ..env_config import _cmlogger, tmp_dir
 
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 __all__ = ["get_cpu_count"]
@@ -30,4 +30,4 @@ def clean_up():
     if os.path.exists(tmp_dir):
         # delete directory
         shutil.rmtree(tmp_dir)
-        _logger.logger.warning(f"Deleted temporary directory {tmp_dir}")
+        _logger.warning(f"Deleted temporary directory {tmp_dir}")

@@ -18,7 +18,7 @@ parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", args.verbose)
+SL = cmf.setup_logger("script", args.verbose)
 
 full_figsize = cmf.plotting.get_figure_size(args.publish)
 
@@ -37,7 +37,7 @@ if args.model == "simple":
         try:
             assert "simple" in args.load_file
         except AssertionError:
-            SL.logger.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
+            SL.exception(f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
             raise
         pq_model = cmf.analysis.PQModelSimple.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:
@@ -51,7 +51,7 @@ else:
         try:
             assert "hierarchy" in args.load_file
         except AssertionError:
-            SL.logger.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
+            SL.exception(f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
             raise
         pq_model = cmf.analysis.PQModelHierarchy.load_fit(model_file=stan_model_file, fit_files=args.load_file, figname_base=figname_base)
     else:

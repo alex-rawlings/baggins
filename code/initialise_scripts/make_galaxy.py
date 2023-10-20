@@ -13,7 +13,7 @@ parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="
 args = parser.parse_args()
 
 
-SL = cmf.ScriptLogger("script", console_level=args.verbose)
+SL = cmf.setup_logger("script", console_level=args.verbose)
 rng = np.random.default_rng()
 
 if args.batch == 1:
@@ -29,14 +29,14 @@ else:
     try:
         assert args.batch < len(suffixes)
     except AssertionError:
-        SL.logger.exception(f"Can create a maximum of 26 galaxy ICs, {len(suffixes)} is too great!", exc_info=True)
+        SL.exception(f"Can create a maximum of 26 galaxy ICs, {len(suffixes)} is too great!", exc_info=True)
         raise
     for s in suffixes[:args.batch]:
         # create a new parameter file for each realisation
         try:
             new_filename = cmf.utils.create_file_copy(args.pf, suffix=f"_{s}", exist_ok=False)
         except AssertionError:
-            SL.logger.warning(f"Model realisation {s} already exists, skipping...")
+            SL.warning(f"Model realisation {s} already exists, skipping...")
             continue
         with open(new_filename, "r+") as f:
             contents = f.read()
@@ -47,17 +47,17 @@ else:
                 try:
                     assert isinstance(v, (str, int, np.int64, np.int32))
                 except AssertionError:
-                    SL.logger.exception(f"Only datatypes 'str' and 'int'-like are supported, not type {type(v)}", exc_info=True)
+                    SL.exception(f"Only datatypes 'str' and 'int'-like are supported, not type {type(v)}", exc_info=True)
                     raise
                 contents, sc = re.subn(f"{k}.*", f"{k} {str(v)}", contents, flags=re.MULTILINE)
                 try:
                     assert sc == 1
                 except AssertionError:
-                    SL.logger.exception(f"Parameter '{k}' not updated properly! {sc} replacements were made!", exc_info=True)
+                    SL.exception(f"Parameter '{k}' not updated properly! {sc} replacements were made!", exc_info=True)
                     raise
             # overwrite copied parameter file
             cmf.utils.overwrite_parameter_file(f, contents)
-        SL.logger.warning(f"File {new_filename} created")
+        SL.warning(f"File {new_filename} created")
         # generate the galaxy
         galaxy = cmf.initialise.GalaxyIC(parameter_file=new_filename, sahu_legacy=args.bh_legacy)
         plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])

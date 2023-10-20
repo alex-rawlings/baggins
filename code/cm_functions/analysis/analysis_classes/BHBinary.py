@@ -18,7 +18,7 @@ from ...env_config import date_format, username, _cmlogger
 
 __all__ = ["myr", "BHBinary"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 myr = ketjugw.units.yr * 1e6
 hubble_time = 13800
@@ -58,12 +58,12 @@ class BHBinary(BHBinaryData):
         try:
             assert os.path.isdir(data_path)
         except AssertionError:
-            _logger.logger.exception("The data path does not exist!", exc_info=True)
+            _logger.exception("The data path does not exist!", exc_info=True)
             raise
         try:
             self.bhfile = get_ketjubhs_in_dir(data_path)[0]
         except IndexError:
-            _logger.logger.exception("No ketju_bhs.hdf5 file!", exc_info=True)
+            _logger.exception("No ketju_bhs.hdf5 file!", exc_info=True)
             raise
         self.snaplist = get_snapshots_in_dir(data_path)
         self.gr_safe_radius = self.analysis_pars["bh_binary"]["target_semimajor_axis"]["value"]
@@ -169,7 +169,7 @@ class BHBinary(BHBinaryData):
             #eccentricity at time of bound radius
             self.r_hard_ecc = self._get_ecc_for_idx(self.r_hard_time_idx)
         except ValueError:
-            _logger.logger.warning("r_hard_time_idx not valid -> setting to 0")
+            _logger.warning("r_hard_time_idx not valid -> setting to 0")
             self.r_hard_time_idx = 0
 
         #index where semimajor axis is more than X pc
@@ -203,9 +203,9 @@ class BHBinary(BHBinaryData):
         except ValueError:
             #when the radius is reached is not covered by the data
             if r > self.orbit_params["a_R"][0] / ketjugw.units.pc:
-                _logger.logger.warning(f"Time of {desc} cannot be estimated from the data, as it occurs before the binary is bound! This point will be omitted from further analysis and plots.")
+                _logger.warning(f"Time of {desc} cannot be estimated from the data, as it occurs before the binary is bound! This point will be omitted from further analysis and plots.")
             elif r < self.orbit_params["a_R"][-1] / ketjugw.units.pc:
-                _logger.logger.warnings(f"Time of {desc} cannot be estimated from the data, as it occurs after the last available data point! This point will be omitted from further analysis and plots.")
+                _logger.warnings(f"Time of {desc} cannot be estimated from the data, as it occurs after the last available data point! This point will be omitted from further analysis and plots.")
             else:
                 raise ValueError(f"{desc} cannot be determined")
             return np.nan

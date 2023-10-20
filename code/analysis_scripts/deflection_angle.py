@@ -17,7 +17,7 @@ parser.add_argument("-sd", "--save-data", dest="save_data", type=str, default=No
 parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbosity", default="INFO", help="verbosity level")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script", args.verbosity)
+SL = cmf.setup_logger("script", args.verbosity)
 
 if args.publish:
     cmf.plotting.set_publishing_style()
@@ -26,16 +26,16 @@ try:
     assert args.angle >=0 and args.angle <= 180
     angle_defl = args.angle * np.pi / 180
 except AssertionError:
-    SL.logger.exception(f"Deflection angle must be in range 0<t<180!", exc_info=True)
+    SL.exception(f"Deflection angle must be in range 0<t<180!", exc_info=True)
     raise
 
 data_dirs = []
 data_dirs.append(args.path)
 if args.extra_dirs:
     data_dirs.extend(args.extra_dirs)
-    SL.logger.debug(f"Directories are: {data_dirs}")
+    SL.debug(f"Directories are: {data_dirs}")
     labels = cmf.general.get_unique_path_part(data_dirs)
-    SL.logger.debug(f"Labels are: {labels}")
+    SL.debug(f"Labels are: {labels}")
 else:
     labels = [""]
 
@@ -63,7 +63,7 @@ ax[0].set_title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
 
 
 for j, datdir in enumerate(data_dirs):
-    SL.logger.info(f"Reading from directory: {datdir}")
+    SL.info(f"Reading from directory: {datdir}")
     HMQfiles = cmf.utils.get_files_in_dir(datdir)
     N = len(HMQfiles)
 
@@ -75,7 +75,7 @@ for j, datdir in enumerate(data_dirs):
 
     # loop through each bh file in the directory
     for i, HMQfile in enumerate(HMQfiles):
-        SL.logger.debug(f"Reading file: {HMQfile}")
+        SL.debug(f"Reading file: {HMQfile}")
         hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(HMQfile)
         if i==0:
             if args.label == "e":
@@ -91,16 +91,16 @@ for j, datdir in enumerate(data_dirs):
 
         thetas[i], theta_idx = cmf.analysis.first_major_deflection_angle(hmq.prebound_deflection_angles, angle_defl)
         if theta_idx is None:
-            SL.logger.warning(f"No hard scattering in file {i}, skipping")
+            SL.warning(f"No hard scattering in file {i}, skipping")
             continue
         
         # determine the eccentricity
         try:
             _, period_idxs = cmf.analysis.find_idxs_of_n_periods(np.nanmedian(hmq.hardening_radius), hmq.semimajor_axis, hmq.binary_separation, num_periods=args.orbits)
         except AssertionError:
-            SL.logger.error(f"Unable to determine hardening radius for file {i}, skipping...")
+            SL.error(f"Unable to determine hardening radius for file {i}, skipping...")
             continue
-        SL.logger.debug(f"Period idxs: {period_idxs}")
+        SL.debug(f"Period idxs: {period_idxs}")
         m, iqr = cmf.mathematics.quantiles_relative_to_median(hmq.eccentricity[period_idxs[0]:period_idxs[1]])
         median_eccs[i] = m
         iqr_eccs[0,i], iqr_eccs[1,i] = iqr
@@ -128,7 +128,7 @@ now = datetime.now().strftime("%Y%m%d_%H%M%S")
 if args.save:
     cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"deflection_angles/deflection_angles_{now}.png"))
 else:
-    SL.logger.warning("Figure will not be saved!")
+    SL.warning("Figure will not be saved!")
 
 # save the data if desired
 if args.save_data:
@@ -136,7 +136,7 @@ if args.save_data:
         dat_len = [len(v) for v in data.values() if isinstance(v, list)]
         assert np.allclose(np.diff(dat_len), np.zeros(len(dat_len)-1))
     except AssertionError:
-        SL.logger.exception(f"Data must have equal length arrays, but has lengths {dat_len}!", exc_info=True)
+        SL.exception(f"Data must have equal length arrays, but has lengths {dat_len}!", exc_info=True)
         raise
     cmf.utils.save_data(data, os.path.join(args.save_data, f"deflection_angles_{now}.pickle"))
 

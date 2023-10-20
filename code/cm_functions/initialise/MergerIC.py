@@ -16,7 +16,7 @@ from ..analysis.masks import *
 
 __all__ = ["MergerIC"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class MergerIC:
@@ -94,11 +94,11 @@ class MergerIC:
         snapfile = self.snaplist[self._calc_quants["perturb_snap_idx"]]
         snap = pygad.Snapshot(snapfile, physical=True)
         bhsep = pygad.utils.geo.dist(snap.bh["pos"][0,:], snap.bh["pos"][1,:])
-        _logger.logger.info(f"BH separation when perturbed: {bhsep[0]:.2f} {bhsep.units}")
+        _logger.info(f"BH separation when perturbed: {bhsep[0]:.2f} {bhsep.units}")
         try:
             assert  bhsep > ppars["perturb_bhs"]["perturb_position"]["value"]
         except AssertionError:
-            _logger.logger.exception(f"BH separation {bhsep[0]:.2f} is less than the perturbation scale {ppars['perturb_bhs']['perturb_position']['value']:.2f}!", exc_info=True)
+            _logger.exception(f"BH separation {bhsep[0]:.2f} is less than the perturbation scale {ppars['perturb_bhs']['perturb_position']['value']:.2f}!", exc_info=True)
             raise
         return snapfile
 
@@ -129,7 +129,7 @@ class MergerIC:
         # determine mass radius "fudge" factor
         if oppars["mass_radius_fac"] is None:
             oppars["mass_radius_fac"] = 0.5
-            _logger.logger.warning(f"Setting merger `mass_radius_fac` to default value of {oppars['mass_radius_fac']}")
+            _logger.warning(f"Setting merger `mass_radius_fac` to default value of {oppars['mass_radius_fac']}")
         
         self._calc_quants["virial_radius_large"] = _get_virial_radius()
 
@@ -137,7 +137,7 @@ class MergerIC:
         try:
             assert oppars["r0"]["unit"] in ("virial", "kpc")
         except AssertionError:
-            _logger.logger.exception(f"Initial separation unit {oppars['r0']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
+            _logger.exception(f"Initial separation unit {oppars['r0']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
             raise
         if oppars["r0"]["unit"] == "virial":
             self._calc_quants["r0_physical"] = self._calc_quants["virial_radius_large"] * oppars["r0"]["value"]
@@ -149,7 +149,7 @@ class MergerIC:
             try:
                 assert oppars["rperi"]["unit"] in ("virial", "kpc")
             except AssertionError:
-                _logger.logger.exception(f"Pericentre distance unit {oppars['rperi']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
+                _logger.exception(f"Pericentre distance unit {oppars['rperi']['unit']} not allowed! Must be one of ['kpc', 'virial']", exc_info=True)
                 raise
             if oppars["rperi"]["unit"] == "virial":
                 self._calc_quants["rperi_physical"] = self._calc_quants["virial_radius_large"] * oppars["rperi"]["value"]
@@ -161,9 +161,9 @@ class MergerIC:
                 assert oppars["a0"]["unit"] in ("virial", "kpc")
                 assert oppars["e0"] is not None
             except AssertionError:
-                _logger.logger.exception(f"'a0' (in units of virial or kpc) and 'e0' must be specified if 'rperi' is not!", exc_info=True)
+                _logger.exception(f"'a0' (in units of virial or kpc) and 'e0' must be specified if 'rperi' is not!", exc_info=True)
                 raise
-            _logger.logger.info("Determining 'rperi' from initial semimajor axis and eccentricity")
+            _logger.info("Determining 'rperi' from initial semimajor axis and eccentricity")
             if oppars["a0"]["unit"] == "virial":
                 self._calc_quants["rperi_physical"] = self._calc_quants["virial_radius_large"] * oppars["a0"]["value"] * (1-oppars["e0"])
             else:
@@ -177,7 +177,7 @@ class MergerIC:
                 try:
                     assert len(mstar) == 1
                 except AssertionError:
-                    _logger.logger.exception(f"Non-unique stellar particle mass! {len(mstar)} masses present!", exc_info=True)
+                    _logger.exception(f"Non-unique stellar particle mass! {len(mstar)} masses present!", exc_info=True)
                     raise
                 mbh = min(f["/PartType5/Masses"][:])
                 mass_resolution.append(mbh/mstar[0])
@@ -185,7 +185,7 @@ class MergerIC:
 
         # determine eccentricity
         if oppars["e0"] is None:
-            _logger.logger.info(f"Initial orbital eccentricity set from pericentre distance")
+            _logger.info(f"Initial orbital eccentricity set from pericentre distance")
             self._calc_quants["e0"] = e_from_rperi(self._calc_quants["rperi_physical"] / self._calc_quants["virial_radius_large"])
         else:
             self._calc_quants["e0"] = oppars["e0"]
@@ -200,18 +200,18 @@ class MergerIC:
         try:
             assert not os.path.exists(file_name)
         except AssertionError:
-            _logger.logger.exception(f"File {file_name} already exists!", exc_info=True)
+            _logger.exception(f"File {file_name} already exists!", exc_info=True)
             raise
         mg.write_hdf5_ic_file(filename=file_name, system=merger, save_plots=False, center_CoM=self.parameters["general"]["recentre_merger_to_com"])
-        _logger.logger.info(f"Merger IC file written to {file_name}")
+        _logger.info(f"Merger IC file written to {file_name}")
         # copy parameter file to simulation directory
         shutil.copyfile(self.paramfile, os.path.join(self.save_location, os.path.basename(self.paramfile)))
         # save parameters
         self.write_calculated_parameters()
         # print some velocity information about merger
-        _logger.logger.info("Initial merger velocities")
+        _logger.info("Initial merger velocities")
         for k in ("tangential", "radial"):
-            _logger.logger.info(f"- {k}: {merger.initial_velocities[k]:.3f} km/s")
+            _logger.info(f"- {k}: {merger.initial_velocities[k]:.3f} km/s")
 
 
     def create_perturbation_directories(self, file_to_copy, paramfile="paramfile"):
@@ -230,7 +230,7 @@ class MergerIC:
         perturb_dir = os.path.join(self.save_location, self.parameters["file_locations"]["perturb_sub_dir"])
         os.makedirs(perturb_dir, exist_ok=self.exist_ok)
         for i in range(ppars["number_perturbs"]):
-            _logger.logger.info(f"Setting up child directory: {i}")
+            _logger.info(f"Setting up child directory: {i}")
             child_dir = os.path.join(perturb_dir, f"{i:03d}")
             os.makedirs(os.path.join(child_dir, "output"), exist_ok=self.exist_ok)
             shutil.copyfile(os.path.join(self.save_location, paramfile), os.path.join(child_dir, paramfile))
@@ -257,7 +257,7 @@ class MergerIC:
                 for param, val in params.items():
                     line = re.search(r"^\b{}\b.*".format(param), contents, flags=re.MULTILINE)
                     if line is None:
-                        _logger.logger.warning(f"Parameter {param} not in file! Parameter will not be updated.")
+                        _logger.warning(f"Parameter {param} not in file! Parameter will not be updated.")
                         continue
                     if "%" in line.group(0):
                         comment = "  %" + "%".join(line.group(0).split("%")[1:])
@@ -291,11 +291,11 @@ class MergerIC:
         for i, (child_dir, ic_name) in enumerate(zip(self.perturb_directories, self._ic_file_names)):
             # edit BH coordinates
             fname = os.path.join(child_dir, f"{ic_name}.hdf5")
-            _logger.logger.debug(f"Perturbing file: {fname}")
+            _logger.debug(f"Perturbing file: {fname}")
             snap = pygad.Snapshot(fname, physical=True)
             for bhid in star_id_masks.keys():
                 bhid_mask = bhid==snap.bh["ID"]
-                _logger.logger.debug(f"Before perturb BH {bhid} has:\n position: {snap.bh['pos'][bhid_mask]}\n velocity: {snap.bh['vel'][bhid_mask]}")
+                _logger.debug(f"Before perturb BH {bhid} has:\n position: {snap.bh['pos'][bhid_mask]}\n velocity: {snap.bh['vel'][bhid_mask]}")
                 snap.bh["pos"][bhid_mask] = pygad.UnitArr(
                                 np.atleast_2d(
                                 self.rng.normal(
@@ -309,7 +309,7 @@ class MergerIC:
                                     ppars["perturb_bhs"]["perturb_velocity"]["value"])),
                                 units=snap["vel"].units
                                 )
-                _logger.logger.debug(f"After perturb BH {bhid} has:\n position: {snap.bh['pos'][bhid_mask]}\n velocity: {snap.bh['vel'][bhid_mask]}")
+                _logger.debug(f"After perturb BH {bhid} has:\n position: {snap.bh['pos'][bhid_mask]}\n velocity: {snap.bh['vel'][bhid_mask]}")
             snap.write(fname, overwrite=True, gformat=3, double_prec=True)
             # add file names to update
             update_pars = ppars["gadget_parameters_to_update"]
@@ -324,7 +324,7 @@ class MergerIC:
             
         #add new parameters to file
         self.write_calculated_parameters()
-        _logger.logger.info("All child directories made.")
+        _logger.info("All child directories made.")
     
 
     def perturb_field_particle(self):
@@ -336,7 +336,7 @@ class MergerIC:
         family = self.parameters["perturb_properties"]["perturb_field_particles"]["family"]
         PartTypes = {"stars":"PartType4", "dm":"PartType1"}
         snapfile = self.find_snapfile_to_perturb()
-        _logger.logger.info(f"IC file: {snapfile}")
+        _logger.info(f"IC file: {snapfile}")
         assert radial_lims[0] < radial_lims[1]
         assert isinstance(perturbation, list) and len(perturbation)==3
         # set up children directories and ICs
@@ -357,21 +357,21 @@ class MergerIC:
                 try:
                     assert np.sum(mask) > 0
                 except AssertionError:
-                    _logger.logger.exception(f"There are no field particles of type {family} in the radial range {radial_lims[0]} - {radial_lims[1]}! Try expanding the radial range.", exc_info=True)
+                    _logger.exception(f"There are no field particles of type {family} in the radial range {radial_lims[0]} - {radial_lims[1]}! Try expanding the radial range.", exc_info=True)
                     raise
 
                 selected_part_idx = self.rng.choice(np.arange(pos.shape[0])[mask])
-                _logger.logger.info(f"Selected {family} ID: {f[f'/{PartTypes[family]}/ParticleIDs'][selected_part_idx]}")
-                _logger.logger.debug("Distance to SMBHs: ")
-                _logger.logger.debug(f"  SMBH 1: {r1[selected_part_idx]}")
-                _logger.logger.debug(f"  SMBH 2: {r2[selected_part_idx]}")
-                _logger.logger.debug("Before perturbing: ")
-                _logger.logger.debug(f[f"/{PartTypes[family]}/Coordinates"][selected_part_idx,:])
+                _logger.info(f"Selected {family} ID: {f[f'/{PartTypes[family]}/ParticleIDs'][selected_part_idx]}")
+                _logger.debug("Distance to SMBHs: ")
+                _logger.debug(f"  SMBH 1: {r1[selected_part_idx]}")
+                _logger.debug(f"  SMBH 2: {r2[selected_part_idx]}")
+                _logger.debug("Before perturbing: ")
+                _logger.debug(f[f"/{PartTypes[family]}/Coordinates"][selected_part_idx,:])
                 f[f"/{PartTypes[family]}/Coordinates"][selected_part_idx,:] += perturbation
 
             with h5py.File(this_snapfile, "r") as f:
-                _logger.logger.debug("After perturbing: ")
-                _logger.logger.debug(f[f"/{PartTypes[family]}/Coordinates"][selected_part_idx,:])
+                _logger.debug("After perturbing: ")
+                _logger.debug(f[f"/{PartTypes[family]}/Coordinates"][selected_part_idx,:])
             
             update_pars = {"InitCondFile": ic_name, "SnapshotFileBase": ic_name}
             gadget_file = os.path.join(child_dir, "paramfile")

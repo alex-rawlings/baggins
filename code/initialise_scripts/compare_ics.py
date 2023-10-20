@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description="Visually compare galaxy ICs", allo
 parser.add_argument(type=str, help="path to comparison parameter file", dest="path")
 args = parser.parse_args()
 
-SL = cmf.ScriptLogger("script_log", console_level="INFO")
+SL = cmf.setup_logger("script_log", console_level="INFO")
 marker_kwargs = {"zorder":10, "edgecolor":"k", "linewidth":0.5}
 
 #read in literature data
@@ -70,7 +70,7 @@ with open(args.path, "r") as f:
     gal_dict = json.load(f)
 
 for lab, gal_params in gal_dict["galaxies"].items():
-    SL.logger.info(f"Reading from {gal_params}")
+    SL.info(f"Reading from {gal_params}")
     galaxy = cmf.initialise.GalaxyIC(parameter_file=gal_params)
     ax1.scatter(galaxy.stars.log_total_mass, galaxy.bh.log_mass, marker=("o" if galaxy.parameters.stellarCored else "s"), label=lab, **marker_kwargs)
     ax2.scatter(np.log10(galaxy.parameters.LOS_vel_dispersion), galaxy.bh.log_mass, **marker_kwargs)

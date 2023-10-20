@@ -9,14 +9,14 @@ parser.add_argument("-d", "--dir", type=str, action="append", default=[], dest="
 args = parser.parse_args()
 
 
-SL = cmf.ScriptLogger("script", args.verbose)
+SL = cmf.setup_logger("script", args.verbose)
 
 if args.type == "new":
     hmq_dirs = []
     hmq_dirs.append(args.dir)
     if args.extra_dirs:
         hmq_dirs.extend(args.extra_dirs)
-        SL.logger.debug(f"Directories are: {hmq_dirs}")
+        SL.debug(f"Directories are: {hmq_dirs}")
 else:
     hmq_dirs = None
 analysis_params = cmf.utils.read_parameters(args.apf)

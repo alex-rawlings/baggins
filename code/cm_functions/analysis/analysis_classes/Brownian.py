@@ -16,7 +16,7 @@ from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 
 __all__ = ["Brownian"]
 
-_logger = _cmlogger.copy(__file__)
+_logger = _cmlogger.getChild(__name__)
 
 
 class Brownian(BrownianData):
@@ -29,7 +29,7 @@ class Brownian(BrownianData):
         try:
             assert len(kf) == 1
         except AssertionError:
-            _logger.logger.exception(f"Multiple Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantitiesBinary object.")
+            _logger.exception(f"Multiple Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantitiesBinary object.")
             raise
         self.ketju_file = kf[0]
         bh_dict = dict(

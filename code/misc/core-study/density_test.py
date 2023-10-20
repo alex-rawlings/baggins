@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 import cm_functions as cmf
 
+SL = cmf.setup_logger("script", "INFO")
 
 if False:
     # extract
@@ -59,7 +60,7 @@ class ModelBase:
     def fit(self):
         self.popt, *_ = scipy.optimize.curve_fit(self.f, vk, rb)
         self.r2 = r2_score(rb, self.f(vk, *self.popt))
-        print(f"{self.name} model: {self.r2:.3f}")
+        SL.info(f"{self.name} model: {self.r2:.3f}")
 
     def plot(self, v, ax, **kwargs):
         ax.plot(v, self.f(v, *self.popt), label=f"{self.name}: r2={self.r2:.3f}", **kwargs)
@@ -84,5 +85,5 @@ ax.plot(vk, rb, marker="o", ls="", mew=0.5, mec="k", ms=10, zorder=1)
 for m in [Linear, Power, Combined, Nasim, Poly4, Rayleigh]:
     m.plot(vkseq, ax, zorder=0.5)
 plt.legend()
-cmf.plotting.savefig("vk-rb.png")
+#cmf.plotting.savefig("vk-rb.png")
 plt.show()
