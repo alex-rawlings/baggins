@@ -4,6 +4,7 @@ import re
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+import arviz as az
 from arviz.labels import MapLabeller
 from . import HierarchicalModel_2D, FactorModel_2D
 from . import HMQuantitiesBinaryData, HMQuantitiesSingleData
@@ -86,7 +87,8 @@ class _GrahamModelBase(HierarchicalModel_2D):
             if not status: continue
             r = get_histogram_bin_centres(hmq.radial_edges)
             obs["R"].append(r)
-            obs["proj_density"].append(list(hmq.projected_mass_density.values())[idx])
+            # TODO undo this testing edit
+            obs["proj_density"].append(list(hmq.projected_mass_density.values())[idx][:3,:])
             # get median escape velocity within some radius
             vesc = np.nanmedian(list(hmq.escape_velocity.values())[idx][hmq.radial_edges < 1])
             obs["vkick"].append([hmq.merger_remnant['kick']/vesc])
@@ -399,22 +401,10 @@ class GrahamModelHierarchy(_GrahamModelBase):
 
 class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
     def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+        self._num_GQ_factors
+        self._num_GQ_contexts
         _GrahamModelBase.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
         FactorModel_2D.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
-        '''self._hyper_qtys = ["r_b_mean", "r_b_std", 
-                            "Re_mean", "Re_std", 
-                            "log10_I_b_mean", "log10_I_b_std", 
-                            "g_mean", "g_std", 
-                            "n_mean", "n_std", 
-                            "a_mean", "a_std",
-                            "rb_mean", "rb_std"]
-        self._hyper_qtys_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
-                                r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", 
-                                r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", 
-                                r"$\mu_{g}$", r"$\sigma_{g}$", 
-                                r"$\mu_{n}$", r"$\sigma_{n}$", 
-                                r"$\mu_{a}$", r"$\sigma_{a}$",
-                                r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$"]'''
         self._hyper_qtys = ["log10densb_mean", "log10densb_std",
                             "g_lam",
                             "rb_sig",
@@ -482,6 +472,13 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
         self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys], "group"))
         self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._hyper_qtys], "groupH"))
+        fig, ax = plt.subplots(4,5,sharex="all",sharey="all")
+        FactorModel_2D._plot_predictive(self, "R", "log10_surf_rho_prior", state="pred", ax=ax)
+        ax[-1,-1].set_xscale("log")
+        for axi in ax[-1,:]: axi.set_xlabel("R/kpc")
+        for axi in ax[:,0]: axi.set_ylabel(self._folded_qtys_labs[0])
+        plt.show()
+        quit()
         # hyper prior corner plot
         ax1 = self.parameter_corner_plot(self._hyper_qtys, figsize=figsize, labeller=self._labeller_hyper, combine_dims={"groupH"})
         fig1 = ax1[0,0].get_figure()

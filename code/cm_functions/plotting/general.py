@@ -70,6 +70,8 @@ def create_normed_colours(vmin, vmax, cmap="cividis", norm="Normalize", norm_kwa
         matplotlib.color attribute for normalisation
     norm_kwargs: dict, optional
         additional keyword arguments for normalisation initialisation
+    trunc: tuple, optional
+        values to truncate colour map to, by default (None, None)
 
     Returns
     -------

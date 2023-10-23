@@ -7,7 +7,7 @@ class CustomLogger(logging.Logger):
     """
     Custom logger class to override some methods
     """
-    def __init__(self, name: str, level = 0) -> None:
+    def __init__(self, name: str, level=0) -> None:
         super().__init__(name, level)
 
 
@@ -25,7 +25,9 @@ class CustomLogger(logging.Logger):
         CustomLogger
             child logger
         """
-        return super().getChild(suffix.replace("cm_functions.", ""))
+        suffix = suffix.replace("cm_functions.", "")
+        suffix = suffix.replace("analysis_classes.", "")
+        return super().getChild(suffix)
 
 
     def setLevel(self, level) -> None:
@@ -42,14 +44,15 @@ class CustomLogger(logging.Logger):
         ValueError
             if invalid level given
         """
-        level = level.upper()
-        if level not in ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-            raise ValueError(f"Logging level <{level}> invalid!")
+        if isinstance(level, str):
+            level = level.upper()
+            if level not in ["NOTSET", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+                raise ValueError(f"Logging level <{level}> invalid!")
         super().setLevel(level)
 
 
 
-def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNING", capture_warnings=True) -> logging.Logger:
+def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNING", capture_warnings=True) -> CustomLogger:
     """
     Set up a logger instance
 
@@ -68,7 +71,7 @@ def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNIN
 
     Returns
     -------
-    logging.Logger
+    CustomLogger
         logger
     """
     logging.setLoggerClass(CustomLogger)
@@ -85,8 +88,7 @@ def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNIN
 
     # add a file handler if desired
     if logfile is not None:
-        file_handler = logging.handlers.TimedRotatingFileHandler(logfile, when="D", interval=1, backupCount=10)
-        file_handler.doRollover()
+        file_handler = logging.handlers.TimedRotatingFileHandler(logfile, when="midnight", interval=1, backupCount=10)
         file_handler.setLevel(file_level)
         file_handler.setFormatter(ffmt)
         log.addHandler(file_handler)

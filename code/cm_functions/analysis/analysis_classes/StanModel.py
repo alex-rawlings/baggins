@@ -3,7 +3,7 @@ import os
 from operator import itemgetter
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import rcParams, collections, patches
+from matplotlib import rcParams, collections, patches, ticker
 from datetime import datetime
 import cmdstanpy
 import arviz as az
@@ -51,7 +51,6 @@ class _StanModel(ABC):
         self._fit_for_az = None
         self._prior_model = None
         self._prior_fit = None
-        self._prior_fit_for_az = None
         self._parameter_diagnostic_plots_counter = 0
         self._gq_distribution_plot_counter = 0
         self._group_par_counter = 0
@@ -493,7 +492,7 @@ class _StanModel(ABC):
         self._num_OOS = n[0]
 
 
-    def _sampler(self, prior=False, sample_kwargs={}):
+    def _sampler(self, prior=False, sample_kwargs={}, diagnose=True):
         """
         Sample a stan model
 
@@ -503,6 +502,8 @@ class _StanModel(ABC):
             run sampler for prior model, by default False
         sample_kwargs : dict, optional
             kwargs to be passed to CmdStanModel.sample(), by default {}
+        diagnose : bool, optional
+            diagnose the fit (should always be done), by default True
 
         Returns
         -------
@@ -535,9 +536,12 @@ class _StanModel(ABC):
                 self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.info(f"Sampling completed in {datetime.now()-start_time}")
             _logger.debug(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
-            self._sample_diagnosis = fit.diagnose()
-            _logger.info(f"\n{fit.summary(sig_figs=4)}")
-            _logger.info(f"\n{self.sample_diagnosis}")
+            if diagnose:
+                self._sample_diagnosis = fit.diagnose()
+                _logger.info(f"\n{fit.summary(sig_figs=4)}")
+                _logger.info(f"\n{self.sample_diagnosis}")
+            else:
+                _logger.warning("No diagnosis will be done on fit!")
             return fit
 
 
@@ -562,7 +566,7 @@ class _StanModel(ABC):
 
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}):
+    def sample_model(self, sample_kwargs={}, diagnose=True):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
 
@@ -572,15 +576,17 @@ class _StanModel(ABC):
             stan data values
         sample_kwargs : dict, optional
              kwargs to be passed to CmdStanModel.sample(), by default {}
+        diagnose : bool, optional
+            diagnose the fit (should always be done), by default True
         """
         if self._model is None and not self._loaded_from_file:
             self.build_model()
-        self._fit = self._sampler(sample_kwargs=sample_kwargs)
+        self._fit = self._sampler(sample_kwargs=sample_kwargs, diagnose=diagnose)
         # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
 
 
-    def sample_prior(self, sample_kwargs={}):
+    def sample_prior(self, sample_kwargs={}, diagnose=True):
         """
         Wrapper function around _sampler() to sample a stan prior model.
 
@@ -590,11 +596,13 @@ class _StanModel(ABC):
             stan data values
         sample_kwargs : dict, optional
             kwargs to be passed to CmdStanModel.sample(), by default {}
+        diagnose : bool, optional
+            diagnose the fit (should always be done), by default True
         """
         if self._prior_model is None and not self._loaded_from_file:
             self.build_model(prior=True)
-        self._prior_fit = self._sampler(sample_kwargs=sample_kwargs, prior=True)
-        self._prior_fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
+        self._prior_fit = self._sampler(sample_kwargs=sample_kwargs, prior=True, diagnose=diagnose)
+        self._fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
 
 
     def _get_GQ_indices(self, state, collapsed=False):
@@ -703,23 +711,21 @@ class _StanModel(ABC):
         # occurred: combining dimensions changes the length of boolean mask 
         # "diverging_mask" in arviz --> index mismatch error
         divergences = True if combine_dims is None else False
-        if self._fit_for_az is None:
-            data = self._prior_fit_for_az
+        if "prior" in self._fit_for_az.groups():
             group = "prior"
             divergences = False
         else:
-            data = self._fit_for_az
             group = "posterior"
         num_vars = len(var_names)
         with az.rc_context({"plot.max_subplots":num_vars**2-np.sum(np.arange(num_vars))+1}):
             # first lay down the markers
-            ax = az.plot_pair(data, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+            ax = az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
             # then add the KDE
             try:
-                az.plot_pair(data, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+                az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
             except ValueError:
                 _logger.error(f"HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults")
-                az.plot_pair(data, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+                az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
         return ax
 
 
@@ -784,36 +790,64 @@ class _StanModel(ABC):
         self._parameter_diagnostic_plots_counter += 1
 
 
-    def group_parameter_plot(self, var_names, figsize=None, labeller=None, levels=None):
-        # TODO add labeller to axis
+    def group_parameter_plot(self, var_names, figsize=None, levels=None, xlabel="Factor", ylabels=None):
+        """
+        Plot group parameter variation as a sequence of shaded regions.
+
+        Parameters
+        ----------
+        var_names : list
+            variable names to plot
+        figsize : tuple, optional
+            figure size, by default None
+        levels : list, optional
+            HDI intervals to plot, by default None
+        xlabel : str, optional
+            x axis label, by default "Factor"
+        ylabels : list, optional
+            y axis labels, by default None
+        """
+        num_vars = len(var_names)
         if figsize is None:
-            max_dim = max(rcParams["figure.figsize"])
-            figsize = (max_dim, max_dim)
+            figsize = (6,num_vars)
         if levels is None:
             levels = self._default_hdi_levels
         levels = [l/100 for l in levels]
-        az_group = "posterior" if self._fit_for_az is not None else "prior"
-        cmapper, sm = create_normed_colours(-0.1, 0.5)
+        levels.sort(reverse=True)
+        az_group = "prior"
+        cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.3, cmap="Blues_r", trunc=(None, max(levels)))
+        fig, ax = plt.subplots(num_vars,1, sharex="all", figsize=figsize)
+        ax[-1].set_xlabel(xlabel)
         # loop through variables
-        p = []
         for i, v in enumerate(var_names):
             # loop through HDI levels
-            for l in levels:
-                hdi = az.hdi(self._fit_for_az[az_group][v], l, skipna=True)
-                r = patches.Rectangle(
-                    (i-0.5, hdi[0]),
-                    1, hdi[1] - hdi[0],
-                    fc = cmapper(0.5*(1-l)),
-                    alpha = 0.7
-                )
-                p.append(r)
-        fig, ax  =plt.subplots(1,1)
-        ax.add_collection(collections.PatchCollection(p))
-        ax.autoscale_view()
+            for j, level in enumerate(levels):
+                p = []
+                hdi = az.hdi(fit[az_group].get(v), hdi_prob=level, skipna=True)
+                try:
+                    lower = hdi[0]
+                    upper = hdi[1]
+                except KeyError:
+                    lower = hdi[v][:,0]
+                    upper = hdi[v][:,1]
+                # loop through each group
+                for k, (l,u) in enumerate(zip(lower, upper)):
+                    r = patches.Rectangle((k-0.5, l), 1, u - l)
+                    p.append(r)
+                ax[i].add_collection(collections.PatchCollection(p, fc=cmapper(level)))
+            ax[i].autoscale_view()
+            for j in range(len(lower)-1): ax[i].axvline(j+0.5, c="k", alpha=0.4, lw=0.5)
+            if ylabels is not None:
+                ax[i].set_ylabel(ylabels[i])
+        ax[-1].xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        ax[-1].set_xlim(-0.5, len(lower)-0.5)
+        for i, axi in enumerate(ax):
+            if i==num_vars-1: break
+            axi.tick_params(axis="x", which="both", bottom=False)
+        plt.colorbar(sm, label="HDI", location="top", ax=ax[0])
         savefig(self._make_fig_name(self.figname_base, f"group_par_{self._group_par_counter}"), fig=fig)
         plt.close(fig)
         self._group_par_counter += 1
-
 
 
     @abstractmethod
@@ -892,10 +926,8 @@ class _StanModel(ABC):
             variables in the CmdStanMCMC object to print
         """
         quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
-        if self._fit_for_az is None:
-            qvals = self._prior_fit_for_az["prior"][vars].quantile(quantiles).to_dataframe()
-        else:
-            qvals = self._fit_for_az["posterior"][vars].quantile(quantiles).to_dataframe()
+        group = "prior" if "prior" in self._fit_for_az.groups() else "posterior"
+        qvals = self._fit_for_az[group][vars].quantile(quantiles).to_dataframe()
         vars = vars.copy()
         vars.insert(0, "Variable")
         max_str_len = max([len(v) for v in vars]) + 1
@@ -930,16 +962,14 @@ class _StanModel(ABC):
     def rename_dimensions(self, dim_map):
         """
         Rename dimensions of arviz InferenceData object
+        TODO: is it worth keeping this method?
 
         Parameters
         ----------
         dim_map : dict
             mapping of old dimension names to new names
         """
-        if self._fit_for_az is not None:
-            self._fit_for_az.rename_dims(dim_map, inplace=True)
-        else:
-            self._prior_fit_for_az.rename_dims(dim_map, inplace=True)
+        self._fit_for_az.rename_dims(dim_map, inplace=True)
 
 
     def _expand_dimension(self, varnames, dim):
@@ -958,14 +988,9 @@ class _StanModel(ABC):
         except AssertionError:
             _logger.exception(f"Expanding variables requires first arugment to be a list or tuple, not {type(varnames)}", exc_info=True)
             raise
-        if self._fit is None:
-            _fit = self._prior_fit_for_az
-            type_str = "prior"
-        else:
-            _fit = self._fit_for_az
-            type_str = "posterior"
+        group = "prior" if "prior" in self._fit_for_az.groups() else "posterior"
         for k in varnames:
-            _fit[type_str][k] = _fit[type_str][k].expand_dims({dim:np.arange(_fit[type_str].dims[dim])}, axis=-1)
+            self._fit_for_az[group][k] = self._fit_for_az[group][k].expand_dims({dim:np.arange(self._fit_for_az[group].dims[dim])}, axis=-1)
 
 
     @classmethod
@@ -1310,9 +1335,42 @@ class FactorModel_2D(_StanModel):
             levels = self._default_hdi_levels
         levels.sort(reverse=True)
         if ax is None:
-            fig, ax = plt.subplots(1,1)
+            fig, ax = plt.subplots(self.num_groups,1, sharex="all", sharey="all")
         else:
-            fig = ax.get_figure()
-        idxs = self._get_GQ_indices(state)
+            ax = ax.flatten()
+            fig = ax[0].get_figure()
+        idxs = self._get_GQ_indices(state, collapsed=collapsed)
+        print(idxs.shape)
         ys = self.sample_generated_quantity(ymodel, state=state)
-        print(ys)
+        print(ys.shape)
+        obs_to_factor = np.full(self.num_obs_collapsed, 0)
+        for i in range(self.num_obs_collapsed):
+            obs_to_factor[i] = self.stan_data["factor_idx"][self.stan_data["context_idx"][i]-1]-1
+        for i in range(self.num_groups):
+            _logger.info(f"Creating HDI predictive for factor {i}")
+            mask = obs_to_factor == i
+            _ys = ys[:,mask]
+            cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", norm="LogNorm")
+            for l in levels:
+                _logger.debug(f"Fitting level {l}")
+                label = f"{l}% HDI" if i==0 else ""
+                # TODO will this indexing work for GQ values in posterior pred?
+                az.plot_hdi(self.stan_data[xmodel][...,mask], _ys, hdi_prob=l/100, ax=ax[i], plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":label, "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
+        if xobs is not None and yobs is not None:
+            # overlay data
+            obs = self.obs_collapsed if collapsed else self.obs
+            if self._num_groups < 2:
+                self._plot_obs_data_kwargs["cmap"] = "Set1"
+            if yobs_err is None:
+                ax.scatter(obs[xobs], obs[yobs], c=obs["label"], **self._plot_obs_data_kwargs)
+            else:
+                colvals = np.unique(obs["label"])
+                ncols = len(colvals)
+                cmapper, sm = create_normed_colours(np.min(colvals), np.max(colvals), cmap=self._plot_obs_data_kwargs["cmap"])
+                for i, c in enumerate(colvals):
+                    col = cmapper(c)
+                    mask = obs["label"]==c
+                    ax.errorbar(obs[xobs][mask], obs[yobs][mask], yerr=obs[yobs_err][mask], c=col, zorder=20, fmt=".", label=("Sims." if i==ncols-1 else ""))
+        if show_legend:
+            ax[0].legend()
+        return ax

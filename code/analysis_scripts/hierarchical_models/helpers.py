@@ -32,7 +32,7 @@ def stan_model_selector(args, model_class, model_file, prior_file, fig_base, L):
         try:
             assert args.model in args.dir
         except AssertionError:
-            L.logger.exception(f"Using model '{args.model}', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
+            L.exception(f"Using model '{args.model}', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!", exc_info=True)
             raise
         return model_class.load_fit(model_file=model_file, fit_files=args.dir, figname_base=fig_base)
     else:

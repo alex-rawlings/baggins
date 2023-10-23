@@ -60,7 +60,7 @@ graham_model.set_stan_data()
 
 if args.prior:
     # create the push-forward distribution for the prior model
-    graham_model.sample_prior(sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
+    graham_model.sample_prior(sample_kwargs=analysis_params["stan"]["density_sample_kwargs"], diagnose=False)
 
     # prior predictive check
     graham_model.all_prior_plots(full_figsize)
