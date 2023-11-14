@@ -19,8 +19,8 @@ _logger = _cmlogger.getChild(__name__)
 
 
 class _GrahamModelBase(HierarchicalModel_2D):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
         self._folded_qtys = ["log10_surf_rho"]
         self._folded_qtys_labs = [r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
@@ -87,8 +87,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
             if not status: continue
             r = get_histogram_bin_centres(hmq.radial_edges)
             obs["R"].append(r)
-            # TODO undo this testing edit
-            obs["proj_density"].append(list(hmq.projected_mass_density.values())[idx][:3,:])
+            obs["proj_density"].append(list(hmq.projected_mass_density.values())[idx])
             # get median escape velocity within some radius
             vesc = np.nanmedian(list(hmq.escape_velocity.values())[idx][hmq.radial_edges < 1])
             obs["vkick"].append([hmq.merger_remnant['kick']/vesc])
@@ -106,22 +105,17 @@ class _GrahamModelBase(HierarchicalModel_2D):
         self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
 
 
+    @abstractmethod
     def _set_stan_data_OOS(self):
         """
-        Set the out-of-sample Stan data variables
+        Set the out-of-sample Stan data variables. 
+        Each derived class will need its own implementation, however all will
+        require knowledge of the minimum and maximum radius to model: let's 
+        do that here.
         """
-        try:
-            assert self.num_OOS is not None
-        except AssertionError:
-            _logger.exception(f"num_OOS cannot be None when setting Stan data!", exc_info=True)
-            raise
-        self.stan_data["N_OOS"] = self.num_OOS
-        self.stan_data["group_id_OOS"] = self._rng.integers(1, self.num_groups, size=self.num_OOS, endpoint=True)
-        self.stan_data["R_OOS"] = np.linspace(
-                            np.max([R[0] for R in self.obs["R"]]),
-                            np.min([R[-1] for R in self.obs["R"]]),
-                            self.num_OOS
-        )
+        rmin = np.max([R[0] for R in self.obs["R"]])
+        rmax = np.min([R[-1] for R in self.obs["R"]])
+        return rmin, rmax
 
 
     @abstractmethod
@@ -130,7 +124,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
         Set the Stan data dictionary used for sampling.
         """
         self.stan_data = dict(
-            N_tot = self.num_obs,
+            N_tot = self.num_obs_collapsed,
             N_groups = self.num_groups,
             group_id = self.obs_collapsed["label"],
             R = self.obs_collapsed["R"],
@@ -213,8 +207,8 @@ class _GrahamModelBase(HierarchicalModel_2D):
 
 
 class GrahamModelSimple(_GrahamModelBase):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
         self.figname_base = f"{self.figname_base}-simple"
 
 
@@ -228,6 +222,11 @@ class GrahamModelSimple(_GrahamModelBase):
         self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
         self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
         self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-simple")
+
+
+    def _set_stan_data_OOS(self):
+        raise NotImplementedError
+        return super()._set_stan_data_OOS()
 
 
     def set_stan_data(self):
@@ -283,8 +282,8 @@ class GrahamModelSimple(_GrahamModelBase):
 
 
 class GrahamModelHierarchy(_GrahamModelBase):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
         self._hyper_qtys = ["r_b_mean", "r_b_std", 
                             "Re_mean", "Re_std", 
                             "log10_I_b_mean", "log10_I_b_std", 
@@ -310,6 +309,11 @@ class GrahamModelHierarchy(_GrahamModelBase):
         self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
         self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
         self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-hierarchy")
+
+
+    def _set_stan_data_OOS(self):
+        raise NotImplementedError
+        return super()._set_stan_data_OOS()
 
 
     def set_stan_data(self):
@@ -400,11 +404,9 @@ class GrahamModelHierarchy(_GrahamModelBase):
 
 
 class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        self._num_GQ_factors
-        self._num_GQ_contexts
-        _GrahamModelBase.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
-        FactorModel_2D.__init__(self, model_file, prior_file, figname_base, num_OOS, rng)
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        _GrahamModelBase.__init__(self, model_file, prior_file, figname_base, rng)
+        FactorModel_2D.__init__(self, model_file, prior_file, figname_base, rng)
         self._hyper_qtys = ["log10densb_mean", "log10densb_std",
                             "g_lam",
                             "rb_sig",
@@ -434,18 +436,40 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
         self.collapse_observations(["R", "log10_R", "proj_density", "log10_proj_density", "log10_proj_density_mean", "log10_proj_density_std"])
 
 
-    def _set_stan_data_OOS_Kick(self):
-        _GrahamModelBase._set_stan_data_OOS(self)
-        """
-        See docs for `_GrahamModelBase._set_stan_data_OOS()"
-        """
-        self.stan_data["context_idx_OOS"] = self.stan_data.pop("group_id_OOS")
-        self.stan_data["factor_idx_OOS"] = np.arange(self.stan_data["N_contexts"])+1 #self._rng.integers(1, self.stan_data["N_contexts"], size=self.num_OOS, endpoint=True)
+    def _set_stan_data_OOS(self, nfactors=None, ncontexts=None):
+        if nfactors is None:
+            nfactors = 2 * self.num_groups
+            _logger.info(f"Using {nfactors} number of GQ factors")
+        if ncontexts is None:
+            ncontexts = 2 * self.stan_data["N_contexts"]
+            _logger.info(f"Using {ncontexts} number of GQ contexts")
+        rmin, rmax = super()._set_stan_data_OOS()
+        r_count = max([len(rs) for rs in self.obs["R"]])
+        rs = np.geomspace(rmin, rmax, r_count)
+        self._num_OOS = ncontexts * r_count
+        self.stan_data.update(dict(
+            N_factors_OOS = nfactors,
+            N_contexts_OOS = ncontexts,
+            N_OOS = self.num_OOS,
+            R_OOS = np.tile(rs, ncontexts),
+            context_idx_OOS = np.repeat(np.arange(1, ncontexts+1), r_count),
+            factor_idx_OOS = self._rng.integers(1, nfactors+1, size=ncontexts)
+        ))
 
 
-    def set_stan_data(self):
+
+    def set_stan_data(self, nfactors=None, ncontexts=None):
         """
-        See docs for `_GrahamModelBase.set_stan_data()"
+        Set the Stan data dictionary used for sampling. Setting the parameters
+        to None will double the respective parameters relative to the observed
+        values.
+
+        Parameters
+        ----------
+        nfactors : int, optional
+            number of generated quantity factors, by default None
+        ncontexts : int, optional
+            number of generated quantity contexts, by default None
         """
         self.stan_data = dict(
             N_tot = self.num_obs_collapsed,
@@ -455,18 +479,12 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
             N_contexts = sum([x.shape[0] for x in self.obs["proj_density"]])
         )
         self._set_factor_context_idxs("proj_density")
-        self.stan_data.update(dict(
-            vkick_normed = np.concatenate(self.obs["vkick"]),
-            rb_0 = self.rb_0
-        ))
         if not self._loaded_from_file:
-            self._set_stan_data_OOS_Kick()
+            self._set_stan_data_OOS(nfactors=nfactors, ncontexts=ncontexts)
 
 
     def sample_model(self, sample_kwargs={}):
         _GrahamModelBase.sample_model(self, sample_kwargs)
-        if self._loaded_from_file:
-            self._set_stan_data_OOS_Kick()
 
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
@@ -477,8 +495,7 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
         ax[-1,-1].set_xscale("log")
         for axi in ax[-1,:]: axi.set_xlabel("R/kpc")
         for axi in ax[:,0]: axi.set_ylabel(self._folded_qtys_labs[0])
-        plt.show()
-        quit()
+
         # hyper prior corner plot
         ax1 = self.parameter_corner_plot(self._hyper_qtys, figsize=figsize, labeller=self._labeller_hyper, combine_dims={"groupH"})
         fig1 = ax1[0,0].get_figure()

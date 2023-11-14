@@ -37,4 +37,4 @@ def stan_model_selector(args, model_class, model_file, prior_file, fig_base, L):
         return model_class.load_fit(model_file=model_file, fit_files=args.dir, figname_base=fig_base)
     else:
         # sample
-        return model_class(model_file=model_file, prior_file=prior_file, figname_base=fig_base, num_OOS=args.NOOS)
+        return model_class(model_file=model_file, prior_file=prior_file, figname_base=fig_base)

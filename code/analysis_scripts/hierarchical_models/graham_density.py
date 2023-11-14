@@ -17,9 +17,9 @@ full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=
 
 if args.type == "new":
     hmq_dir = args.dir
+    SL.debug(f"Input data read from {hmq_dir}")
 else:
     hmq_dir = None
-SL.debug(f"Input data read from {hmq_dir}")
 analysis_params = cmf.utils.read_parameters(args.apf)
 
 figname_base = f"hierarchical_models/density/"

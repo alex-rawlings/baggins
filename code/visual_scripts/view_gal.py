@@ -19,14 +19,15 @@ SL = cmf.setup_logger("script", args.verbosity)
 if args.snapview:
     #load the snapshot
     SL.info("Reading from a user-defined snapshot...")
-    snap = pygad.Snapshot(args.paramFile)
+    snap = pygad.Snapshot(args.paramFile, physical=True)
 else:
     #get the parameter file
     SL.info("Reading from a parameter file...")
     pfv = cmf.utils.read_parameters(args.paramFile)
-    fig_loc = pfv.saveLocation + '/' + pfv.galaxyName + '/' + pfv.figureLocation
-    snap = pygad.Snapshot(pfv.saveLocation + '/' + pfv.galaxyName + '/' + pfv.galaxyName + '.hdf5')
-snap.to_physical_units()
+    fig_loc = os.path.join(pfv.saveLocation, pfv.galaxyName, pfv.figureLocation)
+    snap = pygad.Snapshot(os.path.join(pfv.saveLocation, pfv.galaxyName, f"{pfv.galaxyName}.hdf5"), physical=True)
+
+SL.debug(f"Available families for this snapshot: {snap.families()}")
 
 if args.orientate is not None:
     if args.orientate == "ri":
@@ -40,10 +41,7 @@ extent = dict(
     stars = {"xz":args.starextent, "xy":args.starextent},
     dm = {"xz":args.haloextent, "xy":args.haloextent}
 )
-fig, ax = cmf.plotting.plot_galaxies_with_pygad(snap, extent=extent, orientate=orientate_snap)
-for i in range(2):
-    ax[i,0].scatter(snap.bh["pos"][:,0], snap.bh["pos"][:,2], c="w")
-    ax[i,1].scatter(snap.bh["pos"][:,0], snap.bh["pos"][:,1], c="w")
+fig, ax = cmf.plotting.plot_galaxies_with_pygad(snap, extent=extent, orientate=orientate_snap, overplot_bhs=True)
 if not args.snapview:
     cmf.plotting.savefig(os.path.join(fig_loc, pfv.galaxyName))
 if args.view:

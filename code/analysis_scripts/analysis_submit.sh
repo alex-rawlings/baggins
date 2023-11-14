@@ -1,9 +1,9 @@
 #!/bin/bash -l
 #SBATCH --job-name=HMQ
 #SBATCH --account=pjohanss
-#SBATCH --ntasks-per-node=16
-#SBATCH --time=168:00:00
-#SBATCH --partition=interactive
+#SBATCH --ntasks-per-node=128
+#SBATCH --time=36:00:00
+#SBATCH --partition=medium
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=alexander.rawlings@helsinki.fi
 

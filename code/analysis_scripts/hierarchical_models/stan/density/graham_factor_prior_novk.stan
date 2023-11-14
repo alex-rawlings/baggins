@@ -22,11 +22,6 @@ data {
     int<lower=1> N_factors;
     // indexing of contexts to factor level
     array[N_contexts] int<lower=1> factor_idx;
-
-    // progenitor break radius
-    real<lower=0> rb_0;
-    // kick velocity magnitudes normalised to escape velocity
-    array[N_factors] real<lower=0, upper=2> vkick_normed;
 }
 
 
@@ -43,6 +38,7 @@ generated quantities {
     real n_std_hyp2 = lower_trunc_normal_rng(0, 0.1, 0);
     real a_hyp = rayleigh_rng(10);
     real Re_hyp = rayleigh_rng(10);
+    real err_hyp = lower_trunc_normal_rng(0, 0.01, 0);
 
     // parameters for each factor level
     array[N_factors] real log10densb_mean;
@@ -76,7 +72,7 @@ generated quantities {
         n_std[i] = trunc_normal_rng(0, n_std_hyp2, 0, 15);
         a_sig[i] = rayleigh_rng(a_hyp);
         Re_sig[i] = rayleigh_rng(Re_hyp);
-        err[i] = lower_trunc_normal_rng(0, 0.1, 0);
+        err[i] = lower_trunc_normal_rng(0, err_hyp, 0);
     }
 
     // context level quantities

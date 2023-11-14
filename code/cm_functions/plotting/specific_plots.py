@@ -16,7 +16,7 @@ __all__ = ["plot_galaxies_with_pygad", "binary_param_plot", "twin_axes_from_samp
 _logger = _cmlogger.getChild(__name__)
 
 
-def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None, extent=None, kwargs=None, append_kwargs=False, black_background=True):
+def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, ax=None, extent=None, kwargs=None, overplot_bhs=False):
     """
     Convenience routine for plotting a system with pygad, both stars and DM
 
@@ -31,18 +31,16 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
         an arbitrary vector, the angular momentum "L", or the semiminor axis of 
         the reduced intertia tensor "red I". If used, a shallow copy of the 
         snapshot is created, by default None
-    figax : list, optional
-        list of [fig, ax] from plt.subplots(), by default None
+    ax : matplotlib.axes.Axes, optional
+        axis to plot to, by default None (creates new instance)
     extent : dict, optional
-        dict of dicts with extent values with top-layer keys "stars" and "dm", 
+        dict of dicts with extent values with top-layer keys "stars", "dm", "gas", 
         and second-layer keys "xz" and "xy",  e.g. extent["stars"]["xz"] = 100, 
         by default None
     kwargs : dict, optional
         other keyword arguments for the pygad plotting routine, by default None
-    append_kwargs : bool, optional
-        append given kwargs to default kwargs, by default False
-    black_background : bool, optional
-        set background colour to black, by default False
+    overplot_bhs : bool, optional
+        plot BHs with a white point, by default False
 
     Returns
     -------
@@ -53,40 +51,35 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, figax=None,
     ims : list, optional
         list of images from pygad plotting routine
     """
+    fams = [pt for pt in ("stars", "dm", "gas") if pt in snap.families()]
     if orientate is not None:
         snap = copy.copy(snap)
+        snap.to_physical_units()
         pygad.analysis.orientate_at(snap, orientate)
-    if extent is None:
-        extent = {"stars":{"xz":None, "xy":None}, "dm":{"xz":None, "xy":None}}
+    _extent = {"stars":{"xz":None, "xy":None}, "dm":{"xz":None, "xy":None}, "gas":{"xz":None, "xy":None}}
+    if _extent is not None: _extent.update(extent)
     default_kwargs = {"scaleind":"labels", "cbartitle":"", "Npx":800, 
                       "qty":"mass", "fontsize":10}
     if kwargs is None:
         kwargs = default_kwargs
-    elif kwargs is not None and append_kwargs:
-        kwargs = {**default_kwargs, **kwargs} #append some extra kwargs
-    if figax is None:
-        fig, ax = plt.subplots(2,2, figsize=(6, 6))
     else:
-        fig, ax = figax[0], figax[1]
+        kwargs = {**default_kwargs, **kwargs} #append some extra kwargs
+    if ax is None:
+        fig, ax = plt.subplots(2,len(fams), figsize=(3*len(fams), 6), sharex="col", squeeze=False)
+    else:
+        fig = ax.get_figure()
     ims = []
     time = convert_gadget_time(snap, new_unit="Myr")
-    fig.suptitle("Time: {:.1f} Myr".format(time))
-    ax[0,0].set_title("Stars")
-    ax[0,1].set_title("DM Halo")
-    for i, proj in enumerate(("xz", "xy")):
-        try:
-            _,ax[i,0], imstars,*_ = pygad.plotting.image(snap.stars, xaxis=0, yaxis=2-i, extent=extent["stars"][proj], ax=ax[i,0], **kwargs)
-            ims.append(imstars)
-        except RuntimeError:
-            _logger.error("No stars in snapshot!")
-        try:
-            _,ax[i,1], imdm,*_ = pygad.plotting.image(snap.dm, xaxis=0, yaxis=2-i, extent=extent["dm"][proj], ax=ax[i,1], **kwargs)
-            ims.append(imdm)
-        except RuntimeError:
-            _logger.error("No DM in snapshot!")
-    if black_background:
-        _logger.debug("Setting black background")
-        for axi in np.concatenate(ax): axi.set_facecolor("k")
+    fig.suptitle(f"Time: {time:.1f} Myr")
+    for i, pt in enumerate(fams):
+        _logger.info(f"Plotting {pt}")
+        ax[0,i].set_title(pt)
+        for j, proj in enumerate(("xz", "xy")):
+            _, ax[j,i], im, *_ = pygad.plotting.image(getattr(snap, pt), xaxis=0, yaxis=2-j, extent=_extent[pt][proj], ax=ax[j,i], **kwargs)
+            ims.append(im)
+            if overplot_bhs:
+                ax[j,i].scatter(snap.bh["pos"][:,0], snap.bh["pos"][:,2-j], c="w")
+    for axi in np.concatenate(ax): axi.set_facecolor("k")
     if return_ims:
         return fig, ax, ims
     else:

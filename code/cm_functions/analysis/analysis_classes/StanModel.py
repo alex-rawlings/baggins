@@ -19,7 +19,7 @@ _logger = _cmlogger.getChild(__name__)
 
 
 class _StanModel(ABC):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         """
         Class to set up, run, and plot key plots of a stan model.
 
@@ -31,15 +31,13 @@ class _StanModel(ABC):
             path to .stan file specifying the prior model
         figname_base : str
             path-like base name that all plots will share
-        num_OOS : int
-            number of out-of-sample points for posterior modelled quantity
         rng :  np.random._generator.Generator, optional
             random number generator, by default None (creates a new instance)
         """
         self._model_file = model_file
         self._prior_file = prior_file
         self.figname_base = figname_base
-        self._num_OOS = num_OOS
+        self._num_OOS = None
         if rng is None:
             self._rng = np.random.default_rng()
         else:
@@ -518,6 +516,7 @@ class _StanModel(ABC):
             default_sample_kwargs = {"chains":4, "iter_sampling":2000, "show_progress":True, "max_treedepth":12}
             if not prior:
                 default_sample_kwargs["output_dir"] = os.path.join(data_dir, "stan_files")
+                default_sample_kwargs["threads_per_chain"] = 4
             else:
                 # protect against inability to parallelise, for prior model
                 # this shouldn't be so expensive anyway
@@ -535,7 +534,7 @@ class _StanModel(ABC):
                 fit = self._model.sample(self.stan_data, **default_sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.info(f"Sampling completed in {datetime.now()-start_time}")
-            _logger.debug(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
+            _logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
             if diagnose:
                 self._sample_diagnosis = fit.diagnose()
                 _logger.info(f"\n{fit.summary(sig_figs=4)}")
@@ -562,7 +561,7 @@ class _StanModel(ABC):
         if prior:
             self._prior_model = cmdstanpy.CmdStanModel(stan_file=self._prior_file)
         else:
-            self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file)#, cpp_options={"STAN_THREADS":"true", "STAN_CPP_OPTIMS":"true"})
+            self._model = cmdstanpy.CmdStanModel(stan_file=self._model_file, cpp_options={"STAN_THREADS":"true", "STAN_CPP_OPTIMS":"true"})
 
 
     @abstractmethod
@@ -1008,7 +1007,7 @@ class _StanModel(ABC):
             random number generator, by default None (creates a new instance)
         """
         # initiate a class instance
-        C = cls(model_file=model_file, prior_file=None, figname_base=figname_base, num_OOS=None, rng=rng)
+        C = cls(model_file=model_file, prior_file=None, figname_base=figname_base, rng=rng)
 
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
@@ -1034,8 +1033,8 @@ class _StanModel(ABC):
 
 
 class HierarchicalModel_1D(_StanModel):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
 
 
     @abstractmethod
@@ -1147,8 +1146,8 @@ class HierarchicalModel_1D(_StanModel):
 
 
 class HierarchicalModel_2D(_StanModel):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
 
 
     @abstractmethod
@@ -1267,8 +1266,8 @@ class HierarchicalModel_2D(_StanModel):
 
 
 class FactorModel_2D(_StanModel):
-    def __init__(self, model_file, prior_file, figname_base, num_OOS, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, num_OOS, rng)
+    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        super().__init__(model_file, prior_file, figname_base, rng)
 
 
     @abstractmethod

@@ -76,7 +76,7 @@ def interpolate_particle_data(p_old, t):
     return p_new
 
 
-def get_bh_particles(ketju_file, tol=1e-15):
+def get_bh_particles(ketju_file, tol=1e-15, interp=True):
     """
     Return the bh particles in the (usually-named) ketju_bhs.hdf5 file.
     This is really just a wrapper that ensures:
@@ -93,6 +93,8 @@ def get_bh_particles(ketju_file, tol=1e-15):
         path to ketju_bhs.hdf5 file to analyse
     tol : float, optional
         tolerance for equality testing, by default 1e-15
+    interp : bool, optional
+        iterpolate particle data to consistent time domain, by default True
 
     Returns
     -------
@@ -109,7 +111,7 @@ def get_bh_particles(ketju_file, tol=1e-15):
     min_len = min(len1, len2)
     merged = MergerInfo()
     # first need to determine if time series are consistent between particles
-    if np.any(np.abs(bh1.t[:min_len] - bh2.t[:min_len])>tol):
+    if interp and np.any(np.abs(bh1.t[:min_len] - bh2.t[:min_len])>tol):
         # particle time series are not in sync, need to interpolate
         # merger only occurs if Ketju is activated, in which case the time
         # series are in sync by construction, so no merger has occurred here
@@ -133,7 +135,7 @@ def get_bh_particles(ketju_file, tol=1e-15):
         return bh1, bh2, merged
 
 
-def get_bound_binary(ketju_file, tol=1e-15):
+def get_bound_binary(ketju_file, tol=1e-15, interp=True):
     """
     Return the data from the ketju_bhs.hdf5 file corresponding to when the 
     binary becomes (and remains) bound. 
@@ -144,6 +146,8 @@ def get_bound_binary(ketju_file, tol=1e-15):
         path to ketju_bhs.hdf5 file to analyse
     tol : float, optional
         tolerance for equality testing, by default 1e-15
+    interp : bool, optional
+        iterpolate particle data to consistent time domain, by default True
 
     Returns
     -------
@@ -154,7 +158,7 @@ def get_bound_binary(ketju_file, tol=1e-15):
     merged: MergerInfo
         class containing merger remnant info
     """
-    bh1, bh2, merged = get_bh_particles(ketju_file, tol)
+    bh1, bh2, merged = get_bh_particles(ketju_file, tol, interp)
     bhs = {0:bh1, 1:bh2}
     try:
         bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[0]

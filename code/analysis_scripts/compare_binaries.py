@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser(description="Quickly check SMBH binary paramete
 parser.add_argument(type=str, help="path to directory", dest="path")
 parser.add_argument("-m", "--masking", type=float, help="mask to times less than this (Myr)", default=None, dest="mask")
 parser.add_argument("-t0", "--time0", type=float, help="Initial time value (Myr)", default=None, dest="t0")
+parser.add_argument("-i", "--interp", action="store_true", dest="interp", help="interpolate BH data if needed")
 parser.add_argument("-s", "--save", action="store_true", dest="save", help="save figure")
 parser.add_argument("-P", "--Publish", action="store_true", dest="publish", help="use publishing format")
 parser.add_argument("-o", "--orbits", action="store_true", dest="orbits", help="plot binary orbits")
@@ -63,8 +64,9 @@ def dask_data_loader(kf):
     """Dask helper to load data and calculate quantities"""
     SL.debug(f"Reading: {kf}")
     try:
-        bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
+        bh1, bh2, merged = cmf.analysis.get_bound_binary(kf, interp=args.interp)
         if merged.merged:
+            SL.info(f"Merger in {kf}")
             SL.info(merged)
     except:
         SL.warning(f"No binaries found in: {kf} --> skipping...")
@@ -133,10 +135,13 @@ for j, d in enumerate(ketju_dirs):
         SL.warning(f"No bound BHs present in {d}")
 
 try:
-    ax[0].legend(loc="upper right", **legend_kwargs)
+    fig = ax[0].get_figure()
+    try:
+        ax[0].legend(loc="best", ncol=total_sim_count//5, columnspacing=1)
+    except:
+        ax[0].legend()
     if args.logt: ax[0].set_xscale("log")
     if args.save:
-        fig = ax[0].get_figure()
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"), fig=fig, save_kwargs=fig_kwargs)
         if args.orbits:
