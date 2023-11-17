@@ -1,7 +1,11 @@
+import numpy as np
 import pygad.units
+from ..env_config import _cmlogger
+
+__all__ = ["convert_gadget_time", "unit_as_str", "particle_ages"]
 
 
-__all__ = ["convert_gadget_time", "unit_as_str"]
+_logger = _cmlogger.getChild(__name__)
 
 
 def convert_gadget_time(snap, new_unit="Gyr"):
@@ -40,3 +44,31 @@ def unit_as_str(u):
         string representation
     """
     return str(u).strip("[]")
+
+
+def particle_ages(subsnap, unit="Gyr"):
+    """
+    Determine the age of particles in a snapshot, as the pygad 'age' block
+    doesn't seem to work.
+
+    Parameters
+    ----------
+    subsnap : pygad.SubSnapshot
+        subsnapshot of particle family to determine age of, e.g. snap.stars
+    unit : str, optional
+        units for age, by default "Gyr"
+
+    Returns
+    -------
+    : pygad.UnitArr
+        age of particles
+    """
+    try:
+        assert "form_time" in subsnap.available_blocks()
+    except AssertionError:
+        _logger.exception("subsnapshot must have block 'form_time'!", exc_info=True)
+        raise
+    t = pygad.UnitArr((subsnap.root.time - subsnap["form_time"].view(np.ndarray)), f"({subsnap.gadget_units['LENGTH']})/({subsnap.gadget_units['VELOCITY']})").in_units_of(unit, subs=subsnap.root)
+    return t
+
+

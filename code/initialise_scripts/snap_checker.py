@@ -1,6 +1,7 @@
 import argparse
 import os.path
 import numpy as np
+import scipy.stats
 import matplotlib.pyplot as plt
 import pygad
 import cm_functions as cmf
@@ -50,12 +51,37 @@ for i, f in enumerate(valid_fams_wo_bh):
 if args.savefig is not None:
     cmf.plotting.savefig(os.path.join(args.savefig, "densities.png"), fig=fig_dens)
 
-# phase diagram if gas
 if "gas" in valid_fams:
+    # phase diagram if gas
     SL.debug("Creating phase diagram...")
-    fig_phase, *_ = pygad.plotting.phase_diagram(snap.gas, showcbar=True)
+    fig_phase, ax_phase, *_ = pygad.plotting.phase_diagram(snap.gas, showcbar=True)
+    # mark a box for star forming region
+    current_xlims = ax_phase.get_xlim()
+    current_ylims = ax_phase.get_ylim()
+    threshold_kwargs = {"colors":"tab:red", "lw":2}
+    dens_threshold = np.log10(2.2e-24)
+    temp_threshold = np.log10(1.2e4)
+    if current_ylims[1] > temp_threshold and current_xlims[1] > dens_threshold:
+        ax_phase.vlines(dens_threshold, ymin=current_ylims[0], ymax=temp_threshold, **threshold_kwargs)
+        ax_phase.hlines(temp_threshold, xmin=dens_threshold, xmax=current_xlims[1], **threshold_kwargs)
+    else:
+        SL.info(f"Temperature threshold not plotted (threshold: {temp_threshold:.1e}, ymax: {current_ylims[1]:.1e})")
+        SL.info(f"Density threshold not plotted (threshold: {dens_threshold:.1e}, xmax: {current_xlims[1]:.1e})")
     if args.savefig is not None:
         cmf.plotting.savefig(os.path.join(args.savefig, "phase.png"), fig=fig_phase)
+
+    # metallicity gradient if gas
+    SL.debug("Creating metallicity profile...")
+    fig_met, ax_met = plt.subplots(1,1)
+    for _fam in ("stars", "gas"):
+        subsnap = getattr(snap, _fam)
+        stat, edges, *_ = scipy.stats.binned_statistic(np.log10(subsnap["r"]), subsnap["metallicity"]/pygad.physics.solar.Z(), bins=50)
+        ax_met.plot(cmf.mathematics.get_histogram_bin_centres(edges), stat, lw=2, label=_fam)
+    ax_met.legend()
+    ax_met.set_xlabel(r"$\log(r/kpc)$")
+    ax_met.set_ylabel(r"$Z/Z_\odot$")
+    if args.savefig:
+        cmf.plotting.savefig(os.path.join(args.savefig, "metallicity.png"), fig=fig_met)
 
 # half mass and effective radius
 if "stars" in valid_fams:
@@ -107,9 +133,11 @@ if "stars" in valid_fams:
     # stellar formation time
     if "age" in snap.stars.available_blocks():
         fig_age, ax_age = plt.subplots(1,1)
-        ax_age.hist(snap.stars["age"], 50)
-        ax_age.set_xlabel(f"Age [{snap.stars['age'].units}]")
+        ages = cmf.general.particle_ages(snap.stars)
+        ax_age.hist(ages, 50)
+        ax_age.set_xlabel(f"Age {ages.units}")
         ax_age.set_ylabel("Count")
+        ax_age.set_yscale("log")
         if args.savefig is not None:
             cmf.plotting.savefig(os.path.join(args.savefig, "star_formation.png"), fig=fig_age)
     else:
