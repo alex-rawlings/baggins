@@ -41,23 +41,23 @@ generated quantities {
     real err_hyp = lower_trunc_normal_rng(0, 0.01, 0);
 
     // parameters for each factor level
-    array[N_factors] real log10densb_mean;
-    array[N_factors] real log10densb_std;
-    array[N_factors] real g_lam;
-    array[N_factors] real rb_sig;
-    array[N_factors] real n_mean;
-    array[N_factors] real n_std;
-    array[N_factors] real a_sig;
-    array[N_factors] real Re_sig;
-    array[N_factors] real err;
+    vector[N_factors] log10densb_mean;
+    vector[N_factors] log10densb_std;
+    vector[N_factors] g_lam;
+    vector[N_factors] rb_sig;
+    vector[N_factors] n_mean;
+    vector[N_factors] n_std;
+    vector[N_factors] a_sig;
+    vector[N_factors] Re_sig;
+    vector[N_factors] err;
 
     // parameters for each context
-    array[N_contexts] real rb;
-    array[N_contexts] real Re;
-    array[N_contexts] real n;
-    array[N_contexts] real g;
-    array[N_contexts] real log10densb;
-    array[N_contexts] real a;
+    vector[N_contexts] rb;
+    vector[N_contexts] Re;
+    vector[N_contexts] n;
+    vector[N_contexts] g;
+    vector[N_contexts] log10densb;
+    vector[N_contexts] a;
 
     // push forward data array
     array[N_tot] real log10_surf_rho_prior;
@@ -77,8 +77,8 @@ generated quantities {
 
     // context level quantities
     {
-        array[N_contexts] real pre_term;
-        array[N_contexts] real b_param;
+        vector[N_contexts] pre_term;
+        vector[N_contexts] b_param;
         for(i in 1:N_contexts){
             log10densb[i] = trunc_normal_rng(log10densb_mean[factor_idx[i]], log10densb_std[factor_idx[i]], -5, 15);
             g[i] = trunc_exponential_rng(g_lam[factor_idx[i]], 0, 2);
@@ -87,8 +87,8 @@ generated quantities {
             a[i] = rayleigh_rng(a_sig[factor_idx[i]]);
             Re[i] = trunc_rayleigh_rng(Re_sig[factor_idx[i]], 0, 20);
             // some helper quantities
-            b_param[i] = sersic_b_parameter(n[i]);
-            pre_term[i] = graham_preterm(g[i], a[i], n[i], b_param[i], rb[i], Re[i]);
+            b_param = sersic_b_parameter(n);
+            pre_term = graham_preterm(g, a, n, b_param, rb, Re);
         }
 
         // push forward data

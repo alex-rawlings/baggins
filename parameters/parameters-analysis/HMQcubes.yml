@@ -52,7 +52,7 @@ stan:
     max_treedepth: 15
     show_progress: *ssp
   density_sample_kwargs:
-    adapt_delta: 0.9
+    adapt_delta: 0.998
     max_treedepth: 15
     show_progress: *ssp
   deflection_GP_kwargs:

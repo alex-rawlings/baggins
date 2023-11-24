@@ -20,6 +20,9 @@ real trunc_normal_rng(real mu, real sigma, real low, real up){
     if(is_inf(abs(mu)) || is_inf(sigma)){
         reject("Location and scale arguments must be finite!");
     }
+    if(is_nan(mu) || is_nan(sigma)){
+        reject("Location and scale arguments must be non-nan!");
+    }
     if(sigma < 0){
         reject("Scale parameter must be positive!");
     }

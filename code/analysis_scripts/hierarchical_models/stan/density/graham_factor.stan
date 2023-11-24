@@ -75,7 +75,7 @@ parameters {
     real<lower=0> err_hyp;
 
     // parameters for each factor level
-    vector[N_factors]log10densb_mean;
+    vector[N_factors] log10densb_mean;
     vector<lower=0>[N_factors] log10densb_std;
     vector<lower=0>[N_factors] g_lam;
     vector<lower=0>[N_factors] rb_sig;
@@ -110,33 +110,6 @@ transformed parameters {
     lprior[10] = rayleigh_lpdf(a_hyp | 10);
     lprior[11] = rayleigh_lpdf(Re_hyp | 10);
     lprior[12] = normal_lpdf(err_hyp | 0, 0.01);
-
-    // pre definition of calculated density for log-likelihood calculation
-    // in generated quantities block
-    //array[N_tot] real<lower=-5, upper=15> log10_surf_rho_calc;
-    /*{
-        // no need to track these helper variables, so put in private scope
-        array[N_contexts] real pre_term;
-        array[N_contexts] real b_param;
-        for(i in 1:N_contexts){
-            b_param[i] = sersic_b_parameter(n[i]);
-            pre_term[i] = graham_preterm(g[i], a[i], n[i], b_param[i], rb[i], Re[i]);
-        }
-        // surface density calculation
-        /*for(i in 1:N_tot){
-            log10_surf_rho_calc[i] = graham_surf_density(
-                                        R[i],
-                                        pre_term[context_idx[i]],
-                                        g[context_idx[i]],
-                                        a[context_idx[i]],
-                                        rb[context_idx[i]],
-                                        n[context_idx[i]],
-                                        b_param[context_idx[i]],
-                                        Re[context_idx[i]],
-                                        log10densb[context_idx[i]]
-            );
-        }
-    }*/
 }
 
 

@@ -8,7 +8,9 @@ from helpers import stan_model_selector
 
 parser = cmf.utils.argparse_for_stan("Run stan model for Core-Sersic model")
 parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy", "factor"], dest="model", default="hierarchy")
-parser.add_argument("-c", "--compare", help="compare to naive statistics", action="store_true", dest="compare")
+parser.add_argument("-c", "--compare", help="compare to naive statistics", 
+action="store_true", dest="compare")
+parser.add_argument("-b", "--binary", help="data is for BH binary", action="store_true", dest="binary")
 args = parser.parse_args()
 
 SL = cmf.setup_logger("script", console_level=args.verbose)
@@ -42,13 +44,13 @@ else:
     graham_model = stan_model_selector(
                     args, 
                     cmf.analysis.GrahamModelHierarchy, 
-                    "stan/density/graham_hierarchy_0.stan", 
-                    "stan/density/graham_prior_hierarchy_0.stan", 
+                    "stan/density/graham_hierarchy.stan", 
+                    "stan/density/graham_prior_hierarchy.stan", 
                     figname_base, SL)
 
 
 # load the observational data
-graham_model.extract_data(analysis_params, hmq_dir)
+graham_model.extract_data(analysis_params, hmq_dir, binary=args.binary)
 
 SL.info(f"Number of simulations with usable data: {graham_model.num_groups}")
 
@@ -70,10 +72,13 @@ else:
     # run the model
     graham_model.sample_model(sample_kwargs=analysis_params["stan"]["density_sample_kwargs"])
 
-    graham_model.determine_loo()
+    try:
+        graham_model.determine_loo()
+    except ValueError:
+        SL.warning("LOO cannot be determined for this model: skipping...")
 
-    ax = graham_model.all_posterior_plots(full_figsize)
-    fig = ax[0].get_figure()
+    ax = graham_model.all_posterior_pred_plots(full_figsize)
+    fig = ax[0,0].get_figure()
 
     if args.compare:
         # compare to naive estimates of latent parameter distributions
@@ -97,6 +102,8 @@ else:
             y = axi.get_ylim()[1]*1.1
             axi.errorbar(nm, y, xerr=np.atleast_2d([nsl, nsu]).T, c="k", capsize=2, fmt=".")
         cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"{graham_model.figname_base}_latentqty_compare.png"), fig=fig)
-    
+
+    graham_model.all_posterior_OOS_plots(full_figsize)
+
 graham_model.print_parameter_percentiles(graham_model.latent_qtys)
 

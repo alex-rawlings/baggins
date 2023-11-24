@@ -4,7 +4,6 @@ import re
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
-import arviz as az
 from arviz.labels import MapLabeller
 from . import HierarchicalModel_2D, FactorModel_2D
 from . import HMQuantitiesBinaryData, HMQuantitiesSingleData
@@ -72,15 +71,20 @@ class _GrahamModelBase(HierarchicalModel_2D):
         d = self._get_data_dir(d)
         if self._loaded_from_file:
             fnames = d[0]
+        elif os.path.isfile(d):
+            fnames = [d]
         else:
             fnames = get_files_in_dir(d)
             _logger.debug(f"Reading from dir: {d}")
+        is_single_file = len(fnames)==1
         for f in fnames:
             _logger.info(f"Loading file: {f}")
             if binary:
+                _logger.debug("Hierarchical model will be constructed for a binary BH system")
                 hmq = HMQuantitiesBinaryData.load_from_file(f)
                 status, idx = hmq.idx_finder(pars["bh_binary"]["target_semimajor_axis"]["value"], hmq.semimajor_axis)
             else:
+                _logger.debug("Hierarchical model will be constructed for a single BH system")
                 hmq = HMQuantitiesSingleData.load_from_file(f)
                 idx = 0
                 status = True
@@ -93,16 +97,25 @@ class _GrahamModelBase(HierarchicalModel_2D):
             obs["vkick"].append([hmq.merger_remnant['kick']/vesc])
             if self._merger_id is None:
                 self._merger_id = re.sub("_[a-z]-", "-", hmq.merger_id)
-                # remove vXXXX from merger ID
-                self._merger_id = re.sub("-v[0-9]*", "", self._merger_id)
+                if not is_single_file:
+                    # remove vXXXX from merger ID
+                    self._merger_id = re.sub("-v[0-9]*", "", self._merger_id)
             if not self._loaded_from_file:
                 self._add_input_data_file(f)
+        if is_single_file:
+            # we have loaded a single file
+            # manipulate the data so it "looks" like multiple files
+            _obs = obs.copy()
+            obs = {"R":[], "proj_density":[], "vkick":[]}
+            for i in range(_obs["proj_density"][0].shape[0]):
+                obs["R"].append(_obs["R"][0])
+                obs["proj_density"].append(_obs["proj_density"][0][i,:])
+                obs["vkick"].append(_obs["vkick"][0])
+            _logger.warning("Observations from a single file have been converted to a hierarchy format")
         self.obs = obs
         # some transformations we need
         self.transform_obs("R", "log10_R", lambda x: np.log10(x))
         self.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
-        self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
-        self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
 
 
     @abstractmethod
@@ -126,7 +139,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
         self.stan_data = dict(
             N_tot = self.num_obs_collapsed,
             N_groups = self.num_groups,
-            group_id = self.obs_collapsed["label"],
+            group_idx = self.obs_collapsed["label"],
             R = self.obs_collapsed["R"],
         )
         if not self._loaded_from_file:
@@ -221,7 +234,7 @@ class GrahamModelSimple(_GrahamModelBase):
         self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
         self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
         self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
-        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-simple")
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/{self.merger_id}-simple")
 
 
     def _set_stan_data_OOS(self):
@@ -284,19 +297,24 @@ class GrahamModelSimple(_GrahamModelBase):
 class GrahamModelHierarchy(_GrahamModelBase):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
-        self._hyper_qtys = ["r_b_mean", "r_b_std", 
-                            "Re_mean", "Re_std", 
-                            "log10_I_b_mean", "log10_I_b_std", 
-                            "g_mean", "g_std", 
+        self._hyper_qtys = ["log10densb_mean", "log10densb_std", 
+                            "Re_sig", 
+                            "g_lam", 
+                            "rb_sig", 
                             "n_mean", "n_std", 
-                            "a_mean", "a_std"]
-        self._hyper_qtys_labs = [r"$\mu_{r_\mathrm{b}}$", r"$\sigma_{r_\mathrm{b}}$", 
-                                r"$\mu_{R_\mathrm{e}}$", r"$\sigma_{R_\mathrm{e}}$", 
-                                r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$", 
-                                r"$\mu_{g}$", r"$\sigma_{g}$", 
-                                r"$\mu_{n}$", r"$\sigma_{n}$", 
-                                r"$\mu_{a}$", r"$\sigma_{a}$"]
+                            "a_sig",
+                            "err_mean", "err_std"]
+        self._hyper_qtys_labs = [
+            r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$", r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$",
+            r"$\sigma_{R_\mathrm{e}}$",
+            r"$\lambda_\gamma$",
+            r"$\sigma_{r_\mathrm{b}}$",
+            r"$\mu_{n}$", r"$\sigma_{n}$",
+            r"$\sigma_a$",
+            r"$\mu_{\tau}$", r"$\sigma_{\tau}$"
+        ]
         self._labeller_hyper = MapLabeller(dict(zip(self._hyper_qtys, self._hyper_qtys_labs)))
+        self._dims_prepped = False
 
 
     def extract_data(self, pars, d=None, binary=True):
@@ -305,23 +323,31 @@ class GrahamModelHierarchy(_GrahamModelBase):
         Update figname_base to include merger ID and keyword 'hierarchy'
         """
         super().extract_data(pars, d, binary)
-        self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
-        self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
-        self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
-        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-hierarchy")
+        self.collapse_observations(["R", "log10_R", "log10_proj_density"])
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/{self.merger_id}-hierarchy")
 
 
-    def _set_stan_data_OOS(self):
-        raise NotImplementedError
-        return super()._set_stan_data_OOS()
+    def _set_stan_data_OOS(self, r_count=None, ngroups=None):
+        rmin, rmax = super()._set_stan_data_OOS()
+        if r_count is None:
+            r_count = max([len(rs) for rs in self.obs["R"]]) * 10
+        if ngroups is None:
+            ngroups = 2 * self.stan_data["N_groups"]
+        self._num_OOS = r_count * ngroups
+        rs = np.geomspace(rmin, rmax, r_count)
+        self.stan_data.update(dict(
+            N_OOS = self.num_OOS,
+            R_OOS = np.tile(rs, ngroups),
+            N_groups_OOS = ngroups,
+            group_idx_OOS = np.repeat(np.arange(1, ngroups+1), r_count)
+        ))
 
 
     def set_stan_data(self):
         """See docs for `_GrahamModelBase.set_stan_data()"""
         super().set_stan_data()
         self.stan_data.update(dict(
-            log10_surf_rho = self.obs_collapsed["log10_proj_density_mean"],
-            log10_surf_rho_err = self.obs_collapsed["log10_proj_density_std"]
+            log10_surf_rho = self.obs_collapsed["log10_proj_density"]
         ))
 
 
@@ -329,10 +355,12 @@ class GrahamModelHierarchy(_GrahamModelBase):
         """
         Rename dimensions for collapsing
         """
-        _rename_dict = {}
-        for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
-            _rename_dict[f"{k}_dim_0"] = "group"
-        self.rename_dimensions(_rename_dict)
+        if not self._dims_prepped:
+            _rename_dict = {}
+            for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
+                _rename_dict[f"{k}_dim_0"] = "group"
+            self.rename_dimensions(_rename_dict)
+            self._dims_prepped = True
 
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
@@ -357,20 +385,22 @@ class GrahamModelHierarchy(_GrahamModelBase):
         ax : matplotlib.axes.Axes
             plotting axis
         """
+        self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys], "group"))
         # hyper parameter plots (corners, chains, etc)
         self.parameter_diagnostic_plots(self._hyper_qtys, labeller=self._labeller_hyper)
 
         # posterior predictive check
         fig1, ax1 = plt.subplots(1,1, figsize=figsize)
-        ax1.set_xlabel(r"log($R$/kpc)")
+        ax1.set_xlabel(r"$R$/kpc")
         ax1.set_ylabel(self._folded_qtys_labs[0])
+        ax1.set_xscale("log")
         ax1.set_ylim(*ylim)
-        self.plot_predictive(xmodel="R", ymodel=f"{self._folded_qtys_posterior[0]}", xobs="R", yobs="log10_proj_density_mean", yobs_err="log10_proj_density_std", ax=ax1)
+        self.plot_predictive(xmodel="R", ymodel=f"{self._folded_qtys_posterior[0]}", xobs="R", yobs="log10_proj_density", ax=ax1)
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)
 
-        ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent)
+        ax = self.parameter_corner_plot(self.latent_qtys, figsize=figsize, labeller=self._labeller_latent, combine_dims={"group"})
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, f"corner_{self._parameter_corner_plot_counter}"), fig=fig)
         return ax
@@ -392,12 +422,13 @@ class GrahamModelHierarchy(_GrahamModelBase):
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        self._prep_dims()
+        self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys_posterior], "groupOOS"))
         # out of sample posterior
         fig, ax = plt.subplots(1,1, figsize=figsize)
-        ax.set_xlabel(r"log($R$/kpc)")
+        ax.set_xlabel(r"$R$/kpc")
+        ax.set_xscale("log")
         # TODO check ymodel name
-        self.posterior_OOS_plot(xmodel="R_OOS", ymodel="rho_posterior", ax=ax)
+        self.posterior_OOS_plot(xmodel="R_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax)
         ax.set_ylim(*ylim)
         return ax
 
@@ -432,7 +463,7 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
         """
         _GrahamModelBase.extract_data(self, pars, d, binary)
         self.rb_0 = pars["core_model_pars"]["rb_0"]["value"]
-        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/quinlan-hardening-{self.merger_id}-kick")
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/{self.merger_id}-kick")
         self.collapse_observations(["R", "log10_R", "proj_density", "log10_proj_density", "log10_proj_density_mean", "log10_proj_density_std"])
 
 

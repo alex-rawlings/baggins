@@ -141,7 +141,7 @@ class HDF5Base:
                         except AssertionError:
                             _logger.exception(f"{kk}: Unkown type for unpacking!", exc_info=True)
                             raise
-                        msg = f" > Successfully loaded dataset {kk}"
+                        msg = f"Successfully loaded dataset {kk}"
                         _logger.debug(msg)
                         C.add_to_log(msg)
             _logger.debug(f"File {fname} loaded")

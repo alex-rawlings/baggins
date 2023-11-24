@@ -1,5 +1,8 @@
 import logging
 
+# sometimes handlers submodule not loaded
+from logging import handlers
+
 __all__ = ["setup_logger"]
 
 
@@ -88,7 +91,7 @@ def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNIN
 
     # add a file handler if desired
     if logfile is not None:
-        file_handler = logging.handlers.TimedRotatingFileHandler(logfile, when="midnight", interval=1, backupCount=10)
+        file_handler = handlers.TimedRotatingFileHandler(logfile, when="midnight", interval=1, backupCount=10)
         file_handler.setLevel(file_level)
         file_handler.setFormatter(ffmt)
         log.addHandler(file_handler)

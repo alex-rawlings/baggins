@@ -78,7 +78,7 @@ vector graham_surf_density_vec(
 
 
 // TODO parse each array used in log_rho_calc to this function??
-real partial_sum(array[] real y_slice, int start, int end, int nc, vector R, vector g, vector a, vector rb, vector n, vector re, vector ld, vector s, array[] int fidx, array[] int cidx){
+real partial_sum_factor(array[] real y_slice, int start, int end, int nc, vector R, vector g, vector a, vector rb, vector n, vector re, vector ld, vector s, array[] int fidx, array[] int cidx){
     vector[nc] b = sersic_b_parameter(n);
     vector[nc] pt = graham_preterm(g, a, n, b, rb, re);
 
@@ -93,5 +93,24 @@ real partial_sum(array[] real y_slice, int start, int end, int nc, vector R, vec
                     re[cidx[start:end]],
                     ld[cidx[start:end]]),
                     s[fidx[cidx[start:end]]]);
+}
+
+
+
+real partial_sum_hierarchy(array[] real y_slice, int start, int end, int nc, vector R, vector g, vector a, vector rb, vector n, vector re, vector ld, vector s, array[] int cidx){
+    vector[nc] b = sersic_b_parameter(n);
+    vector[nc] pt = graham_preterm(g, a, n, b, rb, re);
+
+    return normal_lpdf(y_slice | graham_surf_density_vec(
+                    R[start:end],
+                    pt[cidx[start:end]],
+                    g[cidx[start:end]],
+                    a[cidx[start:end]],
+                    rb[cidx[start:end]],
+                    n[cidx[start:end]],
+                    b[cidx[start:end]],
+                    re[cidx[start:end]],
+                    ld[cidx[start:end]]),
+                    s[start:end]);
 }
 

@@ -1,9 +1,9 @@
 #!/bin/bash -l
 #SBATCH --job-name=HMQ
 #SBATCH --account=pjohanss
-#SBATCH --ntasks-per-node=128
+#SBATCH --ntasks-per-node=16
 #SBATCH --time=36:00:00
-#SBATCH --partition=medium
+#SBATCH --partition=interactive
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=alexander.rawlings@helsinki.fi
 
@@ -21,4 +21,10 @@ cd hierarchical_models
 
 #python quinlan_hardening.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml "/scratch/pjohanss/arawling/collisionless_merger/stan_files/hardening/mcs/D_100K-D_100K-3.720-0.279/quinlan_hierarchy-20230704143650_*.csv" loaded -v DEBUG
 
-python graham_density.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/ new -m factor
+#python graham_density.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 new -m hierarchy
+
+
+python graham_density.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0600.hdf5 new -m hierarchy
+
+
+python graham_density.py /users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0900.hdf5 new -m hierarchy

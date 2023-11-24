@@ -202,12 +202,11 @@ TSWLatexianTemp*
 # stan stuff
 code/misc/stats/*
 !code/misc/stats/**/*.py
-!code/analysis_scripts/hierarchical_models/stan_reports/*.out
+#!code/analysis_scripts/hierarchical_models/stan_reports/*.out
 code/analysis_scripts/hierarchical_models/stan/*/*
 !code/analysis_scripts/hierarchical_models/stan/*/*.stan
 code/analysis_scripts/gaussian_processes/stan/*
 !code/analysis_scripts/gaussian_processes/stan/*.stan
-
 
 # code logging
 code/cm_functions/logs

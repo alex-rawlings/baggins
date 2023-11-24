@@ -335,9 +335,8 @@ class _StanModel(ABC):
         ----------
         obs_name : list
             observation(s) to collapse
-        include_label : bool
-            should key `label` be collapsed (sometimes not desired if 2D arrays 
-            have been flattened), by default True
+        order : str
+            concatenation order for numpy, by default "F"
         """
         if "label" not in obs_names: obs_names.append("label")
         dim = {}
@@ -377,7 +376,8 @@ class _StanModel(ABC):
                     self._obs_collapsed[obs_name] = np.concatenate([v.flatten(order=order) for v in self.obs[obs_name]])
                 else:
                     self._obs_collapsed[obs_name] = np.concatenate([np.tile(vv, r) for vv,r in zip(self.obs[obs_name], reps)])
-            self._num_obs_collapsed = len(self.obs_collapsed[obs_name])
+                _logger.debug(f"Collapsing variable {obs_name}")
+        self._num_obs_collapsed = len(self.obs_collapsed[obs_name])
         # data consistency checks
         try:
             for k, v in self._obs_collapsed.items():
@@ -531,7 +531,13 @@ class _StanModel(ABC):
                 fit = self._prior_model.sample(self.stan_data, **default_sample_kwargs)
             else:
                 _logger.debug(f"exe info: {self._model.exe_info()}")
-                fit = self._model.sample(self.stan_data, **default_sample_kwargs)
+                try:
+                    pf = self._model.pathfinder(data=self.stan_data, show_console=True)
+                    inits = pf.create_inits()
+                except RuntimeError:
+                    _logger.warning("Stan pathfinder failed: normal initialisation will be used!")
+                    inits = None
+                fit = self._model.sample(self.stan_data, inits=inits, **default_sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.info(f"Sampling completed in {datetime.now()-start_time}")
             _logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
@@ -605,8 +611,25 @@ class _StanModel(ABC):
 
 
     def _get_GQ_indices(self, state, collapsed=False):
+        """
+        Get the indices of a generated quantity block for either predictive
+        inference or out of sample inference
+
+        Parameters
+        ----------
+        state : str
+            inference type, must be one of 'pred' or 'OOS'
+        collapsed : bool, optional
+            has the variable been collapsed (1-dimensional), by default False
+
+        Returns
+        -------
+        np.ndarray
+            array of indices
+        """
         dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
-        return np.r_[0:dividing_idx] if state == "pred" else np.r_[dividing_idx:-1]
+        return np.r_[0:dividing_idx] if state == "pred" else np.r_[dividing_idx:self.num_OOS+dividing_idx]
+
 
     @abstractmethod
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
@@ -629,24 +652,19 @@ class _StanModel(ABC):
         np.ndarray
             set of draws for the variable gq
         """
-        try:
-            assert state in ("pred", "OOS")
-        except AssertionError:
-            _logger.exception(f"`state` must be one of 'pred' or 'OOS', not {state}!", exc_info=True)
-            raise
         if self.generated_quantities is None or force_resample:
             if self._model is None:
                 _logger.debug("Generated quantities will be taken from the prior model")
-                self._generated_quantities = self._prior_model.generate_quantities(data=self._stan_data, mcmc_sample=self._prior_fit)
+                self._generated_quantities = self._prior_model.generate_quantities(data=self._stan_data, previous_fit=self._prior_fit)
             else:
                 _logger.debug("Generated quantities will be taken from the posterior model")
-                self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit, gq_output_dir=None)
+                self._generated_quantities = self._model.generate_quantities(data=self._stan_data, previous_fit=self._fit, gq_output_dir=None)
         try:
             self.generated_quantities.stan_variable(gq)
         except ValueError:
             _logger.error(f"Value error trying to read generated quantities data: creating temporary directory {tmp_dir}")
             os.makedirs(tmp_dir, exist_ok=True)
-            self._generated_quantities = self._model.generate_quantities(data=self._stan_data, mcmc_sample=self._fit, gq_output_dir=tmp_dir)
+            self._generated_quantities = self._model.generate_quantities(data=self._stan_data, previous_fit=self._fit, gq_output_dir=tmp_dir)
         return self.generated_quantities.stan_variable(gq)
 
 
@@ -718,7 +736,7 @@ class _StanModel(ABC):
         num_vars = len(var_names)
         with az.rc_context({"plot.max_subplots":num_vars**2-np.sum(np.arange(num_vars))+1}):
             # first lay down the markers
-            ax = az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "markeredgecolor":"k", "markeredgewidth":0.5, "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+            ax = az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
             # then add the KDE
             try:
                 az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
@@ -752,8 +770,8 @@ class _StanModel(ABC):
         levels : list, optional
             HDI intervals to plot, by default None
         """
-        # TODO choose good figsize always, also labeller sometimes still not working...
-        # seems to be to occur when axis label is longer than the axis
+        # XXX: LaTeX labels will not render if the label is longer than the
+        # plotting axis
         if figsize is None:
             max_dim = max(rcParams["figure.figsize"])
             figsize = (max_dim, max_dim)
@@ -764,22 +782,27 @@ class _StanModel(ABC):
             raise
         if len(var_names) > 4:
             _logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
-        
-        # plot trace
+
+        # set trace colour scheme
         if self._parameter_diagnostic_plots_counter == 0:
             vmax = len(self._fit_for_az.posterior["chain"])
             cmapper, sm = create_normed_colours(-vmax/2,vmax, cmap="Blues")
             self._trace_plot_cols = [cmapper(x) for x in self._fit_for_az.posterior["chain"]]
-        ax = az.plot_trace(self._fit_for_az, var_names=var_names, figsize=figsize, chain_prop={"color":self._trace_plot_cols}, trace_kwargs={"alpha":0.9}, labeller=labeller)
-        fig = ax.flatten()[0].get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"trace_{self._parameter_diagnostic_plots_counter}"), fig=fig)
-        plt.close(fig)
+        # limit to 4 variables per plot: figures will be saved with an
+        # additional index in the name, e.g. 0-0.png
+        num_var_per_plot = 4
+        for i in range(0, len(var_names), num_var_per_plot):
+            # plot trace
+            ax = az.plot_trace(self._fit_for_az, var_names=var_names[i:i+num_var_per_plot], figsize=figsize, chain_prop={"color":self._trace_plot_cols}, trace_kwargs={"alpha":0.9}, labeller=labeller)
+            fig = ax.flatten()[0].get_figure()
+            savefig(self._make_fig_name(self.figname_base, f"trace_{self._parameter_diagnostic_plots_counter}-{i//num_var_per_plot}"), fig=fig)
+            plt.close(fig)
 
-        # plot rank
-        ax = az.plot_rank(self._fit_for_az, var_names=var_names, labeller=labeller)
-        fig = ax.flatten()[0].get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"rank_{self._parameter_diagnostic_plots_counter}"), fig=fig)
-        plt.close(fig)
+            # plot rank
+            ax = az.plot_rank(self._fit_for_az, var_names=var_names[i:i+num_var_per_plot], labeller=labeller)
+            fig = ax.flatten()[0].get_figure()
+            savefig(self._make_fig_name(self.figname_base, f"rank_{self._parameter_diagnostic_plots_counter}-{i//num_var_per_plot}"), fig=fig)
+            plt.close(fig)
 
         # plot pair
         ax = self._parameter_corner_plot(var_names=var_names, figsize=figsize, labeller=labeller, levels=levels)
@@ -1020,7 +1043,7 @@ class _StanModel(ABC):
             print("==========================================")
 
         # load path to observation data
-        tstamp = os.path.basename(fit_files).split("-")[-1].split("_")[0]
+        tstamp = os.path.basename(fit_files).split("-")[-1].split("_")[0].split("*")[0]
         with open(os.path.join(os.path.dirname(fit_files), f"input_data-{tstamp}.yml"), "r") as f:
             C._input_data_files = yaml.safe_load(f)
         for v in C._input_data_files.values():
@@ -1216,11 +1239,10 @@ class HierarchicalModel_2D(_StanModel):
         else:
             fig = ax.get_figure()
         ys = self.sample_generated_quantity(ymodel, state=state)
-        idxs = self._get_GQ_indices(state, collapsed)
         cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", norm="LogNorm")
         for l in levels:
             _logger.debug(f"Fitting level {l}")
-            az.plot_hdi(self.stan_data[xmodel][...,idxs], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
+            az.plot_hdi(self.stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
         if xobs is not None and yobs is not None:
             # overlay data
             obs = self.obs_collapsed if collapsed else self.obs
@@ -1338,10 +1360,8 @@ class FactorModel_2D(_StanModel):
         else:
             ax = ax.flatten()
             fig = ax[0].get_figure()
-        idxs = self._get_GQ_indices(state, collapsed=collapsed)
-        print(idxs.shape)
         ys = self.sample_generated_quantity(ymodel, state=state)
-        print(ys.shape)
+        idxs = self._get_GQ_indices(state, collapsed=collapsed)
         obs_to_factor = np.full(self.num_obs_collapsed, 0)
         for i in range(self.num_obs_collapsed):
             obs_to_factor[i] = self.stan_data["factor_idx"][self.stan_data["context_idx"][i]-1]-1
