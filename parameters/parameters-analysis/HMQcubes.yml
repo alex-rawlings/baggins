@@ -41,7 +41,7 @@ stan:
   min_num_samples: 5
   thin_data: 30
   general_sample_kwargs:
-    show_progress: &ssp True
+    show_progress: &ssp False
     #threads_per_chain: 128
   binary_sample_kwargs:
     adapt_delta: 0.999
@@ -53,7 +53,8 @@ stan:
     show_progress: *ssp
   density_sample_kwargs:
     adapt_delta: 0.998
-    max_treedepth: 15
+    max_treedepth: 16
+    iter_warmup: 2000
     show_progress: *ssp
   deflection_GP_kwargs:
     show_progress: *ssp

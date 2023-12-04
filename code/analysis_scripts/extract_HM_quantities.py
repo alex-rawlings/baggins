@@ -195,7 +195,7 @@ class ExtractorKick(_Extractor):
                         self.analysis_params_file,
                         self.merger_params_files[0],
                         self.child_dirs[i],
-                        self.merger_ids[0],
+                        self.merger_ids[i],
                         snaps = [self.snap_nums[i]]
             )
             hmq.calculate()

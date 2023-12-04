@@ -11,7 +11,7 @@ from ..general import convert_gadget_time, units
 from ..env_config import _cmlogger
 
 
-__all__ = ["plot_galaxies_with_pygad", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere", "heatmap", "annotate_heatmap"]
+__all__ = ["plot_galaxies_with_pygad", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere", "heatmap", "annotate_heatmap", "violinplot"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -382,6 +382,86 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "whit
             kw.update(color=textcolors[int(im.norm(data[i, j]) < threshold)])
             text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
             texts.append(text)
-
     return texts
+
+
+def violinplot(d, pos=None, ax=None, lcol=None, boxwidth=5, **kwargs):
+    """
+    Generate a violin plot with an inner box and whisker plot
+
+    Parameters
+    ----------
+    d : list-like
+        data to create plot for. If a 2D array is given, violins are for each
+        column
+    pos : list-like, optional
+        x coordinates of data, by default None
+    ax : matplotlib.axes.Axes, optional
+        plotting axes, by default None
+    lcol : str, optional
+        line colour, by default None
+    boxwidth : float, optional
+        width of IQR box, by default 5
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes, optional
+        plotting axes
+    """
+    def _adjacent_vals(vals, q1, q3):
+        # helper function to determine whisker limits
+        # follows same limit convention as pyplot.boxplot()
+        vals = vals[~np.isnan(vals)]
+        max_val = max(vals)
+        min_val = min(vals)
+        upper_av = q3 + (q3-q1) * 1.5
+        try:
+            assert q3 <= max_val
+        except AssertionError:
+            _logger.exception(f"{q3} must be less than {max_val}", exc_info=True)
+            raise
+        upper_av = np.clip(upper_av, q3, max_val)
+        lower_av = q1 - (q3-q1) * 1.5
+        try:
+            assert min_val <= q1
+        except AssertionError:
+            _logger.exception(f"{min_val} must be less than {q1}", exc_info=True)
+            raise
+        lower_av = np.clip(lower_av, min_val, q1)
+        return lower_av, upper_av
+
+    if ax is None:
+        fig, ax = plt.subplots(1,1)
+    lcol = "#373737" if lcol is None else lcol
+
+    # determine the whiskers
+    quartile1, medians, quartile3 = np.nanquantile(d, [0.25, 0.5, 0.75], axis=-1)
+    whiskers = np.array([
+        _adjacent_vals(sorted_array, q1, q3) for sorted_array, q1, q3, in zip(d, quartile1, quartile3)
+    ])
+    whisker_min, whisker_max = whiskers[:,0], whiskers[:,1]
+
+    # add whiskers and median, truncate the data for violins
+    ax.scatter(pos, medians, marker="o", color="white", s=2*boxwidth, zorder=3)
+    ax.vlines(pos, quartile1, quartile3, color=lcol, ls="-", lw=boxwidth, zorder=1)
+    ax.vlines(pos, whisker_min, whisker_max, color=lcol, ls="-", lw=0.2*boxwidth, zorder=2)
+    trunc_d = []
+    for dd, wmin, wmax in zip(d, whisker_min, whisker_max):
+        mask = np.logical_and(dd > wmin, dd < wmax)
+        trunc_d.append(np.array(dd)[mask])
+
+    if "widths" in kwargs and isinstance(kwargs["widths"], (float, int)):
+        kwargs["widths"] = np.repeat(kwargs["widths"], len(pos))
+    violins = ax.violinplot(trunc_d, positions=pos, showmeans=False, showmedians=False, showextrema=False, **kwargs)
+
+    # update styling of violin
+    for i, pc in enumerate(violins["bodies"]):
+        pc.set_edgecolor(lcol)
+        pc.set_linewidth(0.5)
+        pc.set_alpha(1)
+        pc.set_zorder(0.5)
+        fc = pc.get_facecolor() if i==0 else fc
+        pc.set_facecolor(fc)
+    return ax
+
 

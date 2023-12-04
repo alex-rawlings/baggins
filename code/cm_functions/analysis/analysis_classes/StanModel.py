@@ -1043,8 +1043,15 @@ class _StanModel(ABC):
             print("==========================================")
 
         # load path to observation data
-        tstamp = os.path.basename(fit_files).split("-")[-1].split("_")[0].split("*")[0]
-        with open(os.path.join(os.path.dirname(fit_files), f"input_data-{tstamp}.yml"), "r") as f:
+        try:
+            # assume a glob pattern was parsed
+            tstamp = os.path.basename(fit_files).split("-")[-1].split("_")[0].split("*")[0]
+            dir_name = os.path.dirname(fit_files)
+        except TypeError:
+            # actually a list of files was parsed
+            tstamp = os.path.basename(fit_files[0]).split("-")[-1].split("_")[0]
+            dir_name = os.path.dirname(fit_files[0])
+        with open(os.path.join(dir_name, f"input_data-{tstamp}.yml"), "r") as f:
             C._input_data_files = yaml.safe_load(f)
         for v in C._input_data_files.values():
             if os.path.getmtime(v["path"]) > v["created"]:

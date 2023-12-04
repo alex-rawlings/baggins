@@ -72,7 +72,7 @@ parameters {
 transformed parameters {
     // prior information for sensitivity analysis
     array[10] real lprior;
-    lprior[1] = normal_lpdf(log10densb_mean | 10, 0.5);
+    lprior[1] = normal_lpdf(log10densb_mean | 10, 1);
     lprior[2] = normal_lpdf(log10densb_std | 0, 0.05);
     lprior[3] = exponential_lpdf(g_lam | 10);
     lprior[4] = normal_lpdf(rb_sig | 0, 0.2);
@@ -82,28 +82,6 @@ transformed parameters {
     lprior[8] = normal_lpdf(Re_sig | 0, 20);
     lprior[9] = normal_lpdf(err_mean | 0, 1);
     lprior[10] = normal_lpdf(err_std | 0, 0.2);
-
-    // deterministic surface density calculation
-    /*vector[N_tot] log10_surf_rho_calc;
-
-    {
-        vector[N_groups] pre_term;
-        vector[N_groups] b_param;
-
-        b_param = sersic_b_parameter(n);
-        pre_term = graham_preterm(g, a, n, b_param, rb, Re);
-
-        log10_surf_rho_calc = graham_surf_density_vec(
-                                        R,
-                                        pre_term[group_idx],
-                                        g[group_idx],
-                                        a[group_idx],
-                                        rb[group_idx],
-                                        n[group_idx],
-                                        b_param[group_idx],
-                                        Re[group_idx],
-                                        log10densb[group_idx]);
-    }*/
 }
 
 
@@ -174,11 +152,5 @@ generated quantities {
         }
     }
     surf_rho_posterior = pow(10., log10_surf_rho_posterior);
-
-    /****** determine log likelihood function ******/
-    /*vector[N_tot] log_lik;
-    for(i in 1:N_tot){
-        log_lik[i] = normal_lpdf(log10_surf_rho[i] | log10_surf_rho_calc[i], err[i]);
-    }*/
 
 }
