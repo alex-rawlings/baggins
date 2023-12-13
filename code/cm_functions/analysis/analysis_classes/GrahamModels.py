@@ -10,7 +10,7 @@ from . import HMQuantitiesBinaryData, HMQuantitiesSingleData
 from ...mathematics import get_histogram_bin_centres
 from ...env_config import _cmlogger
 from ...plotting import savefig
-from ...utils import get_files_in_dir, save_data
+from ...utils import get_files_in_dir
 
 __all__ = ["GrahamModelSimple", "GrahamModelHierarchy"]
 
@@ -185,6 +185,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
         try:
             self.plot_generated_quantity_dist(self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs)
         except:
+            _logger.warning(f"Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`.")
             self.plot_generated_quantity_dist(self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs)
         ax[1,0].set_xscale("log")
         return ax
@@ -234,6 +235,35 @@ class GrahamModelSimple(_GrahamModelBase):
         self.transform_obs("log10_proj_density", "log10_proj_density_mean", lambda x: np.nanmean(x, axis=0))
         self.transform_obs("log10_proj_density", "log10_proj_density_std", lambda x: np.nanstd(x, axis=0))
         self.collapse_observations(["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"])
+        self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/{self.merger_id}-simple")
+
+
+    def read_data_from_txt(self, fname, mergerid):
+        """
+        Read data from a txt file with columns `radius` and `surface density`.
+
+        Parameters
+        ----------
+        fname : str, path-like
+            data file
+        mergerid : str
+            merger id to be used in figure names etc.
+        """
+        d = self._get_data_dir(fname)
+        if self._loaded_from_file:
+            fname = d[0]
+        _logger.info(f"Loading file: {fname}")
+        data = np.loadtxt(fname)
+        obs = {"R":[], "proj_density":[]}
+        obs["R"] = [data[:,0]]
+        obs["proj_density"] = [data[:,1]]
+        self._merger_id = mergerid
+        if not self._loaded_from_file:
+            self._add_input_data_file(fname)
+        self.obs = obs
+        # some transformations we need
+        self.transform_obs("R", "log10_R", lambda x: np.log10(x))
+        self.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
         self.figname_base = os.path.join(self.figname_base, f"{self.merger_id}/{self.merger_id}-simple")
 
 
@@ -423,11 +453,18 @@ class GrahamModelHierarchy(_GrahamModelBase):
             plotting axis
         """
         self.rename_dimensions(dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys_posterior], "groupOOS"))
+
+        ax = self.parameter_corner_plot(self.latent_qtys_posterior, figsize=figsize, labeller=self._labeller_latent_posterior, combine_dims={"groupOOS"})
+        fig = ax.flatten()[0].get_figure()
+        # note that the plot indexing uses _parameter_corner_plot_counter, so 
+        # if a predictive corner plot has been made beforehand, this number will
+        # be one larger
+        savefig(self._make_fig_name(self.figname_base, f"corner_OOS_{self._parameter_corner_plot_counter}"), fig=fig)
+
         # out of sample posterior
         fig, ax = plt.subplots(1,1, figsize=figsize)
         ax.set_xlabel(r"$R$/kpc")
         ax.set_xscale("log")
-        # TODO check ymodel name
         self.posterior_OOS_plot(xmodel="R_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax)
         ax.set_ylim(*ylim)
         return ax

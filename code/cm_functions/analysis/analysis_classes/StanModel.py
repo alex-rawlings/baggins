@@ -10,7 +10,7 @@ import arviz as az
 import yaml
 
 from ...plotting import savefig, create_normed_colours
-from ...env_config import figure_dir, data_dir, tmp_dir, _cmlogger
+from ...env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
 
 __all__ = ["HierarchicalModel_1D", "HierarchicalModel_2D", "FactorModel_2D"]
 
@@ -662,9 +662,9 @@ class _StanModel(ABC):
         try:
             self.generated_quantities.stan_variable(gq)
         except ValueError:
-            _logger.error(f"Value error trying to read generated quantities data: creating temporary directory {tmp_dir}")
-            os.makedirs(tmp_dir, exist_ok=True)
-            self._generated_quantities = self._model.generate_quantities(data=self._stan_data, previous_fit=self._fit, gq_output_dir=tmp_dir)
+            TMPDIRs.make_new_dir()
+            _logger.error(f"Value error trying to read generated quantities data: creating temporary directory {TMPDIRs.register[-1]}")
+            self._generated_quantities = self._model.generate_quantities(data=self._stan_data, previous_fit=self._fit, gq_output_dir=TMPDIRs.register[-1])
         return self.generated_quantities.stan_variable(gq)
 
 

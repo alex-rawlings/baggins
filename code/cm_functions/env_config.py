@@ -3,12 +3,12 @@ import sys
 from matplotlib import rc_file, rcdefaults
 import subprocess
 import yaml
-from datetime import datetime
 from cmdstanpy import set_cmdstan_path
 from ._backend import setup_logger
+from ._backend.States import TmpDirRegister
 
 
-__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "tmp_dir", "date_format", "figure_ext", "username", "git_hash", "_cmlogger"]
+__all__ = ["this_dir", "home_dir", "figure_dir", "data_dir", "date_format", "fig_ext", "TMPDIRs", "username", "git_hash", "_cmlogger"]
 
 # set up some aliases
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -18,9 +18,11 @@ with open(env_params_file, "r") as f:
     user_params, internal_params = yaml.safe_load_all(f)
 figure_dir = os.path.join(home_dir, user_params["figure_dir"])
 data_dir = user_params["data_dir"]
-tmp_dir = os.path.join(data_dir, user_params["tmp_dir"])
 date_format = user_params["date_format"]
 fig_ext = user_params["figure_ext"].lstrip(".")
+
+# set up the temporary directory register
+TMPDIRs = TmpDirRegister(os.path.join(data_dir, user_params["tmp_dir"]))
 
 # set the stan path
 set_cmdstan_path(user_params["cmdstan"])

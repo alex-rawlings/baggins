@@ -220,3 +220,4 @@ code/cm_functions/env_params.yml
 # media files in specific directories
 code/misc/**/*.png
 code/misc/**/*.pdf
+papers/paper-corekick/figures/IFU

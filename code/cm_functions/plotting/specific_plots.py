@@ -162,7 +162,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
     return ax2
 
 
-def voronoi_plot(vdat):
+def voronoi_plot(vdat, figsize=(7,4.7), clims={}):
     """
     Plot the voronoi maps for a system.
 
@@ -170,27 +170,60 @@ def voronoi_plot(vdat):
     ----------
     vdat : dict
         voronoi values from analysis.voronoi_binned_los_V_statistics()
+    figsize : tuple, optional
+        figure size, by default (7,4.7)
+
+    Returns
+    -------
+    ax : np.ndarray
+        plotting axes
     """
-    fig, ax = plt.subplots(2,2, sharex="all", sharey="all", figsize=(7,4.7))
-    ax[0,0].set_ylabel("y/kpc")
-    ax[1,0].set_xlabel("x/kpc")
-    ax[1,0].set_ylabel("y/kpc")
-    ax[1,1].set_xlabel("x/kpc")
-    ax = np.concatenate(ax).flat
-    for i, (stat, cmap, label) in enumerate(zip(
-        (vdat["img_V"], vdat["img_sigma"], vdat["img_h3"], vdat["img_h4"]),
+    # set the colour limits
+    _clims = dict(
+        V = [None],
+        sigma = [None, None],
+        h3 = [None],
+        h4 = [None]
+    )
+    for k,v in clims.items():
+        try:
+            assert isinstance(v, (list, tuple))
+        except AssertionError:
+            _logger.exception(f"Each value of `clim` must be a list or tuple, not {type(v)}!", exc_info=True)
+            raise
+        vlen = 2 if k == "sigma" else 1
+        try:
+            assert len(v) == vlen
+        except AssertionError:
+            _logger.exception(f"`clim` entry for {k} must be of length {vlen}, not {len(v)}!", exc_info=True)
+            raise
+        _clims[k] = v
+
+    # set up the figure
+    fig, ax = plt.subplots(2,2, sharex="all", sharey="all", figsize=figsize)
+    for i in range(2):
+        ax[1,i].set_xlabel("x/kpc")
+        ax[i,0].set_ylabel("y/kpc")
+    ax = np.concatenate(ax).flatten()
+    for i, (statkey, cmap, label) in enumerate(zip(
+        ("V", "sigma", "h3", "h4"),
         ("seismic", "plasma", "seismic", "seismic"),
         (r"$V$ [km/s]", r"$\sigma$ [km/s]", r"$h_3$ [km/s]", r"$h_4$ [km/s]")
     )):
-        #plot the statistic
+        # plot the statistic
+        stat = vdat[f"img_{statkey}"]
         if i != 1:
-            norm = colors.CenteredNorm()
+            norm = colors.CenteredNorm(vcenter=0, halfrange=_clims[statkey][0])
         else:
-            norm = colors.Normalize(stat.min(), stat.max())
+            if _clims["sigma"]:
+                norm = colors.Normalize(*_clims["sigma"])
+            else:
+                norm = colors.Normalize(stat.min(), stat.max())
         ax[i].set_aspect("equal")
         p1 = ax[i].imshow(stat, interpolation="nearest", origin="lower", extent=vdat["extent"], cmap=cmap, norm=norm)
         cbar = plt.colorbar(p1, ax=ax[i])
         cbar.ax.set_ylabel(label)
+    return ax
 
 
 def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "right":0.8}, cbarwidth=0.05, cbargap=0.02, **kwargs):

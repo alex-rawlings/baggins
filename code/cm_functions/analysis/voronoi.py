@@ -138,7 +138,7 @@ def fit_gauss_hermite_distribution(data):
     return mu0, sigma0, h3, h4
 
 
-def voronoi_binned_los_V_statistics(x,y,V,m, Npx, **kwargs):
+def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, **kwargs):
     """
     Determine the statistics of each voronoi bin.
 
@@ -152,8 +152,8 @@ def voronoi_binned_los_V_statistics(x,y,V,m, Npx, **kwargs):
         LOS velocity
     m : np.ndarray
         masses
-    Npx : int
-        number of pixels per voronoi bin
+    Npx : int, optional
+        number of pixels per voronoi bin, by default 100
 
     Returns
     -------
@@ -177,7 +177,7 @@ def voronoi_binned_los_V_statistics(x,y,V,m, Npx, **kwargs):
 
     fits = []
     for i in bin_index:
-        _logger.info("Fitting bin:", i, end='\r')
+        print("Fitting bin:", i, end='\r')
         fits.append(fit_gauss_hermite_distribution(vz[particle_vor_bin_num==i]))
     bin_stats = np.array(fits)
     img_stats = bin_stats[pixel_vor_bin_num]

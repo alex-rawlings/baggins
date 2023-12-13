@@ -31,5 +31,6 @@
 - [ ] apply perturbation as a total magnitude projected along different axes  
 - [ ] in StanModel, have obs attribute as an `xarray` dataset, makes working with multi-dimensional (potentially) easier  
 - [x] influence radius for more massive BH, combined BH, or less massive BH?  
-- [x] update merger ic generator to take semimajor axis as input for a given in eccentricity
-- [ ] major rework of visualisation classes to create movies of simulation
+- [x] update merger ic generator to take semimajor axis as input for a given in eccentricity  
+- [ ] major rework of visualisation classes to create movies of simulation  
+- [x] set default value of interpolation in get_bh_particles() method to False (will need to update scripts that assume it is True)  

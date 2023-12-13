@@ -76,7 +76,7 @@ def interpolate_particle_data(p_old, t):
     return p_new
 
 
-def get_bh_particles(ketju_file, tol=1e-15, interp=True):
+def get_bh_particles(ketju_file, tol=1e-15, interp=False):
     """
     Return the bh particles in the (usually-named) ketju_bhs.hdf5 file.
     This is really just a wrapper that ensures:
@@ -94,7 +94,7 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=True):
     tol : float, optional
         tolerance for equality testing, by default 1e-15
     interp : bool, optional
-        iterpolate particle data to consistent time domain, by default True
+        iterpolate particle data to consistent time domain, by default False
 
     Returns
     -------
@@ -125,17 +125,17 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=True):
     else:
         # particles are in sync, and we can return as normal
         if len1 > len2:
-            #bh2 has merged into bh1
+            # bh2 has merged into bh1
             merged.update(bh1[len2])
             bh1 = bh1[:len2]
         elif len1 < len2:
-            #bh1 has merged into bh2
+            # bh1 has merged into bh2
             merged.update(bh2[len1])
             bh2 = bh2[:len1]
         return bh1, bh2, merged
 
 
-def get_bound_binary(ketju_file, tol=1e-15, interp=True):
+def get_bound_binary(ketju_file, tol=1e-15, interp=False):
     """
     Return the data from the ketju_bhs.hdf5 file corresponding to when the 
     binary becomes (and remains) bound. 
@@ -147,7 +147,7 @@ def get_bound_binary(ketju_file, tol=1e-15, interp=True):
     tol : float, optional
         tolerance for equality testing, by default 1e-15
     interp : bool, optional
-        iterpolate particle data to consistent time domain, by default True
+        iterpolate particle data to consistent time domain, by default False
 
     Returns
     -------
@@ -189,7 +189,7 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
     bound_state : str
         how binary is behaving
     """
-    bh1, bh2, merged = get_bh_particles(ketju_file, tol)
+    bh1, bh2, merged = get_bh_particles(ketju_file, tol, interp=True)
     energy_mask = ketjugw.orbital_energy(bh1, bh2) > 0
     try:
         bound_idx = len(energy_mask) - get_idx_in_array(1, energy_mask[::-1])

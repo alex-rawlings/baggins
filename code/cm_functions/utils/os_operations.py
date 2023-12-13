@@ -1,7 +1,7 @@
 import os
 import shutil
 import atexit
-from ..env_config import _cmlogger, tmp_dir
+from ..env_config import _cmlogger, TMPDIRs
 
 
 _logger = _cmlogger.getChild(__name__)
@@ -25,9 +25,9 @@ def get_cpu_count():
 @atexit.register
 def clean_up():
     """
-    Delete the user defined temporary directory, if created.
+    Delete any user defined temporary directories, if created.
     """
-    if os.path.exists(tmp_dir):
+    for d in TMPDIRs.register:
         # delete directory
-        shutil.rmtree(tmp_dir)
-        _logger.warning(f"Deleted temporary directory {tmp_dir}")
+        shutil.rmtree(d)
+        _logger.warning(f"Deleted temporary directory {d}")

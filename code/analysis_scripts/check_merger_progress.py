@@ -8,6 +8,7 @@ parser = argparse.ArgumentParser(description="Check the progress of an ongiong m
 parser.add_argument(type=str, help="BH file", dest="file")
 parser.add_argument("-b", "--bound", help="Plot bound points", dest="bound", action="store_true")
 parser.add_argument("-o", "--orbit", help="Plot orbital parameters", dest="orbparams", action="store_true")
+parser.add_argument("-i", "--interp", action="store_true", dest="interp", help="interpolate BH data if needed")
 args = parser.parse_args()
 
 SL = cmf.setup_logger("script", console_level="INFO")
@@ -18,7 +19,7 @@ new_filename = cmf.utils.create_file_copy(args.file)
 gyr = ketjugw.units.yr * 1e9
 kpc = ketjugw.units.pc * 1e3
 
-bh1, bh2, merged = cmf.analysis.get_bh_particles(new_filename)
+bh1, bh2, merged = cmf.analysis.get_bh_particles(new_filename, interp=args.interp)
 if merged():
     SL.info("A merger has occured!")
 
@@ -45,7 +46,7 @@ ax[1].set_ylabel("Energy")
 
 
 if args.orbparams:
-    bh1, bh2, merged = cmf.analysis.get_bound_binary(new_filename)
+    bh1, bh2, merged = cmf.analysis.get_bound_binary(new_filename, interp=args.interp)
     op = ketjugw.orbital_parameters(bh1, bh2)
     cmf.plotting.binary_param_plot(op)
 plt.show()
