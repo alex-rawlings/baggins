@@ -115,13 +115,15 @@ def plotter(d, ax, ax2, j):
         line_count += 1
     return line_count
 
+"""
+# TODO delete once testing done
 for kd in ketju_dirs:
     kfs = cmf.utils.get_ketjubhs_in_dir(kd)
     for kf in kfs:
         bh1, bh2, merged = cmf.analysis.get_bh_particles(kf)
         plt.plot(ketjugw.orbital_energy(bh1, bh2))
 plt.show()
-quit()
+quit()"""
 
 # initialise the plot
 ax = cmf.plotting.binary_param_plot({"t":np.nan, "a_R":np.nan, "e_t":np.nan}, ax)

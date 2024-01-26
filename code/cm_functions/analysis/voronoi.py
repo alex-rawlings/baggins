@@ -3,8 +3,9 @@ import scipy.optimize, scipy.ndimage
 from scipy.stats import binned_statistic_2d
 from voronoi_binning import voronoi_binned_image
 from ..env_config import _cmlogger
+from pygad import UnitArr
 
-__all__ = ["voronoi_grid", "gauss_hermite_function", "fit_gauss_hermite_distribution", "voronoi_binned_los_V_statistics", "lambda_R"]
+__all__ = ["voronoi_grid", "gauss_hermite_function", "fit_gauss_hermite_distribution", "voronoi_binned_los_V_statistics", "lambda_R", "radial_profile_velocity_moment"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -121,20 +122,28 @@ def fit_gauss_hermite_distribution(data):
     h4 : float
         4th moment
     """
+    if isinstance(data, UnitArr):
+        data = data.view(np.ndarray)
     if len(data) == 0:
+        _logger.warning(f"Data has length zero!")
         return 0.,0.,0.,0.
+    if np.any(np.isnan(data)):
+        _logger.warning("Removing NaNs from data!")
+        data = data[~np.isnan(data)]
     # the gauss hermite function is made to have the same mean and sigma as the
     # plain gaussian so compute them with faster estimates
-    mu0 = np.mean(data)
-    sigma0 = np.std(data)
+    mu0 = np.nanmean(data)
+    sigma0 = np.nanstd(data)
 
     def log_likelihood(pars):
-        return -np.sum(np.log(gauss_hermite_function(data, mu0, sigma0, *pars)))
-    
-    res = scipy.optimize.minimize(log_likelihood, (0., 0.))
-    
-    # assume that this just worked
-    h3, h4 =  res.x
+        return -np.nansum(np.log(gauss_hermite_function(data, mu0, sigma0, *pars)))
+
+    try:
+        res = scipy.optimize.least_squares(log_likelihood, (0., 0.), loss="huber")
+        h3, h4 =  res.x
+    except ValueError as err:
+        _logger.warning(f"Unsuccessful fitting of Gauss-Hermite function for IFU bin - {err}")
+        h3, h4 = np.nan, np.nan
     return mu0, sigma0, h3, h4
 
 
@@ -193,14 +202,35 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, **kwargs):
         )
 
 
-def lambda_R(vorbin_stats, re):
+def _get_R(vs):
+    """
+    Helper function to get radial value of voronoi bins
+
+    Parameters
+    ----------
+    vs : dict
+        output of voronoi_binned_los_V_statistics() method
+
+    Returns
+    -------
+    R : np.ndarray
+        radial values
+    inds : np.ndarray
+        sorted indices of radius
+    """
+    R = np.sqrt(vs["xBar"]**2 + vs["yBar"]**2)
+    inds = np.argsort(R)
+    return R[inds], inds
+
+
+def lambda_R(vorstat, re):
     """
     Determine the lambda(R) spin parameter.
     Original form by Matias Mannerkoski
 
     Parameters
     ----------
-    vorbin_stats : dict
+    vorstat : dict
         output of voronoi_binned_los_V_statistics() method
     re : float
         projected half mass (or half light) radius
@@ -212,11 +242,17 @@ def lambda_R(vorbin_stats, re):
     : np.ndarray
         lambda(R) value
     """
-    R = np.sqrt(vorbin_stats['xBar']**2 + vorbin_stats['yBar']**2)
-    inds = np.argsort(R)
-    R = R[inds]
-    F = vorbin_stats['bin_mass'][inds]
-    V = vorbin_stats['bin_V'][inds]
-    s = vorbin_stats['bin_sigma'][inds]
-    return R/re, np.cumsum(F*R*np.abs(V))/np.cumsum(F*R*np.sqrt(V**2 + s**2))
+    R, inds = _get_R(vorstat)
+    F = vorstat['bin_mass'][inds]
+    V = vorstat['bin_V'][inds]
+    s = vorstat['bin_sigma'][inds]
+    return R/re, np.nancumsum(F*R*np.abs(V))/np.nancumsum(F*R*np.sqrt(V**2 + s**2))
+
+
+def radial_profile_velocity_moment(vorstat, stat):
+    R, inds = _get_R(vorstat)
+    F = vorstat['bin_mass'][inds]
+    V = vorstat['bin_V'][inds]
+    s = vorstat['bin_sigma'][inds]
+    return R, np.nancumsum(F*R*vorstat[f"bin_{stat}"])/np.nancumsum(F*R*np.sqrt(V**2 + s**2))
 
