@@ -62,16 +62,17 @@
 % Please keep new commands to a minimum, and use \newcommand not \def to avoid
 % overwriting existing commands. Example:
 %\newcommand{\pcm}{\,cm$^{-2}$}	% per cm-squared
-\newcommand{\ketju}{\textsc{Ketju}}
-\newcommand{\mstar}{\textsc{mstar}}
-\newcommand{\gadget}{\textsc{gadget-4}}
+\newcommand{\ketju}{\textsc{Ketju}}                           % code name 
+\newcommand{\mstar}{\textsc{mstar}}                           % code name
+\newcommand{\gadget}{\textsc{gadget-4}}                       % code name
 
-\newcommand{\Msun}{\ensuremath{\mathrm{M}_{\sun}}}
-\newcommand{\kmps}{\ensuremath{\mathrm{km}\,\mathrm{s}^{-1}}}
+\newcommand{\Msun}{\ensuremath{\mathrm{M}_{\sun}}}            % Solar Mass
+\newcommand{\kmps}{\ensuremath{\mathrm{km}\,\mathrm{s}^{-1}} }% km/s formatting
+\newcommand{\Reff}{\ensuremath{R_\mathrm{e}}}                 % effective radius
 
-\newcommand{\dd}[1]{\ensuremath{\mathrm{d}#1}}
-\newcommand{\dv}[2]{\ensuremath{\frac{\dd{#1}}{\dd{#2}}}}
-\newcommand{\vb}[1]{\ensuremath{\bm{#1}}} %vectors
+\newcommand{\dd}[1]{\ensuremath{\mathrm{d}#1}}                % integral dx
+\newcommand{\dv}[2]{\ensuremath{\frac{\dd{#1}}{\dd{#2}}}}     % derivative
+\newcommand{\vb}[1]{\ensuremath{\bm{#1}}}                     %vectors
 
 \graphicspath{{figures/}}
 
@@ -181,6 +182,14 @@ Interactions between stellar particles are softened with a softening length of $
     \end{enumerate}
 }
 
+\drafting{
+    Main points to hammer home:
+    \begin{enumerate}
+        \item Parameters associated with the core (most importantly the core size) have a dependence on the kick velocity, whereas large-scale parameters (e.g. effective radius) do not.
+        \item Increasing kick velocity induces a decrease in the overall $\langle h_4 \rangle$ profile
+    \end{enumerate}
+}
+
 \begin{figure*}
     \centering
     \includegraphics[width=\textwidth]{dag}
@@ -197,8 +206,11 @@ Interactions between stellar particles are softened with a softening length of $
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{vk_rb}
-    \caption{Relation and fit between core radius and kick velocity.}
+    \includegraphics[width=\textwidth]{rb-kick}
+    \caption{
+        Bayesian estimate of the merger remnant core size $r_b$, scaled to the core size of the pre-merger remnant $r_{b,0}$, as a function of kick velocity $v_\mathrm{kick}$.
+        The core size distributions are shown as violin plots, with the median core size indicated by a white circle, and the interquartile range by the box. 
+        Larger kick velocities are correlated with larger core sizes. Additionally, a greater spread in the distribution of core sizes over different viewing projections of the merger remnant is associated with larger kick velocities.}
     \label{fig:vkrb}
 \end{figure*}
 
@@ -211,8 +223,34 @@ Interactions between stellar particles are softened with a softening length of $
 
 \begin{figure*}
     \centering
+    \includegraphics[width=\textwidth]{IFU_v0000}
+    \caption{
+        Mock integral field unit kinematic maps of the $v_\mathrm{kick}=0\,\kmps$ remnant, plotted out to $0.5\,\Reff$. 
+        Note the unordered rotation $V$, and the centrally-concentrated velocity dispersion $\sigma$.
+        The majority of the merger remnant within this aperture has $h_4>0$, with a small concentration of $h_4<0$ in an annulus about the central regions.
+    }
+    \label{fig:IFU0}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{IFU_v0960}
+    \caption{
+        Mock integral field unit kinematic maps of the $v_\mathrm{kick}=960\,\kmps$ remnant, again plotted out to $0.5\,\Reff$. 
+        Contrasting to the $v_\mathrm{kick}=0\,\kmps$ case in \autoref{fig:IFU0}, this IFU map has a much greater extent of $h_4<0$ that also reaches more extreme values of $h_4$ \drafting{check this}. 
+    }
+    \label{fig:IFU960}
+\end{figure*}
+
+\begin{figure*}
+    \centering
     \includegraphics[width=\textwidth]{h4}
-    \caption{$h_4$ kinematic maps of pre-merger and select remnants, possible to observe signature of kick in here? (Thorsten believes yes...)}
+    \caption{
+        Plot of the flux-weighted value of $h_4$ as a function of mean bin distance $R$ (scaled to the half mass radius) for each merger remnant simulated.
+        The lines are coloured by the kick velocity. 
+        Immediately apparent is the decrease in $\langle h_4 \rangle$ with increasing $v_\mathrm{kick}$.
+        All merger remnants have a global minimum in $\langle h_4 \rangle$ at $R/\Reff\simeq0.2$.
+    }
     \label{fig:h4}
 \end{figure*}
 
@@ -276,7 +314,10 @@ The data underlying this article will be shared on reasonable request to the cor
 
 %%%%%%%%%%%%%%%%% APPENDICES %%%%%%%%%%%%%%%%%%%%%
 
-%\appendix
+\appendix
+\section{Core-Se\'rsic fit parameter estimates}
+\drafting{Let's put the violin plots for all core fit parameters in the appendix}.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
