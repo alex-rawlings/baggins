@@ -418,7 +418,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "whit
     return texts
 
 
-def violinplot(d, pos=None, ax=None, lcol=None, boxwidth=5, **kwargs):
+def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwargs):
     """
     Generate a violin plot with an inner box and whisker plot
 
@@ -431,6 +431,8 @@ def violinplot(d, pos=None, ax=None, lcol=None, boxwidth=5, **kwargs):
         x coordinates of data, by default None
     ax : matplotlib.axes.Axes, optional
         plotting axes, by default None
+    showbox : bool, optional
+        show the IQR box, by default True
     lcol : str, optional
         line colour, by default None
     boxwidth : float, optional
@@ -475,9 +477,10 @@ def violinplot(d, pos=None, ax=None, lcol=None, boxwidth=5, **kwargs):
     whisker_min, whisker_max = whiskers[:,0], whiskers[:,1]
 
     # add whiskers and median, truncate the data for violins
-    ax.scatter(pos, medians, marker="o", color="white", s=2*boxwidth, zorder=3)
-    ax.vlines(pos, quartile1, quartile3, color=lcol, ls="-", lw=boxwidth, zorder=1)
-    ax.vlines(pos, whisker_min, whisker_max, color=lcol, ls="-", lw=0.2*boxwidth, zorder=2)
+    if showbox:
+        ax.scatter(pos, medians, marker="o", color="white", s=boxwidth, zorder=3)
+        ax.vlines(pos, quartile1, quartile3, color=lcol, ls="-", lw=boxwidth, zorder=1)
+        ax.vlines(pos, whisker_min, whisker_max, color=lcol, ls="-", lw=0.2*boxwidth, zorder=2)
     trunc_d = []
     for dd, wmin, wmax in zip(d, whisker_min, whisker_max):
         mask = np.logical_and(dd > wmin, dd < wmax)
@@ -485,13 +488,15 @@ def violinplot(d, pos=None, ax=None, lcol=None, boxwidth=5, **kwargs):
 
     if "widths" in kwargs and isinstance(kwargs["widths"], (float, int)):
         kwargs["widths"] = np.repeat(kwargs["widths"], len(pos))
-    violins = ax.violinplot(trunc_d, positions=pos, showmeans=False, showmedians=False, showextrema=False, **kwargs)
+    kwargs["showmedians"] = False if showbox else True
+    violins = ax.violinplot(trunc_d, positions=pos, showmeans=False, showextrema=False, **kwargs)
 
     # update styling of violin
     for i, pc in enumerate(violins["bodies"]):
         pc.set_edgecolor(lcol)
         pc.set_linewidth(0.5)
-        pc.set_alpha(1)
+        if showbox:
+            pc.set_alpha(1)
         pc.set_zorder(0.5)
         fc = pc.get_facecolor() if i==0 else fc
         pc.set_facecolor(fc)
