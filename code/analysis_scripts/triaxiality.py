@@ -51,9 +51,16 @@ if os.path.isfile(args.path) and os.path.splitext(args.path)[1] == ".pickle":
     ratios = data["ratios"]
 else:
     # analyse a new dataset
-    snaplist = cmf.utils.get_snapshots_in_dir(args.path)
+    if os.path.os.path.isfile(args.path):
+        snaplist = [args.path]
+    else:
+        snaplist = cmf.utils.get_snapshots_in_dir(args.path)
     if args.num is not None:
-        snaplist = snaplist[:args.num]
+        if args.num < 0:
+            # assume that negative number means that many from the end
+            snaplist = snaplist[args.num:]
+        else:
+            snaplist = snaplist[:args.num]
 
     # set the default radial scaling in units of Rvir
     memory_helper()

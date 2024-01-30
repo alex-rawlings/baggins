@@ -243,16 +243,31 @@ def lambda_R(vorstat, re):
         lambda(R) value
     """
     R, inds = _get_R(vorstat)
-    F = vorstat['bin_mass'][inds]
-    V = vorstat['bin_V'][inds]
-    s = vorstat['bin_sigma'][inds]
+    F = vorstat["bin_mass"][inds]
+    V = vorstat["bin_V"][inds]
+    s = vorstat["bin_sigma"][inds]
     return R/re, np.nancumsum(F*R*np.abs(V))/np.nancumsum(F*R*np.sqrt(V**2 + s**2))
 
 
 def radial_profile_velocity_moment(vorstat, stat):
+    """
+    Obtain a radial mass-weighted velocity moment profile from a Voronoi map.
+
+    Parameters
+    ----------
+    vorstat : dict
+        output of voronoi_binned_los_V_statistics() method
+    stat : str
+        velocity moment, one of: "V", "sigma", "h3", or "h4"
+
+    Returns
+    -------
+    R : np.ndarray
+        radial values
+    : np.ndarray
+        radial moment profile
+    """
     R, inds = _get_R(vorstat)
-    F = vorstat['bin_mass'][inds]
-    V = vorstat['bin_V'][inds]
-    s = vorstat['bin_sigma'][inds]
-    return R, np.nancumsum(F*R*vorstat[f"bin_{stat}"])/np.nancumsum(F*R*np.sqrt(V**2 + s**2))
+    F = vorstat["bin_mass"][inds]
+    return R, np.nancumsum(F*R*vorstat[f"bin_{stat}"])/np.nancumsum(F*R)
 

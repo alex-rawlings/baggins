@@ -27,6 +27,7 @@ for k, v in snapfiles["snap_nums"].items():
 h4_vals = {}
 
 for k, v in snapshots.items():
+    if float(k[1:]) > 900: break
     SL.info(f"Creating IFU maps for {k}")
     tstart = datetime.now()
 
@@ -77,8 +78,8 @@ cmapper, sm = cmf.plotting.create_normed_colours(vmin=min(kick_vels), vmax=max(k
 for k, v in h4_vals.items():
     ax.plot(v["R"], v["h4"], c=cmapper(get_kick_val(k)), ls="-")
 ax.set_xlabel(r"$R/R_\mathrm{e}$")
-ax.set_ylabel("Flux weighted h4")
+ax.set_ylabel(r"$\langle h_4 \rangle$")
 cbar = plt.colorbar(sm, ax=ax)
-cbar.ax.set_ylabel(r"$v_k$")
+cbar.ax.set_ylabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
 cmf.plotting.savefig(figure_config.fig_path("h4.pdf"), force_ext=True)
 
