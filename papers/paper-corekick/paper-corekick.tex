@@ -69,10 +69,12 @@
 \newcommand{\Msun}{\ensuremath{\mathrm{M}_{\sun}}}            % Solar Mass
 \newcommand{\kmps}{\ensuremath{\mathrm{km}\,\mathrm{s}^{-1}} }% km/s formatting
 \newcommand{\Reff}{\ensuremath{R_\mathrm{e}}}                 % effective radius
+\newcommand{\rb}{\ensuremath{r_\mathrm{b}}}                   % core radius
+\newcommand{\vk}{\ensuremath{v_\mathrm{kick}}}                % kick velocity
 
 \newcommand{\dd}[1]{\ensuremath{\mathrm{d}#1}}                % integral dx
 \newcommand{\dv}[2]{\ensuremath{\frac{\dd{#1}}{\dd{#2}}}}     % derivative
-\newcommand{\vb}[1]{\ensuremath{\bm{#1}}}                     %vectors
+\newcommand{\vb}[1]{\ensuremath{\bm{#1}}}                     % vectors
 
 \graphicspath{{figures/}}
 
@@ -156,10 +158,12 @@ The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the m
 We create six independently Monte Carlo sampled galaxy ICs, and merge each combination of galaxies on a radial orbit.
 The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
 We select a merger combination that results in a rapid coalescence of the BH binary, noting that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
-We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $v_\mathrm{kick}$ prescribed, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
-The upper limit on $v_\mathrm{kick}$ is chosen to match the escape velocity of the centre of the merger remnant.
-We additionally run one simulation with a recoil kick above the escape velocity, with $v_\mathrm{kick}=2000\,\kmps$.
+We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
+The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant.
+We additionally run one simulation with a recoil kick above the escape velocity, with $\vk=2000\,\kmps$.
 Each child simulation is run until the median remnant SMBH velocity relative to the galaxy CoM \drafting{check abbreviation} velocity is less than $10\,\kmps$ for at least $0.1\,\mathrm{Gyr}$.
+Those simulations where the maximum displacement of the kicked SMBH exceeds \drafting{$30\,\mathrm{kpc}$ check} are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
+In practice, this limits our sample of analysed simulations to those with $\vk\leq 960\kmps$, thus totalling seventeen simulations in our analysis.
 Interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
 
 \drafting{Atte's runs of mergers of unequal mass ratio?}
@@ -190,42 +194,105 @@ Interactions between stellar particles are softened with a softening length of $
     \end{enumerate}
 }
 
-\begin{figure*}
-    \centering
-    \includegraphics[width=\textwidth]{dag}
-    \caption{Directed acyclic graph of Bayesian hierarchical factor model.}
-    \label{fig:dag}
-\end{figure*}
 
-\begin{figure*}
+\subsection{Density Profiles}
+We fit the six-parameter core-Se\'rsic profile to the projection of each simulated merger remnants:
+\begin{equation}\label{eq:cs}
+    \Sigma(R) = \Sigma' \left[1 + \left(\frac{\rb}{R}\right)^\alpha \right]^{\gamma/\alpha} \exp\left[-b \left(\frac{R^\alpha + \rb^\alpha}{\Reff^\alpha}\right)^{(1/\alpha n)}\right]
+\end{equation}
+where
+\begin{equation}
+    \Sigma' = \Sigma_\mathrm{b} 2^{-\gamma/\alpha} \exp\left[b\left(2^{1/a} \frac{\rb}{\Reff}\right)^{1/n}\right].
+\end{equation}
+Here $\rb$ is the core radius, $\Sigma_\mathrm{b}$ is the density at the core radius, $\gamma$ is the core slope, $\Reff$ is the effective (half-light) radius, $\alpha$ is the profile transition index, and $n$ is the Se\'rsic index.
+We refer to the collective vector of these parameters as $\vb{\theta}$.
+We view the simulated merger remnant from fifteen different angles, and use a Bayesian hierarchical model (HM) to fit the model parameters.
+As each of the projections are unordered and exchangeable (i.e., there is no distinguishing label for the projections), and each projection is of the same merger remnant, a HM naturally lends itself.
+The idea behind the HM is straightforward: for each projection, we infer the six parameters of $\vb{\theta}$, and assume that these values are draws from a common, global distribution of all possible vectors $\vb{\theta}$.
+Hence, we are effectively inferring the global hyperparameters $\vb{\theta}^\mathrm{hyp}$ that describe the latent parameters $\vb{\theta}$ that we are interested in.
+This idea is demonstrated in the directed acyclic graph (DAG) for the model, shown in \autoref{fig:dag}.
+
+We use weakly-constrained priors for each of the hyperparameters in $\vb{\theta}^\mathrm{hyp}$, where these priors are not necessarily Gaussian (given that distributions of positive-constrained quantities, like radius, should not be described by a distribution with support on the full real space).
+The distributions\footnote{Note that the normal distributions $\mathcal{N}$ are parameterised using the standard deviation $\sigma$, as opposed to the variance $\sigma^2$ as is common in many statistics references.} of the hyperparameters are given in \autoref{tab:hyper}.
+We use the Hamiltonian Monte Carlo code \textsc{Stan} with four chains each of 2000 posterior sample draws (excluding 1000 burn-in draws) to fit the model parameters, ensuring that:
+\begin{enumerate}
+    \item the number of diverging draws is less than \drafting{5\%},
+    \item the effective draws per transition exceeds 0.001,
+    \item the sampler transitions of HMC potential energy is in excess of 0.3, and
+    \item the value $\hat{R}$ (comparison of between chain and within chain estimates) is less than 1.05.
+\end{enumerate}
+Example corner plots of the hyperparameter and latent parameters can be found in \autoref{sec:app_fit}.
+\drafting{Do we need specifics of MC parameters and exit conditions?}
+
+\begin{table}
+    \caption{Hyperparameter distributions for core-Se\'rsic model.}
+    \label{tab:hyper}
+    \begin{tabular}{llc}
+        \hline
+        Hyperparameter & Distribution & Truncation \\
+        \hline
+        $\mu_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(10, 1)$ & None \\
+        $\sigma_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(0, 0.05)$ & $x>0$ \\
+        $\lambda_\gamma$ & $\mathrm{Exp}(10)$ & None \\
+        $\mu_n$ & $\mathcal{N}(4,2)$ & $0 < x \leq 15$ \\
+        $\sigma_n$ & $\mathcal{N}(0,2)$ & $x>0$ \\
+        $\sigma_\alpha$ & $\mathcal{N}(0, 20)$ & $x>0$ \\
+        $\sigma_{r_\mathrm{b}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
+        $\sigma_{R_\mathrm{e}}$ & $\mathcal{N}(0, 20)$ & $x>0$ \\
+        $\mu_{\sigma_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
+        $\sigma_{\sigma_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+
+\begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{density}
+    \includegraphics[width=0.4\textwidth]{dag}
+    \caption{Directed acyclic graph of the core-Se\'rsic model of projected mass density within the Bayesian hierarchical framework. Single-line circle nodes represent fit parameters, double-line circles represent measured quantities (the data), and diamond nodes represent deterministic quantities. The particular distribution connecting nodes is written below the corresponding black square, with a subscript `T' indicating a truncated distribution, and the subscript `likelihood' indicating the likelihood function. The $R$ box indicates variables fit for each radial bin, and the projection box indicates variables specific to each projection realisation. Note that we additionally use $\hat{\Sigma}$ to distinguish the calculated value of surface density from the measured value $\Sigma$.}
+    \label{fig:dag}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\textwidth]{density}
     \caption{Density profiles with errors for select representative runs.}
     \label{fig:density}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}
+\begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{rb-kick}
+    \includegraphics[width=0.4\textwidth]{rb-kick}
     \caption{
-        Bayesian estimate of the merger remnant core size $r_b$, scaled to the core size of the pre-merger remnant $r_{b,0}$, as a function of kick velocity $v_\mathrm{kick}$.
-        The core size distributions are shown as violin plots, with the median core size indicated by a white circle, and the interquartile range by the box. 
+        Bayesian estimate of the merger remnant core size $r_b$, scaled to the core size of the pre-merger remnant $r_{b,0}$, as a function of kick velocity $\vk$.
+        The core size distributions are shown as violin plots, with the median core size indicated by the central mark.
         Larger kick velocities are correlated with larger core sizes. Additionally, a greater spread in the distribution of core sizes over different viewing projections of the merger remnant is associated with larger kick velocities.}
     \label{fig:vkrb}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}
+\begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{rb_pdf}
-    \caption{Probability density function of core radius, where kick velocity is MC sampled from Zlochower relation, and pumped through our fitted model in \autoref{fig:vrkb}.}
+    \includegraphics[width=0.4\textwidth]{rb_pdf}
+    \caption{Probability density function of core radius, where kick velocity is MC sampled from Zlochower relation, and pumped through our fitted model in \autoref{fig:vkrb}.}
     \label{fig:rb_pdf}
-\end{figure*}
+\end{figure}
+
+
+\subsection{Integral field unit kinematics}
+\drafting{We do some IFU stuff}
+We observe a trend of the Voronoi bins with $h_4<0$ extending to larger radii for remnants with larger recoil kicks than for those remnants with smaller recoil kicks.
+To quantify this recoil velocity dependence, we calculate a radially-varying mass-weighted $h_4$ parameter analogous to the observational spin parameter $\lambda$:
+\begin{equation}
+    \langle h_4 \rangle = \frac{\langle R h_4 \rangle}{\langle R \sqrt{V^2+\sigma^2}\rangle},
+\end{equation}
+where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equivalent to a flux weighted average in the case of constant mass-to-light ratio).
+
 
 \begin{figure*}
     \centering
     \includegraphics[width=\textwidth]{IFU_v0000}
     \caption{
-        Mock integral field unit kinematic maps of the $v_\mathrm{kick}=0\,\kmps$ remnant, plotted out to $0.5\,\Reff$. 
+        Mock integral field unit kinematic maps of the $\vk=0\,\kmps$ remnant, plotted out to $0.5\,\Reff$. 
         Note the unordered rotation $V$, and the centrally-concentrated velocity dispersion $\sigma$.
         The majority of the merger remnant within this aperture has $h_4>0$, with a small concentration of $h_4<0$ in an annulus about the central regions.
     }
@@ -236,23 +303,23 @@ Interactions between stellar particles are softened with a softening length of $
     \centering
     \includegraphics[width=\textwidth]{IFU_v0960}
     \caption{
-        Mock integral field unit kinematic maps of the $v_\mathrm{kick}=960\,\kmps$ remnant, again plotted out to $0.5\,\Reff$. 
-        Contrasting to the $v_\mathrm{kick}=0\,\kmps$ case in \autoref{fig:IFU0}, this IFU map has a much greater extent of $h_4<0$ that also reaches more extreme values of $h_4$ \drafting{check this}. 
+        Mock integral field unit kinematic maps of the $\vk=960\,\kmps$ remnant, again plotted out to $0.5\,\Reff$. 
+        Contrasting to the $\vk=0\,\kmps$ case in \autoref{fig:IFU0}, this IFU map has a much greater extent of $h_4<0$ that also reaches more extreme values of $h_4$ \drafting{check this}. 
     }
     \label{fig:IFU960}
 \end{figure*}
 
-\begin{figure*}
+\begin{figure}
     \centering
-    \includegraphics[width=\textwidth]{h4}
+    \includegraphics[width=0.4\textwidth]{h4}
     \caption{
         Plot of the flux-weighted value of $h_4$ as a function of mean bin distance $R$ (scaled to the half mass radius) for each merger remnant simulated.
         The lines are coloured by the kick velocity. 
-        Immediately apparent is the decrease in $\langle h_4 \rangle$ with increasing $v_\mathrm{kick}$.
+        Immediately apparent is the decrease in $\langle h_4 \rangle$ with increasing $\vk$.
         All merger remnants have a global minimum in $\langle h_4 \rangle$ at $R/\Reff\simeq0.2$.
     }
     \label{fig:h4}
-\end{figure*}
+\end{figure}
 
 % DISCUSSION
 \section{Discussion}
@@ -315,8 +382,26 @@ The data underlying this article will be shared on reasonable request to the cor
 %%%%%%%%%%%%%%%%% APPENDICES %%%%%%%%%%%%%%%%%%%%%
 
 \appendix
-\section{Core-Se\'rsic fit parameter estimates}
-\drafting{Let's put the violin plots for all core fit parameters in the appendix}.
+\section{Core-Se\'rsic fit parameter estimates}\label{sec:app_fit}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{all-kick}
+    \caption{
+        Violin plots of the six parameters in the core-Se\'sic model (from top left to bottom right) as a function of the kick velocity: the core radius normalised to the pre-merger core radius $\rb/r_{\mathrm{b},0}$, the density at the core radius $\log_{10}\Sigma_\mathrm{b}$, the core slope $\gamma$, the effective radius $\Reff$, the profile transition index $\alpha$, and the Se\'rsic index $n$.
+    }
+    \label{fig:csparams}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{corner_latent_960}
+    \caption{
+        Corner plot of the latent parameters in the core-Se\'rsic model for the $\vk=960\kmps$ instance.
+        Contours indicate, from yellow to dark blue, the 25\%, 50\%, 75\%, and 99\% highest density intervals (HDIs), with sample draws beyond the 99\% HDI shown as individual points. 
+        All distributions are unimodal with little cross-correlation between the latent variables.
+    }
+\end{figure*}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
