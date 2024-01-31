@@ -158,12 +158,12 @@ The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the m
 We create six independently Monte Carlo sampled galaxy ICs, and merge each combination of galaxies on a radial orbit.
 The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
 We select a merger combination that results in a rapid coalescence of the BH binary, noting that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
-We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
+We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. Additionally, the merger remnant displays almost no triaxiality, as seen in the $\vk=0\,\kmps$ case in \autoref{sec:app_triax}.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
 The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant.
 We additionally run one simulation with a recoil kick above the escape velocity, with $\vk=2000\,\kmps$.
 Each child simulation is run until the median remnant SMBH velocity relative to the galaxy CoM \drafting{check abbreviation} velocity is less than $10\,\kmps$ for at least $0.1\,\mathrm{Gyr}$.
-Those simulations where the maximum displacement of the kicked SMBH exceeds \drafting{$30\,\mathrm{kpc}$ check} are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
-In practice, this limits our sample of analysed simulations to those with $\vk\leq 960\kmps$, thus totalling seventeen simulations in our analysis.
+Those simulations where the maximum displacement of the kicked SMBH exceeds $30\,\mathrm{kpc}$ are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
+In practice, this limits our sample of analysed simulations to those with $\vk\leq 900\,\kmps$, thus totalling sixteen simulations in our analysis.
 Interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
 
 \drafting{Atte's runs of mergers of unequal mass ratio?}
@@ -214,7 +214,7 @@ This idea is demonstrated in the directed acyclic graph (DAG) for the model, sho
 
 We use weakly-constrained priors for each of the hyperparameters in $\vb{\theta}^\mathrm{hyp}$, where these priors are not necessarily Gaussian (given that distributions of positive-constrained quantities, like radius, should not be described by a distribution with support on the full real space).
 The distributions\footnote{Note that the normal distributions $\mathcal{N}$ are parameterised using the standard deviation $\sigma$, as opposed to the variance $\sigma^2$ as is common in many statistics references.} of the hyperparameters are given in \autoref{tab:hyper}.
-We use the Hamiltonian Monte Carlo code \textsc{Stan} with four chains each of 2000 posterior sample draws (excluding 1000 burn-in draws) to fit the model parameters, ensuring that:
+We use the Hamiltonian Monte Carlo code \textsc{Stan} \citep{standevelopmentteam2018} with four chains each of 2000 posterior sample draws (excluding 1000 burn-in draws) to fit the model parameters, ensuring that:
 \begin{enumerate}
     \item the number of diverging draws is less than \drafting{5\%},
     \item the effective draws per transition exceeds 0.001,
@@ -279,13 +279,38 @@ Example corner plots of the hyperparameter and latent parameters can be found in
 
 
 \subsection{Integral field unit kinematics}
-\drafting{We do some IFU stuff}
+We create mock integral field unit (IFU) observations using \drafting{ reference to Cappellari maybe?}. 
+Prior to performing the analysis, we reorientate each merger remnant so that the $z$-axis coincides with the minor axis of the reduced inertia tensor.
+
+\drafting{Describe voronoi tesselation}.
+For each Voronoi bin, we follow \citet{vandermarel1993} and decompose the line of sight (LOS) velocity into a series of Gauss-Hermite functions, described by the mean radial velocity $V$, the velocity dispersion $\sigma$, asymmetric deviations $h_3$, and symmetric deviations $h_4$.
+The line profile is thus described by:
+\begin{equation}
+    \mathfrak{L} = \frac{1}{\sqrt{2\pi}\sigma} e^{-w^2/2} \left\{ 1 + \sum_{j=3}^4 h_j H_j(w) \right\},
+\end{equation}
+where $w \equiv (v_\mathrm{LOS} - V)/\sigma$, and the Hermite polynomials $H_3$ and $H_4$ are defined:
+\begin{align}
+    H_3 &= \frac{1}{\sqrt{3}} (2w^3 - 3w) \nonumber \\
+    H_4 &= \frac{1}{\sqrt{24}} (4w^4 - 12w^2 + 3).
+\end{align}
+A recent comprehensive study of LOS velocity distribution fitting applied to elliptical galaxies can be found in \citet{mehrgan2023}.
+
 We observe a trend of the Voronoi bins with $h_4<0$ extending to larger radii for remnants with larger recoil kicks than for those remnants with smaller recoil kicks.
 To quantify this recoil velocity dependence, we calculate a radially-varying mass-weighted $h_4$ parameter analogous to the observational spin parameter $\lambda$:
 \begin{equation}
-    \langle h_4 \rangle = \frac{\langle R h_4 \rangle}{\langle R \sqrt{V^2+\sigma^2}\rangle},
+    \langle h_4 \rangle = \frac{\langle R h_4 \rangle}{\langle R \rangle},
 \end{equation}
 where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equivalent to a flux weighted average in the case of constant mass-to-light ratio).
+We observe an overall shift to more negative values of $h_4$ for kick velocities up until $\vk\sim400\,\kmps$ \drafting{check this, currently just read off plot}, above which the radial $h_4$ profile is not sensitive to increasing kick velocity. 
+Additionally, all $h_4$ profiles are radially decreasing, obtaining a local minimum at $R/\Reff\simeq 0.2$, and a modestly increasing by $R/\Reff\simeq 0.3$.
+
+\drafting{Why is this 
+\begin{enumerate}
+    \item decreasing with increasing kicks,
+    \item saturating beyond some point,
+    \item displaying a dip at 0.2 Re??
+\end{enumerate}
+}
 
 
 \begin{figure*}
@@ -301,12 +326,12 @@ where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equiv
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{IFU_v0960}
+    \includegraphics[width=\textwidth]{IFU_v0900}
     \caption{
-        Mock integral field unit kinematic maps of the $\vk=960\,\kmps$ remnant, again plotted out to $0.5\,\Reff$. 
+        Mock integral field unit kinematic maps of the $\vk=900\,\kmps$ remnant, again plotted out to $0.5\,\Reff$. 
         Contrasting to the $\vk=0\,\kmps$ case in \autoref{fig:IFU0}, this IFU map has a much greater extent of $h_4<0$ that also reaches more extreme values of $h_4$ \drafting{check this}. 
     }
-    \label{fig:IFU960}
+    \label{fig:IFU900}
 \end{figure*}
 
 \begin{figure}
@@ -320,6 +345,7 @@ where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equiv
     }
     \label{fig:h4}
 \end{figure}
+
 
 % DISCUSSION
 \section{Discussion}
@@ -382,6 +408,27 @@ The data underlying this article will be shared on reasonable request to the cor
 %%%%%%%%%%%%%%%%% APPENDICES %%%%%%%%%%%%%%%%%%%%%
 
 \appendix
+\section{Triaxiality}\label{sec:app_triax}
+We present the triaxiality of all sixteen merger remnants in the analysis at the time when the SMBH has settled.
+We determine the ratios $b/a$ and $c/a$, where $a$, $b$, and $c$ are the eigenvalues of the reduced inertia tensor $I_\mathrm{red}$ and $c\leq b\leq a$. 
+The tensor $I_\mathrm{red}$ is determined by binning the stellar component of the remnant into 20 radial shells from $10^{-3} R_\mathrm{vir}$ to $10^{-1} R_\mathrm{vir}$: i.e., the binning of particles is not cumulative. 
+The variation of the ratios $b/a$ and $c/a$ is plotted as a function of radius in \autoref{fig:triax}.
+All remnants display a high degree of symmetry, with the minimum value of $b/a\simeq 0.8$, and the minimum value of $c/a\simeq0.7$.
+With a higher kick velocity, there is a slight tendency to have a higher degree of symmetry at radii $R\lesssim 10\,\mathrm{kpc}$, and a slightly lesser degree of symmetry at radii beyond this distance, compared to lower kick velocity remnants. 
+The difference is however minimal between all merger remnants. 
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{triaxiality}
+    \caption{
+        Triaxiality ratios $b/a$ and $c/a$ as a function of radius for all merger remnants in the analysis.
+        Lines are colour coded by the kick velocity.
+        Note that the $\vk=0\,\kmps$ case is equivalent to the pre-merger remnant. 
+    }
+    \label{fig:triax}
+\end{figure}
+
 \section{Core-Se\'rsic fit parameter estimates}\label{sec:app_fit}
 
 \begin{figure*}
@@ -397,7 +444,7 @@ The data underlying this article will be shared on reasonable request to the cor
     \centering
     \includegraphics[width=\textwidth]{corner_latent_960}
     \caption{
-        Corner plot of the latent parameters in the core-Se\'rsic model for the $\vk=960\kmps$ instance.
+        Corner plot of the latent parameters in the core-Se\'rsic model for the $\vk=960\,\kmps$ instance. \drafting{UPDATE TO 900}
         Contours indicate, from yellow to dark blue, the 25\%, 50\%, 75\%, and 99\% highest density intervals (HDIs), with sample draws beyond the 99\% HDI shown as individual points. 
         All distributions are unimodal with little cross-correlation between the latent variables.
     }
