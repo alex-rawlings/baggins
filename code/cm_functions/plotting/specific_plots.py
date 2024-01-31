@@ -202,13 +202,13 @@ def voronoi_plot(vdat, figsize=(7,4.7), clims={}):
     # set up the figure
     fig, ax = plt.subplots(2,2, sharex="all", sharey="all", figsize=figsize)
     for i in range(2):
-        ax[1,i].set_xlabel("x/kpc")
-        ax[i,0].set_ylabel("y/kpc")
+        ax[1,i].set_xlabel(r"$x/\mathrm{kpc}$")
+        ax[i,0].set_ylabel(r"$y/\mathrm{kpc}$")
     ax = np.concatenate(ax).flatten()
     for i, (statkey, cmap, label) in enumerate(zip(
         ("V", "sigma", "h3", "h4"),
-        ("seismic", "plasma", "seismic", "seismic"),
-        (r"$V$ [km/s]", r"$\sigma$ [km/s]", r"$h_3$ [km/s]", r"$h_4$ [km/s]")
+        ("coolwarm", "plasma", "coolwarm", "coolwarm"),
+        (r"$V/\mathrm{km}\,\mathrm{s}^{-1}$", r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$", r"$h_3/\mathrm{km}\,\mathrm{s}^{-1}$", r"$h_4/\mathrm{km}\,\mathrm{s}^{-1}$")
     )):
         # plot the statistic
         stat = vdat[f"img_{statkey}"]

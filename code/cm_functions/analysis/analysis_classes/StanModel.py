@@ -736,13 +736,13 @@ class _StanModel(ABC):
         num_vars = len(var_names)
         with az.rc_context({"plot.max_subplots":num_vars**2-np.sum(np.arange(num_vars))+1}):
             # first lay down the markers
-            ax = az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.2}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+            ax = az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.1, "s":10}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
             # then add the KDE
             try:
-                az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+                az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "hdi_probs":levels, "contourf_kwargs":{"cmap":"Blues"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
             except ValueError:
                 _logger.error(f"HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults")
-                az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "contourf_kwargs":{"cmap":"cividis"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+                az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="kde", divergences=divergences, combine_dims=combine_dims, ax=ax, figsize=figsize, marginals=True, kde_kwargs={"contour_kwargs":{"linewidths":0.5}, "contourf_kwargs":{"cmap":"Blues"}}, point_estimate_marker_kwargs={"marker":""}, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
         return ax
 
 
@@ -780,8 +780,6 @@ class _StanModel(ABC):
         except AssertionError:
             _logger.exception("Pair plot requires at least two variables!", exc_info=True)
             raise
-        if len(var_names) > 4:
-            _logger.warning("Corner plots with more than 4 variables may not correctly map the labels given by the labeller!")
 
         # set trace colour scheme
         if self._parameter_diagnostic_plots_counter == 0:

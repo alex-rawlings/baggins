@@ -1,5 +1,6 @@
 import argparse
 import os.path
+import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
@@ -25,6 +26,12 @@ for k, v in snapfiles["snap_nums"].items():
 
 # dict to store radial h4 profiles
 h4_vals = {}
+
+# determine colour limits
+Vlim = -np.inf
+sigmalim = [np.inf, -np.inf]
+h3lim = -np.inf
+h4lim = -np.inf
 
 for k, v in snapshots.items():
     if float(k[1:]) > 900: break
@@ -58,7 +65,23 @@ for k, v in snapshots.items():
     del snap
     pygad.gc_full_collect()
 
-    ax = cmf.plotting.voronoi_plot(voronoi_stats)
+    # determine colour limits
+    _Vlim =  np.max(np.abs(voronoi_stats["img_V"]))
+    Vlim = _Vlim if _Vlim > Vlim else Vlim
+
+    _sigmalim = [np.min(voronoi_stats["img_sigma"]), np.max(voronoi_stats["img_sigma"])]
+    sigmalim[0] = _sigmalim[0] if _sigmalim[0] < sigmalim[0] else sigmalim[0]
+    sigmalim[1] = _sigmalim[1] if _sigmalim[1] > sigmalim[1] else sigmalim[1]
+
+    _h3lim =  np.max(np.abs(voronoi_stats["img_h3"]))
+    h3lim = _h3lim if _h3lim > h3lim else h3lim
+
+    _h4lim =  np.max(np.abs(voronoi_stats["img_h4"]))
+    h4lim = _h4lim if _h4lim > h4lim else h4lim
+
+    # have to set colour limits by hand
+    ax = cmf.plotting.voronoi_plot(voronoi_stats,
+                                   clims={"V":[25], "sigma":[155,351], "h3":[0.04], "h4":[0.05]})
     fig = ax[0].get_figure()
 
     SL.info(f"Total time: {datetime.now() - tstart}")
@@ -74,7 +97,7 @@ for k, v in snapshots.items():
 fig, ax = plt.subplots(1,1)
 get_kick_val = lambda k: float(k.lstrip("v"))
 kick_vels = [get_kick_val(k) for k in h4_vals.keys()]
-cmapper, sm = cmf.plotting.create_normed_colours(vmin=min(kick_vels), vmax=max(kick_vels))
+cmapper, sm = cmf.plotting.create_normed_colours(vmin=min(kick_vels), vmax=max(kick_vels), cmap="custom_diverging")
 for k, v in h4_vals.items():
     ax.plot(v["R"], v["h4"], c=cmapper(get_kick_val(k)), ls="-")
 ax.set_xlabel(r"$R/R_\mathrm{e}$")
@@ -83,3 +106,9 @@ cbar = plt.colorbar(sm, ax=ax)
 cbar.ax.set_ylabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
 cmf.plotting.savefig(figure_config.fig_path("h4.pdf"), force_ext=True)
 
+print("-------------")
+print("Colour limits")
+print(f"V: {Vlim}")
+print(f"sigma: {sigmalim}")
+print(f"h3: {h3lim}")
+print(f"h4: {h4lim}")
