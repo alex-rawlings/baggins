@@ -21,7 +21,7 @@ orbitfilebases.sort()
 
 
 mergemask = [6,1,3,2,2,1,3,2,2,1,3,2,2,1,3,2,2,1,3,2,2,0,5,6,0,0,4]
-labels = [r"$\pi\mathrm{-box}$", r"$\mathrm{boxlet}$", r"$x\mathrm{-tube}$", "", r"$z\mathrm{-tube}$", r"$\mathrm{keplerian}$", r"$\mathrm{irregular}$", r"$\mathrm{unclassified}$"]
+labels = [r"$\pi\mathrm{-box}$", r"$\mathrm{boxlet}$", r"$x\mathrm{-tube}$", "", r"$z\mathrm{-tube}$", r"$\mathrm{Keplerian}$", r"$\mathrm{irregular}$", r"$\mathrm{unclassified}$"]
 
 def radial_frequency(ofb, minrad=0.2, maxrad=100., nbin=10, returnextra=False):
     orbitcl = cmf.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[0]
@@ -52,25 +52,33 @@ def radial_frequency(ofb, minrad=0.2, maxrad=100., nbin=10, returnextra=False):
     else:
         return meanrads, classfrequency, rad_len
 
-
+# figure 1: plots of different orbital families
 fig, ax = plt.subplots(2,4, sharex=True, sharey=True)
-
 fig.set_figwidth(2*fig.get_figwidth())
 cmapper, sm = cmf.plotting.create_normed_colours(0, 900, cmap="custom_Blues")
 
-for dirnum, orbitfilebase in enumerate(orbitfilebases):
+
+# figure 2: plots of different kick velocities
+fig2, ax2 = plt.subplots(4,4, sharex=True, sharey=True)
+fig2.set_figwidth(2*fig2.get_figwidth())
+fig2.set_figheight(2*fig2.get_figheight())
+
+for axj, orbitfilebase in zip(ax2.flat, orbitfilebases):
     try:
         meanrads, classfrequency, rad_len = radial_frequency(orbitfilebase)
     except:
         # ongoing analysis
         continue
+    vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
     cfi = 0
     for i, axi in enumerate(ax.flat):
         if i==3: continue
-        vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
-        axi.semilogx(meanrads, classfrequency[:,cfi], label=vkick, c=cmapper(vkick), lw=1, ls="-")
+        axi.semilogx(meanrads, classfrequency[:,cfi], label=vkick, c=cmapper(vkick), ls="-")
+        axj.semilogx(meanrads, classfrequency[:,cfi], label=labels[i])
         cfi += 1
+    axj.text(0.9, 0.9, f"${vkick:.0f}\, \mathrm{{km/s}}$", ha="right", va="center", transform=axj.transAxes)
 
+### for first figure:
 # make axis labels nice
 for i in range(ax.shape[0]):
     ax[i,0].set_ylabel(r"$f_\mathrm{orbit}$")
@@ -79,12 +87,21 @@ for i in range(ax.shape[1]):
 for axi, label in zip(ax.flat, labels):
     axi.text(0.9, 0.9, label, ha="right", va="center", transform=axi.transAxes)
 
-
 # add the colour bar in the top right subplot, hiding that subplot
 plt.colorbar(sm, ax=ax[0,-1], pad=-1.075, fraction=0.5, aspect=10, label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
 ax[0,3].set_visible(False)
 
 
-cmf.plotting.savefig(figure_config.fig_path("orbits.pdf"), force_ext=True)
+### for second figure
+for i in range(ax2.shape[0]):
+    ax2[i,0].set_ylabel(r"$f_\mathrm{orbit}$")
+for i in range(ax2.shape[1]):
+    ax2[-1,i].set_xlabel(r"$r/\mathrm{kpc}$")
+fig2.subplots_adjust(bottom=0.16, top=0.98)
+ax2[-1,1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.45), ncol=len(labels))
+
+
+cmf.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
+cmf.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)
 plt.show()
 
