@@ -194,9 +194,19 @@ Interactions between stellar particles are softened with a softening length of $
     \end{enumerate}
 }
 
+\subsection{Infall time}
+\drafting{
+    \textbf{Atte's section}. Would be good to have:
+    \begin{enumerate}
+        \item Plot of infall time (i.e., time for stability criterion to be reached) as a function of kick velocity
+        \item Number of oscillations before settling?
+        \item Plot of maximum displacement of kicked BH as a function of kick velocity. How does this compare to core size? Which simulations have BH kicked beyond the core?
+    \end{enumerate}
+}
 
-\subsection{Density Profiles}
-We fit the six-parameter core-Se\'rsic profile to the projection of each simulated merger remnants:
+
+\subsection{Density profiles}
+We fit the six-parameter core-S\'ersic profile to the projection of each simulated merger remnants:
 \begin{equation}\label{eq:cs}
     \Sigma(R) = \Sigma' \left[1 + \left(\frac{\rb}{R}\right)^\alpha \right]^{\gamma/\alpha} \exp\left[-b \left(\frac{R^\alpha + \rb^\alpha}{\Reff^\alpha}\right)^{(1/\alpha n)}\right]
 \end{equation}
@@ -204,7 +214,7 @@ where
 \begin{equation}
     \Sigma' = \Sigma_\mathrm{b} 2^{-\gamma/\alpha} \exp\left[b\left(2^{1/a} \frac{\rb}{\Reff}\right)^{1/n}\right].
 \end{equation}
-Here $\rb$ is the core radius, $\Sigma_\mathrm{b}$ is the density at the core radius, $\gamma$ is the core slope, $\Reff$ is the effective (half-light) radius, $\alpha$ is the profile transition index, and $n$ is the Se\'rsic index.
+Here $\rb$ is the core radius, $\Sigma_\mathrm{b}$ is the density at the core radius, $\gamma$ is the core slope, $\Reff$ is the effective (half-light) radius, $\alpha$ is the profile transition index, and $n$ is the S\'ersic index.
 We refer to the collective vector of these parameters as $\vb{\theta}$.
 We view the simulated merger remnant from fifteen different angles, and use a Bayesian hierarchical model (HM) to fit the model parameters.
 As each of the projections are unordered and exchangeable (i.e., there is no distinguishing label for the projections), and each projection is of the same merger remnant, a HM naturally lends itself.
@@ -214,18 +224,23 @@ This idea is demonstrated in the directed acyclic graph (DAG) for the model, sho
 
 We use weakly-constrained priors for each of the hyperparameters in $\vb{\theta}^\mathrm{hyp}$, where these priors are not necessarily Gaussian (given that distributions of positive-constrained quantities, like radius, should not be described by a distribution with support on the full real space).
 The distributions\footnote{Note that the normal distributions $\mathcal{N}$ are parameterised using the standard deviation $\sigma$, as opposed to the variance $\sigma^2$ as is common in many statistics references.} of the hyperparameters are given in \autoref{tab:hyper}.
-We use the Hamiltonian Monte Carlo code \textsc{Stan} \citep{standevelopmentteam2018} with four chains each of 2000 posterior sample draws (excluding 1000 burn-in draws) to fit the model parameters, ensuring that:
+We use the Hamiltonian Monte Carlo code \textsc{Stan} \citep{standevelopmentteam2018} with four chains each of 2000 posterior sample draws (excluding an additional 2000 burn-in draws) to fit the model parameters, ensuring that:
 \begin{enumerate}
-    \item the number of diverging draws is less than \drafting{5\%},
+    \item the number of diverging draws is less than 5\%,
     \item the effective draws per transition exceeds 0.001,
     \item the sampler transitions of HMC potential energy is in excess of 0.3, and
-    \item the value $\hat{R}$ (comparison of between chain and within chain estimates) is less than 1.05.
+    \item the value $\hat{R}$ (comparison of between-chain and within-chain estimates) is less than 1.05.
 \end{enumerate}
-Example corner plots of the hyperparameter and latent parameters can be found in \autoref{sec:app_fit}.
+Example corner plots of the latent parameters can be found in \autoref{sec:app_fit}.
 \drafting{Do we need specifics of MC parameters and exit conditions?}
 
+In agreement with previous studies \citep{nasim2021b}, we find an increase in the core radius $\rb$ with kick velocity.
+\drafting{Need to check if others discuss this:} We find that the core radius saturates to a value of $\sim2$ times that of the merger remnant with no kick velocity by $\vk = 600\,\kmps$, corresponding to half of the escape velocity of the merger remnant core. 
+As shown in \autoref{fig:csparams}, the density at the core radius $\Sigma_\mathrm{b}$ decreases monotonically with kick velocity, consistent with the picture of the kicked SMBH removing more mass the more number of oscillations it is able to undergo before settling to Brownian motion limits. 
+Interestingly, we observe a similar decrease in S\'ersic index $n$ with increasing kick velocity, although no correlation is seen between $n$ and $\Sigma_\mathrm{b}$ in the latent parameter corner plots (see for example \autoref{fig:csparams}).
+
 \begin{table}
-    \caption{Hyperparameter distributions for core-Se\'rsic model.}
+    \caption{Hyperparameter distributions for core-S\'ersic model.}
     \label{tab:hyper}
     \begin{tabular}{llc}
         \hline
@@ -239,8 +254,8 @@ Example corner plots of the hyperparameter and latent parameters can be found in
         $\sigma_\alpha$ & $\mathcal{N}(0, 20)$ & $x>0$ \\
         $\sigma_{r_\mathrm{b}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
         $\sigma_{R_\mathrm{e}}$ & $\mathcal{N}(0, 20)$ & $x>0$ \\
-        $\mu_{\sigma_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
-        $\sigma_{\sigma_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
+        $\mu_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
+        $\sigma_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
         \hline
     \end{tabular}
 \end{table}
@@ -249,14 +264,17 @@ Example corner plots of the hyperparameter and latent parameters can be found in
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{dag}
-    \caption{Directed acyclic graph of the core-Se\'rsic model of projected mass density within the Bayesian hierarchical framework. Single-line circle nodes represent fit parameters, double-line circles represent measured quantities (the data), and diamond nodes represent deterministic quantities. The particular distribution connecting nodes is written below the corresponding black square, with a subscript `T' indicating a truncated distribution, and the subscript `likelihood' indicating the likelihood function. The $R$ box indicates variables fit for each radial bin, and the projection box indicates variables specific to each projection realisation. Note that we additionally use $\hat{\Sigma}$ to distinguish the calculated value of surface density from the measured value $\Sigma$.}
+    \caption{Directed acyclic graph of the core-S\'ersic model of projected mass density within the Bayesian hierarchical framework. Single-line circle nodes represent fit parameters, double-line circles represent measured quantities (the data), and diamond nodes represent deterministic quantities. The particular distribution connecting nodes is written below the corresponding black square, with a subscript `T' indicating a truncated distribution, and the subscript `likelihood' indicating the likelihood function. The $R$ box indicates variables fit for each radial bin, and the projection box indicates variables specific to each projection realisation. Note that we additionally use $\hat{\Sigma}$ to distinguish the calculated value of surface density from the measured value $\Sigma$.}
     \label{fig:dag}
 \end{figure}
 
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{density}
-    \caption{Density profiles with errors for select representative runs.}
+    \caption{
+        Surface density profiles with 25\% Bayesian HDI for select representative runs.
+        Increasing the kick velocity induces a shallower density profile in the inner regions.
+        }
     \label{fig:density}
 \end{figure}
 
@@ -265,7 +283,7 @@ Example corner plots of the hyperparameter and latent parameters can be found in
     \includegraphics[width=0.4\textwidth]{rb-kick}
     \caption{
         Bayesian estimate of the merger remnant core size $r_b$, scaled to the core size of the pre-merger remnant $r_{b,0}$, as a function of kick velocity $\vk$.
-        The core size distributions are shown as violin plots, with the median core size indicated by the central mark.
+        The core size distributions are shown as box plots, with the median core size indicated by the central mark.
         Larger kick velocities are correlated with larger core sizes. Additionally, a greater spread in the distribution of core sizes over different viewing projections of the merger remnant is associated with larger kick velocities.}
     \label{fig:vkrb}
 \end{figure}
@@ -302,7 +320,7 @@ To quantify this recoil velocity dependence, we calculate a radially-varying mas
 \end{equation}
 where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equivalent to a flux weighted average in the case of constant mass-to-light ratio).
 We observe an overall shift to more negative values of $h_4$ for kick velocities up until $\vk\sim400\,\kmps$ \drafting{check this, currently just read off plot}, above which the radial $h_4$ profile is not sensitive to increasing kick velocity. 
-Additionally, all $h_4$ profiles are radially decreasing, obtaining a local minimum at $R/\Reff\simeq 0.2$, and a modestly increasing by $R/\Reff\simeq 0.3$.
+Additionally, all $h_4$ profiles are radially decreasing, obtaining a local minimum at $R\simeq 2\,\mathrm{kpc}$ ($R/\Reff\simeq 0.2$), and a modestly increasing for $R \gtrsim 2\,\mathrm{kpc}$.
 
 \drafting{Why is this 
 \begin{enumerate}
@@ -318,7 +336,7 @@ Additionally, all $h_4$ profiles are radially decreasing, obtaining a local mini
     \includegraphics[width=\textwidth]{IFU_v0000}
     \caption{
         Mock integral field unit kinematic maps of the $\vk=0\,\kmps$ remnant, plotted out to $0.5\,\Reff$. 
-        Note the unordered rotation $V$, and the centrally-concentrated velocity dispersion $\sigma$.
+        Note the small magnitude of the unordered rotation $V$, and the centrally-concentrated velocity dispersion $\sigma$.
         The majority of the merger remnant within this aperture has $h_4>0$, with a small concentration of $h_4<0$ in an annulus about the central regions.
     }
     \label{fig:IFU0}
@@ -328,8 +346,8 @@ Additionally, all $h_4$ profiles are radially decreasing, obtaining a local mini
     \centering
     \includegraphics[width=\textwidth]{IFU_v0900}
     \caption{
-        Mock integral field unit kinematic maps of the $\vk=900\,\kmps$ remnant, again plotted out to $0.5\,\Reff$. 
-        Contrasting to the $\vk=0\,\kmps$ case in \autoref{fig:IFU0}, this IFU map has a much greater extent of $h_4<0$ that also reaches more extreme values of $h_4$ \drafting{check this}. 
+        Mock integral field unit kinematic maps of the $\vk=900\,\kmps$ remnant, again plotted out to $0.5\,\Reff$, with the same colour scaling as \autoref{fig:IFU0}. 
+        Contrasting to the $\vk=0\,\kmps$ case in \autoref{fig:IFU0}, this IFU map has a much greater extent of $h_4<0$ that also reaches more extreme values of $h_4$. 
     }
     \label{fig:IFU900}
 \end{figure*}
@@ -338,13 +356,46 @@ Additionally, all $h_4$ profiles are radially decreasing, obtaining a local mini
     \centering
     \includegraphics[width=0.4\textwidth]{h4}
     \caption{
-        Plot of the flux-weighted value of $h_4$ as a function of mean bin distance $R$ (scaled to the half mass radius) for each merger remnant simulated.
+        Plot of the flux-weighted value of $h_4$ as a function of mean bin distance $R$for each merger remnant simulated.
         The lines are coloured by the kick velocity. 
         Immediately apparent is the decrease in $\langle h_4 \rangle$ with increasing $\vk$.
-        All merger remnants have a global minimum in $\langle h_4 \rangle$ at $R/\Reff\simeq0.2$.
+        All merger remnants have a global minimum in $\langle h_4 \rangle$ at $R\simeq 2.0$, corresponding to $R/\Reff\simeq0.2$.
     }
     \label{fig:h4}
 \end{figure}
+
+
+\subsection{Orbit analysis}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{orbits}
+    \caption{
+        Orbit analysis of all sixteen merger remnants.
+        Stellar particles \drafting{currently it's just a subset} are assigned to one of seven different orbital families, and binned into ten logarithmically-spaced radial shells such that $0.2 \leq R/\mathrm{kpc} \leq 100$.
+        At radii greater than $1\,\mathrm{kpc}$, there is very little to distinguish between the different kick velocities for boxlet, $z$-tube, Keplerian, irregular, and unclassified orbits.
+        Conversely, for radii $1 \leq R/\mathrm{kpc} \leq 10$, there is a clear gradient for $\pi$-box and $x$-tube families.
+        For higher kick velocities, there is a tendency to a higher fraction of $\pi$-box orbits compared to lower kick velocities.
+        An inverse trend is visible for $x$-tube orbits. 
+    }
+    \label{fig:orbits}
+\end{figure*}
+
+We perform an orbit analysis on the sixteen merger remnants in our sample following \citet{frigo2021}.
+\drafting{Discuss how the orbit analysis is done, in particular the different orbital families}.
+First, the merger remnant is rotated so that the $z$-axis coincides with the minor axis of the reduced inertia tensor (and hence has the same orientation as the IFU maps in \autoref{fig:IFU0} and \autoref{fig:IFU900}).
+The potential of the merger remnant is fit using a \drafting{self consistent field (SCF) potential, describe more?} method, providing an analytical potential in which the orbits of individual stellar particles can be integrated.
+The potential of the merger remnant is checked for stability, and each \drafting{currently a subset} stellar particle is integrated for fifty orbits to determine which, if any, orbital resonances exist. 
+
+As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box orbits, and a lower fraction of $x$-tube orbits, than their lower kick velocity counterparts.
+The other five orbital families are generally consistent between all merger remnants. 
+\drafting{
+    Might move this to discussion, just put here for now to get the idea down.
+    z-tubes not primary contributor to LOS velocity (rotation about z axis).
+    Higher kick correlated with reduction in x-tubes (orbits about the x-axis), increase in pi-box.
+    Pi-box show no resonant motion (no net ang. mom.)\dots here's the leap: reduced resonant motion seen as a reduction in `symmetric deviations' in line profile?
+    Also look directly at kinematic maps: 0 kick case. Dominated by x tubes at radii > 1kpc, small region of negative h4 extends to here before becoming positive. 
+}
 
 
 % DISCUSSION
@@ -429,13 +480,13 @@ The difference is however minimal between all merger remnants.
     \label{fig:triax}
 \end{figure}
 
-\section{Core-Se\'rsic fit parameter estimates}\label{sec:app_fit}
+\section{Core-S\'ersic fit parameter estimates}\label{sec:app_fit}
 
 \begin{figure*}
     \centering
     \includegraphics[width=\textwidth]{all-kick}
     \caption{
-        Violin plots of the six parameters in the core-Se\'sic model (from top left to bottom right) as a function of the kick velocity: the core radius normalised to the pre-merger core radius $\rb/r_{\mathrm{b},0}$, the density at the core radius $\log_{10}\Sigma_\mathrm{b}$, the core slope $\gamma$, the effective radius $\Reff$, the profile transition index $\alpha$, and the Se\'rsic index $n$.
+        Box plots of the six parameters in the core-S\'ersic model (from top left to bottom right) as a function of the kick velocity: the core radius normalised to the pre-merger core radius $\rb/r_{\mathrm{b},0}$, the density at the core radius $\log_{10}\Sigma_\mathrm{b}$, the core slope $\gamma$, the effective radius $\Reff$, the profile transition index $\alpha$, and the S\'ersic index $n$.
     }
     \label{fig:csparams}
 \end{figure*}
@@ -444,12 +495,24 @@ The difference is however minimal between all merger remnants.
     \centering
     \includegraphics[width=\textwidth]{corner_latent_900}
     \caption{
-        Corner plot of the latent parameters in the core-Se\'rsic model for the $\vk=960\,\kmps$ instance. \drafting{UPDATE TO 900}
+        Corner plot of the latent parameters in the core-S\'ersic model for the $\vk=900\,\kmps$ instance.
         Contours indicate, from yellow to dark blue, the 25\%, 50\%, 75\%, and 99\% highest density intervals (HDIs), with sample draws beyond the 99\% HDI shown as individual points. 
         All distributions are unimodal with little cross-correlation between the latent variables.
     }
 \end{figure*}
 
+
+\section{Additional orbital plots}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{orbits2}
+    \caption{
+        Same as \autoref{fig:orbits}, but each merger remnant is shown in its own panel, with the different orbital families depicted by colour, to better demonstrate the radial fraction of orbits for a given merger.
+        \drafting{TODO: maybe change km/s to $\kmps$}
+    }
+    \label{fig:orbits2}
+\end{figure*}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

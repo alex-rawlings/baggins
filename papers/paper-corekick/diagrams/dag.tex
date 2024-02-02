@@ -16,7 +16,7 @@
     % radius
     \node[obs, above=of dens_hat] (R) {$R$};
     % density error
-    \node[latent, right=of dens_hat, yshift=-3em, xshift=-3em] (dens_err) {$\sigma_{\log_{10}\Sigma}$};
+    \node[latent, right=of dens_hat, yshift=-3em, xshift=-3em] (dens_err) {$\tau_{\log_{10}\Sigma}$};
 
     % connect
     \factoredge{dens_hat, dens_err} {dens_D} {dens};
@@ -79,8 +79,8 @@
 
     % surface density error hypers
     \factor[above=of dens_err, yshift=4em] {dens_err_D} {right:$\mathcal{N}_\mathrm{T}$} {} {};
-    \node[hyper, above=of dens_err_D, yshift=6em] (dens_err_err) {$\sigma_{\sigma_{\log_{10}\Sigma}}$};
-    \node[hyper, left=of dens_err_err] (dens_err_mu) {$\mu_{\sigma_{\log_{10}\Sigma}}$};
+    \node[hyper, above=of dens_err_D, yshift=6em] (dens_err_err) {$\sigma_{\tau_{\log_{10}\Sigma}}$};
+    \node[hyper, left=of dens_err_err] (dens_err_mu) {$\mu_{\tau_{\log_{10}\Sigma}}$};
     \factoredge{dens_err_mu, dens_err_err} {dens_err_D} {dens_err};
 
 \end{tikzpicture}
