@@ -90,17 +90,16 @@ for k, v in snapshots.items():
 
     h4_vals[k] = {}
     h4_vals[k]["R"], h4_vals[k]["h4"] = cmf.analysis.radial_profile_velocity_moment(voronoi_stats, "h4")
-    h4_vals[k]["R"] /= rhalf
 
 
 # plot h4 radial profiles
 fig, ax = plt.subplots(1,1)
 get_kick_val = lambda k: float(k.lstrip("v"))
 kick_vels = [get_kick_val(k) for k in h4_vals.keys()]
-cmapper, sm = cmf.plotting.create_normed_colours(vmin=min(kick_vels), vmax=max(kick_vels), cmap="custom_diverging")
+cmapper, sm = cmf.plotting.create_normed_colours(vmin=min(kick_vels), vmax=max(kick_vels), cmap="custom_Blues")
 for k, v in h4_vals.items():
     ax.plot(v["R"], v["h4"], c=cmapper(get_kick_val(k)), ls="-")
-ax.set_xlabel(r"$R/R_\mathrm{e}$")
+ax.set_xlabel(r"$R/\mathrm{kpc}$")
 ax.set_ylabel(r"$\langle h_4 \rangle$")
 cbar = plt.colorbar(sm, ax=ax)
 cbar.ax.set_ylabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")

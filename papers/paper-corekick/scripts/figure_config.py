@@ -36,9 +36,16 @@ custom_cmap = mpl.colors.LinearSegmentedColormap.from_list(
             col_list
 )
 
+# create a custom Blues map, but having the lowest value more blue than white
+custom_Blues = mpl.colors.LinearSegmentedColormap.from_list(
+        "custom_Blues",
+        mpl.pyplot.cm.Blues(np.linspace(0.25, 1, 256))
+        )
+
 mpl.colormaps.register(cmap=custom_cmap) # can use as cmap='custom'
 mpl.colormaps.register(cmap=custom_diverging_cmap)
 mpl.colormaps.register(cmap=custom_diverging_cmap.reversed(), name="custom_diverging_r")
+mpl.colormaps.register(cmap=custom_Blues)
 
 custom_colors = custom_cmap(np.linspace(0,1,8))
 custom_colors_shuffled = custom_colors[[1, 4, 0, 5, 2, 6, 3, 7]]

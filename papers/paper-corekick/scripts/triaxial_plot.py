@@ -32,7 +32,7 @@ else:
 
 # set up figure
 fig, ax = plt.subplots(2,1,sharex="all", sharey="all")
-cmapper, sm = cmf.plotting.create_normed_colours(vmin=0, vmax=900, cmap="custom_diverging")
+cmapper, sm = cmf.plotting.create_normed_colours(vmin=0, vmax=900, cmap="custom_Blues")
 
 for k, v in data.items():
     if k == "__githash" or k == "__script": continue
