@@ -10,7 +10,6 @@ __pycache__
 !papers/**/*.pickle
 
 # Personal code testing directory
-#code/misc
 code/misc/**/*.csv
 
 # Compiled Python bytecode
@@ -202,6 +201,7 @@ TSWLatexianTemp*
 # stan stuff
 code/misc/stats/*
 !code/misc/stats/**/*.py
+!code/misc/stats/**/*.stan
 #!code/analysis_scripts/hierarchical_models/stan_reports/*.out
 code/analysis_scripts/hierarchical_models/stan/*/*
 !code/analysis_scripts/hierarchical_models/stan/*/*.stan
