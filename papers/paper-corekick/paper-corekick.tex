@@ -239,6 +239,18 @@ In agreement with previous studies \citep{nasim2021b}, we find an increase in th
 As shown in \autoref{fig:csparams}, the density at the core radius $\Sigma_\mathrm{b}$ decreases monotonically with kick velocity, consistent with the picture of the kicked SMBH removing more mass the more number of oscillations it is able to undergo before settling to Brownian motion limits. 
 Interestingly, we observe a similar decrease in S\'ersic index $n$ with increasing kick velocity, although no correlation is seen between $n$ and $\Sigma_\mathrm{b}$ in the latent parameter corner plots (see for example \autoref{fig:csparams}).
 
+Following \citet{nasim2021b}, we fit a power law of the form
+\begin{equation}\label{eq:vkrb}
+    \frac{\rb}{r_{\mathrm{b},0}} = K \left( \frac{\vk}{v_\mathrm{esc}} \right)^\beta + 1
+\end{equation}
+to our simulations, which is thus valid for $0\leq\vk/\kmps\leq900$, or equivalently $0\leq\vk/v_\mathrm{esc}\leq 0.75$.
+\drafting{We estimate the parameters $K$ and $\beta$ using HMC, and find median values of $K=$ and $\beta=$.}
+
+\drafting{Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal alignment (their Fig. 15, right panel.) 
+This allows us to obtain a distribution of core radius values predicted by a given kick velocity model.
+We find\dots}
+
+
 \begin{table}
     \caption{Hyperparameter distributions for core-S\'ersic model.}
     \label{tab:hyper}
@@ -316,7 +328,7 @@ A recent comprehensive study of LOS velocity distribution fitting applied to ell
 We observe a trend of the Voronoi bins with $h_4<0$ extending to larger radii for remnants with larger recoil kicks than for those remnants with smaller recoil kicks.
 To quantify this recoil velocity dependence, we calculate a radially-varying mass-weighted $h_4$ parameter analogous to the observational spin parameter $\lambda$:
 \begin{equation}
-    \langle h_4 \rangle = \frac{\langle R h_4 \rangle}{\langle R \rangle},
+    \langle h_4(R') \rangle = \frac{\langle R h_4 \rangle}{\langle R \rangle} = \frac{\sum_i^N M_i h_{4,i} R_i}{\sum_i^N M_i R_i} \;\forall R_i \leq R',
 \end{equation}
 where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equivalent to a flux weighted average in the case of constant mass-to-light ratio).
 We observe an overall shift to more negative values of $h_4$ for kick velocities up until $\vk\sim400\,\kmps$ \drafting{check this, currently just read off plot}, above which the radial $h_4$ profile is not sensitive to increasing kick velocity. 
@@ -389,6 +401,14 @@ The potential of the merger remnant is checked for stability, and each \drafting
 
 As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box orbits, and a lower fraction of $x$-tube orbits, than their lower kick velocity counterparts.
 The other five orbital families are generally consistent between all merger remnants. 
+As discussed in \citet{frigo2021}, negative values of $h_4$ indicate regions with weaker tails of the LOS velocity distribution due to the superposition of radial orbits with different orientations.
+This explanation supports our observation of an increase in $\pi$-box orbits (which have no net angular momentum are typically very radial orbits) with kick velocity, and a corresponding decrease in the value of $h_4$ (comparing the IFU maps in \autoref{fig:IFU0} to \autoref{fig:IFU900}).
+Equivalently, $x$-tube orbits (which rotate about the major axis of the inertia tensor) appear as a peaked LOS velocity distribution in the projection we use, leading to extended tails, and hence a more positive value of $h_4$ than for a weak tail distribution. 
+All together, we can infer that as a SMBH ploughs through the surrounding stellar environment, regular $x$-tube orbits are disrupted to non-resonant $\pi$-box orbits.
+With a higher kick velocity, the SMBH is able to cumulatively disturb orbits at a larger radial extent, converting a greater fraction of $x$-tube orbits to $\pi$-box orbits, resulting in the increased expanses of negative $h_4$ regions in the kinematic maps.
+This also explains the overall downward shift in the $\langle h_4 \rangle$ profiles in \autoref{fig:h4} for higher kick velocities. 
+\drafting{Why are the $\langle h_4 \rangle$ profiles consistent in shape though??}
+
 \drafting{
     Might move this to discussion, just put here for now to get the idea down.
     z-tubes not primary contributor to LOS velocity (rotation about z axis).
