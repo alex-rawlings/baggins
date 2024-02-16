@@ -8,7 +8,7 @@ import figure_config
 import arviz as az
 
 
-parser = argparse.ArgumentParser(description="Plot core-kick relation given a Stan sample", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(description="Plot core fits given a Stan sample", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-e", "--extract", help="extract data", action="store_true", dest="extract")
 parser.add_argument("-n", "--number", help="number of drawn samples (with replacement)", dest="num", default=10000)
 parser.add_argument("-p", "--parameter", help="parameter to plot", choices=["Re", "rb", "n", "a", "log10densb", "g", "all", "OOS"], default="rb", dest="param")

@@ -207,6 +207,8 @@ code/analysis_scripts/hierarchical_models/stan/*/*
 !code/analysis_scripts/hierarchical_models/stan/*/*.stan
 code/analysis_scripts/gaussian_processes/stan/*
 !code/analysis_scripts/gaussian_processes/stan/*.stan
+code/analysis_scripts/core_kick_relation/*
+!code/analysis_scripts/core_kick_relation/*.stan
 
 # code logging
 code/cm_functions/logs

@@ -22,3 +22,5 @@ from .QuinlanModels import QuinlanModelSimple, QuinlanModelHierarchy
 from .PQModels import PQModelSimple, PQModelHierarchy
 
 from .DeflectionAngleGP import DeflectionAngleGP
+
+from .CoreKick import CoreKick

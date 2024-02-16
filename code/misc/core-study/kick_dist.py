@@ -16,7 +16,9 @@ rng = np.random.default_rng(42)
 N = 5000
 
 s1 = rng.uniform(0, 1, size=(N,3))
+s1 /= np.linalg.norm(s1, axis=0)
 s2 = rng.uniform(0, 1, size=(N,3))
+s2 /= np.linalg.norm(s2, axis=0)
 
 v = np.full(N, np.nan)
 
@@ -36,12 +38,12 @@ v = np.sort(v)
 P = 1-np.cumsum(v)/np.sum(v)
 P = np.clip(P, 1e-7, None)
 
-if False:
+if True:
     plt.semilogy(v, P)
     plt.xlabel(r"$v_\mathrm{kick}$")
     plt.show()
 
-if True:
+if False:
     rb = lambda vv: 2.02 * (vv/1200)**0.42 + 1
     plt.hist(rb(v), 20, density=True)
     plt.axvline(rb(900), c="tab:red", lw=2)

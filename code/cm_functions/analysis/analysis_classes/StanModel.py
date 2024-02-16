@@ -843,7 +843,7 @@ class _StanModel(ABC):
             # loop through HDI levels
             for j, level in enumerate(levels):
                 p = []
-                hdi = az.hdi(fit[az_group].get(v), hdi_prob=level, skipna=True)
+                hdi = az.hdi(self._fit_for_az[az_group].get(v), hdi_prob=level, skipna=True)
                 try:
                     lower = hdi[0]
                     upper = hdi[1]
@@ -910,9 +910,11 @@ class _StanModel(ABC):
             ax = np.array(ax)
             ax_shape = (1,)
         ax = ax.flatten()
+        assert isinstance(gq, list)
         if xlabels is None:
             xlabels = gq
         else:
+            assert isinstance(xlabels, list)
             try:
                 assert len(gq) == len(xlabels)
             except AssertionError:
@@ -1020,6 +1022,8 @@ class _StanModel(ABC):
 
         Parameters
         ----------
+        model_file : str
+            path to .stan file specifying the likelihood model
         fit_files : str, path-like
             path to previously saved csv files
         figname_base : str
@@ -1081,8 +1085,8 @@ class HierarchicalModel_1D(_StanModel):
 
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}):
-        return super().sample_model(sample_kwargs)
+    def sample_model(self, sample_kwargs={}, diagnose=True):
+        return super().sample_model(sample_kwargs, diagnose=diagnose)
 
 
     @abstractmethod
@@ -1166,7 +1170,7 @@ class HierarchicalModel_1D(_StanModel):
         ax = self._plot_predictive(xmodel=xmodel, state="OOS", levels=levels, collapsed=collapsed)
         fig = ax.get_figure()
         if save:
-            savefig(self._make_fig_name(self.figname_base, f"posterior_OOS_{xmodel}"), fig=fig)
+            savefig(self._make_fig_name(self.figname_base, f"OOS_{xmodel}"), fig=fig)
         return ax
 
 
@@ -1194,8 +1198,8 @@ class HierarchicalModel_2D(_StanModel):
 
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}):
-        return super().sample_model(sample_kwargs)
+    def sample_model(self, sample_kwargs={}, diagnose=True):
+        return super().sample_model(sample_kwargs, diagnose=diagnose)
 
 
     @abstractmethod
@@ -1203,7 +1207,7 @@ class HierarchicalModel_2D(_StanModel):
         return super().sample_generated_quantity(gq, force_resample, state)
 
 
-    def _plot_predictive(self, xmodel, ymodel, state, xobs=None, yobs=None, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True):
+    def _plot_predictive(self, xmodel, ymodel, state, xobs=None, yobs=None, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True, smooth=False):
         """
         Plot a predictive check for a regression stan model.
 
@@ -1247,7 +1251,7 @@ class HierarchicalModel_2D(_StanModel):
         cmapper, sm = create_normed_colours(max(0, 0.9*min(levels)), 1.2*max(levels), cmap="Blues_r", norm="LogNorm")
         for l in levels:
             _logger.debug(f"Fitting level {l}")
-            az.plot_hdi(self.stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=False, hdi_kwargs={"skipna":True})
+            az.plot_hdi(self.stan_data[xmodel], ys, hdi_prob=l/100, ax=ax, plot_kwargs={"c":cmapper(l)}, fill_kwargs={"color":cmapper(l), "alpha":0.8, "label":f"{l}% HDI", "edgecolor":None}, smooth=smooth, hdi_kwargs={"skipna":True})
         if xobs is not None and yobs is not None:
             # overlay data
             obs = self.obs_collapsed if collapsed else self.obs
@@ -1268,7 +1272,7 @@ class HierarchicalModel_2D(_StanModel):
         return ax
 
 
-    def plot_predictive(self, xmodel, ymodel, xobs=None, yobs=None, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True, save=True):
+    def plot_predictive(self, xmodel, ymodel, xobs=None, yobs=None, yobs_err=None, levels=None, ax=None, collapsed=True, show_legend=True, smooth=False, save=True):
         """
         Predictive plot.
         See docs for _plot_predictive()
@@ -1279,15 +1283,15 @@ class HierarchicalModel_2D(_StanModel):
             savefig(self._make_fig_name(self.figname_base, f"pred_{yobs}"), fig=fig)
 
 
-    def posterior_OOS_plot(self, xmodel, ymodel, levels=None, ax=None, collapsed=True, save=True, show_legend=True):
+    def posterior_OOS_plot(self, xmodel, ymodel, levels=None, ax=None, collapsed=True, save=True, show_legend=True, smooth=False):
         """
         Posterior out-of-sample plot, observed data is not added to plot.
         See docs for _plot_predictive()
         """
-        ax = self._plot_predictive(xmodel=xmodel, ymodel=ymodel, state="OOS", levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend)
+        ax = self._plot_predictive(xmodel=xmodel, ymodel=ymodel, state="OOS", levels=levels, ax=ax, collapsed=collapsed, show_legend=show_legend, smooth=smooth)
         fig = ax.get_figure()
         if save:
-            savefig(self._make_fig_name(self.figname_base, f"posterior_OOS_{ymodel}"), fig=fig)
+            savefig(self._make_fig_name(self.figname_base, f"OOS_{ymodel}"), fig=fig)
 
 
 
