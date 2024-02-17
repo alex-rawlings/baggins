@@ -16,14 +16,14 @@ SL = cmf.setup_logger("script", args.verbosity)
 
 
 
-orbitfilebases = [d.path for d in os.scandir("/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/orbit_analysis/fast") if d.is_dir()]
+orbitfilebases = [d.path for d in os.scandir("/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/orbit_analysis") if d.is_dir() and d.name!="fast"]
 orbitfilebases.sort()
 
 
 mergemask = [6,1,3,2,2,1,3,2,2,1,3,2,2,1,3,2,2,1,3,2,2,0,5,6,0,0,4]
 labels = [r"$\pi\mathrm{-box}$", r"$\mathrm{boxlet}$", r"$x\mathrm{-tube}$", "", r"$z\mathrm{-tube}$", r"$\mathrm{Keplerian}$", r"$\mathrm{irregular}$", r"$\mathrm{unclassified}$"]
 
-def radial_frequency(ofb, minrad=0.2, maxrad=100., nbin=10, returnextra=False):
+def radial_frequency(ofb, minrad=0.2, maxrad=30., nbin=10, returnextra=False):
     orbitcl = cmf.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[0]
     SL.info(f"Reading: {orbitcl}")
     orbitids, classids, rad, rot_dir, energy, denergy, inttime, b92class, pericenter, apocenter, meanposrad, minangmom = go.loadorbits(
@@ -76,7 +76,7 @@ for axj, orbitfilebase in zip(ax2.flat, orbitfilebases):
         axi.semilogx(meanrads, classfrequency[:,cfi], label=vkick, c=cmapper(vkick), ls="-")
         axj.semilogx(meanrads, classfrequency[:,cfi], label=labels[i])
         cfi += 1
-    axj.text(0.9, 0.9, f"${vkick:.0f}\, \mathrm{{km/s}}$", ha="right", va="center", transform=axj.transAxes)
+    axj.text(0.05, 0.9, f"${vkick:.0f}\, \mathrm{{km}}\,\mathrm{{s}}^{{-1}}$", ha="left", va="center", transform=axj.transAxes)
 
 ### for first figure:
 # make axis labels nice
@@ -85,7 +85,7 @@ for i in range(ax.shape[0]):
 for i in range(ax.shape[1]):
     ax[1,i].set_xlabel(r"$r/\mathrm{kpc}$")
 for axi, label in zip(ax.flat, labels):
-    axi.text(0.9, 0.9, label, ha="right", va="center", transform=axi.transAxes)
+    axi.text(0.05, 0.9, label, ha="left", va="center", transform=axi.transAxes)
 
 # add the colour bar in the top right subplot, hiding that subplot
 plt.colorbar(sm, ax=ax[0,-1], pad=-1.075, fraction=0.5, aspect=10, label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
