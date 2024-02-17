@@ -158,18 +158,13 @@ The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the m
 We create six independently Monte Carlo sampled galaxy ICs, and merge each combination of galaxies on a radial orbit.
 The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
 We select a merger combination that results in a rapid coalescence of the BH binary, noting that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
-We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. Additionally, the merger remnant displays almost no triaxiality, as seen in the $\vk=0\,\kmps$ case in \autoref{sec:app_triax}.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
+We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. Additionally, the merger remnant displays almost no triaxiality, as seen in the $\vk=0\,\kmps$ case in \autoref{sec:app_triax}. We check for this by directing the recoil kick along the global $y$-axis, and final identical evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
 The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant.
 We additionally run one simulation with a recoil kick above the escape velocity, with $\vk=2000\,\kmps$.
 Each child simulation is run until the median remnant SMBH velocity relative to the galaxy CoM \drafting{check abbreviation} velocity is less than $10\,\kmps$ for at least $0.1\,\mathrm{Gyr}$.
 Those simulations where the maximum displacement of the kicked SMBH exceeds $30\,\mathrm{kpc}$ are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
 In practice, this limits our sample of analysed simulations to those with $\vk\leq 900\,\kmps$, thus totalling sixteen simulations in our analysis.
 Interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
-
-\drafting{Atte's runs of mergers of unequal mass ratio?}
-
-\drafting{Kicks randomly orientated?}
-
 
 
 % RESULTS
@@ -303,7 +298,7 @@ We find\dots}
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{rb_pdf}
-    \caption{Probability density function of core radius, where kick velocity is MC sampled from Zlochower relation, and pumped through our fitted model in \autoref{fig:vkrb}.}
+    \caption{Probability density function of core radius, where kick velocity is MC sampled from Zlochower relation, and pumped through our fitted model in \autoref{eq:vkrb}.}
     \label{fig:rb_pdf}
 \end{figure}
 
@@ -384,7 +379,7 @@ Additionally, all $h_4$ profiles are radially decreasing, obtaining a local mini
     \includegraphics[width=\textwidth]{orbits}
     \caption{
         Orbit analysis of all sixteen merger remnants.
-        Stellar particles \drafting{currently it's just a subset} are assigned to one of seven different orbital families, and binned into ten logarithmically-spaced radial shells such that $0.2 \leq R/\mathrm{kpc} \leq 100$.
+        Stellar particles are assigned to one of seven different orbital families, and binned into ten logarithmically-spaced radial shells such that $0.2 \leq R/\mathrm{kpc} \leq 30.0$.
         At radii greater than $1\,\mathrm{kpc}$, there is very little to distinguish between the different kick velocities for boxlet, $z$-tube, Keplerian, irregular, and unclassified orbits.
         Conversely, for radii $1 \leq R/\mathrm{kpc} \leq 10$, there is a clear gradient for $\pi$-box and $x$-tube families.
         For higher kick velocities, there is a tendency to a higher fraction of $\pi$-box orbits compared to lower kick velocities.
@@ -397,7 +392,7 @@ We perform an orbit analysis on the sixteen merger remnants in our sample follow
 \drafting{Discuss how the orbit analysis is done, in particular the different orbital families}.
 First, the merger remnant is rotated so that the $z$-axis coincides with the minor axis of the reduced inertia tensor (and hence has the same orientation as the IFU maps in \autoref{fig:IFU0} and \autoref{fig:IFU900}).
 The potential of the merger remnant is fit using a \drafting{self consistent field (SCF) potential, describe more?} method, providing an analytical potential in which the orbits of individual stellar particles can be integrated.
-The potential of the merger remnant is checked for stability, and each \drafting{currently a subset} stellar particle is integrated for fifty orbits to determine which, if any, orbital resonances exist. 
+The potential of the merger remnant is checked for stability, and each stellar particle within $30\,\mathrm{kpc}$ of the centre is integrated for fifty orbits to determine which, if any, orbital resonances exist. 
 
 As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box orbits, and a lower fraction of $x$-tube orbits, than their lower kick velocity counterparts.
 The other five orbital families are generally consistent between all merger remnants. 
@@ -529,7 +524,6 @@ The difference is however minimal between all merger remnants.
     \includegraphics[width=\textwidth]{orbits2}
     \caption{
         Same as \autoref{fig:orbits}, but each merger remnant is shown in its own panel, with the different orbital families depicted by colour, to better demonstrate the radial fraction of orbits for a given merger.
-        \drafting{TODO: maybe change km/s to $\kmps$}
     }
     \label{fig:orbits2}
 \end{figure*}
