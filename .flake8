@@ -1,6 +1,9 @@
 [flake8]
 extend-ignore=E501
 extend-exclude=
+    # testing code doesn't need to be linted    
     code/misc,
+    # old py-style parameters exist for historical reasons
     parameters,
+    # let's keep this code static for now
     papers/paper-eccentricity
