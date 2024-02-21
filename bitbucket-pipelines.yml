@@ -1,0 +1,17 @@
+#  Template python-build
+
+#  This template allows you to validate your python code.
+#  The workflow allows running tests and code linting on the default branch.
+
+image: "python:3.8"
+
+pipelines:
+  pull-requests:
+    '**':
+      - step:
+          name: Lint code
+          script:
+            - git checkout $BITBUCKET_PR_DESTINATION_BRANCH
+            - git merge $BITBUCKET_BRANCH
+            - pip install flake8
+            - flake8 $(git diff --name-only --diff-filter=b git merge-base HEAD $BRANCH) --extend-exclude=code/misc --show-source --statistics
