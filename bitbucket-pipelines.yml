@@ -14,4 +14,4 @@ pipelines:
             - git checkout $BITBUCKET_PR_DESTINATION_BRANCH
             - git merge $BITBUCKET_BRANCH
             - pip install flake8
-            - flake8 $(git diff --name-only --diff-filter=b git merge-base HEAD $BRANCH) --extend-exclude=code/misc --show-source --statistics
+            - flake8 $(git diff --name-only --diff-filter=b git merge-base HEAD $BRANCH) --show-source --statistics
