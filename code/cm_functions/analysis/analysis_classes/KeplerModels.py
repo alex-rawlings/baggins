@@ -96,7 +96,7 @@ class _KeplerModelBase(HierarchicalModel_1D):
                 )
             except IndexError:
                 _logger.warning(
-                    f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis."
+                    "Orbital period for hard semimajor axis not found! This run will not form part of the analysis."
                 )
                 continue
             _logger.debug(
@@ -150,7 +150,7 @@ class _KeplerModelBase(HierarchicalModel_1D):
         self.transform_obs(
             ("angmom_corr", "total_mass_long"),
             "angmom_corr_red",
-            lambda l, m: l / np.sqrt(G_in_Msun_pc_yr * m),
+            lambda j, m: j / np.sqrt(G_in_Msun_pc_yr * m),
         )
         self.transform_obs(
             "angmom_corr_red", "log10_angmom_corr_red", lambda x: np.log10(x)
@@ -189,7 +189,7 @@ class _KeplerModelBase(HierarchicalModel_1D):
             assert self.num_OOS is not None
         except AssertionError:
             _logger.exception(
-                f"num_OOS cannot be None when setting Stan data!", exc_info=True
+                "num_OOS cannot be None when setting Stan data!", exc_info=True
             )
             raise
         self.stan_data["N_OOS"] = self.num_OOS

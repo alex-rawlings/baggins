@@ -1,14 +1,16 @@
-import warnings
 from datetime import datetime
 import numpy as np
-import scipy.linalg, scipy.interpolate, scipy.spatial.transform, scipy.stats
+import scipy.linalg
+import scipy.interpolate
+import scipy.spatial.transform
+import scipy.stats
 import pygad
 import dask
 
 from . import masks as masks
 from ..mathematics import radial_separation, density_sphere, spherical_components
 from .general import snap_num_for_time
-from ..general import convert_gadget_time, set_seed_time, unit_as_str
+from ..general import convert_gadget_time, set_seed_time
 from ..env_config import _cmlogger
 
 
@@ -516,7 +518,7 @@ def hardening_radius(bhms, rm):
         assert len(bhms) == 2
     except AssertionError:
         _logger.exception(
-            f"Hardening radius defined for a BH binary, but only one BH is present!",
+            "Hardening radius defined for a BH binary, but only one BH is present!",
             exc_info=True,
         )
         raise
@@ -1088,7 +1090,7 @@ def loss_cone_angular_momentum(snap, a, e=0, kappa=None):
         J = np.sqrt(const_G * Mbin * a * (1 - e**2)) * starmass
     else:
         _logger.debug(
-            f"Loss cone angular momentum determined without accounting for eccentricity."
+            "Loss cone angular momentum determined without accounting for eccentricity."
         )
         J = np.sqrt(2 * const_G * Mbin * kappa * a) * starmass
     return J.in_units_of(J_unit)
@@ -1144,7 +1146,7 @@ def count_new_hypervelocity_particles(snap, prev=[], vesc=None, family="stars"):
     # determine the particles with a velocity above the escape velocity
     hyper_ids = subsnap["ID"][vmag > vesc_eval]
     # get the IDs of new hypers
-    new_hyper_ids = [l for l in hyper_ids if l not in prev]
+    new_hyper_ids = [n for n in hyper_ids if n not in prev]
     prev.extend(new_hyper_ids)
     return len(new_hyper_ids), prev
 

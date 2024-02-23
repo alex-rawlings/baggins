@@ -141,7 +141,7 @@ fig2.set_figheight(2 * fig2.get_figheight())
 for axj, orbitfilebase in zip(ax2.flat, orbitfilebases):
     try:
         meanrads, classfrequency, rad_len = radial_frequency(orbitfilebase)
-    except:
+    except:  # noqa
         # ongoing analysis
         continue
     vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
@@ -163,7 +163,7 @@ for axj, orbitfilebase in zip(ax2.flat, orbitfilebases):
         transform=axj.transAxes,
     )
 
-### for first figure:
+# for first figure:
 # make axis labels nice
 for i in range(ax.shape[0]):
     ax[i, 0].set_ylabel(r"$f_\mathrm{orbit}$")
@@ -184,7 +184,7 @@ plt.colorbar(
 ax[0, 3].set_visible(False)
 
 
-### for second figure
+# for second figure
 for i in range(ax2.shape[0]):
     ax2[i, 0].set_ylabel(r"$f_\mathrm{orbit}$")
 for i in range(ax2.shape[1]):

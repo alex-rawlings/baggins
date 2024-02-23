@@ -17,7 +17,7 @@ from ..analysis import (
     get_virial_info_of_each_galaxy,
 )
 from ..mathematics import radial_separation
-from ..analysis.masks import *
+from ..analysis.masks import get_all_id_masks
 
 __all__ = ["MergerIC"]
 
@@ -193,7 +193,7 @@ class MergerIC:
                 assert oppars["e0"] is not None
             except AssertionError:
                 _logger.exception(
-                    f"'a0' (in units of virial or kpc) and 'e0' must be specified if 'rperi' is not!",
+                    "'a0' (in units of virial or kpc) and 'e0' must be specified if 'rperi' is not!",
                     exc_info=True,
                 )
                 raise
@@ -232,7 +232,7 @@ class MergerIC:
 
         # determine eccentricity
         if oppars["e0"] is None:
-            _logger.info(f"Initial orbital eccentricity set from pericentre distance")
+            _logger.info("Initial orbital eccentricity set from pericentre distance")
             self._calc_quants["e0"] = e_from_rperi(
                 self._calc_quants["rperi_physical"]
                 / self._calc_quants["virial_radius_large"]

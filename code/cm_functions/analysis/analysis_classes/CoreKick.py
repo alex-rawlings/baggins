@@ -1,4 +1,3 @@
-import os.path
 import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
@@ -217,9 +216,9 @@ class CoreKick(HierarchicalModel_2D):
             self.plot_generated_quantity_dist(
                 self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs
             )
-        except:
+        except ValueError:  # TODO check this
             _logger.warning(
-                f"Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
+                "Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
             )
             self.plot_generated_quantity_dist(
                 self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs
@@ -319,7 +318,7 @@ class CoreKick(HierarchicalModel_2D):
         secax = ax.flatten()[0].secondary_xaxis("top", functions=(rb02kpc, kpc2rb0))
         secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         fig = ax.flatten()[0].get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"gqs"), fig=fig)
+        savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
 
     @classmethod
     def load_fit(

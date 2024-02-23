@@ -1,3 +1,3 @@
-from .general import *
-from .pygad_helper import *
-from . import units
+from .general import *  # noqa
+from .pygad_helper import *  # noqa
+from . import units  # noqa

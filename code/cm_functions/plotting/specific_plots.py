@@ -187,7 +187,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
         assert np.all(np.sign(np.diff(x2)) == np.sign(x2[1] - x2[0]))
     except AssertionError:
         _logger.exception(
-            f"Original x-datasets must be strictly increasing!", exc_info=True
+            "Original x-datasets must be strictly increasing!", exc_info=True
         )
         raise
 
@@ -604,6 +604,9 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
         if showbox:
             pc.set_alpha(1)
         pc.set_zorder(0.5)
-        fc = pc.get_facecolor() if i == 0 else fc
+        if i == 0:
+            fc = pc.get_facecolor()
+        else:
+            fc
         pc.set_facecolor(fc)
     return ax

@@ -202,9 +202,9 @@ class _GrahamModelBase(HierarchicalModel_2D):
             self.plot_generated_quantity_dist(
                 self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs
             )
-        except:
+        except ValueError:  # TODO check this
             _logger.warning(
-                f"Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
+                "Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
             )
             self.plot_generated_quantity_dist(
                 self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs

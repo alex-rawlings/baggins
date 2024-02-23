@@ -216,7 +216,7 @@ class _StanModel(ABC):
                 d = [[f["path"] for f in self._input_data_files.values()]]
             except AssertionError:
                 _logger.exception(
-                    f"HMQ directory must be given if not loaded from file!",
+                    "HMQ directory must be given if not loaded from file!",
                     exc_info=True,
                 )
                 raise
@@ -248,7 +248,7 @@ class _StanModel(ABC):
                 try:
                     assert k != "label"
                 except AssertionError:
-                    _logger.exception(f"Keyword 'label' is reserved!", exc_info=True)
+                    _logger.exception("Keyword 'label' is reserved!", exc_info=True)
                     raise
             try:
                 assert isinstance(v, list)
@@ -789,7 +789,7 @@ class _StanModel(ABC):
         if levels is None:
             levels = self._default_hdi_levels
         levels.sort(reverse=True)
-        levels = [l / 100 for l in levels]
+        levels = [lev / 100 for lev in levels]
         # show divergences on plots where no dimension combination has
         # occurred: combining dimensions changes the length of boolean mask
         # "diverging_mask" in arviz --> index mismatch error
@@ -828,7 +828,7 @@ class _StanModel(ABC):
                 )
             except ValueError:
                 _logger.error(
-                    f"HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults"
+                    "HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults"
                 )
                 ax = az.plot_pair(
                     self._fit_for_az,
@@ -987,7 +987,7 @@ class _StanModel(ABC):
             figsize = (6, num_vars)
         if levels is None:
             levels = self._default_hdi_levels
-        levels = [l / 100 for l in levels]
+        levels = [lev / 100 for lev in levels]
         levels.sort(reverse=True)
         az_group = "prior"
         cmapper, sm = create_normed_colours(
@@ -1170,8 +1170,8 @@ class _StanModel(ABC):
             self._fit_for_az.add_groups(
                 {"log_likelihood": self.generated_quantities.draws_xr(stan_log_lik)}
             )
-        l = az.loo(self._fit_for_az)
-        print(l)
+        loo = az.loo(self._fit_for_az)
+        print(loo)
 
     def rename_dimensions(self, dim_map):
         """
@@ -1332,8 +1332,8 @@ class HierarchicalModel_1D(_StanModel):
         """
         if levels is None:
             levels = self._default_hdi_levels
-        quantiles = [0.5 - l / 200 for l in levels]
-        quantiles.extend([0.5 + l / 200 for l in levels])
+        quantiles = [0.5 - lev / 200 for lev in levels]
+        quantiles.extend([0.5 + lev / 200 for lev in levels])
         quantiles.sort()
         if ax is None:
             fig, ax = plt.subplots(1, 1, squeeze=False)
@@ -1497,24 +1497,22 @@ class HierarchicalModel_2D(_StanModel):
         levels.sort(reverse=True)
         if ax is None:
             fig, ax = plt.subplots(1, 1)
-        else:
-            fig = ax.get_figure()
         ys = self.sample_generated_quantity(ymodel, state=state)
         cmapper, sm = create_normed_colours(
             max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
         )
-        for l in levels:
-            _logger.debug(f"Fitting level {l}")
+        for lev in levels:
+            _logger.debug(f"Fitting level {lev}")
             az.plot_hdi(
                 self.stan_data[xmodel],
                 ys,
-                hdi_prob=l / 100,
+                hdi_prob=lev / 100,
                 ax=ax,
-                plot_kwargs={"c": cmapper(l)},
+                plot_kwargs={"c": cmapper(lev)},
                 fill_kwargs={
-                    "color": cmapper(l),
+                    "color": cmapper(lev),
                     "alpha": 0.8,
-                    "label": f"{l}% HDI",
+                    "label": f"{lev}% HDI",
                     "edgecolor": None,
                 },
                 smooth=smooth,
@@ -1694,9 +1692,8 @@ class FactorModel_2D(_StanModel):
             fig, ax = plt.subplots(self.num_groups, 1, sharex="all", sharey="all")
         else:
             ax = ax.flatten()
-            fig = ax[0].get_figure()
         ys = self.sample_generated_quantity(ymodel, state=state)
-        idxs = self._get_GQ_indices(state, collapsed=collapsed)
+        # idxs = self._get_GQ_indices(state, collapsed=collapsed)
         obs_to_factor = np.full(self.num_obs_collapsed, 0)
         for i in range(self.num_obs_collapsed):
             obs_to_factor[i] = (
@@ -1712,18 +1709,18 @@ class FactorModel_2D(_StanModel):
                 cmap="Blues_r",
                 norm="LogNorm",
             )
-            for l in levels:
-                _logger.debug(f"Fitting level {l}")
-                label = f"{l}% HDI" if i == 0 else ""
+            for lev in levels:
+                _logger.debug(f"Fitting level {lev}")
+                label = f"{lev}% HDI" if i == 0 else ""
                 # TODO will this indexing work for GQ values in posterior pred?
                 az.plot_hdi(
                     self.stan_data[xmodel][..., mask],
                     _ys,
-                    hdi_prob=l / 100,
+                    hdi_prob=lev / 100,
                     ax=ax[i],
-                    plot_kwargs={"c": cmapper(l)},
+                    plot_kwargs={"c": cmapper(lev)},
                     fill_kwargs={
-                        "color": cmapper(l),
+                        "color": cmapper(lev),
                         "alpha": 0.8,
                         "label": label,
                         "edgecolor": None,

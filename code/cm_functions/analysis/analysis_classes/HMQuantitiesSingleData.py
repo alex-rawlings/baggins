@@ -19,7 +19,7 @@ class HMQuantitiesSingleData(HDF5Base):
         super().__init__()
         self.merger_id = None
 
-    ##--------------------- Merger Quantities ---------------------##
+    # #--------------------- Merger Quantities ---------------------##
 
     # properties of the merger remnant
     @property
@@ -30,7 +30,7 @@ class HMQuantitiesSingleData(HDF5Base):
     def merger_remnant(self, v):
         self._merger_remnant = v
 
-    ##--------------------- Galaxy Quantities ---------------------##
+    # #--------------------- Galaxy Quantities ---------------------##
 
     # analysed of snapshot
     @property
@@ -198,13 +198,13 @@ class HMQuantitiesSingleData(HDF5Base):
         """
         if "stars" not in self.particle_masses:
             _logger.error(
-                f"Key 'stars' not present in 'particle_masses', trying 'dm' instead..."
+                "Key 'stars' not present in 'particle_masses', trying 'dm' instead..."
             )
             try:
                 field_part_mass = self.particle_masses["dm"]
             except KeyError:
                 _logger.exception(
-                    f"Key 'dm' not present in 'particle_masses': need one of 'stars' or 'dm'!",
+                    "Key 'dm' not present in 'particle_masses': need one of 'stars' or 'dm'!",
                     exc_info=True,
                 )
                 raise

@@ -1,7 +1,5 @@
-import os.path
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-import ketjugw
 import cm_functions as cmf
 
 

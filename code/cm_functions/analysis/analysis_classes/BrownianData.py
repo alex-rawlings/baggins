@@ -56,7 +56,7 @@ class BrownianData(HDF5Base):
         try:
             assert isinstance(v, dict)
         except AssertionError:
-            _logger.exception(f"BH Data must be of type 'dict'", exc_info=True)
+            _logger.exception("BH Data must be of type 'dict'", exc_info=True)
         try:
             for k in ("id", "xoffset", "voffset"):
                 assert k in v
@@ -68,7 +68,7 @@ class BrownianData(HDF5Base):
             assert self._data_loaded
         except AssertionError:
             _logger.exception(
-                f"Data must be loaded before operations are performed on it!",
+                "Data must be loaded before operations are performed on it!",
                 exc_info=True,
             )
             raise

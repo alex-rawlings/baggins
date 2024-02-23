@@ -87,7 +87,7 @@ if args.extract:
                 fit_files=csv_files,
                 figname_base=figname_base,
             )
-        except:
+        except:  # noqa
             SL.warning(f"Unable to load data from directory: {subdir}. Skipping")
             continue
         SL.info(f"Loaded model from csv files {csv_files[0]}")

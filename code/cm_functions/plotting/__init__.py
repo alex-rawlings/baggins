@@ -1,4 +1,4 @@
-from .general import *
-from .specific_plots import *
-from .plot_utils import *
-from .PlotClasses import GradientLinePlot, GradientScatterPlot
+from .general import *  # noqa
+from .specific_plots import *  # noqa
+from .plot_utils import *  # noqa
+from .PlotClasses import GradientLinePlot, GradientScatterPlot  # noqa

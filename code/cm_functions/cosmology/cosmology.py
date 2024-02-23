@@ -1,5 +1,6 @@
 import numpy as np
-import scipy.constants, scipy.integrate
+import scipy.constants
+import scipy.integrate
 
 __all__ = ["cosmology", "angular_diameter_distance", "get_a0r", "luminosity_distance"]
 

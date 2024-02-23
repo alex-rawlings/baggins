@@ -4,7 +4,7 @@ import scipy.optimize
 __all__ = ["Behroozi19", "Girelli20", "Moster10"]
 
 
-###### HELPER FUNCTIONS #######
+# ---- HELPER FUNCTIONS ---- #
 def _moster10(h, M1, mM0, b, g):
     """the form of the moster 10 function for dm-stellar mass relation"""
     return 2 * mM0 * ((h / M1) ** (-b) + (h / M1) ** g) ** (-1) * h
@@ -16,7 +16,7 @@ def _moster_helper(h, s, M1, mM0, b, g):
     return s - _moster10(h, M1, mM0, b, g)
 
 
-###### CALLABLE FUNCTIONS #######
+# ---- CALLABLE FUNCTIONS ---- #
 
 
 def Behroozi19(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):

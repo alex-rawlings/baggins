@@ -158,8 +158,6 @@ class LiteratureTables:
         """
         if ax is None:
             fig, ax = plt.subplots(1, 1)
-        else:
-            fig = ax.get_figure()
         default_hist_kwargs = {
             "bins": 20,
             "density": True,
@@ -239,8 +237,6 @@ class LiteratureTables:
         """
         if ax is None:
             fig, ax = plt.subplots(1, 1)
-        else:
-            fig = ax.get_figure()
         ax.set_xlabel(x)
         ax.set_ylabel(y)
 

@@ -44,7 +44,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
     try:
         assert isinstance(data, (dict, managers.DictProxy))
     except AssertionError:
-        _logger.exception(f"Input data must be a dict!", exc_info=True)
+        _logger.exception("Input data must be a dict!", exc_info=True)
         raise
     try:
         assert filename.endswith(".pickle")
@@ -161,7 +161,7 @@ def get_snapshots_in_dir(path, ext=".hdf5", exclude=[]):
             bad_snaps.append(s)
         if not has_bak_snaps and "bak-" in s:
             _logger.warning(
-                f"A 'bak-' file has been detected! The alphabetical order of the snapshot list cannot be guaranteed!"
+                "A 'bak-' file has been detected! The alphabetical order of the snapshot list cannot be guaranteed!"
             )
             has_bak_snaps = True
     return [a for a in all_files if a not in bad_snaps]

@@ -1,5 +1,9 @@
 import numpy as np
-import scipy.spatial.distance, scipy.signal, scipy.optimize, scipy.integrate, scipy.interpolate
+import scipy.spatial.distance
+import scipy.signal
+import scipy.optimize
+import scipy.integrate
+import scipy.interpolate
 import ketjugw
 from ..general import get_idx_in_array, units
 from ..mathematics import radial_separation, angle_between_vectors, project_orthogonal
@@ -229,7 +233,7 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
             raise
         else:
             _logger.warning(
-                f"Binary system is oscillating between bound and unbound, and data ends at an unbound point. We will use all data from the BH particles."
+                "Binary system is oscillating between bound and unbound, and data ends at an unbound point. We will use all data from the BH particles."
             )
             bound_idx = -1
             bound_state = "oscillate"
@@ -421,7 +425,7 @@ def determine_merger_timescale(
         assert nrep > 0
     except AttributeError:
         _logger.exception(
-            f"Number of search repetitions must be greater than 0!", exc_info=True
+            "Number of search repetitions must be greater than 0!", exc_info=True
         )
         raise
     af = np.inf
@@ -555,7 +559,7 @@ def find_idxs_of_n_periods(
                     assert not strict_mode
                 except AssertionError:
                     _logger.exception(
-                        f"Maximum iterations reached in determining orbital periods!",
+                        "Maximum iterations reached in determining orbital periods!",
                         exc_info=True,
                     )
                     raise
@@ -577,7 +581,7 @@ def find_idxs_of_n_periods(
                     )
                 except AssertionError:
                     _logger.exception(
-                        f"Not enough complete orbits before desired time!",
+                        "Not enough complete orbits before desired time!",
                         exc_info=True,
                     )
                     raise
@@ -688,7 +692,7 @@ def deflection_angle(bh1, bh2, peri_idx=None):
     E = ketjugw.orbital_energy(bh1, bh2)
     if peri_idx is None:
         _logger.warning(
-            f"Determining pericentre times using default inputs to `find_pericentre_time()`"
+            "Determining pericentre times using default inputs to `find_pericentre_time()`"
         )
         _, peri_idx = find_pericentre_time(bh1, bh2)
     return 2 * np.arctan(M[peri_idx] / (L[peri_idx] * np.sqrt(2 * E[peri_idx])))
@@ -722,8 +726,8 @@ def first_major_deflection_angle(angles, threshold=np.pi / 6):
         return np.nan, None
 
 
-#### CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT ####
-#### BE IN ANALYSIS_CLASSES.PY, TO PREVENT CIRCULAR IMPORTS            ####
+# CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT #
+# BE IN ANALYSIS_CLASSES.PY, TO PREVENT CIRCULAR IMPORTS            #
 
 
 class MergerInfo:

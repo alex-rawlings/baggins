@@ -1,8 +1,6 @@
-import numpy as np
-
 """
 A collection of miscellaneous relations that are somehow dependent on a radial
-value. 
+value.
 """
 __all__ = ["OsipkovMerritt", "Sahu20"]
 

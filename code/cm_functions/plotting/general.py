@@ -298,13 +298,13 @@ def nice_log10_scale(ax, axis="y"):
         )
 
 
-def arrow_on_line(l, xpos=None, direction="right", size=15, arrowprops={}):
+def arrow_on_line(ln, xpos=None, direction="right", size=15, arrowprops={}):
     """
     Add an arrow to a curve
 
     Parameters
     ----------
-    l : matplotib.Line2D
+    ln : matplotib.Line2D
         line object to add arrow to
     xpos : float, optional
         x-coordinate to draw line on, by default None
@@ -316,9 +316,9 @@ def arrow_on_line(l, xpos=None, direction="right", size=15, arrowprops={}):
         arrow style kwargs, by default {}
     """
     if arrowprops:
-        arrowprops = {"arrowstyle": "->", "color": l.get_color()}
-    xdata = l.get_xdata()
-    ydata = l.get_ydata()
+        arrowprops = {"arrowstyle": "->", "color": ln.get_color()}
+    xdata = ln.get_xdata()
+    ydata = ln.get_ydata()
 
     if xpos is None:
         xpos = xdata.mean()
@@ -328,7 +328,7 @@ def arrow_on_line(l, xpos=None, direction="right", size=15, arrowprops={}):
         idx1 = idx0 - 1
     else:
         idx1 = idx0 + 1
-    l.axes.annotate(
+    ln.axes.annotate(
         "",
         xytext=(xdata[idx0], ydata[idx0]),
         xy=(xdata[idx1], ydata[idx1]),

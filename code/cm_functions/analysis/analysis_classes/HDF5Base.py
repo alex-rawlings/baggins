@@ -94,7 +94,7 @@ class HDF5Base:
                     tmp = val[()]
                     try:
                         d[key] = tmp.decode(decode)
-                    except:
+                    except ValueError:  # TODO check this
                         d[key] = tmp
                     # reload units if the data is a pygad.UnitArr
                     for a in val.attrs.values():
@@ -122,7 +122,7 @@ class HDF5Base:
             tmp = v[()]
             try:
                 std_val = tmp.decode(decode)
-            except:
+            except ValueError:  # TODO check this
                 std_val = tmp
             # reload units if the data is a pygad.UnitArr
             for a in v.attrs.values():
@@ -161,7 +161,7 @@ class HDF5Base:
             _logger.debug(f"File {fname} loaded")
         return C
 
-    def _saver(self, g, l):
+    def _saver(self, g, L):
         """
         Save specified elements to a given HDF5 group.
 
@@ -174,10 +174,10 @@ class HDF5Base:
         """
         # attributes defined with the @property method are not in __dict__,
         # but their _members are. Append an underscore to all things in l
-        l = ["_" + x for x in l]
+        L = ["_" + x for x in L]
         saved_list = []
         for _attr in self.__dict__:
-            if _attr not in l:
+            if _attr not in L:
                 continue
             # now we strip the leading underscore if this should be saved
             attr = _attr.lstrip("_")
@@ -202,7 +202,7 @@ class HDF5Base:
                     f"Error saving {attr}: cannot save {type(attr_val)} type!"
                 )
                 raise
-            except:
+            except:  # noqa
                 _logger.exception(
                     f"Unable to save <{attr}> (type {type(attr_val)} with values {attr_val})",
                     exc_info=True,
@@ -210,7 +210,7 @@ class HDF5Base:
                 raise
             saved_list.append(_attr)
         # check that everything was saved
-        not_saved = list(set(l) - set(saved_list))
+        not_saved = list(set(L) - set(saved_list))
         if not not_saved:
             for i in not_saved:
                 msg = f"Property {i.lstrip('_')} was not saved!"
@@ -269,7 +269,7 @@ class HDF5Base:
             except AssertionError:
                 _logger.exception(f"Error saving {key}: cannot save {type(val)} type!")
                 raise
-            except:
+            except:  # noqa
                 _logger.exception(
                     f"Unable to save <{key}> (type {type(val)} with values {val})",
                     exc_info=True,

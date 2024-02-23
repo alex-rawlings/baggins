@@ -1,3 +1,3 @@
-from .GalaxyIC import GalaxyIC
-from .MergerIC import MergerIC
-from .mergers import e_from_rperi
+from .GalaxyIC import GalaxyIC  # noqa
+from .MergerIC import MergerIC  # noqa
+from .mergers import e_from_rperi  # noqa

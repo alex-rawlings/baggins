@@ -152,7 +152,7 @@ class _QuinlanModelBase(HierarchicalModel_2D):
             assert self.num_OOS is not None
         except AssertionError:
             _logger.exception(
-                f"num_OOS cannot be None when setting Stan data!", exc_info=True
+                "num_OOS cannot be None when setting Stan data!", exc_info=True
             )
             raise
         self.stan_data["N_OOS"] = self.num_OOS
@@ -382,7 +382,7 @@ class _QuinlanModelBase(HierarchicalModel_2D):
             ax.set_xlim(0, ax.get_xlim()[1])
         ax.set_ylim(0, ax.get_ylim()[1])
         fig = ax.get_figure()
-        savefig(self._make_fig_name(self.figname_base, f"merger-timescale"), fig=fig)
+        savefig(self._make_fig_name(self.figname_base, "merger-timescale"), fig=fig)
 
 
 class QuinlanModelSimple(_QuinlanModelBase):
@@ -425,7 +425,7 @@ class QuinlanModelSimple(_QuinlanModelBase):
         # posterior predictive check
         fig1, ax1 = plt.subplots(2, 1, figsize=figsize, sharex="all")
         ax1[1].set_xlabel(r"$t'/\mathrm{Myr}$")
-        for axi, l in zip(ax, self._folded_qtys_labs):
+        for axi, l in zip(ax1, self._folded_qtys_labs):
             axi.set_ylabel(l)
         self.plot_predictive(
             xobs="t", yobs="inva", ymodel="inv_a_posterior", ax=ax1[0], save=False

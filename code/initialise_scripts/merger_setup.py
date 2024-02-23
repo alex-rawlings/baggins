@@ -80,7 +80,7 @@ if args.method == "new":
                     contents = f.read()
                     # update the random seed
                     contents, sc = re.subn(
-                        f"  random_seed:.*",
+                        r"  random_seed:.*",
                         f"  random_seed: {str(rng.integers(100000))}",
                         contents,
                         flags=re.MULTILINE,
@@ -154,11 +154,11 @@ if args.method == "new":
                 merger.setup()
 elif args.method == "field":
     if args.batch > 1:
-        SL.error(f"Perturbation methods can only be performed for non-batch mode.")
+        SL.error("Perturbation methods can only be performed for non-batch mode.")
     merger = cmf.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
     merger.perturb_field_particle()
 else:
     if args.batch > 1:
-        SL.error(f"Perturbation methods can only be performed for non-batch mode.")
+        SL.error("Perturbation methods can only be performed for non-batch mode.")
     merger = cmf.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
     merger.perturb_bhs()

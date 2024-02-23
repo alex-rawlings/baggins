@@ -100,7 +100,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         self._masses_set = False
         self._snap_counter = 0
 
-        ##------------------- Determine merger properties -------------------##
+        # #------------------- Determine merger properties -------------------##
         bh1, bh2, merged = get_bh_particles(self.ketju_file)
         self.merger_remnant = {
             "merged": False,

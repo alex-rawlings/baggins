@@ -1,7 +1,3 @@
-import re
-import sys
-import os
-import importlib
 import numpy as np
 import json
 import yaml
@@ -68,7 +64,7 @@ def read_parameters(filepath):
         dictionary of user parameters and calculated parameters (the latter stored under the key top-level key 'calculated')
     """
 
-    def _unpack_helper(d, l):
+    def _unpack_helper(d, lev):
         """
         Helper to unpack a numpy method, e.g. a linspace
 
@@ -76,7 +72,7 @@ def read_parameters(filepath):
         ----------
         d : dict
             dictionary to unpack
-        l : int
+        lev : int
             level of unpacking (to keep track of reserved top-level keys)
 
         Returns
@@ -86,7 +82,7 @@ def read_parameters(filepath):
         """
         for k, v in d.copy().items():
             try:
-                if l == 0:
+                if lev == 0:
                     assert k != "calculated"
             except AssertionError:
                 _logger.exception(
@@ -118,9 +114,9 @@ def read_parameters(filepath):
             elif isinstance(v, str) and v[-1] == "/":
                 d[k] = v.rstrip("/")
             elif isinstance(v, dict):
-                l += 1
-                _unpack_helper(v, l)
-                l -= 1
+                lev += 1
+                _unpack_helper(v, lev)
+                lev -= 1
         return d
 
     with open(filepath, "r") as f:
@@ -219,9 +215,9 @@ def overwrite_parameter_file(f, contents):
     lines = f.readlines()
     f.seek(0)
     f.truncate()
-    for l in lines:
-        f.write(l)
-        if l == "...\n":
+    for line in lines:
+        f.write(line)
+        if line == "...\n":
             break
     else:
         f.write("...\n")

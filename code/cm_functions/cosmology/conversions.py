@@ -1,6 +1,7 @@
 import numpy as np
-import scipy.constants, scipy.optimize
-from .cosmology import *
+import scipy.constants
+import scipy.optimize
+from .cosmology import cosmology, luminosity_distance
 
 __all__ = ["time2z"]
 

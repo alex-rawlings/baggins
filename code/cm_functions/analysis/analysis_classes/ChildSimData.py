@@ -279,7 +279,7 @@ class ChildSimData(BHBinaryData):
                     tmp = val[()]
                     try:
                         d[key] = tmp.decode(decode)
-                    except:
+                    except ValueError:  # TODO check this
                         d[key] = tmp
                     # reload units if the data is a pygad.UnitArr
                     for a in val.attrs.values():
@@ -298,7 +298,7 @@ class ChildSimData(BHBinaryData):
             tmp = v[()]
             try:
                 std_val = tmp.decode(decode)
-            except:
+            except ValueError:  # TODO check this
                 std_val = tmp
             # reload units if the data is a pygad.UnitArr
             for a in v.attrs.values():
@@ -333,14 +333,14 @@ class ChildSimData(BHBinaryData):
                             _logger.info(f" > Successfully loaded dataset {kk}")
         return C
 
-    def _saver(self, g, l):
+    def _saver(self, g, L):
         # given a HDF5 group g, save all elements in list l
         # attributes defined with the @property method are not in __dict__,
         # but their _members are. Append an underscore to all things in l
-        l = ["_" + x for x in l]
+        L = ["_" + x for x in L]
         saved_list = []
         for attr in self.__dict__:
-            if attr not in l:
+            if attr not in L:
                 continue
             # now we strip the leading underscore if this should be saved
             saved_list.append(attr)
@@ -360,7 +360,7 @@ class ChildSimData(BHBinaryData):
                     f"Error saving {attr}: cannot save {type(attr_val)} type!"
                 )
         # check that everything was saved
-        not_saved = list(set(l) - set(saved_list))
+        not_saved = list(set(L) - set(saved_list))
         if not not_saved:
             for i in not_saved:
                 self.add_to_log(f"Property {i.lstrip('_')} was not saved!")

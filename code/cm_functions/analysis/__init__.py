@@ -1,10 +1,8 @@
-from .analyse_snap import *
-
-# from .new_analysis_classes import *
-from .general import *
-from .masks import *
-from .orbit import *
-from .voronoi import *
+from .analyse_snap import *  # noqa
+from .general import *  # noqa
+from .masks import *  # noqa
+from .orbit import *  # noqa
+from .voronoi import *  # noqa
 
 from .analysis_classes import (
     BHBinaryData,
@@ -28,4 +26,4 @@ from .analysis_classes import (
     PQModelHierarchy,
     DeflectionAngleGP,
     CoreKick,
-)
+)  # noqa

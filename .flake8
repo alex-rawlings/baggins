@@ -1,6 +1,6 @@
 [flake8]
 max-line-length = 88
-extend-ignore = E251,E501,E731,W605
+extend-ignore = F403,E203,E251,E501,E731,W605
 extend-exclude=
     # testing code doesn't need to be linted    
     code/misc,

@@ -59,7 +59,7 @@ SL = cmf.setup_logger("script", args.verbose)
 
 full_figsize = cmf.plotting.get_figure_size(args.publish)
 
-figname_base = f"hierarchical_models/PQ"
+figname_base = "hierarchical_models/PQ"
 
 analysis_params = cmf.utils.read_parameters(args.apf)
 
@@ -75,7 +75,7 @@ if args.model == "simple":
             assert "simple" in args.load_file
         except AssertionError:
             SL.exception(
-                f"Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!",
+                "Using model 'simple', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!",
                 exc_info=True,
             )
             raise
@@ -100,7 +100,7 @@ else:
             assert "hierarchy" in args.load_file
         except AssertionError:
             SL.exception(
-                f"Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!",
+                "Using model 'hierarchy', but Stan files do not contain this keyword: you may have loaded the incorrect files for this model!",
                 exc_info=True,
             )
             raise

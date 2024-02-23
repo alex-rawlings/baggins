@@ -67,10 +67,10 @@ def quantiles_relative_to_median(x, lower=0.25, upper=0.75, axis=-1):
             f"Lower quantile {lower} must be less than 0.5 Upper quantile {upper} must be greater than 0.5",
             exc_info=True,
         )
-    l = m - np.nanquantile(x, lower, axis=axis)
-    u = np.nanquantile(x, upper, axis=axis) - m
+    lo = m - np.nanquantile(x, lower, axis=axis)
+    up = np.nanquantile(x, upper, axis=axis) - m
     # convert to shape convenient for plotting with pyplot.errorbar
-    spread = np.vstack((l, u))
+    spread = np.vstack((lo, up))
     return m, spread
 
 
@@ -197,7 +197,7 @@ def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
     try:
         assert len(data1.shape) == len(data2.shape) == 1
     except AssertionError:
-        _logger.exception(f"Data must be 1 dimensional!", exc_info=True)
+        _logger.exception("Data must be 1 dimensional!", exc_info=True)
     number_resamples = int(number_resamples)
     if rng is None:
         rng = np.random.default_rng()

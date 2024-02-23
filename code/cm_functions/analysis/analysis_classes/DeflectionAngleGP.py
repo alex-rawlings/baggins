@@ -92,7 +92,7 @@ class DeflectionAngleGP(HierarchicalModel_2D):
                     )
                 except IndexError:
                     _logger.warning(
-                        f"Orbital period for hard semimajor axis not found! This run will not form part of the analysis."
+                        "Orbital period for hard semimajor axis not found! This run will not form part of the analysis."
                     )
                     continue
                 _logger.debug(
@@ -136,7 +136,7 @@ class DeflectionAngleGP(HierarchicalModel_2D):
             assert self.num_OOS is not None
         except AssertionError:
             _logger.exception(
-                f"num_OOS cannot be None when setting Stan data!", exc_info=True
+                "num_OOS cannot be None when setting Stan data!", exc_info=True
             )
             raise
         self.stan_data = dict(

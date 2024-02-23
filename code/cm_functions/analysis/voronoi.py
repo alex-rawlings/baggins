@@ -1,5 +1,6 @@
 import numpy as np
-import scipy.optimize, scipy.ndimage
+import scipy.optimize
+import scipy.ndimage
 from scipy.stats import binned_statistic_2d
 from voronoi_binning import voronoi_binned_image
 from ..env_config import _cmlogger
@@ -149,7 +150,7 @@ def fit_gauss_hermite_distribution(data):
     if isinstance(data, UnitArr):
         data = data.view(np.ndarray)
     if len(data) == 0:
-        _logger.warning(f"Data has length zero!")
+        _logger.warning("Data has length zero!")
         return 0.0, 0.0, 0.0, 0.0
     if np.any(np.isnan(data)):
         _logger.warning("Removing NaNs from data!")

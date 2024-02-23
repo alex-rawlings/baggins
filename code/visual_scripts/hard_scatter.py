@@ -3,7 +3,6 @@ from typing import Any
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from matplotlib.patches import Rectangle
 from seaborn import color_palette
 import ketjugw
 import cm_functions as cmf
@@ -52,7 +51,7 @@ class HardScatter:
         self.bhB1, self.bhB2 = self._data_init(1)
         self.max_N = min(
             int(max_N),
-            min([len(l) for l in (self.bhA1, self.bhA2, self.bhB1, self.bhB2)]),
+            min([len(line) for line in (self.bhA1, self.bhA2, self.bhB1, self.bhB2)]),
         )
 
         self.fig, self.ax = plt.subplot_mosaic(

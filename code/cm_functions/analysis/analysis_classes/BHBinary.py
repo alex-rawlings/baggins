@@ -7,7 +7,13 @@ import pygad
 import ketjugw
 
 from .BHBinaryData import BHBinaryData
-from ..analyse_snap import *
+from ..analyse_snap import (
+    influence_radius,
+    enclosed_mass_radius,
+    hardening_radius,
+    get_G_rho_per_sigma,
+    gravitational_radiation_radius,
+)
 from ..general import snap_num_for_time
 from ..orbit import (
     get_bound_binary,
@@ -139,7 +145,6 @@ class BHBinary(BHBinaryData):
         )
 
         # influence radius
-        # self.r_infl = list(influence_radius(snap).values())[0].in_units_of("pc") #in pc
         _r_infl = []
         for sfile in self.snaplist[snap_idx:]:
             s = pygad.Snapshot(sfile, physical=True)
@@ -411,7 +416,7 @@ class BHBinary(BHBinaryData):
                 )
             ):
                 if i == 0:
-                    l = ax[0].plot(
+                    lp = ax[0].plot(
                         self.predicted_orbital_params["t"][k] + self.time_offset,
                         self.predicted_orbital_params["a"][k],
                         ls=":",
@@ -423,7 +428,7 @@ class BHBinary(BHBinaryData):
                         self.predicted_orbital_params["t"][k] + self.time_offset,
                         self.predicted_orbital_params["a"][k],
                         ls=("--" if i == 1 else ":"),
-                        c=l[-1].get_color(),
+                        c=lp[-1].get_color(),
                         label=f"{q:.2f} quantile",
                         **kwargs,
                     )
@@ -431,7 +436,7 @@ class BHBinary(BHBinaryData):
                     self.predicted_orbital_params["t"][k] + self.time_offset,
                     self.predicted_orbital_params["e"][k],
                     ls=("--" if i % 3 == 1 else ":"),
-                    c=l[-1].get_color(),
+                    c=lp[-1].get_color(),
                     **kwargs,
                 )
         xaxis_lims = ax[0].get_xlim()

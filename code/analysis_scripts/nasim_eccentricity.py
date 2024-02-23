@@ -109,7 +109,7 @@ for d in hmq_dirs:
         )
     except AssertionError:
         SL.exception(
-            f"All simulations within a suite must have the same initial eccentricity!",
+            "All simulations within a suite must have the same initial eccentricity!",
             exc_info=True,
         )
         raise
@@ -136,7 +136,7 @@ if args.groups == "e":
         assert np.allclose(np.diff(mass_res), np.zeros(suite_count - 1))
     except AssertionError:
         SL.exception(
-            f"Mass resolution must be constant when varying initial eccentricity!",
+            "Mass resolution must be constant when varying initial eccentricity!",
             exc_info=True,
         )
         raise
@@ -147,7 +147,7 @@ else:
         assert np.allclose(np.diff(e_ini), np.zeros(suite_count - 1))
     except AssertionError:
         SL.exception(
-            f"Initial eccentricity must be constant when varying mass resolution!",
+            "Initial eccentricity must be constant when varying mass resolution!",
             exc_info=True,
         )
         raise

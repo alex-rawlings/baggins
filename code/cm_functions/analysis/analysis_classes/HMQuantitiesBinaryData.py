@@ -1,5 +1,4 @@
 import warnings
-import h5py
 from . import HMQuantitiesSingleData
 from ...general import get_idx_in_array
 from ...env_config import _cmlogger
@@ -20,7 +19,7 @@ class HMQuantitiesBinaryData(HMQuantitiesSingleData):
         """
         super().__init__()
 
-    ##--------------------- Binary Quantities ---------------------##
+    # #--------------------- Binary Quantities ---------------------##
     # time when binary is bound
     @property
     def binary_time(self):
@@ -102,7 +101,7 @@ class HMQuantitiesBinaryData(HMQuantitiesSingleData):
     def prebound_deflection_angles(self, v):
         self._prebound_deflection_angles = v
 
-    ##--------------------- Galaxy Binary Quantities ---------------------##
+    # #--------------------- Galaxy Binary Quantities ---------------------##
 
     # semimajor axis of binary in snapshot
     @property
@@ -140,7 +139,7 @@ class HMQuantitiesBinaryData(HMQuantitiesSingleData):
     def G_rho_per_sigma(self, v):
         self._G_rho_per_sigma = v
 
-    ##--------------------- Some General Functions ---------------------##
+    # #--------------------- Some General Functions ---------------------##
     def get_idx_in_vec(self, t, tarr):
         warnings.warn(
             "This function should be called using idx_finder()", DeprecationWarning

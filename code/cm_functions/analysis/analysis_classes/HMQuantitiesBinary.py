@@ -6,15 +6,9 @@ import pygad
 
 from . import HMQuantitiesBinaryData, HMQuantitiesSingle
 from ..analyse_snap import (
-    get_com_velocity_of_each_galaxy,
     influence_radius,
     hardening_radius,
-    projected_quantities,
-    get_com_of_each_galaxy,
-    inner_DM_fraction,
     determine_if_merged,
-    velocity_anisotropy,
-    get_massive_bh_ID,
     get_G_rho_per_sigma,
 )
 from ..orbit import (
@@ -24,10 +18,9 @@ from ..orbit import (
     find_pericentre_time,
     deflection_angle,
 )
-from ...env_config import _cmlogger, date_format, username
+from ...env_config import _cmlogger
 from ...general import convert_gadget_time, units
 from ...mathematics import radial_separation
-from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
 
 
 __all__ = ["HMQuantitiesBinary"]
@@ -60,7 +53,7 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
         self.hardening_radius = []
         self.G_rho_per_sigma = []
 
-        ##------------------- Determine binary quantities -------------------##
+        # #------------------- Determine binary quantities -------------------##
 
         bh1, bh2, merged = get_bound_binary(self.ketju_file)
         orbit_pars = ketjugw.orbital_parameters(bh1, bh2)
@@ -99,9 +92,9 @@ class HMQuantitiesBinary(HMQuantitiesBinaryData, HMQuantitiesSingle):
             self.prebound_deflection_angles = deflection_angle(
                 bh1_pb, bh2_pb, peri_idxs
             )
-        except:
+        except:  # noqa
             _logger.exception(
-                f"Unable to determine pericentre times before binary is bound!",
+                "Unable to determine pericentre times before binary is bound!",
                 exc_info=True,
             )
             self.prebound_deflection_angles = []

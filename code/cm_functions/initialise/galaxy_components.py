@@ -1,11 +1,22 @@
 import numpy as np
-import scipy.integrate, scipy.constants, scipy.stats
+import scipy.integrate
+import scipy.constants
+import scipy.stats
 from functools import cached_property
 import os
 
-from ..literature import *
-from ..cosmology import *
-from ..general import *
+from ..literature import (
+    Terzic05,
+    Moster10,
+    Behroozi19,
+    Girelli20,
+    Sahu19,
+    zlochower_cold_spins,
+    zlochower_dry_spins,
+    zlochower_hot_spins,
+)
+from ..cosmology import cosmology
+from ..general import arcsec_to_kpc, sersic_b_param
 from ..mathematics import uniform_sample_sphere
 from ..utils import read_parameters
 from ..env_config import _cmlogger
@@ -218,7 +229,7 @@ class _DMComponent(_GalaxyICBase):
         self._stellar_mass = stellar_mass
         self.peak_mass = self.parameters["dm"]["peak_mass"]["value"]
         if self.peak_mass is not None:
-            _logger.warning(f"DM peak mass set to user-defined value!")
+            _logger.warning("DM peak mass set to user-defined value!")
 
     @property
     def peak_mass(self):
