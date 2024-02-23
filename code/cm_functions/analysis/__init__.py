@@ -4,26 +4,26 @@ from .masks import *  # noqa
 from .orbit import *  # noqa
 from .voronoi import *  # noqa
 
-from .analysis_classes import (
-    BHBinaryData,  # noqa
-    BHBinary,  # noqa
-    ChildSimData,  # noqa
-    ChildSim,  # noqa
-    HierarchicalModel_1D,  # noqa
-    HierarchicalModel_2D,  # noqa
-    HMQuantitiesSingleData,  # noqa
-    HMQuantitiesSingle,  # noqa
-    HMQuantitiesBinaryData,  # noqa
-    HMQuantitiesBinary,  # noqa
-    GrahamModelSimple,  # noqa
-    GrahamModelHierarchy,  # noqa
-    GrahamModelKick,  # noqa
-    KeplerModelSimple,  # noqa
-    KeplerModelHierarchy,  # noqa
-    QuinlanModelSimple,  # noqa
-    QuinlanModelHierarchy,  # noqa
-    PQModelSimple,  # noqa
-    PQModelHierarchy,  # noqa
-    DeflectionAngleGP,  # noqa
-    CoreKick,  # noqa
+from .analysis_classes import (  # noqa
+    BHBinaryData,
+    BHBinary,
+    ChildSimData,
+    ChildSim,
+    HierarchicalModel_1D,
+    HierarchicalModel_2D,
+    HMQuantitiesSingleData,
+    HMQuantitiesSingle,
+    HMQuantitiesBinaryData,
+    HMQuantitiesBinary,
+    GrahamModelSimple,
+    GrahamModelHierarchy,
+    GrahamModelKick,
+    KeplerModelSimple,
+    KeplerModelHierarchy,
+    QuinlanModelSimple,
+    QuinlanModelHierarchy,
+    PQModelSimple,
+    PQModelHierarchy,
+    DeflectionAngleGP,
+    CoreKick,
 )
