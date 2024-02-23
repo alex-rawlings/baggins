@@ -25,7 +25,9 @@ def convert_gadget_time(snap, new_unit="Gyr"):
     : pygad.UnitArr
         time in new_unit
     """
-    t = pygad.UnitQty(snap.time, f"({snap.gadget_units['LENGTH']})/({snap.gadget_units['VELOCITY']})").in_units_of(new_unit, subs=snap)
+    t = pygad.UnitQty(
+        snap.time, f"({snap.gadget_units['LENGTH']})/({snap.gadget_units['VELOCITY']})"
+    ).in_units_of(new_unit, subs=snap)
     return float(t)
 
 
@@ -68,7 +70,8 @@ def particle_ages(subsnap, unit="Gyr"):
     except AssertionError:
         _logger.exception("subsnapshot must have block 'form_time'!", exc_info=True)
         raise
-    t = pygad.UnitArr((subsnap.root.time - subsnap["form_time"].view(np.ndarray)), f"({subsnap.gadget_units['LENGTH']})/({subsnap.gadget_units['VELOCITY']})").in_units_of(unit, subs=subsnap.root)
+    t = pygad.UnitArr(
+        (subsnap.root.time - subsnap["form_time"].view(np.ndarray)),
+        f"({subsnap.gadget_units['LENGTH']})/({subsnap.gadget_units['VELOCITY']})",
+    ).in_units_of(unit, subs=subsnap.root)
     return t
-
-

@@ -4,7 +4,14 @@ import pygad
 from ..general import sersic_b_param
 
 
-__all__ = ["Dehnen", "fit_Dehnen_profile", "halfMassDehnen", "Terzic05", "fit_Terzic05_profile", "core_Sersic_profile"]
+__all__ = [
+    "Dehnen",
+    "fit_Dehnen_profile",
+    "halfMassDehnen",
+    "Terzic05",
+    "fit_Terzic05_profile",
+    "core_Sersic_profile",
+]
 
 
 def Dehnen(r, a, g, M):
@@ -27,11 +34,11 @@ def Dehnen(r, a, g, M):
     : np.ndarray
         3D mass density profile
     """
-    return (3 - g) * M / (4 * np.pi) * a / (r**g * (r + a)**(4 - g))
+    return (3 - g) * M / (4 * np.pi) * a / (r**g * (r + a) ** (4 - g))
 
 
 # TODO should fitting routines be incorporated into a more general method?
-def fit_Dehnen_profile(radii, density, total_mass, bounds=([1, 0], [1000,3])):
+def fit_Dehnen_profile(radii, density, total_mass, bounds=([1, 0], [1000, 3])):
     """
     Fit a Dehnen profile to some data using the scipy.optimize library.
 
@@ -48,8 +55,10 @@ def fit_Dehnen_profile(radii, density, total_mass, bounds=([1, 0], [1000,3])):
     -------
     param_best: list of best-fit parameters
     """
-    #fit the curve
-    param_best, param_cov = scipy.optimize.curve_fit(lambda r, a, g: Dehnen(r, a, g, total_mass), radii, density, bounds=bounds)
+    # fit the curve
+    param_best, param_cov = scipy.optimize.curve_fit(
+        lambda r, a, g: Dehnen(r, a, g, total_mass), radii, density, bounds=bounds
+    )
     return param_best
 
 
@@ -72,7 +81,7 @@ def halfMassDehnen(a, g):
     re : float
         (crudely) estimated effective radius ]kpc
     """
-    rhm = a * (2**(1/(3-g)) - 1)**(-1)
+    rhm = a * (2 ** (1 / (3 - g)) - 1) ** (-1)
     re = 0.75 * rhm
     return rhm, re
 
@@ -91,8 +100,9 @@ def sersic_b_param_approx(n):
     float
         value of the b parameter
     """
-    #assert n > 0.5 and n < 10
-    return 2*n - 0.333333333 + 0.009876/n
+    # assert n > 0.5 and n < 10
+    return 2 * n - 0.333333333 + 0.009876 / n
+
 
 def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
     """
@@ -119,7 +129,7 @@ def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
     a : float, optional
         steepness of transition between regions, by default 100
     mode : str, optional
-        how the function is called ("own" for general use, "fit for fitting 
+        how the function is called ("own" for general use, "fit for fitting
         methods), by default "own"
 
     Returns
@@ -132,14 +142,23 @@ def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
         if mode == "own":
             b = sersic_b_param(n)
         else:
-            #use an approximation when fitting
+            # use an approximation when fitting
             b = sersic_b_param_approx(n)
     if isinstance(Re, pygad.UnitArr):
         Re = Re.view(np.ndarray)
-    p = 1.0 - 0.6097/n + 0.05563/n**2
-    rho_prime = rhob * 2**((p-g)/a) * (rb/Re)**p * np.exp(b*(2**(1/a) *rb/Re)**(1/n))
-    Re_term = (r**a + rb**a)**(1/a) / Re
-    return rho_prime * (1 + (rb/r)**a)**(g/a) * (Re_term**-p * np.exp(-b*Re_term**(1/n)))
+    p = 1.0 - 0.6097 / n + 0.05563 / n**2
+    rho_prime = (
+        rhob
+        * 2 ** ((p - g) / a)
+        * (rb / Re) ** p
+        * np.exp(b * (2 ** (1 / a) * rb / Re) ** (1 / n))
+    )
+    Re_term = (r**a + rb**a) ** (1 / a) / Re
+    return (
+        rho_prime
+        * (1 + (rb / r) ** a) ** (g / a)
+        * (Re_term**-p * np.exp(-b * Re_term ** (1 / n)))
+    )
 
 
 def fit_Terzic05_profile(r, density, Re, p0=[1e2, 1, 4, 1, 1], **kwargs):
@@ -159,8 +178,16 @@ def fit_Terzic05_profile(r, density, Re, p0=[1e2, 1, 4, 1, 1], **kwargs):
     """
     bounds = ((0, 0, 0, 0, 0), (np.inf, 5, 20, np.inf, 15))
     f = lambda r, rhob, rb, n, g, a: Terzic05(r, rhob, rb, n, g, Re, a, mode="fit")
-    popt, param_cov = scipy.optimize.curve_fit(f, r, density, bounds=bounds, p0=p0, **kwargs)
-    param_best = {"rhob": popt[0], "rb": popt[1], "n":popt[2], "g": popt[3], "a":popt[4]}
+    popt, param_cov = scipy.optimize.curve_fit(
+        f, r, density, bounds=bounds, p0=p0, **kwargs
+    )
+    param_best = {
+        "rhob": popt[0],
+        "rb": popt[1],
+        "n": popt[2],
+        "g": popt[3],
+        "a": popt[4],
+    }
     return param_best
 
 
@@ -192,6 +219,9 @@ def core_Sersic_profile(r, Re, rb, Ib, n, gamma, alpha=10.0):
         projected density profile
     """
     bn = sersic_b_param_approx(n)
-    Ib_ = Ib * 2**(-gamma/alpha) * np.exp(bn * (2**(1/alpha) * rb/Re))
-    return Ib_ * (1 + (rb/r)**alpha)**(gamma/alpha) * np.exp(-bn * ((r**alpha + rb**alpha)/Re**alpha)**(1/(alpha*n)))
-
+    Ib_ = Ib * 2 ** (-gamma / alpha) * np.exp(bn * (2 ** (1 / alpha) * rb / Re))
+    return (
+        Ib_
+        * (1 + (rb / r) ** alpha) ** (gamma / alpha)
+        * np.exp(-bn * ((r**alpha + rb**alpha) / Re**alpha) ** (1 / (alpha * n)))
+    )

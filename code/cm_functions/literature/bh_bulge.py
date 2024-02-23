@@ -22,7 +22,7 @@ def Haring04(logMstar):
     : np.ndarray
         predicted log of bh mass [log(M/Msol)]
     """
-    assert(logMstar < 13)
+    assert logMstar < 13
     return 8.20 + 1.12 * (logMstar - 11)
 
 
@@ -41,7 +41,7 @@ def Magorrian98(logMstar):
     : np.ndarray
         predicted log of bh mass [log(M/Msol)]
     """
-    assert(logMstar < 13)
+    assert logMstar < 13
     return -1.79 + 0.96 * logMstar
 
 
@@ -61,8 +61,10 @@ def Sahu19(logmstar, old_method=False):
         predicted log of bh mass [log(M/Msol)]
     """
     if old_method:
-        _logger.warning(f"BH mass generated using an incorrect calculation in the scaling! This method should only be used to generate BH masses when consistency with previously-run simulations is desired!")
-        uval = 10**(-0.06 * (logmstar-10) - 0.06)
+        _logger.warning(
+            "BH mass generated using an incorrect calculation in the scaling! This method should only be used to generate BH masses when consistency with previously-run simulations is desired!"
+        )
+        uval = 10 ** (-0.06 * (logmstar - 10) - 0.06)
         return 1.27 * (logmstar - np.log10(uval * 5e10)) + 8.41
     else:
         return 1.27 * (logmstar - np.log10(5e10)) + 8.41

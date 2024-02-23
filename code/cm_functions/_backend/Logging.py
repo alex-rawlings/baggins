@@ -10,9 +10,9 @@ class CustomLogger(logging.Logger):
     """
     Custom logger class to override some methods
     """
+
     def __init__(self, name: str, level=0) -> None:
         super().__init__(name, level)
-
 
     def getChild(self, suffix: str) -> None:
         """
@@ -31,7 +31,6 @@ class CustomLogger(logging.Logger):
         suffix = suffix.replace("cm_functions.", "")
         suffix = suffix.replace("analysis_classes.", "")
         return super().getChild(suffix)
-
 
     def setLevel(self, level) -> None:
         """
@@ -54,8 +53,13 @@ class CustomLogger(logging.Logger):
         super().setLevel(level)
 
 
-
-def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNING", capture_warnings=True) -> CustomLogger:
+def setup_logger(
+    name,
+    console_level="WARNING",
+    logfile=None,
+    file_level="WARNING",
+    capture_warnings=True,
+) -> CustomLogger:
     """
     Set up a logger instance
 
@@ -79,8 +83,12 @@ def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNIN
     """
     logging.setLoggerClass(CustomLogger)
     log = logging.getLogger(name)
-    cfmt = logging.Formatter("%(asctime)s: %(name)s: %(levelname)s: %(message)s", "%H:%M:%S")
-    ffmt = logging.Formatter("%(asctime)s: %(name)s: %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S")
+    cfmt = logging.Formatter(
+        "%(asctime)s: %(name)s: %(levelname)s: %(message)s", "%H:%M:%S"
+    )
+    ffmt = logging.Formatter(
+        "%(asctime)s: %(name)s: %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
+    )
     # allow all messages to be captured, and then printed only if desired
     log.setLevel("DEBUG")
     # add the console handler
@@ -91,7 +99,9 @@ def setup_logger(name, console_level="WARNING", logfile=None, file_level="WARNIN
 
     # add a file handler if desired
     if logfile is not None:
-        file_handler = handlers.TimedRotatingFileHandler(logfile, when="midnight", interval=1, backupCount=10)
+        file_handler = handlers.TimedRotatingFileHandler(
+            logfile, when="midnight", interval=1, backupCount=10
+        )
         file_handler.setLevel(file_level)
         file_handler.setFormatter(ffmt)
         log.addHandler(file_handler)

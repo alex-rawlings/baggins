@@ -6,14 +6,41 @@ import pygad
 import cm_functions as cmf
 
 
-#set up command line arguments
-parser = argparse.ArgumentParser(description="Determine the deviation of the BH from the CoM", allow_abbrev=False)
-parser.add_argument(type=str, help="path to snapshot directory or previous dataset", dest="path")
-parser.add_argument("-p", "--path2", help="path to second .pickle file for plotting purposes", type=str, dest="path2", action="append")
-parser.add_argument("-t", "--time", type=float, help="plot times after this [Gyr]", dest="time", default=-1)
+# set up command line arguments
+parser = argparse.ArgumentParser(
+    description="Determine the deviation of the BH from the CoM", allow_abbrev=False
+)
+parser.add_argument(
+    type=str, help="path to snapshot directory or previous dataset", dest="path"
+)
+parser.add_argument(
+    "-p",
+    "--path2",
+    help="path to second .pickle file for plotting purposes",
+    type=str,
+    dest="path2",
+    action="append",
+)
+parser.add_argument(
+    "-t",
+    "--time",
+    type=float,
+    help="plot times after this [Gyr]",
+    dest="time",
+    default=-1,
+)
 # TODO better handling of all snaps
-parser.add_argument("-l", "--lastsnap", help="last snap number to analyse", type=int, dest="last_snap", default=9999)
-parser.add_argument("-v", "--verbose", help="verbose printing", dest="verbose", action="store_true")
+parser.add_argument(
+    "-l",
+    "--lastsnap",
+    help="last snap number to analyse",
+    type=int,
+    dest="last_snap",
+    default=9999,
+)
+parser.add_argument(
+    "-v", "--verbose", help="verbose printing", dest="verbose", action="store_true"
+)
 args = parser.parse_args()
 
 new_data = False if args.path.endswith(".pickle") else True
@@ -33,45 +60,56 @@ class Brownian:
         self.x_offset_mag = np.full_like(self.times, np.nan, dtype=float)
         self.v_offset_mag = np.full_like(self.times, np.nan, dtype=float)
         self.bh_sep = np.full_like(self.times, np.nan, dtype=float)
-    
+
     @property
     def count(self):
         return self._count
-    
+
     @count.setter
     def count(self, v):
         assert 0 <= v <= self.n
-        self._count  = v
+        self._count = v
 
     def add_data(self, snap, xcom=None, vcom=None):
-        if self.verbose: print(f"{self.count}: {self.bhid}")
+        if self.verbose:
+            print(f"{self.count}: {self.bhid}")
         assert snap.phys_units_requested
         self.times[self.count] = cmf.general.convert_gadget_time(snap)
         id_masks_stars = cmf.analysis.get_all_id_masks(snap)
         if xcom is None:
-            xcom = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", masks=id_masks_stars, family="stars", verbose=self.verbose)
+            xcom = cmf.analysis.get_com_of_each_galaxy(
+                snap,
+                method="ss",
+                masks=id_masks_stars,
+                family="stars",
+                verbose=self.verbose,
+            )
         if vcom is None:
-            vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=id_masks_stars, verbose=self.verbose)
+            vcom = cmf.analysis.get_com_velocity_of_each_galaxy(
+                snap, xcom, masks=id_masks_stars, verbose=self.verbose
+            )
         self.x_offset[self.count, :] = xcom[self.bhid] - snap.bh[self.id_mask_bh]["pos"]
         self.v_offset[self.count, :] = vcom[self.bhid] - snap.bh[self.id_mask_bh]["vel"]
-        self.bh_sep[self.count] = pygad.utils.geo.dist(snap.bh["pos"][0,:], snap.bh["pos"][1,:])
+        self.bh_sep[self.count] = pygad.utils.geo.dist(
+            snap.bh["pos"][0, :], snap.bh["pos"][1, :]
+        )
         self.count += 1
         if self.count == self.n:
             self.compute_offset_magnitude()
         return xcom, vcom
-    
+
     def compute_offset_magnitude(self):
         self.x_offset_mag = cmf.mathematics.radial_separation(self.x_offset)
         self.v_offset_mag = cmf.mathematics.radial_separation(self.v_offset)
-    
+
     def save(self, fname=None):
         data_dict = dict(
-            times = self.times,
-            x_offset = self.x_offset,
-            x_offset_mag = self.x_offset_mag,
-            v_offset = self.v_offset,
-            v_offset_mag = self.v_offset_mag,
-            bh_sep = self.bh_sep
+            times=self.times,
+            x_offset=self.x_offset,
+            x_offset_mag=self.x_offset_mag,
+            v_offset=self.v_offset,
+            v_offset_mag=self.v_offset_mag,
+            bh_sep=self.bh_sep,
         )
         if fname is None:
             fname = f"my_galaxy_{self.bhid}.pickle"
@@ -79,9 +117,12 @@ class Brownian:
             fpre, fext = os.path.splitext(fname)
             assert fext == ".pickle"
             fname = fpre + f"_{self.bhid}" + fext
-        savepath = os.path.join(os.path.dirname(os.path.realpath(__file__)), f"pickle/bh_perturb_merger/{fname}")
+        savepath = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            f"pickle/bh_perturb_merger/{fname}",
+        )
         cmf.utils.save_data(data_dict, savepath)
-    
+
     @classmethod
     def load(cls, fname):
         c = cls(None, 0)
@@ -94,15 +135,15 @@ class Brownian:
         if xval == "time":
             xlabel = "Time / Gyr"
             xs = self.times
-        elif xval=="sep":
+        elif xval == "sep":
             xlabel = "Separation / kpc"
             xs = self.bh_sep
         else:
             raise ValueError("xval must be 'times' or 'sep'")
-        sc_kw = {"linewidth":0.5, "edgecolor":"k"}
+        sc_kw = {"linewidth": 0.5, "edgecolor": "k"}
         if ax is None:
             newax = True
-            fig, ax = plt.subplots(1,3, figsize=(10,4))
+            fig, ax = plt.subplots(1, 3, figsize=(10, 4))
             ax[0].set_xlabel(xlabel)
             ax[0].set_ylabel("BH position offset [kpc]")
             ax[1].set_xlabel(xlabel)
@@ -129,11 +170,11 @@ if new_data:
     for ind, snapfile in enumerate(snapfiles):
         if ind <= args.last_snap:
             snap = pygad.Snapshot(snapfile, physical=True)
-            if ind==0:
+            if ind == 0:
                 for bhid in snap.bh["ID"]:
                     brownian_objects.append(Brownian(bhid, len(snapfiles)))
             for ind2, b in enumerate(brownian_objects):
-                if ind2==0:
+                if ind2 == 0:
                     xcom, vcom = b.add_data(snap)
                 else:
                     b.add_data(snap, xcom=xcom, vcom=vcom)
@@ -155,7 +196,7 @@ else:
 
 
 for i, b in enumerate(brownian_objects):
-    if i==0:
+    if i == 0:
         ax, *_ = b.plot()
     else:
         ax = b.plot(ax=ax)

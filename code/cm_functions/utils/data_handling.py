@@ -7,7 +7,14 @@ from multiprocessing import managers
 from ..env_config import _cmlogger, git_hash
 
 
-__all__ = ["save_data", "load_data", "get_files_in_dir", "get_snapshots_in_dir", "get_ketjubhs_in_dir", "create_file_copy"]
+__all__ = [
+    "save_data",
+    "load_data",
+    "get_files_in_dir",
+    "get_snapshots_in_dir",
+    "get_ketjubhs_in_dir",
+    "create_file_copy",
+]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -25,7 +32,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
         filename to save to
     protocol : pickle.protocol, optional
         saving protocol, by default pickle.HIGHEST_PROTOCOL
-    
+
     Raises
     ------
     AssertionError:
@@ -37,21 +44,26 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
     try:
         assert isinstance(data, (dict, managers.DictProxy))
     except AssertionError:
-        _logger.exception(f"Input data must be a dict!", exc_info=True)
+        _logger.exception("Input data must be a dict!", exc_info=True)
         raise
     try:
         assert filename.endswith(".pickle")
     except AssertionError:
-        _logger.exception(f"Filename must be a .pickle file, not type {os.path.splitext(filename)[1]}", exc_info=True)
+        _logger.exception(
+            f"Filename must be a .pickle file, not type {os.path.splitext(filename)[1]}",
+            exc_info=True,
+        )
         raise
     try:
         assert all([k not in data for k in ["__githash", "__script"]])
         data["__githash"] = git_hash
         data["__script"] = inspect.stack()[-1].filename
     except AssertionError:
-        _logger.exception("Reserved keyword has been used in input data!", exc_info=True)
+        _logger.exception(
+            "Reserved keyword has been used in input data!", exc_info=True
+        )
         raise
-    with open(filename, 'wb') as f:
+    with open(filename, "wb") as f:
         pickle.dump(data, f, protocol=protocol)
     _logger.info(f"File {filename} saved")
 
@@ -70,7 +82,7 @@ def load_data(filename):
     : dict
         variable names: value pairs
     """
-    with open(filename, 'rb') as f:
+    with open(filename, "rb") as f:
         return pickle.load(f)
 
 
@@ -87,7 +99,7 @@ def get_files_in_dir(path, ext=".hdf5", name_only=False, recursive=False):
     name_only : bool, optional
         return only the name of the file?, by default False
     recursive : bool, optional
-        perform a recursive search? (Uses slower os.walk() function), by 
+        perform a recursive search? (Uses slower os.walk() function), by
         default False
 
     Returns
@@ -122,7 +134,7 @@ def get_snapshots_in_dir(path, ext=".hdf5", exclude=[]):
     ext : str, optional
         file extension, by default '.hdf5'
     exclude : list, optional
-        files with extension ext to exclude (ketju_bhs* always excluded), by 
+        files with extension ext to exclude (ketju_bhs* always excluded), by
         default []
 
     Returns
@@ -143,17 +155,21 @@ def get_snapshots_in_dir(path, ext=".hdf5", exclude=[]):
                 # this throws an error if corrupt
                 f["Header"].attrs
         except KeyError:
-            _logger.warning(f"Snapshot {s} potentially corrupt. Removing it from the list of snapshots!")
+            _logger.warning(
+                f"Snapshot {s} potentially corrupt. Removing it from the list of snapshots!"
+            )
             bad_snaps.append(s)
         if not has_bak_snaps and "bak-" in s:
-            _logger.warning(f"A 'bak-' file has been detected! The alphabetical order of the snapshot list cannot be guaranteed!")
+            _logger.warning(
+                "A 'bak-' file has been detected! The alphabetical order of the snapshot list cannot be guaranteed!"
+            )
             has_bak_snaps = True
     return [a for a in all_files if a not in bad_snaps]
 
 
 def get_ketjubhs_in_dir(path, file_name="ketju_bhs.hdf5"):
     """
-    Get a list of the full-path name of all ketju BH data files within a 
+    Get a list of the full-path name of all ketju BH data files within a
     directory. This is a recursive method.
 
     Parameters
@@ -202,9 +218,12 @@ def create_file_copy(f, suffix="_cp", exist_ok=True):
         try:
             assert not os.path.exists(new_f)
         except AssertionError:
-            _logger.exception(f"File '{new_f}' already exists: a new copy cannot be made!", exc_info=True)
+            _logger.exception(
+                f"File '{new_f}' already exists: a new copy cannot be made!",
+                exc_info=True,
+            )
             raise
-    # only copy file if the modification timestamp is more recent than an 
+    # only copy file if the modification timestamp is more recent than an
     # already existing copy
     if not os.path.exists(new_f) or (os.path.getmtime(new_f) < os.path.getmtime(f)):
         shutil.copyfile(f, new_f)

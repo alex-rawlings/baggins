@@ -1,4 +1,3 @@
-
 __all__ = ["get_histogram_bin_centres", "assert_all_unique"]
 
 
@@ -39,13 +38,16 @@ def assert_all_unique(a, axis=None):
     if axis is None:
         return not any(i in seen or seen.add(i) for i in a)
     else:
-        if axis == -1: axis = len(a.shape)-1
+        if axis == -1:
+            axis = len(a.shape) - 1
         if axis == 0:
             for j in range(a.shape[axis]):
-                res = not any(i in seen or seen.add(i) for i in a[j,:])
-                if not res: break
+                res = not any(i in seen or seen.add(i) for i in a[j, :])
+                if not res:
+                    break
         else:
             for j in range(a.shape[axis]):
-                res = not any(i in seen or seen.add(i) for i in a[:,j])
-                if not res: break
+                res = not any(i in seen or seen.add(i) for i in a[:, j])
+                if not res:
+                    break
         return res

@@ -1,4 +1,4 @@
-from .array_operations import *
-from .coordinates import *
-from .geometry import *
-from .statistics import *
+from .array_operations import *  # noqa
+from .coordinates import *  # noqa
+from .geometry import *  # noqa
+from .statistics import *  # noqa

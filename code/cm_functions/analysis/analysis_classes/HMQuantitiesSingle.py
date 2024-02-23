@@ -6,7 +6,15 @@ import h5py
 import pygad
 
 from . import HMQuantitiesSingleData
-from ..analyse_snap import get_com_of_each_galaxy, get_com_velocity_of_each_galaxy, get_massive_bh_ID, projected_quantities, inner_DM_fraction, velocity_anisotropy, escape_velocity
+from ..analyse_snap import (
+    get_com_of_each_galaxy,
+    get_com_velocity_of_each_galaxy,
+    get_massive_bh_ID,
+    projected_quantities,
+    inner_DM_fraction,
+    velocity_anisotropy,
+    escape_velocity,
+)
 from ..orbit import get_bh_particles
 from ...env_config import _cmlogger, date_format, username
 from ...general import convert_gadget_time
@@ -19,7 +27,9 @@ _logger = _cmlogger.getChild(__name__)
 
 
 class HMQuantitiesSingle(HMQuantitiesSingleData):
-    def __init__(self, parameter_file, merger_file, data_directory, merger_id, snaps=None) -> None:
+    def __init__(
+        self, parameter_file, merger_file, data_directory, merger_id, snaps=None
+    ) -> None:
         """
         Class to extract and save key quantities that may be useful for hierarchical modelling of a general galaxy system. Note that BH binary
         information is not analysed.
@@ -40,8 +50,11 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         try:
             assert len(kf) == 1
         except AssertionError:
-            error_str = "Multiple" if len(kf)>1 else "No"
-            _logger.exception(f"{error_str} Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantitiesBinary object.", exc_info=True)
+            error_str = "Multiple" if len(kf) > 1 else "No"
+            _logger.exception(
+                f"{error_str} Ketju BH files found in directory {self.data_directory}. Only one file may be used to create a HMQuantitiesBinary object.",
+                exc_info=True,
+            )
             raise
         self.ketju_file = kf[0]
         self.snaplist = get_snapshots_in_dir(self.data_directory)
@@ -50,14 +63,21 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
                 assert isinstance(snaps, list)
                 self.snaplist = [self.snaplist[i] for i in snaps]
             except AssertionError:
-                _logger.exception(f"Selecting specific snapshots requires `snaps` to be a list, not type <{type(snaps)}>", exc_info=True)
+                _logger.exception(
+                    f"Selecting specific snapshots requires `snaps` to be a list, not type <{type(snaps)}>",
+                    exc_info=True,
+                )
                 raise
         self._analysis_params = read_parameters(parameter_file)
         self._merger_params = read_parameters(merger_file)
-        self.radial_edges = copy.copy(self._analysis_params["galaxy"]["radial_edges"]["value"])
+        self.radial_edges = copy.copy(
+            self._analysis_params["galaxy"]["radial_edges"]["value"]
+        )
         self.initial_galaxy_orbit = {}
         for k in ("e0", "r0_physical", "rperi_physical"):
-            self.initial_galaxy_orbit[k] = copy.copy(self._merger_params["calculated"][k])
+            self.initial_galaxy_orbit[k] = copy.copy(
+                self._merger_params["calculated"][k]
+            )
 
         # predefined variables that we will loop through in snapshots
         self.analysed_snapshots = []
@@ -72,23 +92,27 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         self.inner_DM_fraction = {}
         self.velocity_anisotropy = {}
         self.escape_velocity = {}
-        self.masses_in_galaxy_radius = {"stars":[], "dm":[], "bh":[]}
-        self.particle_masses = {"stars":None, "dm":None, "bh":None}
+        self.masses_in_galaxy_radius = {"stars": [], "dm": [], "bh": []}
+        self.particle_masses = {"stars": None, "dm": None, "bh": None}
 
         # some helper variables
         self._has_dm = True
         self._masses_set = False
         self._snap_counter = 0
 
-    ##------------------- Determine merger properties -------------------##
+        # #------------------- Determine merger properties -------------------##
         bh1, bh2, merged = get_bh_particles(self.ketju_file)
-        self.merger_remnant = {"merged":False, "mass":None, "spin":None, "kick":None}
+        self.merger_remnant = {
+            "merged": False,
+            "mass": None,
+            "spin": None,
+            "kick": None,
+        }
         if merged():
             self.merger_remnant["merged"] = True
             self.merger_remnant["mass"] = merged.mass
             self.merger_remnant["spin"] = merged.chi
             self.merger_remnant["kick"] = merged.kick_magnitude
-
 
     @property
     def snaplist(self):
@@ -97,7 +121,6 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
     @snaplist.setter
     def snaplist(self, v):
         self._snaplist = v
-
 
     # function to set particle masses
     def _set_masses(self, s):
@@ -117,7 +140,6 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
             self._has_dm = False
         self.particle_masses["bh"] = min(np.unique(s.bh["mass"]))
         self._masses_set = True
-
 
     def _snapshot_quantities_single(self, s, t):
         """
@@ -139,7 +161,14 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         vcom = get_com_velocity_of_each_galaxy(s, _xcom)[bh_id]
 
         # aperture mask of galaxy_radius
-        ball_mask = pygad.BallMask(pygad.UnitScalar(self._analysis_params["galaxy"]["maximum_radius"]["value"], self._analysis_params["galaxy"]["maximum_radius"]["unit"], subs=s), center=xcom)
+        ball_mask = pygad.BallMask(
+            pygad.UnitScalar(
+                self._analysis_params["galaxy"]["maximum_radius"]["value"],
+                self._analysis_params["galaxy"]["maximum_radius"]["unit"],
+                subs=s,
+            ),
+            center=xcom,
+        )
 
         # snapshot time
         self.time_of_snapshot.append(t)
@@ -151,12 +180,16 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
 
         # half mass radius
         self.half_mass_radius.append(
-                pygad.analysis.half_mass_radius(s.stars[ball_mask], center=xcom)
-            )
+            pygad.analysis.half_mass_radius(s.stars[ball_mask], center=xcom)
+        )
 
         # projected quantities
         k = f"{t:.3f}"
-        _Re, _vsig2Re, _vsig2r, _Sigma = projected_quantities(s[ball_mask], obs=self._analysis_params["galaxy"]["num_projection_rotations"], r_edges=self.radial_edges)
+        _Re, _vsig2Re, _vsig2r, _Sigma = projected_quantities(
+            s[ball_mask],
+            obs=self._analysis_params["galaxy"]["num_projection_rotations"],
+            r_edges=self.radial_edges,
+        )
         self.effective_radius[k] = list(_Re.values())[0]
         self.vel_dispersion_1Re_2[k] = list(_vsig2Re.values())[0]
         self.projected_vel_dispersion_2[k] = list(_vsig2r.values())[0]
@@ -171,23 +204,18 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
                 )
 
         # beta profile
-        self.velocity_anisotropy[k], *_ = velocity_anisotropy(s.stars[ball_mask], r_edges=self.radial_edges, xcom=xcom, vcom=vcom)
+        self.velocity_anisotropy[k], *_ = velocity_anisotropy(
+            s.stars[ball_mask], r_edges=self.radial_edges, xcom=xcom, vcom=vcom
+        )
 
         # escape velocity as a function of raduius
         self.escape_velocity[k] = escape_velocity(s)(self.radial_edges)
 
         # masses
-        self.masses_in_galaxy_radius["stars"].append(
-                    np.sum(s.stars[ball_mask]["mass"])
-        )
+        self.masses_in_galaxy_radius["stars"].append(np.sum(s.stars[ball_mask]["mass"]))
         if self._has_dm:
-            self.masses_in_galaxy_radius["dm"].append(
-                        np.sum(s.dm[ball_mask]["mass"])
-            )
-        self.masses_in_galaxy_radius["bh"].append(
-                    np.sum(s.bh[ball_mask]["mass"])
-        )
-
+            self.masses_in_galaxy_radius["dm"].append(np.sum(s.dm[ball_mask]["mass"]))
+        self.masses_in_galaxy_radius["bh"].append(np.sum(s.bh[ball_mask]["mass"]))
 
     def calculate(self):
         """
@@ -196,7 +224,7 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         N = len(self.snaplist)
         for snapfile in self.snaplist:
             snap = pygad.Snapshot(snapfile, physical=True)
-            if not self._masses_set: 
+            if not self._masses_set:
                 self._set_masses(snap)
             t = convert_gadget_time(snap, new_unit="Myr")
             self._snapshot_quantities_single(snap, t)
@@ -206,7 +234,6 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
             # increment counter
             self._snap_counter += 1
             _logger.debug(f"Analysed {self._snap_counter} from {N} snapshots.")
-
 
     def _hdf5_save_helper(self, f, fname):
         """
@@ -237,30 +264,29 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
 
         gp = f.create_group("galaxy_properties")
         _gp_dl = [
-                    "analysed_snapshots",
-                    "radial_edges",
-                    "time_of_snapshot",
-                    "projected_mass_density",
-                    "projected_vel_dispersion_2",
-                    "effective_radius",
-                    "vel_dispersion_1Re_2",
-                    "half_mass_radius",
-                    "virial_mass",
-                    "virial_radius",
-                    "inner_DM_fraction",
-                    "velocity_anisotropy",
-                    "escape_velocity",
-                    "masses_in_galaxy_radius",
-                    "particle_masses",
-                    "initial_galaxy_orbit"
+            "analysed_snapshots",
+            "radial_edges",
+            "time_of_snapshot",
+            "projected_mass_density",
+            "projected_vel_dispersion_2",
+            "effective_radius",
+            "vel_dispersion_1Re_2",
+            "half_mass_radius",
+            "virial_mass",
+            "virial_radius",
+            "inner_DM_fraction",
+            "velocity_anisotropy",
+            "escape_velocity",
+            "masses_in_galaxy_radius",
+            "particle_masses",
+            "initial_galaxy_orbit",
         ]
         self._saver(gp, _gp_dl)
         _logger.info(f"Galaxy property quantities saved to {fname}")
 
-
     def make_hdf5(self, fname, exist_ok=False):
         """
-        Create a HDF5 file of the data that can then be read back into the 
+        Create a HDF5 file of the data that can then be read back into the
         python environment using the base class HMQuantitiesBinaryData.
 
         Parameters
@@ -276,16 +302,17 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
             except AssertionError:
                 _logger.exception("HDF5 file already exists!", exc_info=True)
                 raise
-        
+
         with h5py.File(fname, mode="w") as f:
             self._hdf5_save_helper(f, fname)
-
 
     @classmethod
     def load_from_file(self, f):
         try:
             raise NotImplementedError
         except NotImplementedError:
-            _logger.exception(f"Class {self.__name__} does not inherit the method <load_from_file> from {self.__base__.__name__}", exc_info=True)
+            _logger.exception(
+                f"Class {self.__name__} does not inherit the method <load_from_file> from {self.__base__.__name__}",
+                exc_info=True,
+            )
             raise
-

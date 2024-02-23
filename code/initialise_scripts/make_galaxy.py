@@ -4,12 +4,43 @@ import numpy as np
 import cm_functions as cmf
 
 
-parser = argparse.ArgumentParser(description="Create ICs for Gadget which are somewhat inspired by observations", allow_abbrev=False)
+parser = argparse.ArgumentParser(
+    description="Create ICs for Gadget which are somewhat inspired by observations",
+    allow_abbrev=False,
+)
 parser.add_argument(type=str, help="parameter file", dest="pf")
-parser.add_argument("-n", "--numberRots", type=int, help="number of rotations for projected quantities", dest="nrot", default=3)
-parser.add_argument("-b", "--batch", type=int, help="create a batch of galaxy ICs", dest="batch", default=1)
-parser.add_argument("-L", "--LEGACY", dest="bh_legacy", action="store_true", help="use legacy Sahu method for BH mass")
-parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
+parser.add_argument(
+    "-n",
+    "--numberRots",
+    type=int,
+    help="number of rotations for projected quantities",
+    dest="nrot",
+    default=3,
+)
+parser.add_argument(
+    "-b",
+    "--batch",
+    type=int,
+    help="create a batch of galaxy ICs",
+    dest="batch",
+    default=1,
+)
+parser.add_argument(
+    "-L",
+    "--LEGACY",
+    dest="bh_legacy",
+    action="store_true",
+    help="use legacy Sahu method for BH mass",
+)
+parser.add_argument(
+    "-v",
+    "--verbosity",
+    type=str,
+    choices=cmf.VERBOSITY,
+    dest="verbose",
+    default="INFO",
+    help="verbosity level",
+)
 args = parser.parse_args()
 
 
@@ -29,12 +60,17 @@ else:
     try:
         assert args.batch < len(suffixes)
     except AssertionError:
-        SL.exception(f"Can create a maximum of 26 galaxy ICs, {len(suffixes)} is too great!", exc_info=True)
+        SL.exception(
+            f"Can create a maximum of 26 galaxy ICs, {len(suffixes)} is too great!",
+            exc_info=True,
+        )
         raise
-    for s in suffixes[:args.batch]:
+    for s in suffixes[: args.batch]:
         # create a new parameter file for each realisation
         try:
-            new_filename = cmf.utils.create_file_copy(args.pf, suffix=f"_{s}", exist_ok=False)
+            new_filename = cmf.utils.create_file_copy(
+                args.pf, suffix=f"_{s}", exist_ok=False
+            )
         except AssertionError:
             SL.warning(f"Model realisation {s} already exists, skipping...")
             continue
@@ -43,27 +79,38 @@ else:
             match = re.search("  galaxy_name:.*", contents, flags=re.MULTILINE)
             gal_name = match.group(0).replace("  galaxy_name: ", "").strip("'")
             gal_name = f"{gal_name}_{s}"
-            for k, v in zip(("  galaxy_name:", "  random_seed:"), (gal_name, rng.integers(100000))):
+            for k, v in zip(
+                ("  galaxy_name:", "  random_seed:"), (gal_name, rng.integers(100000))
+            ):
                 try:
                     assert isinstance(v, (str, int, np.int64, np.int32))
                 except AssertionError:
-                    SL.exception(f"Only datatypes 'str' and 'int'-like are supported, not type {type(v)}", exc_info=True)
+                    SL.exception(
+                        f"Only datatypes 'str' and 'int'-like are supported, not type {type(v)}",
+                        exc_info=True,
+                    )
                     raise
-                contents, sc = re.subn(f"{k}.*", f"{k} {str(v)}", contents, flags=re.MULTILINE)
+                contents, sc = re.subn(
+                    f"{k}.*", f"{k} {str(v)}", contents, flags=re.MULTILINE
+                )
                 try:
                     assert sc == 1
                 except AssertionError:
-                    SL.exception(f"Parameter '{k}' not updated properly! {sc} replacements were made!", exc_info=True)
+                    SL.exception(
+                        f"Parameter '{k}' not updated properly! {sc} replacements were made!",
+                        exc_info=True,
+                    )
                     raise
             # overwrite copied parameter file
             cmf.utils.overwrite_parameter_file(f, contents)
         SL.warning(f"File {new_filename} created")
         # generate the galaxy
-        galaxy = cmf.initialise.GalaxyIC(parameter_file=new_filename, sahu_legacy=args.bh_legacy)
+        galaxy = cmf.initialise.GalaxyIC(
+            parameter_file=new_filename, sahu_legacy=args.bh_legacy
+        )
         plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
         if plot_flag:
             galaxy.plot_mass_scaling_relations()
         galaxy.generate_galaxy()
         if plot_flag:
             galaxy.plot_ic_kinematics(num_rots=args.nrot)
-

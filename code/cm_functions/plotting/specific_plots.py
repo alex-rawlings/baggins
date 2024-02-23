@@ -11,12 +11,30 @@ from ..general import convert_gadget_time, units
 from ..env_config import _cmlogger
 
 
-__all__ = ["plot_galaxies_with_pygad", "binary_param_plot", "twin_axes_from_samples", "voronoi_plot", "seaborn_jointplot_cbar", "draw_unit_sphere", "heatmap", "annotate_heatmap", "violinplot"]
+__all__ = [
+    "plot_galaxies_with_pygad",
+    "binary_param_plot",
+    "twin_axes_from_samples",
+    "voronoi_plot",
+    "seaborn_jointplot_cbar",
+    "draw_unit_sphere",
+    "heatmap",
+    "annotate_heatmap",
+    "violinplot",
+]
 
 _logger = _cmlogger.getChild(__name__)
 
 
-def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, ax=None, extent=None, kwargs=None, overplot_bhs=False):
+def plot_galaxies_with_pygad(
+    snap,
+    return_ims=False,
+    orientate=None,
+    ax=None,
+    extent=None,
+    kwargs=None,
+    overplot_bhs=False,
+):
     """
     Convenience routine for plotting a system with pygad, both stars and DM
 
@@ -27,15 +45,15 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, ax=None, ex
     return_ims : bool, optional
         return list of images, by default False
     orientate : str, optional
-        orientate the snapshot using pygad orientate_at method can be either to 
-        an arbitrary vector, the angular momentum "L", or the semiminor axis of 
-        the reduced intertia tensor "red I". If used, a shallow copy of the 
+        orientate the snapshot using pygad orientate_at method can be either to
+        an arbitrary vector, the angular momentum "L", or the semiminor axis of
+        the reduced intertia tensor "red I". If used, a shallow copy of the
         snapshot is created, by default None
     ax : matplotlib.axes.Axes, optional
         axis to plot to, by default None (creates new instance)
     extent : dict, optional
-        dict of dicts with extent values with top-layer keys "stars", "dm", "gas", 
-        and second-layer keys "xz" and "xy",  e.g. extent["stars"]["xz"] = 100, 
+        dict of dicts with extent values with top-layer keys "stars", "dm", "gas",
+        and second-layer keys "xz" and "xy",  e.g. extent["stars"]["xz"] = 100,
         by default None
     kwargs : dict, optional
         other keyword arguments for the pygad plotting routine, by default None
@@ -56,16 +74,28 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, ax=None, ex
         snap = copy.copy(snap)
         snap.to_physical_units()
         pygad.analysis.orientate_at(snap, orientate)
-    _extent = {"stars":{"xz":None, "xy":None}, "dm":{"xz":None, "xy":None}, "gas":{"xz":None, "xy":None}}
-    if _extent is not None: _extent.update(extent)
-    default_kwargs = {"scaleind":"labels", "cbartitle":"", "Npx":800, 
-                      "qty":"mass", "fontsize":10}
+    _extent = {
+        "stars": {"xz": None, "xy": None},
+        "dm": {"xz": None, "xy": None},
+        "gas": {"xz": None, "xy": None},
+    }
+    if _extent is not None:
+        _extent.update(extent)
+    default_kwargs = {
+        "scaleind": "labels",
+        "cbartitle": "",
+        "Npx": 800,
+        "qty": "mass",
+        "fontsize": 10,
+    }
     if kwargs is None:
         kwargs = default_kwargs
     else:
-        kwargs = {**default_kwargs, **kwargs} #append some extra kwargs
+        kwargs = {**default_kwargs, **kwargs}  # append some extra kwargs
     if ax is None:
-        fig, ax = plt.subplots(2,len(fams), figsize=(3*len(fams), 6), sharex="col", squeeze=False)
+        fig, ax = plt.subplots(
+            2, len(fams), figsize=(3 * len(fams), 6), sharex="col", squeeze=False
+        )
     else:
         fig = ax.get_figure()
     ims = []
@@ -73,13 +103,21 @@ def plot_galaxies_with_pygad(snap, return_ims=False, orientate=None, ax=None, ex
     fig.suptitle(f"Time: {time:.1f} Myr")
     for i, pt in enumerate(fams):
         _logger.info(f"Plotting {pt}")
-        ax[0,i].set_title(pt)
+        ax[0, i].set_title(pt)
         for j, proj in enumerate(("xz", "xy")):
-            _, ax[j,i], im, *_ = pygad.plotting.image(getattr(snap, pt), xaxis=0, yaxis=2-j, extent=_extent[pt][proj], ax=ax[j,i], **kwargs)
+            _, ax[j, i], im, *_ = pygad.plotting.image(
+                getattr(snap, pt),
+                xaxis=0,
+                yaxis=2 - j,
+                extent=_extent[pt][proj],
+                ax=ax[j, i],
+                **kwargs,
+            )
             ims.append(im)
             if overplot_bhs:
-                ax[j,i].scatter(snap.bh["pos"][:,0], snap.bh["pos"][:,2-j], c="w")
-    for axi in np.concatenate(ax): axi.set_facecolor("k")
+                ax[j, i].scatter(snap.bh["pos"][:, 0], snap.bh["pos"][:, 2 - j], c="w")
+    for axi in np.concatenate(ax):
+        axi.set_facecolor("k")
     if return_ims:
         return fig, ax, ims
     else:
@@ -105,21 +143,27 @@ def binary_param_plot(orbit_pars, ax=None, toffset=0, **kwargs):
         plotting axis
     """
     if ax is None:
-        fig, ax = plt.subplots(3,1,sharex="col")
+        fig, ax = plt.subplots(3, 1, sharex="col")
     ax[0].set_ylabel("a/pc")
     ax[1].set_ylabel("e")
     ax[2].set_ylabel("1-e")
     ax[-1].set_xlabel("t/Myr")
-    ax[1].set_ylim(0,1)
-    ax[0].semilogy(orbit_pars["t"]/units.Myr + toffset, orbit_pars["a_R"]/ketjugw.units.pc, **kwargs)
-    ax[1].plot(orbit_pars["t"]/units.Myr + toffset, orbit_pars["e_t"], **kwargs)
-    ax[2].semilogy(orbit_pars["t"]/units.Myr + toffset, 1-orbit_pars["e_t"], **kwargs)
+    ax[1].set_ylim(0, 1)
+    ax[0].semilogy(
+        orbit_pars["t"] / units.Myr + toffset,
+        orbit_pars["a_R"] / ketjugw.units.pc,
+        **kwargs,
+    )
+    ax[1].plot(orbit_pars["t"] / units.Myr + toffset, orbit_pars["e_t"], **kwargs)
+    ax[2].semilogy(
+        orbit_pars["t"] / units.Myr + toffset, 1 - orbit_pars["e_t"], **kwargs
+    )
     return ax
 
 
 def twin_axes_from_samples(ax, x1, x2, log=False):
     """
-    Generate a twin axis for two discretely sampled quantities. Interpolation 
+    Generate a twin axis for two discretely sampled quantities. Interpolation
     is done between the samples for the plot axes.
 
     Parameters
@@ -140,21 +184,26 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
     """
     try:
         assert np.all(np.diff(x1) > 0)
-        assert np.all(np.sign(np.diff(x2)) == np.sign(x2[1]-x2[0]))
+        assert np.all(np.sign(np.diff(x2)) == np.sign(x2[1] - x2[0]))
     except AssertionError:
-        _logger.exception(f"Original x-datasets must be strictly increasing!", exc_info=True)
+        _logger.exception(
+            "Original x-datasets must be strictly increasing!", exc_info=True
+        )
         raise
+
     # set up forward and inverse functions with masked array handling
     def _forward(x):
         if isinstance(x, np.ma.MaskedArray):
             x = x.compressed()
         f = interp1d(x1, x2, bounds_error=False, fill_value="extrapolate")
         return f(x)
+
     def _inverse(x):
         if isinstance(x, np.ma.MaskedArray):
             x = x.compressed()
         f = interp1d(x2, x1, bounds_error=False, fill_value="extrapolate")
         return f(x)
+
     # set up secondary axis
     ax2 = ax.secondary_xaxis("top", functions=(_forward, _inverse))
     if log:
@@ -162,7 +211,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
     return ax2
 
 
-def voronoi_plot(vdat, figsize=(7,4.7), clims={}):
+def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
     """
     Plot the voronoi maps for a system.
 
@@ -179,37 +228,45 @@ def voronoi_plot(vdat, figsize=(7,4.7), clims={}):
         plotting axes
     """
     # set the colour limits
-    _clims = dict(
-        V = [None],
-        sigma = [None, None],
-        h3 = [None],
-        h4 = [None]
-    )
-    for k,v in clims.items():
+    _clims = dict(V=[None], sigma=[None, None], h3=[None], h4=[None])
+    for k, v in clims.items():
         try:
             assert isinstance(v, (list, tuple))
         except AssertionError:
-            _logger.exception(f"Each value of `clim` must be a list or tuple, not {type(v)}!", exc_info=True)
+            _logger.exception(
+                f"Each value of `clim` must be a list or tuple, not {type(v)}!",
+                exc_info=True,
+            )
             raise
         vlen = 2 if k == "sigma" else 1
         try:
             assert len(v) == vlen
         except AssertionError:
-            _logger.exception(f"`clim` entry for {k} must be of length {vlen}, not {len(v)}!", exc_info=True)
+            _logger.exception(
+                f"`clim` entry for {k} must be of length {vlen}, not {len(v)}!",
+                exc_info=True,
+            )
             raise
         _clims[k] = v
 
     # set up the figure
-    fig, ax = plt.subplots(2,2, sharex="all", sharey="all", figsize=figsize)
+    fig, ax = plt.subplots(2, 2, sharex="all", sharey="all", figsize=figsize)
     for i in range(2):
-        ax[1,i].set_xlabel(r"$x/\mathrm{kpc}$")
-        ax[i,0].set_ylabel(r"$y/\mathrm{kpc}$")
+        ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
+        ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
     ax = np.concatenate(ax).flatten()
-    for i, (statkey, cmap, label) in enumerate(zip(
-        ("V", "sigma", "h3", "h4"),
-        ("coolwarm", "plasma", "coolwarm", "coolwarm"),
-        (r"$V/\mathrm{km}\,\mathrm{s}^{-1}$", r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$", r"$h_3/\mathrm{km}\,\mathrm{s}^{-1}$", r"$h_4/\mathrm{km}\,\mathrm{s}^{-1}$")
-    )):
+    for i, (statkey, cmap, label) in enumerate(
+        zip(
+            ("V", "sigma", "h3", "h4"),
+            ("coolwarm", "plasma", "coolwarm", "coolwarm"),
+            (
+                r"$V/\mathrm{km}\,\mathrm{s}^{-1}$",
+                r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$",
+                r"$h_3/\mathrm{km}\,\mathrm{s}^{-1}$",
+                r"$h_4/\mathrm{km}\,\mathrm{s}^{-1}$",
+            ),
+        )
+    ):
         # plot the statistic
         stat = vdat[f"img_{statkey}"]
         if i != 1:
@@ -220,13 +277,25 @@ def voronoi_plot(vdat, figsize=(7,4.7), clims={}):
             else:
                 norm = colors.Normalize(stat.min(), stat.max())
         ax[i].set_aspect("equal")
-        p1 = ax[i].imshow(stat, interpolation="nearest", origin="lower", extent=vdat["extent"], cmap=cmap, norm=norm)
+        p1 = ax[i].imshow(
+            stat,
+            interpolation="nearest",
+            origin="lower",
+            extent=vdat["extent"],
+            cmap=cmap,
+            norm=norm,
+        )
         cbar = plt.colorbar(p1, ax=ax[i])
         cbar.ax.set_ylabel(label)
     return ax
 
 
-def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "right":0.8}, cbarwidth=0.05, cbargap=0.02, **kwargs):
+def seaborn_jointplot_cbar(
+    adjust_kw={"top": 0.9, "bottom": 0.1, "left": 0.1, "right": 0.8},
+    cbarwidth=0.05,
+    cbargap=0.02,
+    **kwargs,
+):
     """
     Wrapper to add a colorbar to a seaborn jointplot() object.
 
@@ -234,14 +303,14 @@ def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "righ
     ----------
     adjust_kw : dict, optional
         dict to pass to pyplot.subplots_adjust describing how the subplot
-        should be adjusted to accommodate the colorbar, by default {"top":0.9, 
+        should be adjusted to accommodate the colorbar, by default {"top":0.9,
         "bottom":0.1, "left":0.1, "right":0.8}
     cbarwidth : float, optional
         width of colorbar in axis units, by default 0.05
     cbargap : float, optional
-        distance between marginal axis and colorbar in axis units, by default 
+        distance between marginal axis and colorbar in axis units, by default
         0.02
-    **kwargs : 
+    **kwargs :
         keyword arguments to be parsed to sns.jointplot()
 
     Returns
@@ -251,13 +320,17 @@ def seaborn_jointplot_cbar(adjust_kw={"top":0.9, "bottom":0.1, "left":0.1, "righ
     """
     j = sns.jointplot(**kwargs)
     plt.subplots_adjust(**adjust_kw)
-    #get current positions of axes
+    # get current positions of axes
     pos_joint_ax = j.ax_joint.get_position()
     pos_margx_ax = j.ax_marg_x.get_position()
-    #reposition the joint ax so it has the same width as margx
-    j.ax_joint.set_position([pos_joint_ax.x0, pos_joint_ax.y0, pos_margx_ax.width, pos_joint_ax.height])
-    #reposition colorbar
-    j.figure.axes[-1].set_position([adjust_kw["right"]+cbargap, pos_joint_ax.y0, cbarwidth, pos_joint_ax.height])
+    # reposition the joint ax so it has the same width as margx
+    j.ax_joint.set_position(
+        [pos_joint_ax.x0, pos_joint_ax.y0, pos_margx_ax.width, pos_joint_ax.height]
+    )
+    # reposition colorbar
+    j.figure.axes[-1].set_position(
+        [adjust_kw["right"] + cbargap, pos_joint_ax.y0, cbarwidth, pos_joint_ax.height]
+    )
     return j
 
 
@@ -272,25 +345,36 @@ def draw_unit_sphere(ax, points=100):
     points : int, optional
         number of points, by default 100
     """
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    ax.set_box_aspect((2,2,2))
-    theta = np.linspace(0, np.pi, int(points/2))[:-1]
-    phi = np.linspace(0, 2*np.pi, points)[:-1]
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.set_zlabel("z")
+    ax.set_box_aspect((2, 2, 2))
+    theta = np.linspace(0, np.pi, int(points / 2))[:-1]
+    phi = np.linspace(0, 2 * np.pi, points)[:-1]
     u, v = np.meshgrid(theta, phi)
     x = np.sin(u) * np.cos(v)
     y = np.sin(u) * np.sin(v)
     z = np.cos(u)
-    ax.plot_wireframe(x, y, z, alpha=0.2, color='k')
-    #plot origin
-    ax.scatter(0,0,0, color='k')
+    ax.plot_wireframe(x, y, z, alpha=0.2, color="k")
+    # plot origin
+    ax.scatter(0, 0, 0, color="k")
 
 
-def heatmap(data, row_labels, col_labels, ax=None, cmap="cividis", show_cbar=True, cbar_kw=None, cbarlabel="w", bad_colour="w", **kwargs):
+def heatmap(
+    data,
+    row_labels,
+    col_labels,
+    ax=None,
+    cmap="cividis",
+    show_cbar=True,
+    cbar_kw=None,
+    cbarlabel="w",
+    bad_colour="w",
+    **kwargs,
+):
     """
     Create a heatmap from a numpy array and two lists of labels, taken from:
-    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html 
+    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
 
     Parameters
     ----------
@@ -308,7 +392,7 @@ def heatmap(data, row_labels, col_labels, ax=None, cmap="cividis", show_cbar=Tru
         label for the colorbar, by default ""
     **kwargs
         All other arguments are forwarded to `imshow`
-    
+
     Returns
     -------
     im : matplotlib.image.AxesImage
@@ -320,7 +404,7 @@ def heatmap(data, row_labels, col_labels, ax=None, cmap="cividis", show_cbar=Tru
     """
 
     if ax is None:
-        fig, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1, 1)
     if cbar_kw is None:
         cbar_kw = {}
     try:
@@ -343,28 +427,37 @@ def heatmap(data, row_labels, col_labels, ax=None, cmap="cividis", show_cbar=Tru
     ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
 
     # rotate the tick labels and set their alignment
-    plt.setp(ax.get_xticklabels(), rotation=-30, ha="left", va="top", rotation_mode="anchor")
+    plt.setp(
+        ax.get_xticklabels(), rotation=-30, ha="left", va="top", rotation_mode="anchor"
+    )
 
     # turn spines off and create white grid
     ax.spines[:].set_visible(False)
-    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-    ax.grid(which="minor", color="w", linestyle='-', linewidth=0.5)
+    ax.set_xticks(np.arange(data.shape[1] + 1) - 0.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0] + 1) - 0.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle="-", linewidth=0.5)
     ax.tick_params(which="minor", bottom=False, left=False)
     return im, ax, cbar
 
 
-def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "white"), threshold=None, **textkw):
+def annotate_heatmap(
+    im,
+    data=None,
+    valfmt="{x:.2f}",
+    textcolors=("black", "white"),
+    threshold=None,
+    **textkw,
+):
     """
     A function to annotate a heatmap, taken from:
-    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html  
+    https://matplotlib.org/stable/gallery/images_contours_and_fields/image_annotated_heatmap.html
 
     Parameters
     ----------
     im : matplotlib.image.AxesImage
         AxesImage to be labeled
     data : array-like, optional
-        data used to annotate (if None, the image's data is used), by default 
+        data used to annotate (if None, the image's data is used), by default
         None
     valfmt : str, optional
         format of the annotations inside the heatmap, should either
@@ -380,7 +473,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "whit
     **kwargs
         all other arguments are forwarded to each call to `text` used to create
         the text labels
-    
+
     Returns
     texts : list
         text in each pixel
@@ -393,12 +486,11 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "whit
     if threshold is not None:
         threshold = im.norm(threshold)
     else:
-        threshold = im.norm(np.nanmax(data))/2.
+        threshold = im.norm(np.nanmax(data)) / 2.0
 
     # set default alignment to center, but allow it to be
     # overwritten by textkw.
-    kw = dict(horizontalalignment="center",
-              verticalalignment="center")
+    kw = dict(horizontalalignment="center", verticalalignment="center")
     kw.update(textkw)
 
     # get the formatter in case a string is supplied
@@ -410,7 +502,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "whit
     texts = []
     for i in range(data.shape[0]):
         for j in range(data.shape[1]):
-            if isinstance(data[i,j], np.ma.core.MaskedConstant):
+            if isinstance(data[i, j], np.ma.core.MaskedConstant):
                 continue
             kw.update(color=textcolors[int(im.norm(data[i, j]) < threshold)])
             text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
@@ -443,20 +535,21 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
     ax : matplotlib.axes.Axes, optional
         plotting axes
     """
+
     def _adjacent_vals(vals, q1, q3):
         # helper function to determine whisker limits
         # follows same limit convention as pyplot.boxplot()
         vals = vals[~np.isnan(vals)]
         max_val = max(vals)
         min_val = min(vals)
-        upper_av = q3 + (q3-q1) * 1.5
+        upper_av = q3 + (q3 - q1) * 1.5
         try:
             assert q3 <= max_val
         except AssertionError:
             _logger.exception(f"{q3} must be less than {max_val}", exc_info=True)
             raise
         upper_av = np.clip(upper_av, q3, max_val)
-        lower_av = q1 - (q3-q1) * 1.5
+        lower_av = q1 - (q3 - q1) * 1.5
         try:
             assert min_val <= q1
         except AssertionError:
@@ -466,21 +559,32 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
         return lower_av, upper_av
 
     if ax is None:
-        fig, ax = plt.subplots(1,1)
+        fig, ax = plt.subplots(1, 1)
     lcol = "#373737" if lcol is None else lcol
 
     # determine the whiskers
     quartile1, medians, quartile3 = np.nanquantile(d, [0.25, 0.5, 0.75], axis=-1)
-    whiskers = np.array([
-        _adjacent_vals(sorted_array, q1, q3) for sorted_array, q1, q3, in zip(d, quartile1, quartile3)
-    ])
-    whisker_min, whisker_max = whiskers[:,0], whiskers[:,1]
+    whiskers = np.array(
+        [
+            _adjacent_vals(sorted_array, q1, q3)
+            for sorted_array, q1, q3, in zip(d, quartile1, quartile3)
+        ]
+    )
+    whisker_min, whisker_max = whiskers[:, 0], whiskers[:, 1]
 
     # add whiskers and median, truncate the data for violins
     if showbox:
         ax.scatter(pos, medians, marker="o", color="white", s=boxwidth, zorder=3)
         ax.vlines(pos, quartile1, quartile3, color=lcol, ls="-", lw=boxwidth, zorder=1)
-        ax.vlines(pos, whisker_min, whisker_max, color=lcol, ls="-", lw=0.2*boxwidth, zorder=2)
+        ax.vlines(
+            pos,
+            whisker_min,
+            whisker_max,
+            color=lcol,
+            ls="-",
+            lw=0.2 * boxwidth,
+            zorder=2,
+        )
     trunc_d = []
     for dd, wmin, wmax in zip(d, whisker_min, whisker_max):
         mask = np.logical_and(dd > wmin, dd < wmax)
@@ -489,7 +593,9 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
     if "widths" in kwargs and isinstance(kwargs["widths"], (float, int)):
         kwargs["widths"] = np.repeat(kwargs["widths"], len(pos))
     kwargs["showmedians"] = False if showbox else True
-    violins = ax.violinplot(trunc_d, positions=pos, showmeans=False, showextrema=False, **kwargs)
+    violins = ax.violinplot(
+        trunc_d, positions=pos, showmeans=False, showextrema=False, **kwargs
+    )
 
     # update styling of violin
     for i, pc in enumerate(violins["bodies"]):
@@ -498,8 +604,9 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
         if showbox:
             pc.set_alpha(1)
         pc.set_zorder(0.5)
-        fc = pc.get_facecolor() if i==0 else fc
+        if i == 0:
+            fc = pc.get_facecolor()
+        else:
+            fc
         pc.set_facecolor(fc)
     return ax
-
-

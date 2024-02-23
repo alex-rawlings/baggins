@@ -3,7 +3,16 @@ import scipy.stats
 from ..env_config import _cmlogger
 
 
-__all__ = ["iqr", "quantiles_relative_to_median", "smooth_bootstrap", "smooth_bootstrap_pval", "permutation_sample_test", "stat_interval", "uniform_sample_sphere", "vertical_RMSE"]
+__all__ = [
+    "iqr",
+    "quantiles_relative_to_median",
+    "smooth_bootstrap",
+    "smooth_bootstrap_pval",
+    "permutation_sample_test",
+    "stat_interval",
+    "uniform_sample_sphere",
+    "vertical_RMSE",
+]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -54,35 +63,40 @@ def quantiles_relative_to_median(x, lower=0.25, upper=0.75, axis=-1):
     try:
         assert lower < 0.5 and upper > 0.5
     except AssertionError:
-        _logger.exception(f"Lower quantile {lower} must be less than 0.5 Upper quantile {upper} must be greater than 0.5", exc_info=True)
-    l = m - np.nanquantile(x, lower, axis=axis)
-    u = np.nanquantile(x, upper, axis=axis) - m
+        _logger.exception(
+            f"Lower quantile {lower} must be less than 0.5 Upper quantile {upper} must be greater than 0.5",
+            exc_info=True,
+        )
+    lo = m - np.nanquantile(x, lower, axis=axis)
+    up = np.nanquantile(x, upper, axis=axis) - m
     # convert to shape convenient for plotting with pyplot.errorbar
-    spread = np.vstack((l,u))
+    spread = np.vstack((lo, up))
     return m, spread
 
 
 def _smooth_bootstrap_sigma(data):
-    return 2*np.nanstd(data, axis=0) / np.sqrt(data.shape[0])
+    return 2 * np.nanstd(data, axis=0) / np.sqrt(data.shape[0])
 
 
-def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, rng=None):
+def smooth_bootstrap(
+    data, number_resamples=1e4, sigma=None, statistic=np.std, rng=None
+):
     """
     Perform a smooth bootstrap resampling to estimate a statistic
 
     Parameters
     ----------
     data : np.ndarray
-        data values to bootstrap. Accepts a (m,n) array, in which 
+        data values to bootstrap. Accepts a (m,n) array, in which
         case each column is bootstrapped independently
     number_resamples : int, float, optional
         number of resamples to perform, by default 1e4
     sigma : float, optional
-        spread in the smoothing random variable, by default None (SE/sqrt(m), 
-        where m is the number of rows and SE is the standard error of the 
+        spread in the smoothing random variable, by default None (SE/sqrt(m),
+        where m is the number of rows and SE is the standard error of the
         sample)
     statistic : function, optional
-        np function statistic to be estimated (must accept an axis argument), 
+        np function statistic to be estimated (must accept an axis argument),
         by default np.std
     rng : np.random._generator.Generator, optional
         random number generator, by default None (creates a new instance)
@@ -90,7 +104,7 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     Returns
     -------
     bootstrap_stat : np.ndarray
-        array of statistic estimate at each iteration, shape (number_resamples, 
+        array of statistic estimate at each iteration, shape (number_resamples,
         n)
     : np.ndarray
         mean of each statistic estimate
@@ -102,8 +116,11 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
     if rng is None:
         rng = np.random.default_rng()
     for i in range(number_resamples):
-        print(f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ", end="\r")
-        #resample data columnwise
+        print(
+            f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ",
+            end="\r",
+        )
+        # resample data columnwise
         resampled_data = rng.choice(data, data.shape[0], replace=True, axis=0)
         bootstrap_data = rng.normal(resampled_data, sigma)
         bootstrap_stat[i, :] = statistic(bootstrap_data, axis=0)
@@ -113,13 +130,13 @@ def smooth_bootstrap(data, number_resamples=1e4, sigma=None, statistic=np.std, r
 
 def smooth_bootstrap_pval(data, alpha=0.01, statistic=np.std, **kwargs):
     """
-    Determine the p-value of some statistic of an observed sample compared to 
+    Determine the p-value of some statistic of an observed sample compared to
     a smooth bootstrap sample.
 
     Parameters
     ----------
     data : array-like
-        sample (can be multiple samples, sample sets must belong to the same 
+        sample (can be multiple samples, sample sets must belong to the same
         column)
     alpha : float, optional
         significance level, by default 0.01
@@ -133,26 +150,32 @@ def smooth_bootstrap_pval(data, alpha=0.01, statistic=np.std, **kwargs):
     decision : list
         which hypothesis to accept given the significance level
     """
-    bootstrap_stat, bootstrap_stat_mean = smooth_bootstrap(data, statistic=statistic, **kwargs)
+    bootstrap_stat, bootstrap_stat_mean = smooth_bootstrap(
+        data, statistic=statistic, **kwargs
+    )
     # define empirical cdf
     data_stat = statistic(data, axis=0)
     sqrt_n = np.sqrt(data.shape[0])
-    ecdf = lambda t: 1/bootstrap_stat.shape[0] * np.sum(sqrt_n * (bootstrap_stat-data_stat) < t, axis=0)
+    ecdf = (
+        lambda t: 1
+        / bootstrap_stat.shape[0]
+        * np.sum(sqrt_n * (bootstrap_stat - data_stat) < t, axis=0)
+    )
     pval = np.full(data.shape[1], np.nan)
     decision = ["" for _ in range(len(pval))]
     ecdf_val = ecdf(alpha)
     # determine equal tail p-value
     for i in range(len(pval)):
-        pval[i] = 2 * min(ecdf_val[i], 1-ecdf_val[i])
+        pval[i] = 2 * min(ecdf_val[i], 1 - ecdf_val[i])
         decision[i] = "Ha" if pval[i] < alpha else "H0"
     return pval, decision
 
 
 def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
     """
-    Perform a two-sample permutation test to determine if the variance between 
-    two samples, and thus if the distributions from which the samples are 
-    drawn, are different. The algorithm is 15.1 from "An Introduction to the 
+    Perform a two-sample permutation test to determine if the variance between
+    two samples, and thus if the distributions from which the samples are
+    drawn, are different. The algorithm is 15.1 from "An Introduction to the
     Bootstrap" by Efron & Tibshirani
 
     Parameters
@@ -174,7 +197,7 @@ def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
     try:
         assert len(data1.shape) == len(data2.shape) == 1
     except AssertionError:
-        _logger.exception(f"Data must be 1 dimensional!", exc_info=True)
+        _logger.exception("Data must be 1 dimensional!", exc_info=True)
     number_resamples = int(number_resamples)
     if rng is None:
         rng = np.random.default_rng()
@@ -185,19 +208,23 @@ def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
     m = len(data2)
     data = np.concatenate((data1, data2))
     # define the test statistic
-    tstatfun = lambda g: np.log10(np.nanvar(data[g])/np.nanvar(data[~g]))
-    group = np.full(n+m, 1, dtype=bool)
+    tstatfun = lambda g: np.log10(np.nanvar(data[g]) / np.nanvar(data[~g]))
+    group = np.full(n + m, 1, dtype=bool)
     group[n:] = 0
     tstat = tstatfun(group)
     data.sort()
     bootstrap_stat = np.full(number_resamples, np.nan)
-    
+
     for i in range(number_resamples):
-        print(f"Shuffling {i/(number_resamples-1)*100:.1f}% complete           ", end="\r")
+        print(
+            f"Shuffling {i/(number_resamples-1)*100:.1f}% complete           ", end="\r"
+        )
         shuffled_groups = rng.choice(group, group.shape[0], replace=False)
         bootstrap_stat[i] = tstatfun(shuffled_groups)
     _logger.info("Permutations complete                                ")
-    return 2 * min(np.nanmean(bootstrap_stat < tstat), np.nanmean(bootstrap_stat > tstat))
+    return 2 * min(
+        np.nanmean(bootstrap_stat < tstat), np.nanmean(bootstrap_stat > tstat)
+    )
 
 
 def stat_interval(x, y, type="conf", conf_lev=0.68):
@@ -213,7 +240,7 @@ def stat_interval(x, y, type="conf", conf_lev=0.68):
     type : str, optional
         confidence interval for mean or prediction interval, by default "conf"
     conf_lev : float, optional
-        confidence level, where the value (1-conf_lev) is the the integral area 
+        confidence level, where the value (1-conf_lev) is the the integral area
         for the t-distribution, by default 0.68
 
     Returns
@@ -222,34 +249,38 @@ def stat_interval(x, y, type="conf", conf_lev=0.68):
         function for error estimate
     """
     try:
-        assert(conf_lev<1 and conf_lev>0)
+        assert conf_lev < 1 and conf_lev > 0
     except AssertionError:
-        _logger.exception(f"Confidence level must be between 0 and 1, not {conf_lev}!", exc_info=True)
+        _logger.exception(
+            f"Confidence level must be between 0 and 1, not {conf_lev}!", exc_info=True
+        )
         raise
     try:
         assert type in ("conf", "pred")
     except AssertionError:
-        _logger.exception(f"Type {type} is not valid! Must be one of 'conf' or 'pred'!", exc_info=True)
+        _logger.exception(
+            f"Type {type} is not valid! Must be one of 'conf' or 'pred'!", exc_info=True
+        )
         raise
-    #clean data
+    # clean data
     x = x[~np.isnan(x) & ~np.isnan(y)]
     y = y[~np.isnan(x) & ~np.isnan(y)]
-    #quantities we will need later
+    # quantities we will need later
     x_avg = np.mean(x)
-    Sxx = np.sum((x - x_avg)**2)
+    Sxx = np.sum((x - x_avg) ** 2)
     n = len(x)
-    #determine the t_{alpha/2} statistic
-    tstat = scipy.stats.t.ppf((1-conf_lev)/2, n-2)
-    #and below this is the part from the error estimate
+    # determine the t_{alpha/2} statistic
+    tstat = scipy.stats.t.ppf((1 - conf_lev) / 2, n - 2)
+    # and below this is the part from the error estimate
     if type == "conf":
-        return lambda u: tstat * np.std(y) * np.sqrt(1/n + (u-x_avg)**2/Sxx)
+        return lambda u: tstat * np.std(y) * np.sqrt(1 / n + (u - x_avg) ** 2 / Sxx)
     else:
-        return lambda u: tstat * np.std(y) * np.sqrt(1 + 1/n + (u-x_avg)**2/Sxx)
+        return lambda u: tstat * np.std(y) * np.sqrt(1 + 1 / n + (u - x_avg) ** 2 / Sxx)
 
 
 def uniform_sample_sphere(n, rng=None):
     """
-    Uniformly sample points on the unit sphere assuming the physics standard, 
+    Uniformly sample points on the unit sphere assuming the physics standard,
     i.e.:
         0 < theta < pi
         0 < phi < 2*pi
@@ -270,7 +301,7 @@ def uniform_sample_sphere(n, rng=None):
     """
     if rng is None:
         rng = np.random.default_rng()
-    theta = np.arccos(2*rng.uniform(size=n)-1)
+    theta = np.arccos(2 * rng.uniform(size=n) - 1)
     phi = 2 * np.pi * rng.uniform(size=n)
     return theta, phi
 
@@ -286,7 +317,7 @@ def vertical_RMSE(x, y, return_linregress=False):
     y : np.ndarray
         observed y data
     return_linregress : bool, optional
-        return the slope and intercept from the linear regeression model?, by 
+        return the slope and intercept from the linear regeression model?, by
         default False
 
     Returns
@@ -298,12 +329,12 @@ def vertical_RMSE(x, y, return_linregress=False):
     intercept : float, optional
         inear regression intercept
     """
-    #clean data
+    # clean data
     x = x[~np.isnan(x) & ~np.isnan(y)]
     y = y[~np.isnan(x) & ~np.isnan(y)]
     slope, intercept, *_ = scipy.stats.linregress(x, y)
-    yhat = slope*x+intercept
+    yhat = slope * x + intercept
     if return_linregress:
-        return np.sqrt(np.sum((yhat-y)**2)/len(x)), slope, intercept
+        return np.sqrt(np.sum((yhat - y) ** 2) / len(x)), slope, intercept
     else:
-        return np.sqrt(np.sum((yhat-y)**2)/len(x))
+        return np.sqrt(np.sum((yhat - y) ** 2) / len(x))

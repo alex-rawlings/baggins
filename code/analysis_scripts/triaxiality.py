@@ -10,16 +10,75 @@ import cm_functions as cmf
 
 
 # set up command line arguments
-parser = argparse.ArgumentParser(description="Determine radially-dependent axis ratios for a range of snapshots", allow_abbrev=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser = argparse.ArgumentParser(
+    description="Determine radially-dependent axis ratios for a range of snapshots",
+    allow_abbrev=False,
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
 parser.add_argument(type=str, help="path to snapshots or data", dest="path")
-parser.add_argument("-n", "--num", dest="num", type=int, help="Number of snapshots to analyse", default=None)
-parser.add_argument("-m", "--method", type=str, help="method of determining inertia tensor", dest="method", choices=["shell", "ball"], default="shell")
-parser.add_argument("-f", "--family", type=str, help="particle family", dest="family", choices=["dm", "stars"], default="stars")
-parser.add_argument("-S", "--statistic", type=str, help="statistic", dest="stat", choices=["median", "mean", "last"], default="median")
-parser.add_argument("-r", "--radii", type=cmf.utils.cl_str_2_space, help="radii to calculate inertia tensor at", dest="radii", default=None)
-parser.add_argument("-sd", "--savedir", type=str, help="save directory", dest="savedir", default="pickle/triaxiality")
-parser.add_argument("-s", "--save", action="store_true", dest="save", help="save figure")
-parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbose", default="INFO", help="verbosity level")
+parser.add_argument(
+    "-n",
+    "--num",
+    dest="num",
+    type=int,
+    help="Number of snapshots to analyse",
+    default=None,
+)
+parser.add_argument(
+    "-m",
+    "--method",
+    type=str,
+    help="method of determining inertia tensor",
+    dest="method",
+    choices=["shell", "ball"],
+    default="shell",
+)
+parser.add_argument(
+    "-f",
+    "--family",
+    type=str,
+    help="particle family",
+    dest="family",
+    choices=["dm", "stars"],
+    default="stars",
+)
+parser.add_argument(
+    "-S",
+    "--statistic",
+    type=str,
+    help="statistic",
+    dest="stat",
+    choices=["median", "mean", "last"],
+    default="median",
+)
+parser.add_argument(
+    "-r",
+    "--radii",
+    type=cmf.utils.cl_str_2_space,
+    help="radii to calculate inertia tensor at",
+    dest="radii",
+    default=None,
+)
+parser.add_argument(
+    "-sd",
+    "--savedir",
+    type=str,
+    help="save directory",
+    dest="savedir",
+    default="pickle/triaxiality",
+)
+parser.add_argument(
+    "-s", "--save", action="store_true", dest="save", help="save figure"
+)
+parser.add_argument(
+    "-v",
+    "--verbosity",
+    type=str,
+    choices=cmf.VERBOSITY,
+    dest="verbose",
+    default="INFO",
+    help="verbosity level",
+)
 args = parser.parse_args()
 
 
@@ -58,9 +117,9 @@ else:
     if args.num is not None:
         if args.num < 0:
             # assume that negative number means that many from the end
-            snaplist = snaplist[args.num:]
+            snaplist = snaplist[args.num :]
         else:
-            snaplist = snaplist[:args.num]
+            snaplist = snaplist[: args.num]
 
     # set the default radial scaling in units of Rvir
     memory_helper()
@@ -70,16 +129,19 @@ else:
             args.radii = np.geomspace(0.1, 6, N_rad)
         else:
             args.radii = np.geomspace(0.001, 0.1, N_rad)
-        SL.info(f"Using a default radial scaling of Rvir*({args.radii[0]}-{args.radii[-1]} in {len(args.radii)}) bins")
+        SL.info(
+            f"Using a default radial scaling of Rvir*({args.radii[0]}-{args.radii[-1]} in {len(args.radii)}) bins"
+        )
     else:
         N_rad = len(args.radii)
-    if args.method == "shell": N_rad -= 1
+    if args.method == "shell":
+        N_rad -= 1
     # instantiate arrays
     times = np.full_like(snaplist, np.nan, dtype=float)
     ratios = dict(
-        r = np.full((len(snaplist), N_rad), np.nan),
-        ba = np.full((len(snaplist), N_rad), np.nan),
-        ca = np.full((len(snaplist), N_rad), np.nan)
+        r=np.full((len(snaplist), N_rad), np.nan),
+        ba=np.full((len(snaplist), N_rad), np.nan),
+        ca=np.full((len(snaplist), N_rad), np.nan),
     )
 
     # loop through all snapshots
@@ -90,7 +152,9 @@ else:
         times[i] = cmf.general.convert_gadget_time(snap)
 
         # recentre snapshot to CoM
-        xcom = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", family=args.family)
+        xcom = cmf.analysis.get_com_of_each_galaxy(
+            snap, method="ss", family=args.family
+        )
         translation = pygad.Translation(list(xcom.values())[0])
         translation.apply(snap, total=True)
 
@@ -104,15 +168,15 @@ else:
         # loop through each radii
         results = []
         # delay the data once so we don't send multiple copies
-        # from https://docs.dask.org/en/stable/delayed-best-practices.html 
+        # from https://docs.dask.org/en/stable/delayed-best-practices.html
         _snap = dask.delayed(snap)
         for r in radii:
             results.append(dask_helper(_snap, r))
         results = dask.compute(*results)
         for j, (r, res) in enumerate(zip(radii, results)):
-            ratios["r"][i,j] = np.mean(r) if isinstance(r,tuple) else r
-            ratios["ba"][i,j] = res[0]
-            ratios["ca"][i,j] = res[1]
+            ratios["r"][i, j] = np.mean(r) if isinstance(r, tuple) else r
+            ratios["ba"][i, j] = res[0]
+            ratios["ca"][i, j] = res[1]
 
         # clean up
         snap.delete_blocks()
@@ -120,16 +184,14 @@ else:
         del snap
         del _snap
         memory_helper()
-    data = dict(
-        times = times,
-        ratios = ratios
-    )
+    data = dict(times=times, ratios=ratios)
     figname = f"triax_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     cmf.utils.save_data(data, os.path.join(args.savedir, f"{figname}.pickle"))
 
 
-fig, ax = plt.subplots(1,2, sharex="all", sharey="all")
-for axi in ax: axi.set_xlabel(r"$r/\mathrm{kpc}$")
+fig, ax = plt.subplots(1, 2, sharex="all", sharey="all")
+for axi in ax:
+    axi.set_xlabel(r"$r/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$b/a$")
 ax[1].set_ylabel(r"$c/a$")
 
@@ -137,12 +199,9 @@ ax[1].set_ylabel(r"$c/a$")
 cmapper, sm = cmf.plotting.create_normed_colours(min(times), max(times))
 
 for i, t in enumerate(times):
-    ax[0].semilogx(ratios["r"][i,:], ratios["ba"][i,:], c=cmapper(t))
-    ax[1].semilogx(ratios["r"][i,:], ratios["ca"][i,:], c=cmapper(t))
-ax[0].set_ylim(0,1)
+    ax[0].semilogx(ratios["r"][i, :], ratios["ba"][i, :], c=cmapper(t))
+    ax[1].semilogx(ratios["r"][i, :], ratios["ca"][i, :], c=cmapper(t))
+ax[0].set_ylim(0, 1)
 cbar = plt.colorbar(sm, ax=ax[-1], label=r"$t/\mathrm{Gyr}$")
 cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "triaxiality", figname))
 plt.show()
-
-
-

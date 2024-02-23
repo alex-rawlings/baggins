@@ -1,13 +1,22 @@
 import numpy as np
-import scipy.optimize, scipy.ndimage
+import scipy.optimize
+import scipy.ndimage
 from scipy.stats import binned_statistic_2d
 from voronoi_binning import voronoi_binned_image
 from ..env_config import _cmlogger
 from pygad import UnitArr
 
-__all__ = ["voronoi_grid", "gauss_hermite_function", "fit_gauss_hermite_distribution", "voronoi_binned_los_V_statistics", "lambda_R", "radial_profile_velocity_moment"]
+__all__ = [
+    "voronoi_grid",
+    "gauss_hermite_function",
+    "fit_gauss_hermite_distribution",
+    "voronoi_binned_los_V_statistics",
+    "lambda_R",
+    "radial_profile_velocity_moment",
+]
 
 _logger = _cmlogger.getChild(__name__)
+
 
 def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
     """
@@ -40,38 +49,52 @@ def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
     y_bin : np.ndarray
         y coordinate of bin centres
     """
-    #bin in the x-y plane
-    nimg, xedges, yedges, grid_bin_num = binned_statistic_2d(x, y, values=None, statistic='count', bins=Npx, range=extent, expand_binnumbers=True)
-    
-    #determine image extent
+    # bin in the x-y plane
+    nimg, xedges, yedges, grid_bin_num = binned_statistic_2d(
+        x,
+        y,
+        values=None,
+        statistic="count",
+        bins=Npx,
+        range=extent,
+        expand_binnumbers=True,
+    )
+
+    # determine image extent
     w = xedges[-1] - xedges[0]
     h = yedges[-1] - yedges[0]
-    
-    #assign particles to voronoi bin
+
+    # assign particles to voronoi bin
     pixel_vor_bin_num = voronoi_binned_image(nimg, part_per_bin, w, h)
     particle_vor_bin_num = np.full(x.shape, -1, dtype=int)
-    valid_grid_bin_mask = np.logical_and(np.all(grid_bin_num > 0, axis=0), np.all(grid_bin_num < Npx+1, axis=0))
-    indx, indy = grid_bin_num[:, valid_grid_bin_mask]-1
+    valid_grid_bin_mask = np.logical_and(
+        np.all(grid_bin_num > 0, axis=0), np.all(grid_bin_num < Npx + 1, axis=0)
+    )
+    indx, indy = grid_bin_num[:, valid_grid_bin_mask] - 1
     particle_vor_bin_num[valid_grid_bin_mask] = pixel_vor_bin_num[indy, indx]
-    
+
     if extent is None:
         extent = (*xedges[[0, -1]], *yedges[[0, -1]])
-    
-    #create mesh
-    X, Y = np.meshgrid((xedges[1:] + xedges[-1:])/2, (yedges[1:] + yedges[-1:])/2)
+
+    # create mesh
+    X, Y = np.meshgrid((xedges[1:] + xedges[-1:]) / 2, (yedges[1:] + yedges[-1:]) / 2)
     index = np.unique(pixel_vor_bin_num)
     bin_sums = scipy.ndimage.sum(nimg, labels=pixel_vor_bin_num, index=index)
-    x_bin = scipy.ndimage.sum(nimg * X, labels=pixel_vor_bin_num, index=index) / bin_sums
-    y_bin = scipy.ndimage.sum(nimg * Y, labels=pixel_vor_bin_num, index=index) / bin_sums
-    
+    x_bin = (
+        scipy.ndimage.sum(nimg * X, labels=pixel_vor_bin_num, index=index) / bin_sums
+    )
+    y_bin = (
+        scipy.ndimage.sum(nimg * Y, labels=pixel_vor_bin_num, index=index) / bin_sums
+    )
+
     return particle_vor_bin_num, pixel_vor_bin_num, extent, x_bin, y_bin
 
 
 def gauss_hermite_function(x, mu, sigma, h3, h4):
     """
     The normalised (when non-negative) function corresponding to the first
-    three terms in the expansion used by van der Marel & Franx 
-    (1993ApJ...407..525V) and others following their methods. 
+    three terms in the expansion used by van der Marel & Franx
+    (1993ApJ...407..525V) and others following their methods.
     Original form by Matias Mannerkoski.
 
     Parameters
@@ -92,13 +115,15 @@ def gauss_hermite_function(x, mu, sigma, h3, h4):
     : np.ndarray
         function value of x
     """
-    w = (x-mu)/sigma
-    a = np.exp(-.5*w**2)/np.sqrt(2*np.pi)
-    H3 = (2*w**3 - 3*w)/np.sqrt(3)
-    H4 = (4*w**4 - 12*w**2 + 3)/np.sqrt(24)
-    N = np.sqrt(6)*h4*sigma/4 + sigma #normalization when the function is non-negative
-    #TODO for fitting the function should be always normalized
-    return np.clip(a * (1 + h3*H3 + h4*H4)/N, 1e-300, None)
+    w = (x - mu) / sigma
+    a = np.exp(-0.5 * w**2) / np.sqrt(2 * np.pi)
+    H3 = (2 * w**3 - 3 * w) / np.sqrt(3)
+    H4 = (4 * w**4 - 12 * w**2 + 3) / np.sqrt(24)
+    N = (
+        np.sqrt(6) * h4 * sigma / 4 + sigma
+    )  # normalization when the function is non-negative
+    # TODO for fitting the function should be always normalized
+    return np.clip(a * (1 + h3 * H3 + h4 * H4) / N, 1e-300, None)
 
 
 def fit_gauss_hermite_distribution(data):
@@ -118,15 +143,15 @@ def fit_gauss_hermite_distribution(data):
     sigma0 : float
         fit standard deviation
     h3 : float
-        3rd moment 
+        3rd moment
     h4 : float
         4th moment
     """
     if isinstance(data, UnitArr):
         data = data.view(np.ndarray)
     if len(data) == 0:
-        _logger.warning(f"Data has length zero!")
-        return 0.,0.,0.,0.
+        _logger.warning("Data has length zero!")
+        return 0.0, 0.0, 0.0, 0.0
     if np.any(np.isnan(data)):
         _logger.warning("Removing NaNs from data!")
         data = data[~np.isnan(data)]
@@ -139,10 +164,12 @@ def fit_gauss_hermite_distribution(data):
         return -np.nansum(np.log(gauss_hermite_function(data, mu0, sigma0, *pars)))
 
     try:
-        res = scipy.optimize.least_squares(log_likelihood, (0., 0.), loss="huber")
-        h3, h4 =  res.x
+        res = scipy.optimize.least_squares(log_likelihood, (0.0, 0.0), loss="huber")
+        h3, h4 = res.x
     except ValueError as err:
-        _logger.warning(f"Unsuccessful fitting of Gauss-Hermite function for IFU bin - {err}")
+        _logger.warning(
+            f"Unsuccessful fitting of Gauss-Hermite function for IFU bin - {err}"
+        )
         h3, h4 = np.nan, np.nan
     return mu0, sigma0, h3, h4
 
@@ -170,36 +197,45 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, **kwargs):
         binned quantitites convereted to CoM frame
     """
     M = np.sum(m)
-    xcom = np.sum(m * x)/M
-    ycom = np.sum(m * y)/M
-    Vcom = np.sum(m * V)/M
-    x = x-xcom
-    y = y-ycom
-    vz = V-Vcom
+    xcom = np.sum(m * x) / M
+    ycom = np.sum(m * y) / M
+    Vcom = np.sum(m * V) / M
+    x = x - xcom
+    y = y - ycom
+    vz = V - Vcom
 
     _logger.info(f"Binning {len(x)} particles...")
-    particle_vor_bin_num, pixel_vor_bin_num, extent, xBar, yBar = voronoi_grid(x,y, Npx=Npx, **kwargs)
-    bin_index = list(range(int(np.max(particle_vor_bin_num)+1)))
-    
-    bin_mass = scipy.ndimage.sum(m,
-                    labels=particle_vor_bin_num, index=bin_index)
+    particle_vor_bin_num, pixel_vor_bin_num, extent, xBar, yBar = voronoi_grid(
+        x, y, Npx=Npx, **kwargs
+    )
+    bin_index = list(range(int(np.max(particle_vor_bin_num) + 1)))
+
+    bin_mass = scipy.ndimage.sum(m, labels=particle_vor_bin_num, index=bin_index)
 
     fits = []
     for i in bin_index:
-        print("Fitting bin:", i, end='\r')
-        fits.append(fit_gauss_hermite_distribution(vz[particle_vor_bin_num==i]))
+        print("Fitting bin:", i, end="\r")
+        fits.append(fit_gauss_hermite_distribution(vz[particle_vor_bin_num == i]))
     bin_stats = np.array(fits)
     img_stats = bin_stats[pixel_vor_bin_num]
 
     return dict(
-        xBar=xBar, yBar=yBar,
-        bin_V=bin_stats[:,0], bin_sigma=bin_stats[:,1],
-        bin_h3=bin_stats[:,2], bin_h4=bin_stats[:,3],
+        xBar=xBar,
+        yBar=yBar,
+        bin_V=bin_stats[:, 0],
+        bin_sigma=bin_stats[:, 1],
+        bin_h3=bin_stats[:, 2],
+        bin_h4=bin_stats[:, 3],
         bin_mass=bin_mass,
-        img_V=img_stats[...,0], img_sigma=img_stats[...,1],
-        img_h3=img_stats[...,2], img_h4=img_stats[...,3],
-        extent=extent, xcom = xcom, ycom=ycom, Vcom=Vcom,
-        )
+        img_V=img_stats[..., 0],
+        img_sigma=img_stats[..., 1],
+        img_h3=img_stats[..., 2],
+        img_h4=img_stats[..., 3],
+        extent=extent,
+        xcom=xcom,
+        ycom=ycom,
+        Vcom=Vcom,
+    )
 
 
 def _get_R(vs):
@@ -218,7 +254,7 @@ def _get_R(vs):
     inds : np.ndarray
         sorted indices of radius
     """
-    R = np.sqrt(vs["xBar"]**2 + vs["yBar"]**2)
+    R = np.sqrt(vs["xBar"] ** 2 + vs["yBar"] ** 2)
     inds = np.argsort(R)
     return R[inds], inds
 
@@ -246,7 +282,9 @@ def lambda_R(vorstat, re):
     F = vorstat["bin_mass"][inds]
     V = vorstat["bin_V"][inds]
     s = vorstat["bin_sigma"][inds]
-    return R/re, np.nancumsum(F*R*np.abs(V))/np.nancumsum(F*R*np.sqrt(V**2 + s**2))
+    return R / re, np.nancumsum(F * R * np.abs(V)) / np.nancumsum(
+        F * R * np.sqrt(V**2 + s**2)
+    )
 
 
 def radial_profile_velocity_moment(vorstat, stat):
@@ -269,5 +307,4 @@ def radial_profile_velocity_moment(vorstat, stat):
     """
     R, inds = _get_R(vorstat)
     F = vorstat["bin_mass"][inds]
-    return R, np.nancumsum(F*R*vorstat[f"bin_{stat}"])/np.nancumsum(F*R)
-
+    return R, np.nancumsum(F * R * vorstat[f"bin_{stat}"]) / np.nancumsum(F * R)

@@ -10,6 +10,7 @@ __all__ = ["snap_num_for_time"]
 
 _logger = _cmlogger.getChild(__name__)
 
+
 # TODO add option for a defined binning, and not only have it done internally
 def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
     """
@@ -20,10 +21,10 @@ def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
     r : array-like
         radial positions
     vspherical : (n,3) np.ndarray
-        spherical velocity components, with columns corresponding to radius, 
+        spherical velocity components, with columns corresponding to radius,
         theta, and phi velocities
     binning : float, int, array-like
-        fixed width of bins (dex for logscale) if int or float, otherwise an 
+        fixed width of bins (dex for logscale) if int or float, otherwise an
         array specifying the bins to use
     qcut : float, optional
         remove those particles which have r > qcut quantile (e.g. those few particles that are very far away), by default 0.98
@@ -37,11 +38,11 @@ def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
     beta : np.ndarray
         beta profile binned into nbin radial bins
     bin_centres : np.ndarray
-        central value of each radial bin 
+        central value of each radial bin
     bincounts: np.ndarray
         number of particles within each radial bin
     """
-    #create the radial mask if required
+    # create the radial mask if required
     if qcut < 1:
         mask = r < np.quantile(r, qcut)
         r = r[mask]
@@ -49,30 +50,42 @@ def beta_profile(r, vspherical, binning, qcut=0.98, logbin=True, eps=1e-16):
     try:
         assert isinstance(binning, (float, int, np.ndarray, pygad.UnitArr))
         if isinstance(binning, (float, int)):
-            #determine the bins -> used fixed binwidths
+            # determine the bins -> used fixed binwidths
             if logbin:
                 rmin = pygad.UnitScalar(1.0, "pc")
-                bins = 10**np.arange(rmin.in_units_of(r.units), np.log10(np.max(r))+binning, binning)
+                bins = 10 ** np.arange(
+                    rmin.in_units_of(r.units), np.log10(np.max(r)) + binning, binning
+                )
             else:
-                bins = np.arange(0, np.max(r)+binning, binning)
+                bins = np.arange(0, np.max(r) + binning, binning)
         else:
             bins = binning
     except AssertionError:
-        _logger.exception(f"Parameter 'binning' must be either an int, float, or array-like! Type {type(binning)} is not valid.", exc_info=True)
+        _logger.exception(
+            f"Parameter 'binning' must be either an int, float, or array-like! Type {type(binning)} is not valid.",
+            exc_info=True,
+        )
         raise
-    #bin the statistics
-    standard_devs, bin_edges, binnumbers = scipy.stats.binned_statistic(r, [vspherical[:,0], vspherical[:,1], vspherical[:,2]], statistic="std", bins=bins)
+    # bin the statistics
+    standard_devs, bin_edges, binnumbers = scipy.stats.binned_statistic(
+        r,
+        [vspherical[:, 0], vspherical[:, 1], vspherical[:, 2]],
+        statistic="std",
+        bins=bins,
+    )
     # TODO keep nan masking?
-    #mask out nan values
-    #nanmask = ~np.any(np.isnan(standard_devs), axis=0)
-    #standard_devs = standard_devs[:, nanmask]
-    #get the counts in each bin
-    bincounts,*_ = np.histogram(r, bins=bins)
-    #calculate beta(r)
-    beta = 1 - (standard_devs[1,:]**2 + standard_devs[2,:]**2) / (2 * standard_devs[0,:]**2+eps)
+    # mask out nan values
+    # nanmask = ~np.any(np.isnan(standard_devs), axis=0)
+    # standard_devs = standard_devs[:, nanmask]
+    # get the counts in each bin
+    bincounts, *_ = np.histogram(r, bins=bins)
+    # calculate beta(r)
+    beta = 1 - (standard_devs[1, :] ** 2 + standard_devs[2, :] ** 2) / (
+        2 * standard_devs[0, :] ** 2 + eps
+    )
     bin_centres = get_histogram_bin_centres(bin_edges)
-    #bin_centres = bin_centres[nanmask]
-    #bincounts = bincounts[nanmask]
+    # bin_centres = bin_centres[nanmask]
+    # bincounts = bincounts[nanmask]
     return beta, pygad.UnitArr(bin_centres, units=r.units), bincounts
 
 
@@ -94,7 +107,7 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
         one of
         - 'floor': last snapshot before the given time
         - 'ceil': first snapshot after the given time
-        - 'nearest': snapshot closest to the given time, 
+        - 'nearest': snapshot closest to the given time,
         by default "floor"
 
     Returns
@@ -108,8 +121,9 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
     ValueError
         if given method is invalid
     """
-    if method not in ["floor", "ceil", "nearest"]: raise ValueError("method must be one of 'floor', 'ceil', or 'nearest'.")
-    assert(isinstance(time_to_find, (float, int, pygad.UnitArr)))
+    if method not in ["floor", "ceil", "nearest"]:
+        raise ValueError("method must be one of 'floor', 'ceil', or 'nearest'.")
+    assert isinstance(time_to_find, (float, int, pygad.UnitArr))
     for ind, this_snap in enumerate(snaplist):
         # TODO more efficient to read directly from hdf5 instead of loading snapshot?
         snap = pygad.Snapshot(this_snap, physical=True)
@@ -122,17 +136,17 @@ def snap_num_for_time(snaplist, time_to_find, units="Myr", method="floor"):
             continue
         if time_to_find < this_time:
             if method == "floor":
-                idx = ind-1
+                idx = ind - 1
             elif method == "ceil":
                 idx = ind
             else:
-                if this_time-time_to_find > time_to_find-prev_time:
-                    idx = ind-1 #closest snap is the one before
+                if this_time - time_to_find > time_to_find - prev_time:
+                    idx = ind - 1  # closest snap is the one before
                 else:
-                    idx = ind #closest snap is the one after
+                    idx = ind  # closest snap is the one after
             break
         prev_time = this_time
     else:
-        idx = len(snaplist)-1
+        idx = len(snaplist) - 1
         _logger.warning("Returning the final snapshot in the list!")
     return idx

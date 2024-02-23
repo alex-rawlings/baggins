@@ -1,10 +1,20 @@
 import os.path
 import numpy as np
-import scipy.optimize, scipy.special, scipy.interpolate
+import scipy.optimize
+import scipy.special
+import scipy.interpolate
 from time import time
 from ..env_config import _cmlogger
 
-__all__ = ["arcsec_to_kpc", "sersic_b_param", "xval_of_quantity", "set_seed_time", "get_idx_in_array", "get_unique_path_part", "represent_numeric_in_scientific"]
+__all__ = [
+    "arcsec_to_kpc",
+    "sersic_b_param",
+    "xval_of_quantity",
+    "set_seed_time",
+    "get_idx_in_array",
+    "get_unique_path_part",
+    "represent_numeric_in_scientific",
+]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -25,7 +35,7 @@ def arcsec_to_kpc(dist_mod, angle_in_arcsec):
     : float
         distance [kpc]
     """
-    return np.tan(np.radians(angle_in_arcsec/3600)) * 10**(1+dist_mod/5)/1e3
+    return np.tan(np.radians(angle_in_arcsec / 3600)) * 10 ** (1 + dist_mod / 5) / 1e3
 
 
 def sersic_b_param(n):
@@ -43,15 +53,19 @@ def sersic_b_param(n):
     : float
         sersic b parameter
     """
-    return scipy.optimize.toms748(lambda t: 2*scipy.special.gammainc(2*n, t)-1, 0.6, 19.9)
+    return scipy.optimize.toms748(
+        lambda t: 2 * scipy.special.gammainc(2 * n, t) - 1, 0.6, 19.9
+    )
 
 
-def xval_of_quantity(val, xvec, yvec, xsorted=False, initial_guess=None, root_kwargs={}):
+def xval_of_quantity(
+    val, xvec, yvec, xsorted=False, initial_guess=None, root_kwargs={}
+):
     """
     Find the value in a set of independent observations corresponding to a
     dependent observation. For example, the time corresponding to a particular
     radius value. Linear interpolation is done to create a function
-    y = f(x), on which root finding is performed. 
+    y = f(x), on which root finding is performed.
 
     Parameters
     ----------
@@ -62,30 +76,34 @@ def xval_of_quantity(val, xvec, yvec, xsorted=False, initial_guess=None, root_kw
     yvec : np.ndarray
         dependent observations
     xsorted : bool, optional
-        are values in xvec monotonically increasing? (parsed to interp1d), by 
+        are values in xvec monotonically increasing? (parsed to interp1d), by
         default False
     initial_guess : list, optional
-        [a,b], where a and b specify the bounds within which val should occur. 
-        Must be "either side" of val. By default None, sets [a, b] = [xvec[0], 
+        [a,b], where a and b specify the bounds within which val should occur.
+        Must be "either side" of val. By default None, sets [a, b] = [xvec[0],
         xvec[-1]]
     root_kwargs : dict, optional
-        other keyword arguments to be parsed to the root finding algorithm 
+        other keyword arguments to be parsed to the root finding algorithm
         (scipy.optimize.brentq), by default {}
 
     Returns
     -------
     xval : float
-        value of independent observations corresponding to the observed 
+        value of independent observations corresponding to the observed
         dependent observation value
     """
-    #create the linear interpolating function
-    f = scipy.interpolate.interp1d(xvec, yvec-val, assume_sorted=xsorted)
+    # create the linear interpolating function
+    f = scipy.interpolate.interp1d(xvec, yvec - val, assume_sorted=xsorted)
     if initial_guess is None:
         initial_guess = [xvec[0], xvec[-1]]
-    xval, rootresult = scipy.optimize.brentq(f, *initial_guess, full_output=True, **root_kwargs)
+    xval, rootresult = scipy.optimize.brentq(
+        f, *initial_guess, full_output=True, **root_kwargs
+    )
     if not rootresult.converged:
         # TODO should the method terminate instead?
-        _logger.warning(f"The root-finding did not converge after {rootresult.iterations} iterations! The input <val> may not be in the domain specified by <xvec>.")
+        _logger.warning(
+            f"The root-finding did not converge after {rootresult.iterations} iterations! The input <val> may not be in the domain specified by <xvec>."
+        )
     return xval
 
 
@@ -105,7 +123,7 @@ def set_seed_time():
 
 def get_idx_in_array(t, tarr):
     """
-    Get the index of a value within an array. If multiple matches are found, 
+    Get the index of a value within an array. If multiple matches are found,
     the first is returned (following np.argmin method)
 
     Parameters
@@ -132,8 +150,8 @@ def get_idx_in_array(t, tarr):
         _logger.exception("t must not be nan", exc_info=True)
         raise
     try:
-        idx = np.nanargmin(np.abs(tarr-t))
-        if idx == len(tarr)-1:
+        idx = np.nanargmin(np.abs(tarr - t))
+        if idx == len(tarr) - 1:
             s = "large"
             raise AssertionError
         elif idx == 0:
@@ -166,7 +184,7 @@ def get_unique_path_part(path_list):
     try:
         assert len(path_list) > 1
     except AssertionError:
-        _logger.exception(f"Path list must contain more than 1 path!", exc_info=True)
+        _logger.exception("Path list must contain more than 1 path!", exc_info=True)
         raise
     common_path_len = len(os.path.commonpath(path_list))
     unique_parts = []
@@ -177,8 +195,9 @@ def get_unique_path_part(path_list):
 
 def represent_numeric_in_scientific(v, mantissa_fmt=".1f"):
     if mantissa_fmt[-1] != "f":
-        _logger.error(f"Mantissa format must be of floating point type! Using default value '.1f'")
+        _logger.error(
+            "Mantissa format must be of floating point type! Using default value '.1f'"
+        )
         mantissa_fmt = ".1f"
     exponent = int(np.floor(np.log10(v)))
     return f"${v/10**exponent:{mantissa_fmt}}\\times 10^{exponent}$"
-

@@ -1,7 +1,8 @@
 import numpy as np
-import scipy.constants, scipy.integrate
+import scipy.constants
+import scipy.integrate
 
-__all__ = ['cosmology', 'angular_diameter_distance', 'get_a0r', 'luminosity_distance']
+__all__ = ["cosmology", "angular_diameter_distance", "get_a0r", "luminosity_distance"]
 
 
 """
@@ -14,12 +15,7 @@ omega_L: cosmic density parameter for dark energy
 omega_M: cosmic density parameter for non-relativistic matter
 zeq: redshift of radiation-matter equality
 """
-cosmology = dict(
-                    h = 0.6736,
-                    omega_L = 0.6847,
-                    omega_M = 0.3153,
-                    zeq = 3402
-)
+cosmology = dict(h=0.6736, omega_L=0.6847, omega_M=0.3153, zeq=3402)
 
 
 def angular_diameter_distance(z, cosmology=cosmology):
@@ -57,17 +53,15 @@ def get_a0r(z, cosmology=cosmology):
     -------
     : float
         a0*r [kpc]
-    
+
     Raises
     ------
     AssertionError
         redshift larger than redshift of matter radiation equality
     """
-    assert(z < cosmology['zeq'])
-    Ez = lambda z1: np.sqrt(
-            cosmology['omega_L'] + cosmology['omega_M'] * (1+z1)**3
-        )
-    return scipy.integrate.quad(Ez, 0, z) * scipy.constants.c / (100 * cosmology['h'])
+    assert z < cosmology["zeq"]
+    Ez = lambda z1: np.sqrt(cosmology["omega_L"] + cosmology["omega_M"] * (1 + z1) ** 3)
+    return scipy.integrate.quad(Ez, 0, z) * scipy.constants.c / (100 * cosmology["h"])
 
 
 def luminosity_distance(z, cosmology=cosmology):

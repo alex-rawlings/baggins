@@ -10,100 +10,113 @@ __all__ = ["ChildSimData"]
 
 _logger = _cmlogger.getChild(__name__)
 
+
 class ChildSimData(BHBinaryData):
     def __init__(self) -> None:
         """
-        A class that defines the fields which constitute the variables of 
-        interest for the merger remannt. These properties are accessible to all 
-        child classes, and also correspond to the fields which are loadable 
+        A class that defines the fields which constitute the variables of
+        interest for the merger remannt. These properties are accessible to all
+        child classes, and also correspond to the fields which are loadable
         from a hdf5 file. Those fields which are part of the inherited class
         are also part of this hdf5 file.
         """
         super().__init__()
-        self.allowed_types = (int, float, str, bytes, np.int64, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list, tuple)
+        self.allowed_types = (
+            int,
+            float,
+            str,
+            bytes,
+            np.int64,
+            np.float64,
+            np.ndarray,
+            pygad.UnitArr,
+            np.bool8,
+            list,
+            tuple,
+        )
         self.hdf5_file_name = None
-    
+
     @property
     def parent_quantities(self):
         return self._parent_quantities
-    
+
     @parent_quantities.setter
     def parent_quantities(self, v):
         assert isinstance(v, dict)
         self._parent_quantities = v
-    
+
     @property
     def relaxed_remnant_flag(self):
         return self._relaxed_remnant_flag
-    
+
     @relaxed_remnant_flag.setter
     def relaxed_remnant_flag(self, v):
-        #assert isinstance(v, bool)
+        # assert isinstance(v, bool)
         self._relaxed_remnant_flag = v
 
     @property
     def relaxed_stellar_velocity_dispersion(self):
         return self._relaxed_stellar_velocity_dispersion
-    
+
     @relaxed_stellar_velocity_dispersion.setter
     def relaxed_stellar_velocity_dispersion(self, v):
         self._relaxed_stellar_velocity_dispersion = v
-    
+
     @property
     def relaxed_stellar_velocity_dispersion_projected(self):
         return self._relaxed_stellar_velocity_dispersion_projected
-    
+
     @relaxed_stellar_velocity_dispersion_projected.setter
     def relaxed_stellar_velocity_dispersion_projected(self, v):
         assert isinstance(v, dict)
         self._relaxed_stellar_velocity_dispersion_projected = v
-    
+
     @property
     def relaxed_inner_DM_fraction(self):
         return self._relaxed_inner_DM_fraction
-    
+
     @relaxed_inner_DM_fraction.setter
     def relaxed_inner_DM_fraction(self, v):
         self._relaxed_inner_DM_fraction = v
-    
+
     @property
     def virial_info(self):
         return self._virial_info
-    
+
     @virial_info.setter
     def virial_info(self, v):
         assert len(v) == 2
         self._virial_info = v
-    
+
     @property
     def relaxed_effective_radius(self):
         return self._relaxed_effective_radius
-    
+
     @relaxed_effective_radius.setter
     def relaxed_effective_radius(self, v):
         assert isinstance(v, dict)
         self._relaxed_effective_radius = v
-    
+
     @property
     def relaxed_half_mass_radius(self):
         return self._relaxed_half_mass_radius
-    
+
     @relaxed_half_mass_radius.setter
     def relaxed_half_mass_radius(self, v):
         self._relaxed_half_mass_radius = v
-    
+
     @property
     def relaxed_core_parameters(self):
         return self._relaxed_core_parameters
-    
+
     @relaxed_core_parameters.setter
     def relaxed_core_parameters(self, v):
         self._relaxed_core_parameters = v
-    
+
     @property
     def radial_bin_centres(self):
         return self._radial_bin_centres
-    
+
     @radial_bin_centres.setter
     def radial_bin_centres(self, v):
         self._radial_bin_centres = v
@@ -111,7 +124,7 @@ class ChildSimData(BHBinaryData):
     @property
     def relaxed_density_profile(self):
         return self._relaxed_density_profile
-    
+
     @relaxed_density_profile.setter
     def relaxed_density_profile(self, v):
         assert isinstance(v, dict)
@@ -120,15 +133,15 @@ class ChildSimData(BHBinaryData):
     @property
     def relaxed_density_profile_projected(self):
         return self._relaxed_density_profile_projected
-    
+
     @relaxed_density_profile_projected.setter
     def relaxed_density_profile_projected(self, v):
         self._relaxed_density_profile_projected = v
-    
+
     @property
     def binding_energy_bins(self):
         return self._binding_energy_bins
-    
+
     @binding_energy_bins.setter
     def binding_energy_bins(self, v):
         self._binding_energy_bins = v
@@ -136,65 +149,65 @@ class ChildSimData(BHBinaryData):
     @property
     def relaxed_triaxiality_parameters(self):
         return self._relaxed_triaxiality_parameters
-    
+
     @relaxed_triaxiality_parameters.setter
     def relaxed_triaxiality_parameters(self, v):
         self._relaxed_triaxiality_parameters = v
-    
+
     @property
     def total_stellar_mass(self):
         return self._total_stellar_mass
-    
+
     @total_stellar_mass.setter
     def total_stellar_mass(self, v):
         self._total_stellar_mass = v
-    
+
     @property
     def ifu_map_ah(self):
         return self._ifu_map_ah
-    
+
     @ifu_map_ah.setter
     def ifu_map_ah(self, v):
         assert isinstance(v, dict)
         self._ifu_map_ah = v
-    
+
     @property
     def ifu_map_merger(self):
         return self._ifu_map_merger
-    
+
     @ifu_map_merger.setter
     def ifu_map_merger(self, v):
         assert isinstance(v, dict)
         self._ifu_map_merger = v
-    
+
     @property
     def snapshot_times(self):
         return self._snapshot_times
-    
+
     @snapshot_times.setter
     def snapshot_times(self, v):
         self._snapshot_times = v
-    
+
     @property
     def stellar_shell_inflow_velocity(self):
         return self._stellar_shell_inflow_velocity
-    
+
     @stellar_shell_inflow_velocity.setter
     def stellar_shell_inflow_velocity(self, v):
         self._stellar_shell_inflow_velocity = v
-    
+
     @property
     def bh_binary_watershed_velocity(self):
         return self._bh_binary_watershed_velocity
-    
+
     @bh_binary_watershed_velocity.setter
     def bh_binary_watershed_velocity(self, v):
         self._bh_binary_watershed_velocity = v
-    
+
     @property
     def beta_r(self):
         return self._beta_r
-    
+
     @beta_r.setter
     def beta_r(self, v):
         assert isinstance(v, dict)
@@ -203,7 +216,7 @@ class ChildSimData(BHBinaryData):
     @property
     def ang_mom(self):
         return self._ang_mom
-    
+
     @ang_mom.setter
     def ang_mom(self, v):
         assert isinstance(v, dict)
@@ -212,15 +225,15 @@ class ChildSimData(BHBinaryData):
     @property
     def ang_mom_diff_angle(self):
         return self._ang_mom_diff_angle
-    
+
     @ang_mom_diff_angle.setter
     def ang_mom_diff_angle(self, v):
         self._ang_mom_diff_angle = v
-    
+
     @property
     def loss_cone(self):
         return self._loss_cone
-    
+
     @loss_cone.setter
     def loss_cone(self, v):
         self._loss_cone = v
@@ -228,7 +241,7 @@ class ChildSimData(BHBinaryData):
     @property
     def stars_in_loss_cone(self):
         return self._stars_in_loss_cone
-    
+
     @stars_in_loss_cone.setter
     def stars_in_loss_cone(self, v):
         self._stars_in_loss_cone = v
@@ -236,58 +249,58 @@ class ChildSimData(BHBinaryData):
     @property
     def particle_count(self):
         return self._particle_count
-    
+
     @particle_count.setter
     def particle_count(self, v):
         assert isinstance(v, dict)
         self._particle_count = v
-    
+
     @property
     def num_escaping_stars(self):
         return self._num_escaping_stars
-    
+
     @num_escaping_stars.setter
     def num_escaping_stars(self, v):
         self._num_escaping_stars = v
-    
+
     @classmethod
     def load_from_file(cls, fname, decode="utf-8", verbose=False):
-        #first create a new class instance. At this stage, no properties are set
+        # first create a new class instance. At this stage, no properties are set
         C = cls()
         C.hdf5_file_name = fname
 
-        #define some helpers
+        # define some helpers
         def _recursive_dict_load(g):
-            #recursively load a dictionary. Inspired from 3ML
-            #g is a group object
+            # recursively load a dictionary. Inspired from 3ML
+            # g is a group object
             d = {}
             for key, val in g.items():
                 if isinstance(val, h5py.Dataset):
                     tmp = val[()]
                     try:
                         d[key] = tmp.decode(decode)
-                    except:
+                    except ValueError:  # TODO check this
                         d[key] = tmp
-                    #reload units if the data is a pygad.UnitArr
+                    # reload units if the data is a pygad.UnitArr
                     for a in val.attrs.values():
                         if np.array_equal(a, "pygad_UnitArr"):
                             d[key] = pygad.UnitArr(d[key], units=val.attrs["units"])
                             break
-                    #unpack None value, courtesy Elisa
+                    # unpack None value, courtesy Elisa
                     if np.array_equal(d[key], "NONE_TYPE"):
                         d[key] = None
                 elif isinstance(val, h5py.Group):
                     d[key] = _recursive_dict_load(val)
             return d
-        
+
         def _main_setter(k, v):
-            #set those class attributes which are datasets
+            # set those class attributes which are datasets
             tmp = v[()]
             try:
                 std_val = tmp.decode(decode)
-            except:
+            except ValueError:  # TODO check this
                 std_val = tmp
-            #reload units if the data is a pygad.UnitArr
+            # reload units if the data is a pygad.UnitArr
             for a in v.attrs.values():
                 if np.array_equal(a, "pygad_UnitArr"):
                     std_val = pygad.UnitArr(std_val, units=v.attrs["units"])
@@ -298,16 +311,16 @@ class ChildSimData(BHBinaryData):
                 k = "_log"
             setattr(C, k, std_val)
 
-        #now we need to recursively unpack the given hdf5 file
+        # now we need to recursively unpack the given hdf5 file
         with h5py.File(fname, mode="r") as f:
             for key, val in f.items():
                 if isinstance(val, h5py.Dataset):
-                    #these are top level datasets, and we don't expect there
-                    #to be any
+                    # these are top level datasets, and we don't expect there
+                    # to be any
                     _main_setter(key, val)
                 elif isinstance(val, h5py.Group):
-                    #designed that datasets are grouped into two top-level 
-                    #groups, so these need care unpacking
+                    # designed that datasets are grouped into two top-level
+                    # groups, so these need care unpacking
                     for kk, vv in val.items():
                         if isinstance(vv, h5py.Dataset):
                             _main_setter(kk, vv)
@@ -319,17 +332,17 @@ class ChildSimData(BHBinaryData):
                         if verbose:
                             _logger.info(f" > Successfully loaded dataset {kk}")
         return C
-    
-    def _saver(self, g, l):
-        #given a HDF5 group g, save all elements in list l
-        #attributes defined with the @property method are not in __dict__, 
-        #but their _members are. Append an underscore to all things in l
-        l = ["_" + x for x in l]
+
+    def _saver(self, g, L):
+        # given a HDF5 group g, save all elements in list l
+        # attributes defined with the @property method are not in __dict__,
+        # but their _members are. Append an underscore to all things in l
+        L = ["_" + x for x in L]
         saved_list = []
         for attr in self.__dict__:
-            if attr not in l:
+            if attr not in L:
                 continue
-            #now we strip the leading underscore if this should be saved
+            # now we strip the leading underscore if this should be saved
             saved_list.append(attr)
             attr = attr.lstrip("_")
             attr_val = getattr(self, attr)
@@ -343,22 +356,25 @@ class ChildSimData(BHBinaryData):
             elif isinstance(attr_val, dict):
                 self._recursive_dict_save(g, attr_val, attr)
             else:
-                raise ValueError(f"Error saving {attr}: cannot save {type(attr_val)} type!")
+                raise ValueError(
+                    f"Error saving {attr}: cannot save {type(attr_val)} type!"
+                )
         # check that everything was saved
-        not_saved = list(set(l)-set(saved_list))
+        not_saved = list(set(L) - set(saved_list))
         if not not_saved:
             for i in not_saved:
                 self.add_to_log(f"Property {i.lstrip('_')} was not saved!")
-    
+
     def _add_attr(self, dg, aname, aval):
         # add an attribute to a HDF5 group or dataset. This is essentially a
         # wrapper that handles None types
-        if aval is None: aval="NONE_TYPE"
+        if aval is None:
+            aval = "NONE_TYPE"
         dg.attrs[aname] = aval
 
     def _recursive_dict_save(self, g, d, n):
-        #recursively save a dictionary. Inspired from 3ML
-        #g is group object, d is the dict, n is the new group name
+        # recursively save a dictionary. Inspired from 3ML
+        # g is group object, d is the dict, n is the new group name
         gnew = g.create_group(n)
         for key, val in d.items():
             if isinstance(val, self.allowed_types):
@@ -372,20 +388,20 @@ class ChildSimData(BHBinaryData):
                 self._recursive_dict_save(gnew, val, key)
             else:
                 raise ValueError(f"Error saving {key}: cannot save {type(val)} type!")
-    
-    #public functions
+
+    # public functions
     def add_hdf5_field(self, n, val, field, fname=None):
-        #add a new field to an existing HDF5 structure
-        #n is attribute name, val is its value, field is where to save to, 
-        #fname is the file name
+        # add a new field to an existing HDF5 structure
+        # n is attribute name, val is its value, field is where to save to,
+        # fname is the file name
         if fname is None:
             fname = self.hdf5_file_name
         field = field.rstrip("/")
         with h5py.File(fname, mode="a") as f:
             if isinstance(val, self.allowed_types):
-                f.create_dataset(field+"/"+n, data=val)
+                f.create_dataset(field + "/" + n, data=val)
             elif val is None:
-                f.create_dataset(field+"/"+n, data="NONE_TYPE")
+                f.create_dataset(field + "/" + n, data="NONE_TYPE")
             elif isinstance(val, dict):
                 # TODO this may not work...
                 self._recursive_dict_save(f[field], val, n)
@@ -393,7 +409,7 @@ class ChildSimData(BHBinaryData):
                 raise ValueError(f"Error saving {n}: cannot save {type(val)} type!")
             self.add_to_log(f"Attribute {n} has been added")
             f["/meta/logs"][...] = self._log
-    
+
     def update_hdf5_field(self, d, val):
         with h5py.File(self.hdf5_file_name, mode="r+") as f:
             if isinstance(val, self.allowed_types):
@@ -406,7 +422,6 @@ class ChildSimData(BHBinaryData):
                 raise ValueError(f"Error saving {d}: cannot save {type(val)} type!")
             self.add_to_log(f"Data {d} has been updated")
             f["/meta/logs"][...] = self._log
-    
+
     def print_logs(self):
         print(self._log)
-

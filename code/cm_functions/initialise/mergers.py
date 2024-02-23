@@ -1,4 +1,4 @@
-__all__ = ['e_from_rperi']
+__all__ = ["e_from_rperi"]
 
 
 def e_from_rperi(x, a=0.320, b=1.629, c=0.176):
@@ -23,4 +23,4 @@ def e_from_rperi(x, a=0.320, b=1.629, c=0.176):
     : np.ndarray
         eccentricity of approach
     """
-    return (1 + (x/a)**b)**(-c)
+    return (1 + (x / a) ** b) ** (-c)
