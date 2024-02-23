@@ -1337,9 +1337,6 @@ class HierarchicalModel_1D(_StanModel):
         quantiles.sort()
         if ax is None:
             fig, ax = plt.subplots(1, 1, squeeze=False)
-        else:
-            # TODO assert 2d axes?
-            fig = ax.get_figure()
         obs = self.obs_collapsed if collapsed else self.obs
         xs = self.sample_generated_quantity(xmodel, state=state)
         az.plot_dist(xs, quantiles=quantiles, ax=ax)

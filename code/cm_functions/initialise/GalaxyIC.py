@@ -92,7 +92,7 @@ class GalaxyIC(_GalaxyICBase):
             else:
                 self.stars = _StellarCusp(parameter_file=parameter_file)
         else:
-            _logger.warning(f"No stellar component generated!")
+            _logger.warning("No stellar component generated!")
         # set up DM
         dm_pars = self.parameters["dm"]
         if dm_pars["particle_mass"]["value"] is not None:
@@ -117,7 +117,7 @@ class GalaxyIC(_GalaxyICBase):
                 )
             self._calc_quants["dm"]["peak_mass"] = self.dm.peak_mass
         else:
-            _logger.warning(f"No DM component generated!")
+            _logger.warning("No DM component generated!")
         # set up SMBH
         bh_pars = self.parameters["bh"]
         if bh_pars["set_spin"] is not None:
@@ -139,13 +139,13 @@ class GalaxyIC(_GalaxyICBase):
             )
             # manually set BH mass if desired
             if bh_pars["mass"]["value"] is not None:
-                _logger.warning(f"Setting BH mass to user defined value!")
+                _logger.warning("Setting BH mass to user defined value!")
                 self.bh.mass = bh_pars["mass"]["value"]
             self._calc_quants["bh"]["mass"] = self.bh.mass
             # save the new spin value
             self._calc_quants["bh"]["spin"] = self.bh.spin
         else:
-            _logger.warning(f"No SMBH component generated!")
+            _logger.warning("No SMBH component generated!")
         self.hdf5_file_name = os.path.join(self.save_location, f"{self.name}.hdf5")
 
     def convert_to_gadget_mass_units(self):

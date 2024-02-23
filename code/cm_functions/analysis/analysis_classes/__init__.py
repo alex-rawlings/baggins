@@ -5,10 +5,10 @@ from .BHBinary import *  # noqa
 from .ChildSimData import ChildSimData  # noqa
 from .ChildSim import ChildSim  # noqa
 from .StanModel import (
-    HierarchicalModel_1D,
-    HierarchicalModel_2D,
-    FactorModel_2D,
-)  # noqa
+    HierarchicalModel_1D, # noqa
+    HierarchicalModel_2D, # noqa
+    FactorModel_2D, # noqa
+)
 
 from .HMQuantitiesSingleData import HMQuantitiesSingleData  # noqa
 from .HMQuantitiesSingle import HMQuantitiesSingle  # noqa
@@ -18,10 +18,10 @@ from .HMQuantitiesBinary import HMQuantitiesBinary  # noqa
 from .BrownianData import BrownianData  # noqa
 
 from .GrahamModels import (
-    GrahamModelSimple,
-    GrahamModelHierarchy,
-    GrahamModelKick,
-)  # noqa
+    GrahamModelSimple, # noqa
+    GrahamModelHierarchy, # noqa
+    GrahamModelKick, # noqa
+)
 
 from .KeplerModels import KeplerModelSimple, KeplerModelHierarchy  # noqa
 

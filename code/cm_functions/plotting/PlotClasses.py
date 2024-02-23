@@ -160,7 +160,7 @@ class _GradientPlot:
         try:
             assert self.data_count > 0
         except AssertionError:
-            _logger.exception(f"No data to plot!", exc_info=True)
+            _logger.exception("No data to plot!", exc_info=True)
             raise
 
 
