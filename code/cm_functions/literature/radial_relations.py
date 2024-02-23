@@ -9,7 +9,7 @@ __all__ = ["OsipkovMerritt", "Sahu20"]
 
 def OsipkovMerritt(r, ra):
     """
-    Define the theoretical anisotropy value of an Osipkov-Merritt model with 
+    Define the theoretical anisotropy value of an Osipkov-Merritt model with
     parameter ra
 
     Parameters
@@ -24,7 +24,7 @@ def OsipkovMerritt(r, ra):
     : np.ndarray
         anisotropy profile beta
     """
-    return 1 / (1 + (ra/r)**2)
+    return 1 / (1 + (ra / r) ** 2)
 
 
 def Sahu20(logRe):

@@ -14,13 +14,26 @@ _logger = _cmlogger.getChild(__name__)
 class HDF5Base:
     def __init__(self) -> None:
         """
-        Base class that allows for restoring of HDF5 files to a class. Should 
+        Base class that allows for restoring of HDF5 files to a class. Should
         not be instantiated directly.
         """
         self._log = ""
-        self.allowed_types = (int, float, str, bytes, np.int64, np.float32, np.float64, np.ndarray, pygad.UnitArr, np.bool8, list, tuple)
+        self.allowed_types = (
+            int,
+            float,
+            str,
+            bytes,
+            np.int64,
+            np.float32,
+            np.float64,
+            np.ndarray,
+            pygad.UnitArr,
+            np.bool8,
+            list,
+            tuple,
+        )
         self.hdf5_file_name = None
-    
+
     def add_to_log(self, msg):
         """
         Add a message to the log
@@ -34,18 +47,17 @@ class HDF5Base:
         now = now.strftime(date_format)
         self._log += f"{now}: {msg}\n"
 
-
     @classmethod
     def load_from_file(cls, fname, decode="utf-8"):
         """
-        Unpack a HDF5 object into a class where hdf5 fields are saved as class  attributes. Note this class should not be called directly, but 
+        Unpack a HDF5 object into a class where hdf5 fields are saved as class  attributes. Note this class should not be called directly, but
         rather other classes where data is saved as a HDF5 object should inherit
         this class for easy unpacking.
 
         Parameters
         ----------
         fname : str, path-like
-            hdf5 file 
+            hdf5 file
         decode : str, optional
             string decoding, by default "utf-8"
 
@@ -54,7 +66,7 @@ class HDF5Base:
         HDF5Base
             an instance of this class
         """
-        # first create a new class instance. At this stage, no properties are 
+        # first create a new class instance. At this stage, no properties are
         # set
         C = cls()
         C.hdf5_file_name = fname
@@ -64,7 +76,7 @@ class HDF5Base:
         def _recursive_dict_load(g):
             """
             Recursively load a dict object. This segment is inspired from 3ML
-            https://threeml.readthedocs.io/en/stable/ 
+            https://threeml.readthedocs.io/en/stable/
 
             Parameters
             ----------
@@ -95,7 +107,7 @@ class HDF5Base:
                 elif isinstance(val, h5py.Group):
                     d[key] = _recursive_dict_load(val)
             return d
-        
+
         def _main_setter(k, v):
             """
             Set those class attributes which are datasets.
@@ -139,7 +151,9 @@ class HDF5Base:
                                 dict_val = _recursive_dict_load(vv)
                                 setattr(C, kk, dict_val)
                         except AssertionError:
-                            _logger.exception(f"{kk}: Unkown type for unpacking!", exc_info=True)
+                            _logger.exception(
+                                f"{kk}: Unkown type for unpacking!", exc_info=True
+                            )
                             raise
                         msg = f"Successfully loaded dataset {kk}"
                         _logger.debug(msg)
@@ -147,10 +161,9 @@ class HDF5Base:
             _logger.debug(f"File {fname} loaded")
         return C
 
-
     def _saver(self, g, l):
         """
-        Save specified elements to a given HDF5 group. 
+        Save specified elements to a given HDF5 group.
 
         Parameters
         ----------
@@ -159,7 +172,7 @@ class HDF5Base:
         l : list
             attribute names to add to group
         """
-        # attributes defined with the @property method are not in __dict__, 
+        # attributes defined with the @property method are not in __dict__,
         # but their _members are. Append an underscore to all things in l
         l = ["_" + x for x in l]
         saved_list = []
@@ -170,7 +183,11 @@ class HDF5Base:
             attr = _attr.lstrip("_")
             attr_val = getattr(self, attr)
             try:
-                assert isinstance(attr_val, self.allowed_types) or isinstance(attr_val, dict) or attr_val is None
+                assert (
+                    isinstance(attr_val, self.allowed_types)
+                    or isinstance(attr_val, dict)
+                    or attr_val is None
+                )
                 if isinstance(attr_val, self.allowed_types):
                     dset = g.create_dataset(attr, data=attr_val)
                     if isinstance(attr_val, pygad.UnitArr):
@@ -181,20 +198,24 @@ class HDF5Base:
                 else:
                     self._recursive_dict_save(g, attr_val, attr)
             except AssertionError:
-                _logger.exception(f"Error saving {attr}: cannot save {type(attr_val)} type!")
+                _logger.exception(
+                    f"Error saving {attr}: cannot save {type(attr_val)} type!"
+                )
                 raise
             except:
-                _logger.exception(f"Unable to save <{attr}> (type {type(attr_val)} with values {attr_val})", exc_info=True)
+                _logger.exception(
+                    f"Unable to save <{attr}> (type {type(attr_val)} with values {attr_val})",
+                    exc_info=True,
+                )
                 raise
             saved_list.append(_attr)
         # check that everything was saved
-        not_saved = list(set(l)-set(saved_list))
+        not_saved = list(set(l) - set(saved_list))
         if not not_saved:
             for i in not_saved:
                 msg = f"Property {i.lstrip('_')} was not saved!"
                 _logger.warning(msg)
                 self.add_to_log(msg)
-
 
     def _add_attr(self, dg, aname, aval):
         """
@@ -210,14 +231,14 @@ class HDF5Base:
         aval : any
             attribute value
         """
-        if aval is None: aval="NONE_TYPE"
+        if aval is None:
+            aval = "NONE_TYPE"
         dg.attrs[aname] = aval
-
 
     def _recursive_dict_save(self, g, d, n):
         """
         Recursively save a dictionary. Inspired from 3ML
-        https://threeml.readthedocs.io/en/stable/ 
+        https://threeml.readthedocs.io/en/stable/
 
         Parameters
         ----------
@@ -231,7 +252,11 @@ class HDF5Base:
         gnew = g.create_group(n)
         for key, val in d.items():
             try:
-                assert isinstance(val, self.allowed_types) or isinstance(val, dict) or val is None
+                assert (
+                    isinstance(val, self.allowed_types)
+                    or isinstance(val, dict)
+                    or val is None
+                )
                 if isinstance(val, self.allowed_types):
                     dset = gnew.create_dataset(key, data=val)
                     if isinstance(val, pygad.UnitArr):
@@ -245,9 +270,11 @@ class HDF5Base:
                 _logger.exception(f"Error saving {key}: cannot save {type(val)} type!")
                 raise
             except:
-                _logger.exception(f"Unable to save <{key}> (type {type(val)} with values {val})", exc_info=True)
+                _logger.exception(
+                    f"Unable to save <{key}> (type {type(val)} with values {val})",
+                    exc_info=True,
+                )
                 raise
-
 
     # public functions
     def add_hdf5_field(self, n, val, field, fname=None):
@@ -271,11 +298,15 @@ class HDF5Base:
         field = field.rstrip("/")
         with h5py.File(fname, mode="a") as f:
             try:
-                assert isinstance(val, self.allowed_types) or isinstance(val, dict) or val is None
+                assert (
+                    isinstance(val, self.allowed_types)
+                    or isinstance(val, dict)
+                    or val is None
+                )
                 if isinstance(val, self.allowed_types):
-                    f.create_dataset(field+"/"+n, data=val)
+                    f.create_dataset(field + "/" + n, data=val)
                 elif val is None:
-                    f.create_dataset(field+"/"+n, data="NONE_TYPE")
+                    f.create_dataset(field + "/" + n, data="NONE_TYPE")
                 else:
                     # TODO this may not work...
                     self._recursive_dict_save(f[field], val, n)
@@ -293,7 +324,6 @@ class HDF5Base:
                 meta.create_dataset("logs", data=self._log)
             else:
                 f["/meta/logs"][...] = self._log
-
 
     def update_hdf5_field(self, d, val):
         """
@@ -314,7 +344,9 @@ class HDF5Base:
                 else:
                     f[d] = "NONE_TYPE"
             except AssertionError:
-                _logger.exception(f"Error saving {d}: cannot update {type(val)} type!", exc_info=True)
+                _logger.exception(
+                    f"Error saving {d}: cannot update {type(val)} type!", exc_info=True
+                )
             msg = f"Data {d} has been updated"
             _logger.info(msg)
             self.add_to_log(msg)
@@ -327,10 +359,8 @@ class HDF5Base:
             else:
                 f["/meta/logs"][...] = self._log
 
-
     def print_logs(self):
         """
         Print the logs associated with this HDF5 file.
         """
         print(self._log)
-

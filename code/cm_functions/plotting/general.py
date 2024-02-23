@@ -7,12 +7,35 @@ import itertools
 from ..env_config import _cmlogger
 
 
-__all__ = ["draw_sizebar", "create_normed_colours", "mplColours", "mplLines", "mplChars", "shade_bool_regions", "create_odd_number_subplots", "nice_log10_scale", "arrow_on_line"]
+__all__ = [
+    "draw_sizebar",
+    "create_normed_colours",
+    "mplColours",
+    "mplLines",
+    "mplChars",
+    "shade_bool_regions",
+    "create_odd_number_subplots",
+    "nice_log10_scale",
+    "arrow_on_line",
+]
 
 _logger = _cmlogger.getChild(__name__)
 
 
-def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0.5, frameon=False, unitconvert="base", remove_ticks=True, textsize=None, fmt=".1f", **kwargs):
+def draw_sizebar(
+    ax,
+    length,
+    units,
+    location="lower right",
+    pad=0.1,
+    borderpad=0.5,
+    frameon=False,
+    unitconvert="base",
+    remove_ticks=True,
+    textsize=None,
+    fmt=".1f",
+    **kwargs,
+):
     """
     Draw a horizontal scale bar using the mpl toolkit
 
@@ -25,7 +48,7 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
     units : str
         unit name
     location : str, optional
-        where to place bar (standard pyplot location string), by default "lower 
+        where to place bar (standard pyplot location string), by default "lower
         right"
     pad : float, optional
         padding around label, by default 0.1
@@ -44,18 +67,36 @@ def draw_sizebar(ax, length, units, location="lower right", pad=0.1, borderpad=0
     kwargs :
         other keyword arguments for AnchoredSizeBar()
     """
-    factors = {"mill2base":1e-3, "cent2base":1e-2, "base":1, "kilo2base":1e3, "mega2base":1e6}
+    factors = {
+        "mill2base": 1e-3,
+        "cent2base": 1e-2,
+        "base": 1,
+        "kilo2base": 1e3,
+        "mega2base": 1e6,
+    }
     label = f"{length*factors[unitconvert]:{fmt}} {units}"
-    asb = AnchoredSizeBar(ax.transData, length, label, loc=location, pad=pad, borderpad=borderpad, frameon=frameon, fontproperties={"size":textsize}, **kwargs)
+    asb = AnchoredSizeBar(
+        ax.transData,
+        length,
+        label,
+        loc=location,
+        pad=pad,
+        borderpad=borderpad,
+        frameon=frameon,
+        fontproperties={"size": textsize},
+        **kwargs,
+    )
     ax.add_artist(asb)
     if remove_ticks:
         ax.axes.xaxis.set_visible(False)
         ax.axes.yaxis.set_visible(False)
 
 
-def create_normed_colours(vmin, vmax, cmap="cividis", norm="Normalize", norm_kwargs={}, trunc=(None, None)):
+def create_normed_colours(
+    vmin, vmax, cmap="cividis", norm="Normalize", norm_kwargs={}, trunc=(None, None)
+):
     """
-    Convenience wrapper for creating colour normalisation and colourbar 
+    Convenience wrapper for creating colour normalisation and colourbar
     requirements for pyplot.plot()
 
     Parameters
@@ -76,7 +117,7 @@ def create_normed_colours(vmin, vmax, cmap="cividis", norm="Normalize", norm_kwa
     Returns
     -------
     mapcols : function
-        takes an argument in the range [vmin, vmax] and returns the scaled 
+        takes an argument in the range [vmin, vmax] and returns the scaled
         colour
     sm matplotlib.cm.ScalarMappable
         object that is required for creating a colour bar
@@ -102,7 +143,9 @@ def create_normed_colours(vmin, vmax, cmap="cividis", norm="Normalize", norm_kwa
         cmapv = colors.LinearSegmentedColormap.from_list("trunc", col_arr)
         mapcols = lambda x: cmapv(norm(x))
         norm = _norm(vmin=tmin, vmax=tmax, **norm_kwargs)
-        _logger.debug(f"Truncating colormap from ({vmin:.2f},{vmax:.2f}) --> ({tmin:.2f},{tmax:.2f})")
+        _logger.debug(
+            f"Truncating colormap from ({vmin:.2f},{vmax:.2f}) --> ({tmin:.2f},{tmax:.2f})"
+        )
     sm = plt.cm.ScalarMappable(norm=norm, cmap=cmapv)
     return mapcols, sm
 
@@ -138,22 +181,22 @@ def mplLines(regular=5, loose=10, dense=1):
     : list
         linestyles
     """
-    d = dict([
-            ("solid",                    (0, ())),
-            ("dotted",                   (0, (1,1))),
-            ("dashed",                   (0, (5,regular))),
-            ("dashdotted",               (0, (3,regular,1,regular))),
-            ("dashdotdotted",            (0, (3,regular,1,regular,1,regular))),
-
-            ("densely-dashed",           (0, (5,dense))),
-            ("densely-dashdotted",       (0, (3,dense,1,dense))),
-            ("densely-dashdotdotted",    (0, (3,dense,1,dense,1,dense))),
-
-            ("loosely-dotted",           (0, (1,loose))),
-            ("loosely-dashed",           (0, (5,loose))),
-            ("loosely-dashdotted",       (0, (3,loose,1,loose))),
-            ("loosely-dashdotdotted",    (0,(3,loose,1,loose,1,loose))),
-    ])
+    d = dict(
+        [
+            ("solid", (0, ())),
+            ("dotted", (0, (1, 1))),
+            ("dashed", (0, (5, regular))),
+            ("dashdotted", (0, (3, regular, 1, regular))),
+            ("dashdotdotted", (0, (3, regular, 1, regular, 1, regular))),
+            ("densely-dashed", (0, (5, dense))),
+            ("densely-dashdotted", (0, (3, dense, 1, dense))),
+            ("densely-dashdotdotted", (0, (3, dense, 1, dense, 1, dense))),
+            ("loosely-dotted", (0, (1, loose))),
+            ("loosely-dashed", (0, (5, loose))),
+            ("loosely-dashdotted", (0, (3, loose, 1, loose))),
+            ("loosely-dashdotdotted", (0, (3, loose, 1, loose, 1, loose))),
+        ]
+    )
     return list(d.values())
 
 
@@ -184,15 +227,22 @@ def shade_bool_regions(ax, xdata, mask, **kwargs):
     kwargs :
         keyword arguments for pyplot.axvspan()
     """
-    #get the first and last index of the True "blocks"
-    regions = [(group[0], group[-1]) for group in (list(group) for key, group in itertools.groupby(range(len(mask)), key=mask.__getitem__) if key)]
+    # get the first and last index of the True "blocks"
+    regions = [
+        (group[0], group[-1])
+        for group in (
+            list(group)
+            for key, group in itertools.groupby(range(len(mask)), key=mask.__getitem__)
+            if key
+        )
+    ]
     for region in regions:
         ax.axvspan(xdata[region[0]], xdata[region[1]], **kwargs)
 
 
 def create_odd_number_subplots(nrow, ncol, fkwargs={}, gskwargs={}):
     """
-    Create a set of subplots where the final row has an odd number of panels 
+    Create a set of subplots where the final row has an odd number of panels
     (1 less than the previous rows).
 
     Parameters
@@ -200,7 +250,7 @@ def create_odd_number_subplots(nrow, ncol, fkwargs={}, gskwargs={}):
     nrow : int
         number of rows
     ncol : int
-        number of columns for all but the last row, which will have 1-ncol 
+        number of columns for all but the last row, which will have 1-ncol
         columns
     fkwargs : dict, optional
         kwargs dict to be parsed to plt.figure(), by default {}
@@ -216,14 +266,14 @@ def create_odd_number_subplots(nrow, ncol, fkwargs={}, gskwargs={}):
     ax = []
     if "top" not in gskwargs:
         gskwargs["top"] = 0.95
-    gs = GridSpec(nrow, 2*ncol, figure=fig, **gskwargs)
+    gs = GridSpec(nrow, 2 * ncol, figure=fig, **gskwargs)
     # "normal" rows
-    for j in range(nrow-1):
+    for j in range(nrow - 1):
         for i in range(ncol):
-            ax.append(fig.add_subplot(gs[j, 2*i:2*(i+1)]))
+            ax.append(fig.add_subplot(gs[j, 2 * i : 2 * (i + 1)]))
     # final row, with odd number of panels
-    for i in range(ncol-1):
-        ax.append(fig.add_subplot(gs[-1, 2*i+1:2*(i+1)+1]))
+    for i in range(ncol - 1):
+        ax.append(fig.add_subplot(gs[-1, 2 * i + 1 : 2 * (i + 1) + 1]))
     return fig, np.array(ax)
 
 
@@ -239,14 +289,12 @@ def nice_log10_scale(ax, axis="y"):
     if "y" in axis:
         ylims = ax.get_ylim()
         ax.set_ylim(
-            10**np.floor(np.log10(ylims[0])),
-            10**np.ceil(np.log10(ylims[1]))
+            10 ** np.floor(np.log10(ylims[0])), 10 ** np.ceil(np.log10(ylims[1]))
         )
     if "x" in axis:
         xlims = ax.get_xlim()
         ax.set_xlim(
-            10**np.floor(np.log10(xlims[0])),
-            10**np.ceil(np.log10(xlims[1]))
+            10 ** np.floor(np.log10(xlims[0])), 10 ** np.ceil(np.log10(xlims[1]))
         )
 
 
@@ -268,14 +316,14 @@ def arrow_on_line(l, xpos=None, direction="right", size=15, arrowprops={}):
         arrow style kwargs, by default {}
     """
     if arrowprops:
-        arrowprops = {"arrowstyle":"->", "color":l.get_color()}
+        arrowprops = {"arrowstyle": "->", "color": l.get_color()}
     xdata = l.get_xdata()
     ydata = l.get_ydata()
 
     if xpos is None:
         xpos = xdata.mean()
     # roughly get start index
-    idx0 = np.argim(np.abs(xdata-xpos))
+    idx0 = np.argim(np.abs(xdata - xpos))
     if direction == "left":
         idx1 = idx0 - 1
     else:
@@ -285,5 +333,5 @@ def arrow_on_line(l, xpos=None, direction="right", size=15, arrowprops={}):
         xytext=(xdata[idx0], ydata[idx0]),
         xy=(xdata[idx1], ydata[idx1]),
         arrowprops=arrowprops,
-        size=size
+        size=size,
     )

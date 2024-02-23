@@ -1,5 +1,6 @@
 from . import env_config
-#set up some global environment variables
+
+# set up some global environment variables
 HOME = env_config.home_dir
 FIGDIR = env_config.figure_dir
 DATADIR = env_config.data_dir
@@ -16,4 +17,3 @@ from . import utils
 from . import visualisation
 
 from ._backend import setup_logger
-

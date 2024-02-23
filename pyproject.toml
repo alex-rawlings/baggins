@@ -1,0 +1,10 @@
+[tool.black]
+target-version = ['py39']
+line-length = 88
+extend-exclude = '''
+(
+    code/misc
+    | papers/paper-eccentricity/scripts
+    | parameters
+)
+'''

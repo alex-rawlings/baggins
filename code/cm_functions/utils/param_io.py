@@ -12,13 +12,18 @@ from ..env_config import _cmlogger
 _logger = _cmlogger.getChild(__name__)
 
 
-__all__ = ["read_parameters", "write_calculated_parameters", "overwrite_parameter_file", "to_json"]
+__all__ = [
+    "read_parameters",
+    "write_calculated_parameters",
+    "overwrite_parameter_file",
+    "to_json",
+]
 
 
 class ScientificDumper(yaml.SafeDumper):
     def represent_float(self, data):
         """
-        Overload the default YAML SafeDumper float representation method to 
+        Overload the default YAML SafeDumper float representation method to
         control when we start to use scientific notation
 
         Parameters
@@ -49,19 +54,20 @@ class ScientificDumper(yaml.SafeDumper):
 
 def read_parameters(filepath):
     """
-    Read a .yml configuration file. Numpy methods can be specified and saved to 
+    Read a .yml configuration file. Numpy methods can be specified and saved to
     the loaded dictionary.
 
     Parameters
     ----------
     filepath : str, path-like
         path to parameter file to read
-    
+
     Returns
     -------
     params_and_calc : dict
         dictionary of user parameters and calculated parameters (the latter stored under the key top-level key 'calculated')
     """
+
     def _unpack_helper(d, l):
         """
         Helper to unpack a numpy method, e.g. a linspace
@@ -80,9 +86,13 @@ def read_parameters(filepath):
         """
         for k, v in d.copy().items():
             try:
-                if l==0: assert k != "calculated"
+                if l == 0:
+                    assert k != "calculated"
             except AssertionError:
-                _logger.exception("Main parameter block cannot contain the top-level reserved key 'calculated'!", exc_info=True)
+                _logger.exception(
+                    "Main parameter block cannot contain the top-level reserved key 'calculated'!",
+                    exc_info=True,
+                )
                 raise
             if k == "numpy_method":
                 try:
@@ -90,12 +100,18 @@ def read_parameters(filepath):
                     if not isinstance(args, list):
                         args = [args]
                 except KeyError:
-                    _logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must have a corresponding 'args' key!", exc_info=True)
+                    _logger.exception(
+                        f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must have a corresponding 'args' key!",
+                        exc_info=True,
+                    )
                     raise
                 try:
                     assert "value" not in d
                 except AssertionError:
-                    _logger.exception(f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must not have a corresponding 'value' key!", exc_info=True)
+                    _logger.exception(
+                        f"Error reading parameter file {filepath}! Blocks with key 'numpy_method' must not have a corresponding 'value' key!",
+                        exc_info=True,
+                    )
                     raise
                 method = getattr(np, v)
                 d["value"] = method(*args)
@@ -103,17 +119,18 @@ def read_parameters(filepath):
                 d[k] = v.rstrip("/")
             elif isinstance(v, dict):
                 l += 1
-                _unpack_helper(v,l)
+                _unpack_helper(v, l)
                 l -= 1
         return d
-            
+
     with open(filepath, "r") as f:
         params_list = list(yaml.safe_load_all(f))
     params_and_calc = params_list[0].copy()
     params_and_calc["calculated"] = {}
     for i, params in enumerate(params_list):
         params = _unpack_helper(params, l=0)
-        if i == 0: continue
+        if i == 0:
+            continue
         for k in params.keys():
             params_and_calc["calculated"][k] = params[k]
     return params_and_calc
@@ -121,10 +138,10 @@ def read_parameters(filepath):
 
 def write_calculated_parameters(data, filepath):
     """
-    Write static, calculated variables (e.g. particle count) to a new .yml 
-    block located within the .yml file (by using the --- separators) 
-    corresponding to the system that was created. Parameters in the "main" 
-    block are never overwritten. Previously-calculated values may be 
+    Write static, calculated variables (e.g. particle count) to a new .yml
+    block located within the .yml file (by using the --- separators)
+    corresponding to the system that was created. Parameters in the "main"
+    block are never overwritten. Previously-calculated values may be
     overwritten. New values will be added to the second block.
 
     Parameters
@@ -133,7 +150,8 @@ def write_calculated_parameters(data, filepath):
         parameters (name, value) to add to the parameter file
     filepath : str, path-like
         path to parameter file where values will be saved
-    """    
+    """
+
     def _type_converter(d, d2):
         new_d = d2.copy()
         for k, v in d.items():
@@ -142,7 +160,7 @@ def write_calculated_parameters(data, filepath):
             elif isinstance(v, np.ndarray):
                 new_d[k] = v.tolist()
             elif isinstance(v, UnitArr):
-                new_d[k] = {"unit":str(v.units).strip("[]"), "value":float(v)}
+                new_d[k] = {"unit": str(v.units).strip("[]"), "value": float(v)}
             elif isinstance(v, dict):
                 try:
                     new_d[k] = _type_converter(v, new_d[k])
@@ -155,7 +173,8 @@ def write_calculated_parameters(data, filepath):
     with open(filepath, "r+") as f:
         _data_list = list(yaml.safe_load_all(f))
         # skip the first block, which consists of the user-defined parameters
-        if len(_data_list)==1: _data_list.append(data)
+        if len(_data_list) == 1:
+            _data_list.append(data)
         # update values: will update all blocks after the first
         _data_list[1] = _type_converter(data, _data_list[1])
         f.seek(0)
@@ -164,9 +183,15 @@ def write_calculated_parameters(data, filepath):
         for line in lines:
             f.write(line)
             # we have reached the end of the parameter section
-            if "..." in line: break
+            if "..." in line:
+                break
         f.write("\n")
-        s = yaml.dump_all(_data_list[1:], explicit_end=True, explicit_start=True, Dumper=ScientificDumper)
+        s = yaml.dump_all(
+            _data_list[1:],
+            explicit_end=True,
+            explicit_start=True,
+            Dumper=ScientificDumper,
+        )
         f.write(s)
         f.write("\n")
         f.truncate()
@@ -174,8 +199,8 @@ def write_calculated_parameters(data, filepath):
 
 def overwrite_parameter_file(f, contents):
     """
-    Overwrite a .yml parameter file, with only the first document being written 
-    if there are multiple .yml documents in the file. Explicit endings ('...') 
+    Overwrite a .yml parameter file, with only the first document being written
+    if there are multiple .yml documents in the file. Explicit endings ('...')
     are always printed.
 
     Parameters
@@ -214,7 +239,7 @@ def to_json(obj, fname):
         file name to save to
     """
     d = {}
-    for k,v in obj.items():
+    for k, v in obj.items():
         if k[:2] != "__":
             if isinstance(v, np.ndarray):
                 v = v.tolist()

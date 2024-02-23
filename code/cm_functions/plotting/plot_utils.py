@@ -14,6 +14,7 @@ _logger = _cmlogger.getChild(__name__)
 # state information
 _PS = PublishingState()
 
+
 def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
     """
     Wrapper arounf pyplot's savefig() that adds some more useful meta data
@@ -35,17 +36,14 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
         _fig_ext = "pdf"
     else:
         _fig_ext = fig_ext
-    f = inspect.stack()[-1] # get outermost caller on stack
+    f = inspect.stack()[-1]  # get outermost caller on stack
     now = datetime.now()
     if _fig_ext == "png":
         now = now.strftime(date_format)
     # ensure things are deterministic
     try:
         meta_data = dict(
-                         Author = username,
-                         Creator = f.filename,
-                         CreationDate = now,
-                         Keywords = git_hash
+            Author=username, Creator=f.filename, CreationDate=now, Keywords=git_hash
         )
         # save to the correct format
         if force_ext:
@@ -53,7 +51,7 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
             figname = fname
         else:
             fname_name, fname_ext = os.path.splitext(fname)
-            # protect against cases where no extension is specified, and the 
+            # protect against cases where no extension is specified, and the
             # file name has a "." in it
             _fname = fname_name if fname_ext in (".png", ".pdf") else fname
             figname = f"{_fname}.{_fig_ext}"
@@ -76,26 +74,31 @@ def get_meta(fname):
         ext = os.path.splitext(fname)[1]
         assert ext == ".png"
     except AssertionError:
-        _logger.exception(f"`get_meta()` only available for .png files, not type {ext}", exc_info=True)
+        _logger.exception(
+            f"`get_meta()` only available for .png files, not type {ext}", exc_info=True
+        )
         raise
     with Image.open(fname) as img:
-        for k,v in img.text.items():
+        for k, v in img.text.items():
             print(f"{k}: {v}")
 
 
 def set_publishing_style():
     """
-    Set a custom matplolibrc file that is designed specifically for 
+    Set a custom matplolibrc file that is designed specifically for
     publishing-style plots. Mainly changes figure size and axis label size.
     """
     _PS.turn_on()
     rcdefaults()
-    rc_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), "matplotlibrc_publish"))
+    rc_file(
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "matplotlibrc_publish"
+        )
+    )
     _logger.info("Publishing Matplotlib style set")
 
 
-
-def get_figure_size(publishing=False, full=False, multiplier=[1,1]):
+def get_figure_size(publishing=False, full=False, multiplier=[1, 1]):
     """
     Determine the figure size appropriate for publishing mode or normal mode
 
@@ -104,7 +107,7 @@ def get_figure_size(publishing=False, full=False, multiplier=[1,1]):
     publishing : bool, optional
         set publishing style, by default False
     full : bool, optional
-        double the width of the figure in addition to the height, by default 
+        double the width of the figure in addition to the height, by default
         False
     multiplier : list-like, optional
         scale figure axes, by default [1,1]
@@ -117,11 +120,10 @@ def get_figure_size(publishing=False, full=False, multiplier=[1,1]):
     figsize = None
     if publishing:
         set_publishing_style()
-    figsize = tuple(rcParams["figure.figsize"][i]*multiplier[i] for i in range(2))
+    figsize = tuple(rcParams["figure.figsize"][i] * multiplier[i] for i in range(2))
     if full:
         m = max(figsize)
         if publishing:
             m *= 2
-        figsize = (m,m)
+        figsize = (m, m)
     return figsize
-

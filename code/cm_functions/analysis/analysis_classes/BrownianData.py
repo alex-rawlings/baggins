@@ -6,16 +6,17 @@ __all__ = ["BrownianData"]
 
 _logger = _cmlogger.getChild(__name__)
 
+
 class BrownianData(HDF5Base):
     def __init__(self) -> None:
         super().__init__()
         self._data_loaded = False
-    
+
     # define properties
     @property
     def number_snaps(self):
         return self._number_snaps
-    
+
     @property
     def bh1(self):
         return self._bh1
@@ -33,7 +34,7 @@ class BrownianData(HDF5Base):
     def bh2(self, v):
         self._bh_set_validator(v)
         self._bh2 = v
-    
+
     @property
     def radial_separation(self):
         return self._radial_separation
@@ -41,7 +42,7 @@ class BrownianData(HDF5Base):
     @radial_separation.setter
     def radial_separation(self, v):
         self._radial_separation = v
-    
+
     @property
     def snap_times(self):
         return self._snap_times
@@ -49,7 +50,6 @@ class BrownianData(HDF5Base):
     @snap_times.setter
     def snap_times(self, v):
         self._snap_times = v
-    
 
     # helper methods
     def _bh_set_validator(self, v):
@@ -67,27 +67,28 @@ class BrownianData(HDF5Base):
         try:
             assert self._data_loaded
         except AssertionError:
-            _logger.exception(f"Data must be loaded before operations are performed on it!", exc_info=True)
+            _logger.exception(
+                f"Data must be loaded before operations are performed on it!",
+                exc_info=True,
+            )
             raise
         return radial_separation(self.bh1[k]), radial_separation(self.bh2[k])
 
     # public methods
     def compute_pos_offset_magnitude(self):
         return self._offset_mag_helper("xoffset")
-    
+
     def compute_vel_offset_magnitude(self):
         return self._offset_mag_helper("voffset")
-    
+
     def plot_time_series(self):
         raise NotImplementedError
 
     def plot_projection(self):
         raise NotImplementedError
-    
+
     def load_from_file(self, f):
         raise NotImplementedError
-    
+
     def print(self):
         raise NotImplementedError
-
-        

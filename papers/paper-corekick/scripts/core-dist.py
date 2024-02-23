@@ -1,17 +1,35 @@
 import argparse
 import os.path
+
 try:
     import matplotlib.pyplot as plt
 except ImportError:
     from matplotlib import use
+
     use("Agg")
     import matplotlib.pyplot as plt
 import cm_functions as cmf
 
-parser = argparse.ArgumentParser("Determine core - kick relation", allow_abbrev=False, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument(type=str, help="new sample or load previous", choices=["new", "loaded"], dest="type")
-parser.add_argument("-N", "--NumSamples", type=int, help="number OOS values", dest="NOOS", default=1000)
-parser.add_argument("-v", "--verbosity", type=str, choices=cmf.VERBOSITY, dest="verbosity", default="INFO", help="verbosity level")
+parser = argparse.ArgumentParser(
+    "Determine core - kick relation",
+    allow_abbrev=False,
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    type=str, help="new sample or load previous", choices=["new", "loaded"], dest="type"
+)
+parser.add_argument(
+    "-N", "--NumSamples", type=int, help="number OOS values", dest="NOOS", default=1000
+)
+parser.add_argument(
+    "-v",
+    "--verbosity",
+    type=str,
+    choices=cmf.VERBOSITY,
+    dest="verbosity",
+    default="INFO",
+    help="verbosity level",
+)
 args = parser.parse_args()
 
 SL = cmf.setup_logger("script", args.verbosity)
@@ -33,10 +51,13 @@ figname_base = "core-study/rb-dist"
 
 
 if args.type == "new":
-    ck = cmf.analysis.CoreKick(stan_file, "", 
-                               figname_base=figname_base,
-                               escape_vel=ESCAPE_VEL, 
-                               premerger_ketjufile=ketju_file)
+    ck = cmf.analysis.CoreKick(
+        stan_file,
+        "",
+        figname_base=figname_base,
+        escape_vel=ESCAPE_VEL,
+        premerger_ketjufile=ketju_file,
+    )
 
 else:
     ck = cmf.analysis.CoreKick.load_fit(stan_file, fit_files, figname_base)
@@ -47,7 +68,9 @@ if args.verbosity == "DEBUG":
     ck.print_obs_summary()
 ck.set_stan_data()
 
-sample_kwargs = {"output_dir": os.path.join(cmf.DATADIR, "stan_files/core-kick-relation")}
+sample_kwargs = {
+    "output_dir": os.path.join(cmf.DATADIR, "stan_files/core-kick-relation")
+}
 ck.sample_model(sample_kwargs=sample_kwargs)
 
 if args.verbosity == "DEBUG":
@@ -58,4 +81,3 @@ if args.verbosity == "DEBUG":
 
 ck.all_posterior_pred_plots()
 ck.all_posterior_OOS_plots()
-

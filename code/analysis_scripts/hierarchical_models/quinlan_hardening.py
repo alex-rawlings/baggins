@@ -5,12 +5,22 @@ from .helpers import stan_model_selector
 
 
 parser = cmf.utils.argparse_for_stan("Run Stan model for Quinlan hardening model")
-parser.add_argument("-m", "--model", help="model to run", type=str, choices=["simple", "hierarchy"], dest="model", default="hierarchy")
+parser.add_argument(
+    "-m",
+    "--model",
+    help="model to run",
+    type=str,
+    choices=["simple", "hierarchy"],
+    dest="model",
+    default="hierarchy",
+)
 args = parser.parse_args()
 
 SL = cmf.setup_logger("script", console_level=args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(args.publish, full=True, multiplier=[1.9, 1.9])
+full_figsize = cmf.plotting.get_figure_size(
+    args.publish, full=True, multiplier=[1.9, 1.9]
+)
 
 if args.type == "new":
     hmq_dir = args.dir
@@ -23,18 +33,22 @@ figname_base = f"hierarchical_models/hardening/{args.sample}/"
 
 if args.model == "simple":
     quinlan_model = stan_model_selector(
-                    args, 
-                    cmf.analysis.QuinlanModelSimple, 
-                    "stan/hardening/quinlan_simple.stan", 
-                    "stan/hardening/quinlan_simple_prior.stan", 
-                    figname_base, SL)
+        args,
+        cmf.analysis.QuinlanModelSimple,
+        "stan/hardening/quinlan_simple.stan",
+        "stan/hardening/quinlan_simple_prior.stan",
+        figname_base,
+        SL,
+    )
 else:
     quinlan_model = stan_model_selector(
-                    args, 
-                    cmf.analysis.QuinlanModelHierarchy, 
-                    "stan/hardening/quinlan_hierarchy.stan", 
-                    "stan/hardening/quinlan_hierarchy_prior.stan", 
-                    figname_base, SL)
+        args,
+        cmf.analysis.QuinlanModelHierarchy,
+        "stan/hardening/quinlan_hierarchy.stan",
+        "stan/hardening/quinlan_hierarchy_prior.stan",
+        figname_base,
+        SL,
+    )
 
 quinlan_model.extract_data(analysis_params, hmq_dir)
 
@@ -50,15 +64,21 @@ quinlan_model.set_stan_data()
 
 if args.prior:
     # create the push-forward distribution for the prior model
-    quinlan_model.sample_prior(sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"])
+    quinlan_model.sample_prior(
+        sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"]
+    )
 
     # prior predictive checks
     quinlan_model.all_prior_plots(full_figsize)
 else:
-    analysis_params["stan"]["hardening_sample_kwargs"]["output_dir"] = os.path.join(cmf.DATADIR, f"stan_files/hardening/{args.sample}/{quinlan_model.merger_id}")
+    analysis_params["stan"]["hardening_sample_kwargs"]["output_dir"] = os.path.join(
+        cmf.DATADIR, f"stan_files/hardening/{args.sample}/{quinlan_model.merger_id}"
+    )
 
     # run the model
-    quinlan_model.sample_model(sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"])
+    quinlan_model.sample_model(
+        sample_kwargs=analysis_params["stan"]["hardening_sample_kwargs"]
+    )
 
     quinlan_model.determine_loo()
 
@@ -67,4 +87,3 @@ else:
 quinlan_model.plot_merger_timescale()
 
 quinlan_model.print_parameter_percentiles(quinlan_model.latent_qtys)
-
