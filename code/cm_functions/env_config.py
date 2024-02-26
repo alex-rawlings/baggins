@@ -48,6 +48,8 @@ _cmlogger = setup_logger(
     logfile=os.path.join(this_dir, user_params["logging"]["file"]),
     file_level=user_params["logging"]["file_level"],
 )
+# set the valid logger levels
+logger_level = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 # ensure valid figure format
 try:
