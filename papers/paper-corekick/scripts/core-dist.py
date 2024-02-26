@@ -9,6 +9,7 @@ except ImportError:
     use("Agg")
     import matplotlib.pyplot as plt
 import cm_functions as cmf
+import figure_config
 
 parser = argparse.ArgumentParser(
     "Determine core - kick relation",
@@ -60,9 +61,15 @@ if args.type == "new":
     )
 
 else:
-    ck = cmf.analysis.CoreKick.load_fit(stan_file, fit_files, figname_base)
+    ck = cmf.analysis.CoreKick.load_fit(
+        stan_file,
+        fit_files,
+        figname_base,
+        escape_vel=ESCAPE_VEL,
+        premerger_ketjufile=ketju_file,
+    )
 
-ck.extract_data(datafile=datafile)
+ck.extract_data(d=datafile)
 
 if args.verbosity == "DEBUG":
     ck.print_obs_summary()
@@ -80,4 +87,6 @@ if args.verbosity == "DEBUG":
     plt.show()
 
 ck.all_posterior_pred_plots()
-ck.all_posterior_OOS_plots()
+ax = ck.all_posterior_OOS_plots()
+cmf.plotting.savefig(figure_config.fig_path("rb_pdf.pdf"), force_ext=True)
+ck.print_parameter_percentiles(ck.latent_qtys)

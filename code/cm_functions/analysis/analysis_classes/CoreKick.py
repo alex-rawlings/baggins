@@ -27,8 +27,8 @@ class CoreKick(HierarchicalModel_2D):
         model_file,
         prior_file,
         figname_base,
-        escape_vel,
-        premerger_ketjufile,
+        escape_vel=None,
+        premerger_ketjufile=None,
         rng=None,
     ) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
@@ -91,6 +91,14 @@ class CoreKick(HierarchicalModel_2D):
         npoints : int, optional
             thin the data to this many points per kick velocity, by default 200
         """
+        try:
+            assert self.escape_vel is not None and self.premerger_ketjufile is not None
+        except AssertionError:
+            _logger.exception(
+                "Attributes `escape_vel` and `premerger_ketjufile` must be set before extracting data",
+                exc_info=True,
+            )
+            raise
         d = self._get_data_dir(d)
         data = load_data(d)
         obs = {"vkick": [], "rb": []}
@@ -319,6 +327,7 @@ class CoreKick(HierarchicalModel_2D):
         secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
+        return fig
 
     @classmethod
     def load_fit(

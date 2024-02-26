@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from .. import VERBOSITY
+from ..env_config import logger_level
 
 __all__ = ["argparse_for_initialise", "argparse_for_stan", "cl_str_2_space"]
 
@@ -100,7 +100,7 @@ def argparse_for_stan(description=""):
         "-v",
         "--verbosity",
         type=str,
-        choices=VERBOSITY,
+        choices=logger_level,
         dest="verbose",
         default="INFO",
         help="verbosity level",
