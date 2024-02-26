@@ -100,7 +100,7 @@ def argparse_for_stan(description=""):
         "-v",
         "--verbosity",
         type=str,
-        choices=VERBOSITY,
+        choices=logger_level,
         dest="verbose",
         default="INFO",
         help="verbosity level",
