@@ -64,7 +64,7 @@ plt.colorbar(
 for axi, lab in zip(ax, (r"$b/a$", r"$c/a$")):
     axi.set_xscale("log")
     axi.set_ylabel(lab)
-ax[1].set_xlabel(r"$R/\mathrm{kpc}$")
+ax[1].set_xlabel(r"$r/\mathrm{kpc}$")
 
 cmf.plotting.savefig(figure_config.fig_path("triaxiality.pdf"), force_ext=True)
 plt.show()

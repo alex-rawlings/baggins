@@ -87,6 +87,5 @@ if args.verbosity == "DEBUG":
     plt.show()
 
 ck.all_posterior_pred_plots()
-ax = ck.all_posterior_OOS_plots()
-cmf.plotting.savefig(figure_config.fig_path("rb_pdf.pdf"), force_ext=True)
+ck.all_posterior_OOS_plots()
 ck.print_parameter_percentiles(ck.latent_qtys)

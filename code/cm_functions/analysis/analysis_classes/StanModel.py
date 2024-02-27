@@ -748,7 +748,7 @@ class _StanModel(ABC):
         else:
             _fit = self._fit
             _logger.debug("Generated quantities will be taken from the posterior model")
-        x, dens = az.kde(_fit[v])
+        x, dens = az.kde(_fit.stan_variables()[v])
         return x[np.nanargmax(dens)]
 
     def _parameter_corner_plot(
