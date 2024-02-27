@@ -9,6 +9,7 @@ except ImportError:
     use("Agg")
     import matplotlib.pyplot as plt
 import cm_functions as cmf
+import figure_config # noqa
 
 parser = argparse.ArgumentParser(
     "Determine core - kick relation",

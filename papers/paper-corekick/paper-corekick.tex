@@ -169,23 +169,13 @@ Interactions between stellar particles are softened with a softening length of $
 
 % RESULTS
 \section{Results}\label{sec:results}
-\drafting{
-    Things to show:
-    \begin{enumerate}
-        \item DAG for hierarchical model
-        \item Density profiles 
-        \item Scatter plot $v_k\mathrm{-}r_b$ with best fit function
-        \item Relation $v_k\mathrm{-}r_b$ model comparison (elpd?)
-        \item MC-sampled distribution of $r_b$
-        \item $h_4$ maps
-    \end{enumerate}
-}
 
 \drafting{
     Main points to hammer home:
     \begin{enumerate}
-        \item Parameters associated with the core (most importantly the core size) have a dependence on the kick velocity, whereas large-scale parameters (e.g. effective radius) do not.
+        \item Core radius, break density, sersic index have a dependence on the kick velocity, whereas other parameters (e.g. effective radius) do not.
         \item Increasing kick velocity induces a decrease in the overall $\langle h_4 \rangle$ profile
+        \item Explanation of h4 trends through orbit decompostion.
     \end{enumerate}
 }
 
@@ -198,6 +188,18 @@ Interactions between stellar particles are softened with a softening length of $
         \item Plot of maximum displacement of kicked BH as a function of kick velocity. How does this compare to core size? Which simulations have BH kicked beyond the core?
     \end{enumerate}
 }
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\textwidth]{infall_time}
+    \caption{Plot of infall time (time to stability criterion) as a function of kick velocity.}
+    \label{fig:infall}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\textwidth]{max_disp}
+    \caption{Plot of the maximum BH displacement as a function of kick velocity. Where do the displacement (red) and core size (green) lines intersect?}
+    \label{fig:max_disp}
+\end{figure}
 
 
 \subsection{Density profiles}
@@ -239,11 +241,16 @@ Following \citet{nasim2021b}, we fit a power law of the form
     \frac{\rb}{r_{\mathrm{b},0}} = K \left( \frac{\vk}{v_\mathrm{esc}} \right)^\beta + 1
 \end{equation}
 to our simulations, which is thus valid for $0\leq\vk/\kmps\leq900$, or equivalently $0\leq\vk/v_\mathrm{esc}\leq 0.75$.
-\drafting{We estimate the parameters $K$ and $\beta$ using HMC, and find median values of $K=$ and $\beta=$.}
+We estimate the parameters $K$ and $\beta$ using HMC, and find median values of $K=2.830$ and $\beta=0.558$.
 
-\drafting{Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal alignment (their Fig. 15, right panel.) 
-This allows us to obtain a distribution of core radius values predicted by a given kick velocity model.
-We find\dots}
+Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal spin alignment (their Fig. 15, right panel).
+The dimensionless spin parameter for the dry mergers follows a beta distribution, namely:
+\begin{equation}
+    P_\mathrm{Zlochower}(\alpha) \propto (1-\alpha)^{4.66884-1} \alpha^{10.5868-1}
+\end{equation}
+This allows us to obtain a distribution of core radius values predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}.
+We find that the mode of the forward-folded core radius distribution is $1.61\,\mathrm{kpc}$ ($3.06\,r_{\mathrm{b},0}$).
+Thus, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, most massive elliptical galaxies should have a non-negligible core \drafting{add references}. 
 
 
 \begin{table}
@@ -329,9 +336,8 @@ where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equiv
 We observe an overall shift to more negative values of $h_4$ for kick velocities up until $\vk\sim400\,\kmps$ \drafting{check this, currently just read off plot}, above which the radial $h_4$ profile is not sensitive to increasing kick velocity. 
 Additionally, all $h_4$ profiles are radially decreasing, obtaining a local minimum at $R\simeq 2\,\mathrm{kpc}$ ($R/\Reff\simeq 0.2$), and a modestly increasing for $R \gtrsim 2\,\mathrm{kpc}$.
 
-\drafting{Why is this 
+\drafting{Jens: maybe you have some thoughts\dots Why is this 
 \begin{enumerate}
-    \item decreasing with increasing kicks,
     \item saturating beyond some point,
     \item displaying a dip at 0.2 Re??
 \end{enumerate}
@@ -388,29 +394,23 @@ Additionally, all $h_4$ profiles are radially decreasing, obtaining a local mini
     \label{fig:orbits}
 \end{figure*}
 
-We perform an orbit analysis on the sixteen merger remnants in our sample following \citet{frigo2021}.
+To understand the kinematic maps, we perform an orbit analysis on the sixteen merger remnants in our sample following \citet{frigo2021}.
 \drafting{Discuss how the orbit analysis is done, in particular the different orbital families}.
 First, the merger remnant is rotated so that the $z$-axis coincides with the minor axis of the reduced inertia tensor (and hence has the same orientation as the IFU maps in \autoref{fig:IFU0} and \autoref{fig:IFU900}).
 The potential of the merger remnant is fit using a \drafting{self consistent field (SCF) potential, describe more?} method, providing an analytical potential in which the orbits of individual stellar particles can be integrated.
 The potential of the merger remnant is checked for stability, and each stellar particle within $30\,\mathrm{kpc}$ of the centre is integrated for fifty orbits to determine which, if any, orbital resonances exist. 
 
-As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box orbits, and a lower fraction of $x$-tube orbits, than their lower kick velocity counterparts.
-The other five orbital families are generally consistent between all merger remnants. 
+As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box and boxlet orbits, and a lower fraction of $x$-tube orbits, and to some extent Keplerian orbits, than their lower kick velocity counterparts.
+The other two orbital families are generally consistent between all merger remnants. 
 As discussed in \citet{frigo2021}, negative values of $h_4$ indicate regions with weaker tails of the LOS velocity distribution due to the superposition of radial orbits with different orientations.
 This explanation supports our observation of an increase in $\pi$-box orbits (which have no net angular momentum are typically very radial orbits) with kick velocity, and a corresponding decrease in the value of $h_4$ (comparing the IFU maps in \autoref{fig:IFU0} to \autoref{fig:IFU900}).
 Equivalently, $x$-tube orbits (which rotate about the major axis of the inertia tensor) appear as a peaked LOS velocity distribution in the projection we use, leading to extended tails, and hence a more positive value of $h_4$ than for a weak tail distribution. 
 All together, we can infer that as a SMBH ploughs through the surrounding stellar environment, regular $x$-tube orbits are disrupted to non-resonant $\pi$-box orbits.
 With a higher kick velocity, the SMBH is able to cumulatively disturb orbits at a larger radial extent, converting a greater fraction of $x$-tube orbits to $\pi$-box orbits, resulting in the increased expanses of negative $h_4$ regions in the kinematic maps.
 This also explains the overall downward shift in the $\langle h_4 \rangle$ profiles in \autoref{fig:h4} for higher kick velocities. 
-\drafting{Why are the $\langle h_4 \rangle$ profiles consistent in shape though??}
-
-\drafting{
-    Might move this to discussion, just put here for now to get the idea down.
-    z-tubes not primary contributor to LOS velocity (rotation about z axis).
-    Higher kick correlated with reduction in x-tubes (orbits about the x-axis), increase in pi-box.
-    Pi-box show no resonant motion (no net ang. mom.)\dots here's the leap: reduced resonant motion seen as a reduction in `symmetric deviations' in line profile?
-    Also look directly at kinematic maps: 0 kick case. Dominated by x tubes at radii > 1kpc, small region of negative h4 extends to here before becoming positive. 
-}
+A peculiar feature of \autoref{fig:h4} is the consistency in the $\langle h_4 \rangle$ profile shape.
+This can be explained by the derivative of the orbital fraction distribution being consistent across all kick velocities for $x$-tube and boxlet orbits out to $\sim3\,\mathrm{kpc}$, as shown in \autoref{fig:orbits2}. 
+\drafting{Thorsten: I would really appreciate your thoughts on this section, and its relation to the kinematic maps. }
 
 
 % DISCUSSION
