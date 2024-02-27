@@ -320,14 +320,16 @@ class CoreKick(HierarchicalModel_2D):
             xlabels=[r"$r_\mathrm{b}/r_{\mathrm{b},0}$"],
             save=False,
         )
-        # add a secondary axis
+        rb_mode = self.calculate_mode("rb_posterior")
+        _logger.info(f"Forward-folded core radius mode is {rb_mode*self._rb0:.3f} kpc ({rb_mode:.3f} rb0)")
+        # add a secondary axis, turning off ticks from the top axis (if they are there)
+        ax.flatten()[0].tick_params(axis="x", which="both", top=False)
         rb02kpc = lambda x: x * self._rb0
         kpc2rb0 = lambda x: x / self._rb0
         secax = ax.flatten()[0].secondary_xaxis("top", functions=(rb02kpc, kpc2rb0))
         secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
-        return fig
 
     @classmethod
     def load_fit(

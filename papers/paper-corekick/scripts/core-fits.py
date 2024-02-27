@@ -147,6 +147,7 @@ def _helper(param_name, ax):
         m.set_alpha(1)
     for w in chain(bp["whiskers"], bp["caps"]):
         w.set_color("#373737")
+    return np.nanmedian(normalisation)
 
 
 xlabel = r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$"
@@ -224,9 +225,14 @@ elif args.param == "OOS":
 else:
     fig, ax = plt.subplots(1, 1)
     ax.set_xlabel(xlabel)
-    _helper(args.param, ax)
+    norm_val = _helper(args.param, ax)
     if args.param == "rb":
+        ax.tick_params(axis="y", which="both", right=False)
+        ax2 = ax.secondary_yaxis(
+            "right", functions=(lambda x: x * norm_val, lambda x: x / norm_val)
+        )
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
+        ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":

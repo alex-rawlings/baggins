@@ -9,7 +9,6 @@ except ImportError:
     use("Agg")
     import matplotlib.pyplot as plt
 import cm_functions as cmf
-import figure_config
 
 parser = argparse.ArgumentParser(
     "Determine core - kick relation",
@@ -87,6 +86,5 @@ if args.verbosity == "DEBUG":
     plt.show()
 
 ck.all_posterior_pred_plots()
-ax = ck.all_posterior_OOS_plots()
-cmf.plotting.savefig(figure_config.fig_path("rb_pdf.pdf"), force_ext=True)
+ck.all_posterior_OOS_plots()
 ck.print_parameter_percentiles(ck.latent_qtys)
