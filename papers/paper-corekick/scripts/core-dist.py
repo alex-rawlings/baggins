@@ -9,6 +9,7 @@ except ImportError:
     use("Agg")
     import matplotlib.pyplot as plt
 import cm_functions as cmf
+import figure_config # noqa
 
 parser = argparse.ArgumentParser(
     "Determine core - kick relation",
@@ -44,9 +45,9 @@ datafile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_da
 # simulation output data at the moment just before merger
 ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0000/output"
 # load the fit files
-fit_files = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240216215706_*.csv"
+fit_files = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240301163718*.csv"
 # set the escape velocity in km/s
-ESCAPE_VEL = 1200
+ESCAPE_VEL = 1800
 figname_base = "core-study/rb-dist"
 
 
