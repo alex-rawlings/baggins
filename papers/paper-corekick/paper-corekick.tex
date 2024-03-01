@@ -137,13 +137,15 @@ black hole physics -- galaxies: kinematics and dynamics -- methods: numerical --
 \section{Numerical Simulations}
 \label{sec:num_sims}
 
+\subsection{Simulation Code}
 \drafting{Taken from eccentricity paper, leave here as a guide for a similar description about Ketju}
-We construct a number of idealised galaxy merger simulations, which we evolve with our new version of the \ketju{} code \citep{mannerkoski2023,rantala2017}.
+We construct a number of idealised galaxy merger simulations, which we evolve with our new version of the \ketju{} code \citep{mannerkoski2023,rantala2017} coupled with \gadget{}.
 The dynamics of
 SMBHs, and stars in a small region around them, are integrated with an algorithmically regularised integrator \citep{rantala2020}, whereas the dynamics of the remaining particles
 is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) with second order multipoles. Together with hierarchical time integration this allows for
 symmetric interactions and manifest momentum conservation. \ketju{} also includes post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{blanchet2014}. 
 
+\subsection{Initial Conditions}
 \drafting{Rantala 2018 ICs}
 We model the merger of two gas-poor elliptical galaxies using collisionless merger simulations.
 Our galaxy initial conditions are chosen to match the model IC-3 presented in \citet{rantala2019}. 
@@ -155,13 +157,15 @@ The density profile is given by:
 \end{equation}
 The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the mass of a DM particle is set to $m_\mathrm{DM}=5\times10^6\,\Msun$.
 
-We create six independently Monte Carlo sampled galaxy ICs, and merge each combination of galaxies on a radial orbit.
+\subsection{Merger Simulations}
+We merge two independently Monte Carlo sampled galaxy ICs, creating an equal mass galaxy merger with a near-radial orbit. 
 The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
-We select a merger combination that results in a rapid coalescence of the BH binary, noting that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
-We then select the snapshot just prior to merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. Additionally, the merger remnant displays almost no triaxiality, as seen in the $\vk=0\,\kmps$ case in \autoref{sec:app_triax}. We check for this by directing the recoil kick along the global $y$-axis, and final identical evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
-The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant.
-We additionally run one simulation with a recoil kick above the escape velocity, with $\vk=2000\,\kmps$.
+The merger configuration results in a rapid coalescence of the BH binary, however we note that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
+We then select the snapshot just prior ($\sim8\,\mathrm{Myr}$) to the GW-driven SMBH merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. Additionally, the merger remnant displays almost no triaxiality, as seen in the $\vk=0\,\kmps$ case in \autoref{sec:app_triax}. We check for this by directing the recoil kick along the global $y$-axis, and final identical evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
+The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant, $v_\mathrm{esc}$.
+We additionally run one simulation with a recoil kick above $v_\mathrm{esc}$, with $\vk=2000\,\kmps$.
 Each child simulation is run until the median remnant SMBH velocity relative to the galaxy CoM \drafting{check abbreviation} velocity is less than $10\,\kmps$ for at least $0.1\,\mathrm{Gyr}$.
+The time to this point, from the time of SMBH binary coalescence, we term the `infall time'.
 Those simulations where the maximum displacement of the kicked SMBH exceeds $30\,\mathrm{kpc}$ are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
 In practice, this limits our sample of analysed simulations to those with $\vk\leq 900\,\kmps$, thus totalling sixteen simulations in our analysis.
 Interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
@@ -232,29 +236,31 @@ Example corner plots of the latent parameters can be found in \autoref{sec:app_f
 \drafting{Do we need specifics of MC parameters and exit conditions?}
 
 In agreement with previous studies \citep{nasim2021b}, we find an increase in the core radius $\rb$ with kick velocity.
-\drafting{Need to check if others discuss this:} We find that the core radius saturates to a value of $\sim2$ times that of the merger remnant with no kick velocity by $\vk = 600\,\kmps$, corresponding to half of the escape velocity of the merger remnant core. 
+\drafting{Need to check if others discuss this:} We find that the core radius saturates to a value of $\sim2$ times that of the merger remnant with no kick velocity by $\vk = 600\,\kmps$, corresponding to $0.3 v_\mathrm{esc}$. 
 As shown in \autoref{fig:csparams}, the density at the core radius $\Sigma_\mathrm{b}$ decreases monotonically with kick velocity, consistent with the picture of the kicked SMBH removing more mass the more number of oscillations it is able to undergo before settling to Brownian motion limits. 
 Interestingly, we observe a similar decrease in S\'ersic index $n$ with increasing kick velocity, although no correlation is seen between $n$ and $\Sigma_\mathrm{b}$ in the latent parameter corner plots (see for example \autoref{fig:csparams}).
 
+\subsection{Predicted core size distribution}
 Following \citet{nasim2021b}, we fit a power law of the form
 \begin{equation}\label{eq:vkrb}
     \frac{\rb}{r_{\mathrm{b},0}} = K \left( \frac{\vk}{v_\mathrm{esc}} \right)^\beta + 1
 \end{equation}
-to our simulations, which is thus valid for $0\leq\vk/\kmps\leq900$, or equivalently $0\leq\vk/v_\mathrm{esc}\leq 0.75$.
-We estimate the parameters $K$ and $\beta$ using HMC, and find median values of $K=2.830$ and $\beta=0.558$.
+to our simulations, which is thus valid for $0\leq\vk/\kmps\leq900$, or equivalently $0\leq\vk/v_\mathrm{esc}\leq 0.5$.
+We estimate the parameters $K$ and $\beta$ using HMC, and find median values of $K=3.70$ and $\beta=0.562$.
 
 Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal spin alignment (their Fig. 15, right panel).
-The dimensionless spin parameter for the dry mergers follows a beta distribution, namely:
+The dimensionless spin parameter $\alpha_\bullet$ for the dry mergers follows a beta distribution, namely:
 \begin{equation}
-    P_\mathrm{Zlochower}(\alpha) \propto (1-\alpha)^{4.66884-1} \alpha^{10.5868-1}
+    P_\mathrm{Zlochower}(\alpha_\bullet) \propto (1-\alpha_\bullet)^{4.66884-1} \alpha_\bullet^{10.5868-1}.
 \end{equation}
-This allows us to obtain a distribution of core radius values predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}.
-We find that the mode of the forward-folded core radius distribution is $1.61\,\mathrm{kpc}$ ($3.06\,r_{\mathrm{b},0}$).
+The range of kick velocities predicted by the model varies from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$ \drafting{check this}.
+Using transformation sampling allows us to obtain a distribution of core radii predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}.
+We find that the mode of the forward-folded core radius distribution is $1.64\,\mathrm{kpc}$ ($3.12\,r_{\mathrm{b},0}$).
 Thus, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, most massive elliptical galaxies should have a non-negligible core \drafting{add references}. 
 
 
 \begin{table}
-    \caption{Hyperparameter distributions for core-S\'ersic model.}
+    \caption{Hyperparameter distributions for core-S\'ersic model. $\mathcal{N}$ indicates a normal distribution, $\mathrm{Exp}(\lambda)$ indicates an exponential distribution.}
     \label{tab:hyper}
     \begin{tabular}{llc}
         \hline
@@ -278,7 +284,7 @@ Thus, assuming the \citet{zlochower2015} model to be a reasonable description of
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{dag}
-    \caption{Directed acyclic graph of the core-S\'ersic model of projected mass density within the Bayesian hierarchical framework. Single-line circle nodes represent fit parameters, double-line circles represent measured quantities (the data), and diamond nodes represent deterministic quantities. The particular distribution connecting nodes is written below the corresponding black square, with a subscript `T' indicating a truncated distribution, and the subscript `likelihood' indicating the likelihood function. The $R$ box indicates variables fit for each radial bin, and the projection box indicates variables specific to each projection realisation. Note that we additionally use $\hat{\Sigma}$ to distinguish the calculated value of surface density from the measured value $\Sigma$.}
+    \caption{Directed acyclic graph of the core-S\'ersic model of projected mass density within the Bayesian hierarchical framework. Single-line circle nodes represent fit parameters, double-line circles represent measured quantities (the data), and diamond nodes represent deterministic quantities. The particular distribution connecting nodes is written below the corresponding black square, with a subscript `T' indicating a truncated distribution, and the subscript `likelihood' indicating the likelihood function. The $R$ box indicates variables fit for each radial bin, and the projection box indicates variables specific to each projection realisation. Note that we additionally use $\hat{\Sigma}$ to distinguish the calculated value of surface density from the measured value $\Sigma$. The various distributions are normal ($\mathcal{N}$), exponential ($\mathrm{Exp}$), and Rayleigh ($\mathrm{Ray}$).}
     \label{fig:dag}
 \end{figure}
 
@@ -305,7 +311,7 @@ Thus, assuming the \citet{zlochower2015} model to be a reasonable description of
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{rb_pdf}
-    \caption{Probability density function of core radius, where kick velocity is MC sampled from Zlochower relation, and pumped through our fitted model in \autoref{eq:vkrb}.}
+    \caption{Probability density function of transformation sampled core radius. The SMBH kick velocity is Monte Carlo sampled from the \citet{zlochower2015} relation assuming randomly-aligned azimuthal spins, and pushed through the fitted model in \autoref{eq:vkrb}. The predicted kick velocities range from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$. \drafting{check this}}
     \label{fig:rb_pdf}
 \end{figure}
 
