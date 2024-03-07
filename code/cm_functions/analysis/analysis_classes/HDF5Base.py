@@ -94,7 +94,7 @@ class HDF5Base:
                     tmp = val[()]
                     try:
                         d[key] = tmp.decode(decode)
-                    except ValueError:  # TODO check this
+                    except AttributeError:
                         d[key] = tmp
                     # reload units if the data is a pygad.UnitArr
                     for a in val.attrs.values():
@@ -122,7 +122,7 @@ class HDF5Base:
             tmp = v[()]
             try:
                 std_val = tmp.decode(decode)
-            except ValueError:  # TODO check this
+            except AttributeError:
                 std_val = tmp
             # reload units if the data is a pygad.UnitArr
             for a in v.attrs.values():
