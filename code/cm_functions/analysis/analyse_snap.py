@@ -41,6 +41,7 @@ __all__ = [
     "softened_inverse_r",
     "softened_acceleration",
     "add_to_loss_cone_refill",
+    "find_bound_particles"
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -1305,3 +1306,84 @@ def add_to_loss_cone_refill(snap, J_lc, prev):
     """
     in_cone_ids = set(snap["ID"][pygad.utils.geo.dist(snap["angmom"]) < J_lc])
     return prev.union(in_cone_ids)
+
+
+def find_bound_particles(snap):
+    try:
+        num_bhs = len(snap.bh)
+        assert num_bhs >0 and num_bhs<3
+    except AssertionError:
+        _logger.exception("At least 1 and no more than 2 BHs must be present in the snapshot!", exc_info=True)
+
+    class Central:
+        def __init__(self) -> None:
+            self._mass = []
+            self._pos = []
+            self._vel = []
+            self._ids = []
+
+        @property
+        def mass(self):
+            return np.sum(self._mass)
+
+        @property
+        def pos(self):
+            return np.average(self._pos, axis=0, weights=self._mass)
+
+        @property
+        def vel(self):
+            return np.average(self._vel, axis=0, weights=self._mass)
+
+        def update(self, pid, m, x, v):
+            def _checker(q):
+                if isinstance(q, list):
+                    return q
+                elif isinstance(q, (np.ndarray, pygad.UnitArr)):
+                    return q.tolist()
+                else:
+                    raise ValueError(f"Input must be type list, np.ndarray, or pygad.UnitArr, not {type(q)}")
+            self._ids.append(pid)
+            self._mass.append(m)
+            self._pos.append(_checker(x))
+            self._vel.append(_checker(v))
+
+    central = Central()
+    for i in range(len(snap.bh)):
+        central.update(snap.bh["ID"][i], snap.bh["mass"][i], snap.bh["pos"][i,:], snap.bh["vel"][i,:])
+    iters = 0
+    start_t = datetime.now()
+    G = pygad.UnitScalar(4.3009e-6, "kpc/Msol*(km/s)**2")
+    while True:
+        # recentre on the central object
+        trans = pygad.Translation(-central.pos)
+        boost = pygad.Boost(-central.vel)
+        trans.apply(snap, total=True)
+        boost.apply(snap, total=True)
+
+        # sort stellar particles so we can sequentially add them to the central object
+        ids_new = pygad.IDMask(
+            list(set(snap.stars["ID"]) - set(central._ids))
+        )
+        subsnap = snap.stars[ids_new]
+        nearest_star_idx = np.argmin(subsnap["r"])
+        KE = pygad.UnitArr(0.5 * np.linalg.norm(subsnap["vel"][nearest_star_idx])**2, "(km/s)**2")
+        PE = G * pygad.UnitScalar(central.mass, "Msol") / pygad.UnitArr(subsnap["r"][nearest_star_idx], subsnap["r"].units)
+        print(KE)
+        print(PE)
+        if KE - PE > 0:
+            _logger.info(f"All bound particles found after {iters} iterations.")
+            break
+        else:
+            # move to original coordinate frame, so that the list of coordinates is consistent for the Central object
+            trans.inverse().apply(snap, total=True)
+            boost.inverse().apply(snap, total=True)
+            central.update(
+                subsnap["ID"][nearest_star_idx],
+                subsnap["mass"][nearest_star_idx],
+                subsnap["pos"][nearest_star_idx],
+                subsnap["vel"][nearest_star_idx]
+            )
+        iters += 1
+    _logger.info(f"Bound particle search took {datetime.now()-start_t}")
+    return central._ids
+
