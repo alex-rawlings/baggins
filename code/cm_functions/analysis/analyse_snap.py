@@ -40,8 +40,7 @@ __all__ = [
     "velocity_anisotropy",
     "softened_inverse_r",
     "softened_acceleration",
-    "add_to_loss_cone_refill",
-    "find_bound_particles"
+    "add_to_loss_cone_refill"
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -1308,7 +1307,7 @@ def add_to_loss_cone_refill(snap, J_lc, prev):
     return prev.union(in_cone_ids)
 
 
-def find_bound_particles(snap):
+def find_bound_particles_python(snap):
     try:
         num_bhs = len(snap.bh)
         assert num_bhs >0 and num_bhs<3
