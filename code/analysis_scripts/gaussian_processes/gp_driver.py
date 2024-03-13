@@ -1,7 +1,7 @@
 import os.path
-import cm_functions as cmf
+import baggins as bgs
 
-parser = cmf.utils.argparse_for_stan(
+parser = bgs.utils.argparse_for_stan(
     "Run Gaussian process method for deflection angle - eccentricity relation."
 )
 parser.add_argument(
@@ -16,7 +16,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", args.verbose)
+SL = bgs.setup_logger("script", args.verbose)
 
 if args.type == "new":
     hmq_dirs = []
@@ -26,17 +26,17 @@ if args.type == "new":
         SL.debug(f"Directories are: {hmq_dirs}")
 else:
     hmq_dirs = None
-analysis_params = cmf.utils.read_parameters(args.apf)
+analysis_params = bgs.utils.read_parameters(args.apf)
 
 figname_base = "gaussian_processes"
 model_file = "stan/gp.stan"
 
 if args.type == "loaded":
-    GP = cmf.analysis.DeflectionAngleGP.load_fit(
+    GP = bgs.analysis.DeflectionAngleGP.load_fit(
         model_file, args.dir, figname_base, args.NOOS
     )
 else:
-    GP = cmf.analysis.DeflectionAngleGP(model_file, "", figname_base, args.NOOS)
+    GP = bgs.analysis.DeflectionAngleGP(model_file, "", figname_base, args.NOOS)
 
 GP.extract_data(analysis_params, hmq_dirs)
 e_ini = f"e0-{GP.e_ini:.2f}".replace(".", "")
@@ -45,7 +45,7 @@ GP.figname_base = os.path.join(GP.figname_base, f"{e_ini}/{e_ini}")
 GP.set_stan_data()
 
 analysis_params["stan"]["deflection_GP_kwargs"]["output_dir"] = os.path.join(
-    cmf.DATADIR, f"stan_files/gps/{e_ini}"
+    bgs.DATADIR, f"stan_files/gps/{e_ini}"
 )
 
 GP.sample_model(sample_kwargs=analysis_params["stan"]["deflection_GP_kwargs"])

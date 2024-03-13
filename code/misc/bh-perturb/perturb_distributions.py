@@ -4,7 +4,7 @@ import pandas as pd
 import scipy.stats 
 import matplotlib.pyplot as plt
 import seaborn as sns
-import cm_functions as cmf
+import baggins as bgs
 
 
 main_data_path = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/pickle/bh_perturb/"
@@ -22,15 +22,15 @@ ax[0].set_yscale("log")
 ax[1].set_yscale("log")
 ax[0].set_title("Position")
 ax[1].set_title("Velocity")
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 name_list = []
 Astat_pos = np.full_like(data_files, np.nan, dtype=float)
 Astat_vel = np.full_like(Astat_pos, np.nan)
 for i, datafile in enumerate(data_files):
-    data_dict = cmf.utils.load_data(os.path.join(main_data_path, datafile))
+    data_dict = bgs.utils.load_data(os.path.join(main_data_path, datafile))
     time_mask = data_dict["times"] > time_lower
-    displacement = cmf.mathematics.radial_separation(data_dict["diff_x"])[time_mask]
-    vel_mag = cmf.mathematics.radial_separation(data_dict["diff_v"])[time_mask]
+    displacement = bgs.mathematics.radial_separation(data_dict["diff_x"])[time_mask]
+    vel_mag = bgs.mathematics.radial_separation(data_dict["diff_v"])[time_mask]
     names = [data_dict["galaxy_name"]] * len(displacement)
     tempdict = {"radial":displacement, "velmag":vel_mag, "name":names}
     #perform the Anderson-Darling test for normality
@@ -56,6 +56,6 @@ ax[0].legend()
 #plot the displacement and velocity magnitudes, with a kernel-density estimate
 p = sns.jointplot(data=dataframe, x="radial", y="velmag", hue="name")
 p.set_axis_labels("Radial Displacement [kpc]", "Velocity Magnitude [km/s]")
-fig.savefig(os.path.join(cmf.FIGDIR, "brownian/anderson.png"))
-p.figure.savefig(os.path.join(cmf.FIGDIR, "brownian/all_brownian.png"))
+fig.savefig(os.path.join(bgs.FIGDIR, "brownian/anderson.png"))
+p.figure.savefig(os.path.join(bgs.FIGDIR, "brownian/all_brownian.png"))
 plt.show()

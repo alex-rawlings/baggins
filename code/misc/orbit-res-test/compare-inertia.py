@@ -1,15 +1,15 @@
-from cm_functions.utils.data_handling import save_data
+from baggins.utils.data_handling import save_data
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import cm_functions as cmf
+import baggins as bgs
 
 inertia_data = "./inertia-data"
 orbits = ["0-001", "0-005", "0-030", "0-180", "1-000"]
 resolutions = ["fiducial", "x02", "x05", "x10"]
 
 fig, ax = plt.subplots(5, 2, figsize=(6, 6), sharex='all', sharey='all')
-cols_list = cmf.plotting.mplColours()
+cols_list = bgs.plotting.mplColours()
 cols = dict(zip(resolutions, cols_list))
 
 files = []
@@ -22,7 +22,7 @@ for ind, this_file in enumerate(files):
     for ind2, orbit in enumerate(orbits):
         if orbit in this_file:
             #print("Reading: {}".format(this_file))
-            save_dict = cmf.utils.load_data(this_file)
+            save_dict = bgs.utils.load_data(this_file)
             res = this_file.split("/")[-1].split("-")[1]
             init_idx = len(list(save_dict["ratios"].values())[0])+10
             below09_idx = [init_idx, init_idx]

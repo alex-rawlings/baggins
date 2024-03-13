@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 import figure_config
 
 
@@ -14,7 +14,7 @@ e90_data_raw = "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentri
 e99_data_raw = "/scratch/pjohanss/arawling/collisionless_merger/mergers/eccentricity_study/e-099/500K"
 
 # some analysis parameters
-analysis_params = cmf.utils.read_parameters("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml")
+analysis_params = bgs.utils.read_parameters("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml")
 
 
 # initialise the figure
@@ -31,25 +31,25 @@ col = None
 start_idx = 2
 tmin = 1e-2
 t0 = np.full((10,2), np.nan)
-kpc = cmf.general.units.kpc
+kpc = bgs.general.units.kpc
 
 for j, (suite, dp, label) in enumerate(zip(
                 (e90_data_raw, e99_data_raw),
                 (e90_data_path, e99_data_path),
                 (r"$e_0=0.90$", r"$e_0=0.99$")
                 )):
-    ketju_files = cmf.utils.get_ketjubhs_in_dir(suite)
-    HMQ_files = cmf.utils.get_files_in_dir(dp)
+    ketju_files = bgs.utils.get_ketjubhs_in_dir(suite)
+    HMQ_files = bgs.utils.get_files_in_dir(dp)
     for i, (kf, hf) in enumerate(zip(ketju_files, HMQ_files)):
         print(f"Plotting data from directory {j} run {i}...         ", end="\r")
-        bh1, bh2, merged = cmf.analysis.get_bound_binary(kf)
+        bh1, bh2, merged = bgs.analysis.get_bound_binary(kf)
         op = ketjugw.orbital_parameters(bh1, bh2)
-        hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(hf)
+        hmq = bgs.analysis.HMQuantitiesBinaryData.load_from_file(hf)
         after_hard_mask = op["a_R"]/kpc < np.nanmedian(hmq.hardening_radius)
         afm0 = after_hard_mask[0]
-        t = (op["t"] - op["t"][0]) / cmf.general.units.Myr
+        t = (op["t"] - op["t"][0]) / bgs.general.units.Myr
         # skip first index as we only plot from t[1:] (note the concatenation)
-        t0[i,j] = op["t"][1] / cmf.general.units.Myr
+        t0[i,j] = op["t"][1] / bgs.general.units.Myr
         tmin = min(tmin, t[start_idx])
         t = np.concatenate(([t[0]-t[1]], t)) 
         e = np.concatenate(([1], op["e_t"]))
@@ -72,5 +72,5 @@ ax.set_xlim(5e-2, 50)
 ax.set_ylim(0,1)
 print("\nComplete         ")
 
-cmf.plotting.savefig(figure_config.fig_path("eccentricities.pdf"), force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("eccentricities.pdf"), force_ext=True)
 plt.show()

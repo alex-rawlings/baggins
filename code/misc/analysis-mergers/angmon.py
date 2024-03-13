@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 import pygad
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 centering = True
 pidx = "007"
@@ -20,15 +20,15 @@ if False:
     print(snap.stars["angmom"].min())
 
     print(len(snap.stars))
-    J_lc = cmf.analysis.loss_cone_angular_momentum(snap, pygad.UnitScalar(10, "pc"))
+    J_lc = bgs.analysis.loss_cone_angular_momentum(snap, pygad.UnitScalar(10, "pc"))
     print(J_lc)
     b = snap.stars["angmom"] < J_lc
     print(np.sum(b))
 
 if False:
-    bhb = cmf.analysis.BHBinary("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AC/AC-030-0050.py", perturbID=pidx, apfile=os.path.join(cmf.HOME, "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.py"))
-    #xcom = cmf.analysis.get_com_of_each_galaxy(snap)
-    #vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
+    bhb = bgs.analysis.BHBinary("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AC/AC-030-0050.py", perturbID=pidx, apfile=os.path.join(bgs.HOME, "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.py"))
+    #xcom = bgs.analysis.get_com_of_each_galaxy(snap)
+    #vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
     idx = 0
     xmin = 99
     xmax = -99
@@ -45,7 +45,7 @@ if False:
         snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
         snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
 
-        t = bhb.time_offset+cmf.general.convert_gadget_time(snap, new_unit='Myr')
+        t = bhb.time_offset+bgs.general.convert_gadget_time(snap, new_unit='Myr')
 
         cols = ["tab:blue", "k"]
         marker = [",", "o"]
@@ -77,7 +77,7 @@ if False:
         ax[2].set_xticks([-1e12, -1e8, -1e4, 0, 1e4, 1e8, 1e12])
         snap.delete_blocks()
         plt.tight_layout()
-        plt.savefig(os.path.join(cmf.FIGDIR, f"analysis-explore/ang-mom/AC-030-0050-{idx:03d}.png"))
+        plt.savefig(os.path.join(bgs.FIGDIR, f"analysis-explore/ang-mom/AC-030-0050-{idx:03d}.png"))
         plt.close()
         idx += 1
     print(f"xmin: {xmin:.3e}")
@@ -87,9 +87,9 @@ if False:
 
 
 if True:
-    bhb = cmf.analysis.BHBinary("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AC/AC-030-0050.py", perturbID=pidx, apfile=os.path.join(cmf.HOME, "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.py"))
-    #xcom = cmf.analysis.get_com_of_each_galaxy(snap)
-    #vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
+    bhb = bgs.analysis.BHBinary("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/main/AC/AC-030-0050.py", perturbID=pidx, apfile=os.path.join(bgs.HOME, "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.py"))
+    #xcom = bgs.analysis.get_com_of_each_galaxy(snap)
+    #vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
     idx = 0
     t = []
     b0 = []
@@ -105,7 +105,7 @@ if True:
         snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
         snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
 
-        t.append(bhb.time_offset+cmf.general.convert_gadget_time(snap, new_unit='Myr'))
+        t.append(bhb.time_offset+bgs.general.convert_gadget_time(snap, new_unit='Myr'))
         subsnap = getattr(snap, "bh")
         btemp = -subsnap["mass"] * subsnap["pot"] - 0.5 * subsnap["mass"] * pygad.utils.geo.dist(subsnap["vel"])**2
         b0.append(btemp[0])
@@ -117,4 +117,4 @@ if True:
     plt.legend()
     plt.xlabel("t/Myr")
     plt.ylabel(r"$\mathcal{E}/m=-v^2/2 - \Phi(r)$")
-    plt.savefig(os.path.join(cmf.FIGDIR, f"analysis-explore/binding-energy-AC-030-0050-{idx:03d}.png"))
+    plt.savefig(os.path.join(bgs.FIGDIR, f"analysis-explore/binding-energy-AC-030-0050-{idx:03d}.png"))

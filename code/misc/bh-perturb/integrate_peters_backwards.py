@@ -2,7 +2,7 @@ import numpy as np
 import os.path
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 
 main_path = "/scratch/pjohanss/arawling/collisionless_merger/merger-test/D-E-3.0-0.001/perturbations/"
@@ -16,14 +16,14 @@ fig, ax = plt.subplots(2,2, sharex="all")
 for i in (2,):
     label = "{:03d}".format(i)
     bhfile = os.path.join(main_path, label, data_file)
-    bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
+    bh1, bh2, merged = bgs.analysis.get_bound_binary(bhfile)
     op = ketjugw.orbital_parameters(bh1, bh2)
     ax[0,0].semilogy(op["t"]/myr, op["a_R"]/ketjugw.units.pc, label=label)
     ax[0,1].plot(op["t"]/myr, op["e_t"])
     peter_a, peter_e, peter_n, peter_l = ketjugw.peters_evolution(op["a_R"][-1], op["e_t"][-1], op["m0"][0], op["m1"][0], -op["t"])
     peter_a = peter_a[::-1]
     peter_e = peter_e[::-1]
-    idx, gwtime = cmf.analysis.find_where_gw_dominate(op, err_level)
+    idx, gwtime = bgs.analysis.find_where_gw_dominate(op, err_level)
     ax[0,0].plot(op["t"]/myr, peter_a/ketjugw.units.pc)
     ax[0,1].plot(op["t"]/myr, peter_e)
     ax[1,0].semilogy(op["t"]/myr, np.abs((op["a_R"]-peter_a)/op["a_R"]))

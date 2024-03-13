@@ -4,7 +4,7 @@ import numpy as np
 import ketjugw
 import h5py
 import merger_ic_generator as mig
-from cm_functions.mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
+from baggins.mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
 
 # set input
 a0 = 0.5

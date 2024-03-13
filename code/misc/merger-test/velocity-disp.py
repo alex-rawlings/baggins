@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 snapfile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.1/perturbations/003/output/AC_perturb_003_005.hdf5"
@@ -23,7 +23,7 @@ else:
     means = np.full(reps, np.nan)
     for i in range(reps):
         print(i)
-        Q = cmf.analysis.projected_quantities(snap, obs=4)
+        Q = bgs.analysis.projected_quantities(snap, obs=4)
         print(list(Q.values())[0]["vsig"])
         means[i] = np.nanmean(list(Q.values())[0]["vsig"])
     print(means)

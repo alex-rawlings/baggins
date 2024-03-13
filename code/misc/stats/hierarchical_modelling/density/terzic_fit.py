@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 
-my_stan = cmf.analysis.StanModel("stan/terzic_prior.stan", "stan/terzic_prior.stan", None, "stats/terzic_density")
+my_stan = bgs.analysis.StanModel("stan/terzic_prior.stan", "stan/terzic_prior.stan", None, "stats/terzic_density")
 
 data = dict(
     R = np.geomspace(1e-2, 1e2, 100),

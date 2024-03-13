@@ -2,7 +2,7 @@
 # TODO ensure subplots are the same size
 
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 def plot_circle(ax, r=1, center=(0, 0), **kwargs):
@@ -10,7 +10,7 @@ def plot_circle(ax, r=1, center=(0, 0), **kwargs):
     ax.add_artist(circle)
 
 
-data_dict = cmf.utils.load_data(
+data_dict = bgs.utils.load_data(
     "../analysis_scripts/pickle/bh_perturb/NGCa4291_bhperturb.pickle"
 )
 
@@ -21,10 +21,10 @@ for axi in ax:
 ax[0].scatter(
     data_dict["diff_x"][:, 0], data_dict["diff_x"][:, 2], c="k", marker=".", label="BH"
 )
-cmf.plotting.draw_sizebar(ax[0], 1e-2, units="pc", unitconvert="kilo2base")
+bgs.plotting.draw_sizebar(ax[0], 1e-2, units="pc", unitconvert="kilo2base")
 plot_circle(ax[0], 1.11e-2, color="tab:blue", ls="--", label=r"$1\sigma$")
 ax[1].scatter(data_dict["diff_v"][:, 0], data_dict["diff_v"][:, 2], c="k", marker=".")
-cmf.plotting.draw_sizebar(ax[1], 10, units="km/s")
+bgs.plotting.draw_sizebar(ax[1], 10, units="km/s")
 plot_circle(ax[1], 12.8, color="tab:blue", ls="--")
 ax[0].legend(loc="upper left")
 plt.show()

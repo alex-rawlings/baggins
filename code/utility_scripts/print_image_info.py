@@ -1,5 +1,5 @@
 import argparse
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(description="Print imge metadata")
@@ -9,4 +9,4 @@ args = parser.parse_args()
 
 print(f"Metadata for image {args.img}: ")
 print("--------")
-cmf.plotting.get_meta(args.img)
+bgs.plotting.get_meta(args.img)

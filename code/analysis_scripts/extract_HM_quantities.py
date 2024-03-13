@@ -4,7 +4,7 @@ import os
 import re
 import datetime
 from numpy import arange
-import cm_functions as cmf
+import baggins as bgs
 
 
 # set up command line arguments
@@ -42,14 +42,14 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbose",
     default="INFO",
     help="verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbose)
+SL = bgs.setup_logger("script", args.verbose)
 
 
 class _Extractor:
@@ -69,10 +69,10 @@ class _Extractor:
         self.analysis_params_file = apf
         self.merger_params_files = mpf
         self.overwrite = overwrite
-        self.analysis_params = cmf.utils.read_parameters(apf)
+        self.analysis_params = bgs.utils.read_parameters(apf)
         self.merger_params = []
         for m in self.merger_params_files:
-            self.merger_params.append(cmf.utils.read_parameters(m))
+            self.merger_params.append(bgs.utils.read_parameters(m))
         self._make_family_name()
         self._merger_ids = []
         self._child_dirs = []
@@ -124,7 +124,7 @@ class _Extractor:
 
     def extract(self, i):
         try:
-            hmq = cmf.analysis.HMQuantitiesBinary(
+            hmq = bgs.analysis.HMQuantitiesBinary(
                 self.analysis_params_file,
                 self.merger_params_files[i],
                 self.child_dirs[i],
@@ -218,7 +218,7 @@ class ExtractorKick(_Extractor):
             allow output directory overwriting, by default False
         """
         super().__init__(apf, mpf, overwrite)
-        run_details = cmf.utils.read_parameters(kickinfo)
+        run_details = bgs.utils.read_parameters(kickinfo)
         run_dir = run_details["parent_dir"]
         self.snap_nums = [
             i for i in list(run_details["snap_nums"].values()) if i is not None
@@ -240,7 +240,7 @@ class ExtractorKick(_Extractor):
 
     def extract(self, i):
         try:
-            hmq = cmf.analysis.HMQuantitiesSingle(
+            hmq = bgs.analysis.HMQuantitiesSingle(
                 self.analysis_params_file,
                 self.merger_params_files[0],
                 self.child_dirs[i],
@@ -264,7 +264,7 @@ if __name__ == "__main__":
         if os.path.isfile(args.mpf):
             extractor = ExtractorMCS(args.apf, [args.mpf], args.overwrite)
         elif os.path.isdir(args.mpf):
-            mpfs = cmf.utils.get_files_in_dir(args.mpf, ext=".yml")
+            mpfs = bgs.utils.get_files_in_dir(args.mpf, ext=".yml")
             extractor = ExtractorMCS(args.apf, mpfs, args.overwrite)
         else:
             try:

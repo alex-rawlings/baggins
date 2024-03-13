@@ -1,7 +1,7 @@
 import argparse
 import yaml
 from matplotlib import rcParams
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -34,7 +34,7 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbose",
     default="INFO",
     help="verbosity level",
@@ -42,10 +42,10 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", console_level=args.verbose)
+SL = bgs.setup_logger("script", console_level=args.verbose)
 
 if args.publish:
-    cmf.plotting.set_publishing_style()
+    bgs.plotting.set_publishing_style()
     full_figsize = rcParams["figure.figsize"]
     full_figsize[0] *= 2
 else:
@@ -54,7 +54,7 @@ else:
 with open(args.files, "r") as f:
     stan_files = yaml.safe_load(f)
 
-analysis_params = cmf.utils.read_parameters(args.apf)
+analysis_params = bgs.utils.read_parameters(args.apf)
 
 for family, files in stan_files.items():
     figname_base = (
@@ -74,12 +74,12 @@ for family, files in stan_files.items():
                 exc_info=True,
             )
             raise
-        quinlan_model = cmf.analysis.QuinlanModelSimple.load_fit(
+        quinlan_model = bgs.analysis.QuinlanModelSimple.load_fit(
             model_file="stan/quinlan_simple.stan",
             fit_files=files["stan_quinlan"],
             figname_base=figname_base,
         )
-        kepler_model = cmf.analysis.KeplerModelSimple.load_fit(
+        kepler_model = bgs.analysis.KeplerModelSimple.load_fit(
             model_file="stan/binary_simple.stan",
             fit_files=files["stan_binary"],
             figname_base=figname_base,
@@ -95,12 +95,12 @@ for family, files in stan_files.items():
                 exc_info=True,
             )
             raise
-        quinlan_model = cmf.analysis.QuinlanModelHierarchy.load_fit(
+        quinlan_model = bgs.analysis.QuinlanModelHierarchy.load_fit(
             model_file="stan/quinlan_hierarchy.stan",
             fit_files=files["stan_quinlan"],
             figname_base=figname_base,
         )
-        kepler_model = cmf.analysis.KeplerModelHierarchy.load_fit(
+        kepler_model = bgs.analysis.KeplerModelHierarchy.load_fit(
             model_file="stan/binary_hierarchy.stan",
             fit_files=files["stan_binary"],
             figname_base=figname_base,

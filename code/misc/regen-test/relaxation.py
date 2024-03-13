@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 snapfiles = [
@@ -17,11 +17,11 @@ labval = ["low-res-", "high-res-"]
 fig, ax = plt.subplots(3,1, sharex="all")
 for ind, snapfile in enumerate(snapfiles):
     snap = pygad.Snapshot(snapfile, physical=True)
-    star_id_masks = cmf.analysis.get_all_id_masks(snap)
-    dm_id_masks = cmf.analysis.get_all_id_masks(snap, family="dm")
-    xcoms= cmf.analysis.get_com_of_each_galaxy(snap, initial_radius=100, masks=dm_id_masks, family="dm")
-    vcoms = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=dm_id_masks, family="dm")
-    Rvirs, Mvirs = cmf.analysis.get_virial_info_of_each_galaxy(snap, xcoms, masks=[star_id_masks, dm_id_masks])
+    star_id_masks = bgs.analysis.get_all_id_masks(snap)
+    dm_id_masks = bgs.analysis.get_all_id_masks(snap, family="dm")
+    xcoms= bgs.analysis.get_com_of_each_galaxy(snap, initial_radius=100, masks=dm_id_masks, family="dm")
+    vcoms = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=dm_id_masks, family="dm")
+    Rvirs, Mvirs = bgs.analysis.get_virial_info_of_each_galaxy(snap, xcoms, masks=[star_id_masks, dm_id_masks])
     for bhid in dm_id_masks.keys():
         xcom = xcoms[bhid]
         vcom = vcoms[bhid]
@@ -31,11 +31,11 @@ for ind, snapfile in enumerate(snapfiles):
         snap["vel"] -= vcom
         subsnap = snap[id_mask]
         bins = np.arange(0, np.max(subsnap["r"]), bin_width)
-        vel_magnitudes = cmf.mathematics.radial_separation(subsnap["vel"])
+        vel_magnitudes = bgs.mathematics.radial_separation(subsnap["vel"])
         particles_per_bin,*_ = np.histogram(subsnap["r"], bins=bins)
         mean_vel_per_bin, bin_edges, *_ = scipy.stats.binned_statistic(subsnap["r"], vel_magnitudes, statistic="mean", bins=bins)
         sd_vel_per_bin, bin_edges, *_ = scipy.stats.binned_statistic(subsnap["r"], vel_magnitudes, statistic="std", bins=bins)
-        R_of_bins = cmf.mathematics.get_histogram_bin_centres(bin_edges)
+        R_of_bins = bgs.mathematics.get_histogram_bin_centres(bin_edges)
 
         mask = particles_per_bin > 10
         particles_per_bin = particles_per_bin[mask]

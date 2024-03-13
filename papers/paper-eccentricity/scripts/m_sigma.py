@@ -1,20 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 gal_dir = "/scratch/pjohanss/arawling/collisionless_merger/galaxies/dehnen"
 
-gals = cmf.utils.get_files_in_dir(gal_dir, recursive=True)
+gals = bgs.utils.get_files_in_dir(gal_dir, recursive=True)
 
 fig, ax = plt.subplots(1,1)
 ax.set_xlabel(r"$\log_{10}(\sigma/[\mathrm{km/s}])$")
 ax.set_ylabel(r"$\log_{10}(M_\bullet/\mathrm{M}_\odot)$")
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 
 # add data from observations
-BHsigmaData = cmf.literature.LiteratureTables("vdBosch_2016")
+BHsigmaData = bgs.literature.LiteratureTables("vdBosch_2016")
 ax.errorbar(BHsigmaData.table.loc[:,"logsigma"], BHsigmaData.table.loc[:,"logBHMass"], xerr=BHsigmaData.table.loc[:,"e_logsigma"], yerr=[BHsigmaData.table.loc[:,"e_logBHMass"], BHsigmaData.table.loc[:,"E_logBHMass"]], marker=".", ls="None", elinewidth=0.5, capsize=0, zorder=1, label="Bosch+16", c="k", alpha=0.4)
 
 

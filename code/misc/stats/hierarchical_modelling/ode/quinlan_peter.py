@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import ketjugw
 
 
@@ -35,13 +35,13 @@ def extract_data(pickle_file, min_radius=10):
     myr = ketjugw.units.yr * 1e6
 
     # files to read
-    bhfiles = cmf.utils.get_ketjubhs_in_dir(data_path)
-    cube_files = cmf.utils.get_files_in_dir(cube_path)
+    bhfiles = bgs.utils.get_ketjubhs_in_dir(data_path)
+    cube_files = bgs.utils.get_files_in_dir(cube_path)
     print("Extracting new dataset...")
     for j, (bhfile, cubefile) in enumerate(zip(bhfiles, cube_files), start=1):
         print(bhfile)
-        cdc = cmf.analysis.ChildSimData.load_from_file(cubefile)
-        bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
+        cdc = bgs.analysis.ChildSimData.load_from_file(cubefile)
+        bh1, bh2, merged = bgs.analysis.get_bound_binary(bhfile)
         orbit_energy = ketjugw.orbital_energy(bh1, bh2)
         orbit_params = ketjugw.orbital_parameters(bh1, bh2)
         idx_0, idx_f = _get_params_in_timespan(orbit_params["a_R"]/ketjugw.units.pc, cdc.r_hard, min_radius)
@@ -63,7 +63,7 @@ if args.extract:
 
 
 # set up Stan Model
-my_stan = cmf.analysis.StanModel("stan/quinlan_peter.stan", "stan/quinlan_peter_prior.stan", args.obs_file, figname_base="stats/quinlan_peter/qp", random_select_obs={"num":40, "group":"name"})
+my_stan = bgs.analysis.StanModel("stan/quinlan_peter.stan", "stan/quinlan_peter_prior.stan", args.obs_file, figname_base="stats/quinlan_peter/qp", random_select_obs={"num":40, "group":"name"})
 
 my_stan.categorical_label = "name"
 print(my_stan.obs)

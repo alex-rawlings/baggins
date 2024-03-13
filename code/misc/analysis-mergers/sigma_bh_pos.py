@@ -1,7 +1,7 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 
@@ -33,24 +33,24 @@ if False:
     for d in dirs:
         seps = []
         hard_scatter_time = []
-        ketjufiles = cmf.utils.get_ketjubhs_in_dir(d)
+        ketjufiles = bgs.utils.get_ketjubhs_in_dir(d)
         for i, kf1 in enumerate(ketjufiles):
-            bhA1, bhA2 = cmf.analysis.get_binary_before_bound(kf1)
-            bhA1, bhA2 = cmf.analysis.move_to_centre_of_mass(bhA1, bhA2)
+            bhA1, bhA2 = bgs.analysis.get_binary_before_bound(kf1)
+            bhA1, bhA2 = bgs.analysis.move_to_centre_of_mass(bhA1, bhA2)
             
             if only_scatter_angle:
-                peri_times, peri_idx, sep = cmf.analysis.find_pericentre_time(bhA1, bhA2, return_sep=True, prominence=0.005)
-                hard_angles = cmf.analysis.deflection_angle(bhA1, bhA2, peri_idx)
+                peri_times, peri_idx, sep = bgs.analysis.find_pericentre_time(bhA1, bhA2, return_sep=True, prominence=0.005)
+                hard_angles = bgs.analysis.deflection_angle(bhA1, bhA2, peri_idx)
                 print(hard_angles)
-                idx = cmf.analysis.first_major_deflection_angle(hard_angles, threshold_angle)[1]
+                idx = bgs.analysis.first_major_deflection_angle(hard_angles, threshold_angle)[1]
                 if idx is not None:
-                    hard_scatter_time.append(peri_times[idx]/cmf.general.units.Myr)
+                    hard_scatter_time.append(peri_times[idx]/bgs.general.units.Myr)
                 continue
 
             for j, kf2 in enumerate(ketjufiles[i+1:], start=i+1):
                 print(f"Determining offset between {i} and {j}")
-                bhB1, bhB2 = cmf.analysis.get_binary_before_bound(kf2)
-                bhB1, bhB2 = cmf.analysis.move_to_centre_of_mass(bhB1, bhB2)
+                bhB1, bhB2 = bgs.analysis.get_binary_before_bound(kf2)
+                bhB1, bhB2 = bgs.analysis.move_to_centre_of_mass(bhB1, bhB2)
 
                 # truncate to common length
                 bhA1 = bhA1[:len(bhB1)]
@@ -59,8 +59,8 @@ if False:
                 bhB2 = bhB2[:len(bhA1)]
 
                 for k, (axi, bh1, bh2) in enumerate(zip(ax, (bhA1, bhA2), (bhB1, bhB2))):
-                    sep = cmf.mathematics.radial_separation(bh1.x-bh1.x[0,:], bh2.x-bh2.x[0,:]) / cmf.general.units.kpc
-                    t = bh1.t/cmf.general.units.Myr
+                    sep = bgs.mathematics.radial_separation(bh1.x-bh1.x[0,:], bh2.x-bh2.x[0,:]) / bgs.general.units.kpc
+                    t = bh1.t/bgs.general.units.Myr
                     #axi.plot(t, sep)
                     if k==0:
                         seps.append(sep)
@@ -75,13 +75,13 @@ if False:
                 seps = seps
             )
     if not only_scatter_angle:
-        cmf.utils.save_data(data, f"sigma-BH-pos-e{os.path.basename(mainpath)[3:]}.pickle")
+        bgs.utils.save_data(data, f"sigma-BH-pos-e{os.path.basename(mainpath)[3:]}.pickle")
         plt.show()
 else:
-    cols = cmf.plotting.mplColours()
+    cols = bgs.plotting.mplColours()
 
     for ecc, ls in zip(("90", "99"), ("-", "--")):
-        data = cmf.utils.load_data(f"sigma-BH-pos-e{ecc}.pickle")
+        data = bgs.utils.load_data(f"sigma-BH-pos-e{ecc}.pickle")
 
         all_min_len = np.inf
         for k, v in data.items():

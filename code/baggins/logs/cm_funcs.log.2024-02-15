@@ -1,0 +1,206 @@
+2024-02-15 12:55:36: cm_funcs.plotting.plot_utils: INFO: Saved image: axis_compare.png
+2024-02-15 13:08:25: cm_funcs.plotting.plot_utils: INFO: Saved image: axis_compare.png
+2024-02-15 13:08:43: cm_funcs.plotting.plot_utils: INFO: Saved image: axis_compare.png
+2024-02-15 13:09:28: cm_funcs.plotting.plot_utils: INFO: Saved image: axis_compare.png
+2024-02-15 13:10:01: cm_funcs.plotting.plot_utils: INFO: Saved image: axis_compare.png
+2024-02-15 13:10:37: cm_funcs.plotting.plot_utils: INFO: Saved image: axis_compare.png
+2024-02-15 13:11:15: cm_funcs.plotting.plot_utils: INFO: Saved image: axis_compare.png
+2024-02-15 16:36:49: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 16:39:16: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_163916
+2024-02-15 16:40:33: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 16:40:33: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_163916
+2024-02-15 16:42:57: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 16:47:38: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 16:51:54: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 16:54:14: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_165414
+2024-02-15 16:55:32: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 16:55:32: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_165532
+2024-02-15 16:56:05: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_165414
+2024-02-15 16:56:05: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_165532
+2024-02-15 16:57:42: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:00:03: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_170003
+2024-02-15 17:01:20: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:01:21: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:01:22: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:01:22: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:01:42: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_posterior_OOS_rb_posterior.png
+2024-02-15 17:01:45: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-15 17:01:45: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_170003
+2024-02-15 17:03:17: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:05:38: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_170538
+2024-02-15 17:06:55: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:06:56: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:06:56: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:06:57: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:07:17: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_posterior_OOS_rb_posterior.png
+2024-02-15 17:07:20: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-15 17:07:20: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_170538
+2024-02-15 17:08:13: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:11:19: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:13:40: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_171340
+2024-02-15 17:14:57: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:14:58: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:14:58: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:14:59: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:15:19: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_posterior_OOS_rb_posterior.png
+2024-02-15 17:15:22: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-15 17:15:22: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_171340
+2024-02-15 17:25:33: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:27:53: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_172753
+2024-02-15 17:29:11: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:29:12: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:29:12: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:29:13: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:29:33: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_posterior_OOS_rb_posterior.png
+2024-02-15 17:29:36: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-15 17:29:36: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_172753
+2024-02-15 17:31:11: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:33:31: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_173331
+2024-02-15 17:34:49: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:34:49: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:34:50: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:34:50: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:35:10: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_posterior_OOS_rb_posterior.png
+2024-02-15 17:35:13: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-15 17:35:13: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_173331
+2024-02-15 17:37:45: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:40:05: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_174005
+2024-02-15 17:41:23: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:41:23: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:41:24: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:41:24: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:41:44: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_posterior_OOS_rb_posterior.png
+2024-02-15 17:41:47: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-15 17:41:47: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_174005
+2024-02-15 17:46:16: cm_funcs.analysis.StanModel: INFO: Sampling completed in 0:00:30.125798
+2024-02-15 17:46:16: cm_funcs.analysis.StanModel: INFO: Number of threads used: 16
+2024-02-15 17:50:08: cm_funcs.analysis.StanModel: INFO: 
+                          Mean      MCSE    StdDev         5%  ...        95%   N_Eff  N_Eff/s  R_hat
+lp__                -7912.0000  0.018770  0.964400 -7914.0000  ... -7911.0000  2640.0    50.68  1.002
+K                       3.2100  0.001691  0.082190     3.0770  ...     3.3480  2363.0    45.35  1.001
+b                       0.4987  0.000463  0.022390     0.4615  ...     0.5359  2340.0    44.91  1.000
+lprior[1]              -2.8540  0.000151  0.007335    -2.8660  ...    -2.8420  2364.0    45.37  1.001
+lprior[2]              -1.0440  0.000231  0.011170    -1.0630  ...    -1.0250  2333.0    44.78  1.000
+...                        ...       ...       ...        ...  ...        ...     ...      ...    ...
+rb_posterior[13196]     3.8460  0.001199  0.060680     3.7470  ...     3.9460  2562.0    49.19  1.001
+rb_posterior[13197]     5.4170  0.003596  0.169300     5.1430  ...     5.7020  2218.0    42.57  1.001
+rb_posterior[13198]     4.0360  0.001449  0.071520     3.9200  ...     4.1540  2435.0    46.74  1.001
+rb_posterior[13199]     2.9040  0.000305  0.027410     2.8590  ...     2.9490  8074.0   155.00  1.000
+rb_posterior[13200]     5.0680  0.003009  0.142200     4.8380  ...     5.3090  2233.0    42.87  1.001
+
+[13205 rows x 9 columns]
+2024-02-15 17:50:08: cm_funcs.analysis.StanModel: INFO: 
+Processing csv files: /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215174558_1.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215174558_2.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215174558_3.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215174558_4.csv
+
+Checking sampler transitions treedepth.
+Treedepth satisfactory for all transitions.
+
+Checking sampler transitions for divergences.
+No divergent transitions found.
+
+Checking E-BFMI - sampler transitions HMC potential energy.
+E-BFMI satisfactory.
+
+Effective sample size satisfactory.
+
+Split R-hat values satisfactory all parameters.
+
+Processing complete, no problems detected.
+
+2024-02-15 17:51:00: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_175100
+2024-02-15 17:52:18: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:52:18: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:52:18: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:52:19: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:52:20: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_175100
+2024-02-15 17:55:22: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-15 17:57:43: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_175743
+2024-02-15 17:59:01: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 17:59:01: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 17:59:02: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 17:59:02: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 17:59:22: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_posterior_OOS_rb_posterior.png
+2024-02-15 17:59:25: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-15 17:59:25: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_175743
+2024-02-15 18:07:58: cm_funcs.analysis.StanModel: INFO: Sampling completed in 0:00:30.349063
+2024-02-15 18:07:58: cm_funcs.analysis.StanModel: INFO: Number of threads used: 16
+2024-02-15 18:11:50: cm_funcs.analysis.StanModel: INFO: 
+                          Mean      MCSE    StdDev         5%  ...        95%   N_Eff  N_Eff/s  R_hat
+lp__                -8785.0000  0.021510  1.053000 -8787.0000  ... -8784.0000  2397.0    45.64  1.001
+K                       3.5560  0.001899  0.084540     3.4170  ...     3.6990  1981.0    37.73  1.001
+b                       0.3892  0.000444  0.019820     0.3567  ...     0.4215  1992.0    37.93  1.002
+lprior[1]              -2.8860  0.000188  0.008361    -2.9010  ...    -2.8730  1982.0    37.75  1.001
+lprior[2]              -0.9949  0.000173  0.007717    -1.0080  ...    -0.9826  1996.0    38.00  1.001
+...                        ...       ...       ...        ...  ...        ...     ...      ...    ...
+rb_posterior[13196]     4.2580  0.001431  0.065870     4.1510  ...     4.3700  2120.0    40.37  1.000
+rb_posterior[13197]     5.9330  0.004431  0.191200     5.6250  ...     6.2560  1861.0    35.44  1.001
+rb_posterior[13198]     3.7550  0.000734  0.040850     3.6890  ...     3.8220  3096.0    58.95  1.000
+rb_posterior[13199]     3.2950  0.000332  0.030830     3.2440  ...     3.3460  8633.0   164.40  1.000
+rb_posterior[13200]     4.0530  0.001130  0.054480     3.9650  ...     4.1450  2323.0    44.23  1.000
+
+[13205 rows x 9 columns]
+2024-02-15 18:11:50: cm_funcs.analysis.StanModel: INFO: 
+Processing csv files: /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215180740_1.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215180740_2.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215180740_3.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215180740_4.csv
+
+Checking sampler transitions treedepth.
+Treedepth satisfactory for all transitions.
+
+Checking sampler transitions for divergences.
+No divergent transitions found.
+
+Checking E-BFMI - sampler transitions HMC potential energy.
+E-BFMI satisfactory.
+
+Effective sample size satisfactory.
+
+Split R-hat values satisfactory all parameters.
+
+Processing complete, no problems detected.
+
+2024-02-15 18:12:41: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_181241
+2024-02-15 18:13:59: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 18:13:59: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 18:14:00: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 18:14:00: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 18:14:02: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_181241
+2024-02-15 18:14:36: cm_funcs.analysis.StanModel: INFO: Sampling completed in 0:00:31.059627
+2024-02-15 18:14:36: cm_funcs.analysis.StanModel: INFO: Number of threads used: 16
+2024-02-15 18:18:29: cm_funcs.analysis.StanModel: INFO: 
+                          Mean      MCSE    StdDev         5%  ...        95%   N_Eff  N_Eff/s  R_hat
+lp__                -8023.0000  0.019310  0.983200 -8025.0000  ... -8023.0000  2593.0    48.65  1.001
+K                       2.6890  0.001371  0.067060     2.5810  ...     2.8000  2393.0    44.89  1.001
+b                       0.3197  0.000412  0.020200     0.2863  ...     0.3524  2401.0    45.05  1.002
+lprior[1]              -2.8110  0.000102  0.005014    -2.8200  ...    -2.8030  2391.0    44.87  1.001
+lprior[2]              -0.9703  0.000132  0.006464    -0.9810  ...    -0.9599  2408.0    45.18  1.002
+...                        ...       ...       ...        ...  ...        ...     ...      ...    ...
+rb_posterior[13196]     3.2070  0.000614  0.035870     3.1490  ...     3.2670  3413.0    64.03  1.001
+rb_posterior[13197]     2.9500  0.000329  0.027460     2.9060  ...     2.9960  6974.0   130.80  1.000
+rb_posterior[13198]     3.2220  0.000634  0.036580     3.1630  ...     3.2830  3330.0    62.47  1.001
+rb_posterior[13199]     3.9490  0.001842  0.088320     3.8060  ...     4.0970  2300.0    43.14  1.001
+rb_posterior[13200]     4.5330  0.003008  0.142600     4.3040  ...     4.7730  2246.0    42.15  1.002
+
+[13205 rows x 9 columns]
+2024-02-15 18:18:29: cm_funcs.analysis.StanModel: INFO: 
+Processing csv files: /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215181418_1.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215181418_2.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215181418_3.csv, /scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240215181418_4.csv
+
+Checking sampler transitions treedepth.
+Treedepth satisfactory for all transitions.
+
+Checking sampler transitions for divergences.
+No divergent transitions found.
+
+Checking E-BFMI - sampler transitions HMC potential energy.
+E-BFMI satisfactory.
+
+Effective sample size satisfactory.
+
+Split R-hat values satisfactory all parameters.
+
+Processing complete, no problems detected.
+
+2024-02-15 18:19:20: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_181920
+2024-02-15 18:20:37: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-15 18:20:38: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-15 18:20:38: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-15 18:20:38: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-15 18:20:40: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240215_181920

@@ -1,17 +1,17 @@
 import matplotlib.pyplot as plt
 import matplotlib.patches as mplp
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 snapfile = "/scratch/pjohanss/arawling/collisionless_merger/r0-test/A-C-5.0-0.001/A-C-5.0-0.001-L.hdf5"
 
 snap = pygad.Snapshot(snapfile)
 snap.to_physical_units()
 
-star_id_masks = cmf.analysis.get_all_id_masks(snap, family='stars')
-dm_id_masks = cmf.analysis.get_all_id_masks(snap, family='dm')
-xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=dm_id_masks, verbose=True)
-virial_mass, virial_radius = cmf.analysis.get_virial_info_of_each_galaxy(snap, xcom=xcom, masks=[star_id_masks, dm_id_masks])
+star_id_masks = bgs.analysis.get_all_id_masks(snap, family='stars')
+dm_id_masks = bgs.analysis.get_all_id_masks(snap, family='dm')
+xcom = bgs.analysis.get_com_of_each_galaxy(snap, masks=dm_id_masks, verbose=True)
+virial_mass, virial_radius = bgs.analysis.get_virial_info_of_each_galaxy(snap, xcom=xcom, masks=[star_id_masks, dm_id_masks])
 
 print(virial_radius)
 

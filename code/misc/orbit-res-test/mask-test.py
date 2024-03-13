@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 #snapfile = '/Volumes/Rawlings_Storage/KETJU/data/merger/P01a_P01b/data/P01a_P01b_o95_000.hdf5'
 snapfile = '/scratch/pjohanss/arawling/collisionless_merger/res-test/reduced-x-10/0-001/output/0001_000.hdf5'
 snap = pygad.Snapshot(snapfile)
 snap.to_physical_units()
-idmasks = cmf.analysis.get_all_id_masks(snap)
+idmasks = bgs.analysis.get_all_id_masks(snap)
 
 plt.xlabel('Index position in Family')
 plt.ylabel('Particle ID number')

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 #load the snap
 #snapfile = '/Volumes/Rawlings_Storage/KETJU/data/merger/P03_P03/data/P03_P03_o95_000.hdf5'
@@ -29,15 +29,15 @@ if False:
         mg.write_hdf5_ic_file(test_file_name, isogal1)
         snap = pygad.Snapshot(test_file_name)
         snap.to_physical_units()
-        xcom = cmf.analysis.get_com_of_each_galaxy(snap)
-        vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
+        xcom = bgs.analysis.get_com_of_each_galaxy(snap)
+        vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
 
         for i, (ri, ro) in enumerate(zip(radii[:-1], radii[1:])):
             print(xcom)
             for i2, d in enumerate(xcom.keys()):
-                dm_radial_mask = cmf.analysis.get_radial_mask(snap, radius=[ri, ro], centre=xcom[d], family='dm')
+                dm_radial_mask = bgs.analysis.get_radial_mask(snap, radius=[ri, ro], centre=xcom[d], family='dm')
                 this_snap = snap.dm[dm_radial_mask]
-                ratios[i,:] =  cmf.analysis.get_galaxy_axis_ratios(this_snap, xcom[d], vcom[d], family=family)
+                ratios[i,:] =  bgs.analysis.get_galaxy_axis_ratios(this_snap, xcom[d], vcom[d], family=family)
                 print(ratios[i,:])
     else:
         #test a merger
@@ -55,25 +55,25 @@ if False:
         pygad.plotting.image(snap.dm, qty='mass', Npx=800, yaxis=2, fontsize=10, cbartitle='', scaleind='labels', ax=ax[0], extent=75000)
         ax[0].scatter(snap.bh['pos'][:,0], snap.bh['pos'][:,2], c='black', zorder=20)
 
-        star_id_masks = cmf.analysis.get_all_id_masks(snap)
-        dm_id_masks = cmf.analysis.get_all_id_masks(snap, family='dm')
+        star_id_masks = bgs.analysis.get_all_id_masks(snap)
+        dm_id_masks = bgs.analysis.get_all_id_masks(snap, family='dm')
         print('ID Lengths')
         for i1, idx in enumerate(dm_id_masks.keys()):
             print("{}: {}".format(idx, len(snap.dm[dm_id_masks[idx]])))
             print("BH Mass: {}".format(snap.bh[snap.bh['ID']==idx]['mass']))
-        xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks)
-        vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=star_id_masks)
+        xcom = bgs.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks)
+        vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=star_id_masks)
         for idx in xcom.keys():
             ax[0].scatter(xcom[idx][0], xcom[idx][2], c='tab:red', zorder=20)
 
         print(xcom)
         for i, (ri, ro) in enumerate(zip(radii[:-1], radii[1:])):
             for i2, d in enumerate(xcom.keys()):
-                dm_radial_masks = cmf.analysis.get_all_radial_masks(snap, radius=[ri, ro], family='dm', id_masks=dm_id_masks)
+                dm_radial_masks = bgs.analysis.get_all_radial_masks(snap, radius=[ri, ro], family='dm', id_masks=dm_id_masks)
                 if i2==0: continue
                 print("xcom: {}".format(xcom[d]))
                 print("BH pos: {}".format(snap.bh[snap.bh['ID']==d]['pos']))
-                ratios[i,:] =  cmf.analysis.get_galaxy_axis_ratios(snap, xcom[d], family=family, radial_mask=dm_radial_masks[d])
+                ratios[i,:] =  bgs.analysis.get_galaxy_axis_ratios(snap, xcom[d], family=family, radial_mask=dm_radial_masks[d])
                 print(snap.dm['pos'][0,:])
                 print(ratios[i,:])
     labvals = ['b/a', 'c/a']
@@ -89,20 +89,20 @@ if False:
 snap = pygad.Snapshot(snapfile)
 snap.to_physical_units()
 
-star_id_masks = cmf.analysis.get_all_id_masks(snap)
-dm_id_masks = cmf.analysis.get_all_id_masks(snap, family='dm')
+star_id_masks = bgs.analysis.get_all_id_masks(snap)
+dm_id_masks = bgs.analysis.get_all_id_masks(snap, family='dm')
 print('determining coms')
-xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks)
-vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=star_id_masks)
+xcom = bgs.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks)
+vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=star_id_masks)
 
 if mask_type == 'ball':
     for i, r in enumerate(radii):
         #create the ID mask
         print('creating masks')
         if family == 'stars':
-            star_radial_mask = cmf.analysis.get_all_radial_masks(snap, radius=r, centre=xcom, id_masks=star_id_masks)
+            star_radial_mask = bgs.analysis.get_all_radial_masks(snap, radius=r, centre=xcom, id_masks=star_id_masks)
         elif family == 'dm':
-            dm_radial_mask = cmf.analysis.get_all_radial_masks(snap, radius=r, centre=xcom, id_masks=dm_id_masks, family='dm')
+            dm_radial_mask = bgs.analysis.get_all_radial_masks(snap, radius=r, centre=xcom, id_masks=dm_id_masks, family='dm')
         for ind, d in enumerate(xcom.keys()):
             if ind > 0 : continue
             print('BH: {}'.format(d))
@@ -113,12 +113,12 @@ if mask_type == 'ball':
             else:
                 raise ValueError('must be stars or dm')
             particle_counts[i] = len(this_snap)
-            ratios[i,:] = cmf.analysis.get_galaxy_axis_ratios(this_snap, xcom[d], vcom[d], family=family)
+            ratios[i,:] = bgs.analysis.get_galaxy_axis_ratios(this_snap, xcom[d], vcom[d], family=family)
             print(ratios[i,:])
 elif mask_type == 'shell':
     for i, (ri, ro) in enumerate(zip(radii[:-1], radii[1:])):
-        star_radial_mask = cmf.analysis.get_all_radial_masks(snap, radius=[ri, ro], centre=xcom, id_masks=star_id_masks)
-        dm_radial_mask = cmf.analysis.get_all_radial_masks(snap, family='dm', radius=[ri, ro], centre=xcom, id_masks=dm_id_masks)
+        star_radial_mask = bgs.analysis.get_all_radial_masks(snap, radius=[ri, ro], centre=xcom, id_masks=star_id_masks)
+        dm_radial_mask = bgs.analysis.get_all_radial_masks(snap, family='dm', radius=[ri, ro], centre=xcom, id_masks=dm_id_masks)
         for ind, d in enumerate(xcom.keys()):
             if ind > 0 : continue
             print('BH: {}'.format(d))
@@ -129,7 +129,7 @@ elif mask_type == 'shell':
             else:
                 raise ValueError('must be stars or dm')
             particle_counts[i] = len(this_snap)
-            ratios[i,:] = cmf.analysis.get_galaxy_axis_ratios(this_snap, xcom[d], vcom[d], family=family)
+            ratios[i,:] = bgs.analysis.get_galaxy_axis_ratios(this_snap, xcom[d], vcom[d], family=family)
             print(ratios[i,:])
 labvals = ['b/a', 'c/a']
 for i in range(2):

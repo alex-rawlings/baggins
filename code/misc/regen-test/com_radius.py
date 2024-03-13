@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 snapfiles = [
@@ -10,24 +10,24 @@ snapfiles = [
 ]
 
 fig, ax = plt.subplots(3,4, sharex="col", sharey="col")
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 rshells_stars = np.geomspace(1e-6, 500, 20)
 rshells_dm = np.geomspace(1e-6, 5000, 20)
 for snapfile in snapfiles:
     snap = pygad.Snapshot(snapfile, physical=True)
     #mask galaxies by id
-    star_id_masks = cmf.analysis.get_all_id_masks(snap, "stars")
-    dm_id_masks = cmf.analysis.get_all_id_masks(snap, "dm")
+    star_id_masks = bgs.analysis.get_all_id_masks(snap, "stars")
+    dm_id_masks = bgs.analysis.get_all_id_masks(snap, "dm")
     #determine the reference com
-    star_xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, family="stars")
-    dm_xcom = cmf.analysis.get_com_of_each_galaxy(snap, 100, masks=dm_id_masks, family="dm")
+    star_xcom = bgs.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, family="stars")
+    dm_xcom = bgs.analysis.get_com_of_each_galaxy(snap, 100, masks=dm_id_masks, family="dm")
     for (riS, roS, riH, roH) in zip(
         rshells_stars[:-1], rshells_stars[1:], 
         rshells_dm[:-1], rshells_dm[1:]
     ):
         #create shell masks
-        star_radial_masks = cmf.analysis.get_all_radial_masks(snap, (riS, roS), centre=star_xcom, id_masks=star_id_masks, family="stars")
-        dm_radial_masks = cmf.analysis.get_all_radial_masks(snap, (riH, roH), centre=dm_xcom, id_masks=dm_id_masks, family="dm")
+        star_radial_masks = bgs.analysis.get_all_radial_masks(snap, (riS, roS), centre=star_xcom, id_masks=star_id_masks, family="stars")
+        dm_radial_masks = bgs.analysis.get_all_radial_masks(snap, (riH, roH), centre=dm_xcom, id_masks=dm_id_masks, family="dm")
         #recompute com motions for particles in this shell
         for i, bhid in enumerate(star_id_masks.keys()):
             for j, (family, radial_masks, radius) in enumerate(zip(("stars", "dm"), (star_radial_masks, dm_radial_masks), (riS, riH))):

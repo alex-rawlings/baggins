@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 def masked_output(x, qcut=0.99):
@@ -20,12 +20,12 @@ fig, ax = plt.subplots(3,4, sharex="col")
 for snapfile in snapfiles:
     print("Reading: {}".format(snapfile))
     snap = pygad.Snapshot(snapfile, physical=True)
-    star_id_masks = cmf.analysis.get_all_id_masks(snap, "stars")
-    dm_id_masks = cmf.analysis.get_all_id_masks(snap, "dm")
-    star_xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, family="stars")
-    dm_xcom = cmf.analysis.get_com_of_each_galaxy(snap, 100, masks=dm_id_masks, family="dm")
-    star_radial_mask = cmf.analysis.get_all_radial_masks(snap, 10000, centre=star_xcom, id_masks=star_id_masks, family="stars")
-    dm_radial_mask = cmf.analysis.get_all_radial_masks(snap, 10000, centre=dm_xcom, id_masks=dm_id_masks, family="dm")
+    star_id_masks = bgs.analysis.get_all_id_masks(snap, "stars")
+    dm_id_masks = bgs.analysis.get_all_id_masks(snap, "dm")
+    star_xcom = bgs.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, family="stars")
+    dm_xcom = bgs.analysis.get_com_of_each_galaxy(snap, 100, masks=dm_id_masks, family="dm")
+    star_radial_mask = bgs.analysis.get_all_radial_masks(snap, 10000, centre=star_xcom, id_masks=star_id_masks, family="stars")
+    dm_radial_mask = bgs.analysis.get_all_radial_masks(snap, 10000, centre=dm_xcom, id_masks=dm_id_masks, family="dm")
     for i in range(3):
         #ax[i,0].hist(masked_output(snap.stars["pos"][:,i]), 100, density=True, alpha=0.3)
         #ax[i,1].hist(masked_output(snap.dm["pos"][:,i]), 100, density=True, alpha=0.3)

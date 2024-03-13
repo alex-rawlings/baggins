@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from seaborn import color_palette
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 
 main_path = (
@@ -22,14 +22,14 @@ data_dirs = [
 
 class HardScatter:
     def _data_init(self, i):
-        b1, b2, *_ = cmf.analysis.get_bh_particles(
-            cmf.utils.get_ketjubhs_in_dir(data_dirs[i])[0]
+        b1, b2, *_ = bgs.analysis.get_bh_particles(
+            bgs.utils.get_ketjubhs_in_dir(data_dirs[i])[0]
         )
-        b1, b2 = cmf.analysis.move_to_centre_of_mass(b1, b2)
+        b1, b2 = bgs.analysis.move_to_centre_of_mass(b1, b2)
         b1.x /= ketjugw.units.pc
         b2.x /= ketjugw.units.pc
-        b1.t /= cmf.general.units.Myr
-        b2.t /= cmf.general.units.Myr
+        b1.t /= bgs.general.units.Myr
+        b2.t /= bgs.general.units.Myr
         return b1, b2
 
     def _init_lists(self):
@@ -74,7 +74,7 @@ class HardScatter:
                 self.ax[k].spines[edge].set_color("w")
             self.ax[k].set_xlim(-700, 800)
             self.ax[k].set_ylim(-500, 1800)
-            cmf.plotting.draw_sizebar(
+            bgs.plotting.draw_sizebar(
                 self.ax[k],
                 500,
                 "pc",
@@ -86,7 +86,7 @@ class HardScatter:
         for k in "BC":
             self.ax[k].set_xlim(-35, 35)
             self.ax[k].set_ylim(-40, 40)
-            cmf.plotting.draw_sizebar(self.ax[k], 10, "pc", color="w", fmt=".0f", sep=4)
+            bgs.plotting.draw_sizebar(self.ax[k], 10, "pc", color="w", fmt=".0f", sep=4)
         self.ax["B"].set_title("Realisation A")
         self.ax["C"].set_title("Realisation B")
 
@@ -147,6 +147,6 @@ if __name__ == "__main__":
     ani = animation.FuncAnimation(
         hd.fig, hd, frames=hd.frames, repeat=True, interval=20, repeat_delay=500
     )
-    ani.save(os.path.join(cmf.DATADIR, "hard_scatter.gif"))
+    ani.save(os.path.join(bgs.DATADIR, "hard_scatter.gif"))
 
 # plt.show()

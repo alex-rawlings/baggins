@@ -1,7 +1,7 @@
 import argparse
 import re
 import numpy as np
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -36,7 +36,7 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbose",
     default="INFO",
     help="verbosity level",
@@ -44,11 +44,11 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", console_level=args.verbose)
+SL = bgs.setup_logger("script", console_level=args.verbose)
 rng = np.random.default_rng()
 
 if args.batch == 1:
-    galaxy = cmf.initialise.GalaxyIC(parameter_file=args.pf, sahu_legacy=args.bh_legacy)
+    galaxy = bgs.initialise.GalaxyIC(parameter_file=args.pf, sahu_legacy=args.bh_legacy)
     plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
     if plot_flag:
         galaxy.plot_mass_scaling_relations()
@@ -68,7 +68,7 @@ else:
     for s in suffixes[: args.batch]:
         # create a new parameter file for each realisation
         try:
-            new_filename = cmf.utils.create_file_copy(
+            new_filename = bgs.utils.create_file_copy(
                 args.pf, suffix=f"_{s}", exist_ok=False
             )
         except AssertionError:
@@ -102,10 +102,10 @@ else:
                     )
                     raise
             # overwrite copied parameter file
-            cmf.utils.overwrite_parameter_file(f, contents)
+            bgs.utils.overwrite_parameter_file(f, contents)
         SL.warning(f"File {new_filename} created")
         # generate the galaxy
-        galaxy = cmf.initialise.GalaxyIC(
+        galaxy = bgs.initialise.GalaxyIC(
             parameter_file=new_filename, sahu_legacy=args.bh_legacy
         )
         plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])

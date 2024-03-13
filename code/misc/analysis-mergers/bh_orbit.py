@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 
 pathnum = 1
@@ -19,7 +19,7 @@ e_vals = [0.5, 0.7, 0.9, 0.99]
 lw = 2
 
 def plotter(p, ax=None, compare_e=False, label=None):
-    bhfiles = cmf.utils.get_ketjubhs_in_dir(p)
+    bhfiles = bgs.utils.get_ketjubhs_in_dir(p)
 
     if ax is None:
         fig, ax = plt.subplots(1,1)
@@ -28,7 +28,7 @@ def plotter(p, ax=None, compare_e=False, label=None):
         ax.set_aspect("equal")
 
     for i, bhf in enumerate(bhfiles):
-        bh1, bh2, *_ = cmf.analysis.get_bh_particles(bhf)
+        bh1, bh2, *_ = bgs.analysis.get_bh_particles(bhf)
         if label is None:
             label = i
         l = ax.plot(bh1.x[:,0]/kpc, bh1.x[:,2]/kpc, lw=lw, label=label)
@@ -48,5 +48,5 @@ else:
     ax = plotter(datapath[pathnum], ax=ax)
 
 ax.legend()
-#cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "merger/gualandris_ics.png"))
+#bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "merger/gualandris_ics.png"))
 plt.show()

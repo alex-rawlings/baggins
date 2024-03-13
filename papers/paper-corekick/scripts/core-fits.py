@@ -3,7 +3,7 @@ import os
 from itertools import chain
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import figure_config
 import arviz as az
 
@@ -35,14 +35,14 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
 rng = np.random.default_rng(42)
 col_list = figure_config.color_cycle_shuffled.by_key()["color"]
@@ -50,7 +50,7 @@ col_list = figure_config.color_cycle_shuffled.by_key()["color"]
 
 if args.extract:
     main_path = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/density/mcs"
-    analysis_params = cmf.utils.read_parameters(
+    analysis_params = bgs.utils.read_parameters(
         "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml"
     )
 
@@ -77,11 +77,11 @@ if args.extract:
 
     # load the fits
     for subdir in subdirs:
-        csv_files = cmf.utils.get_files_in_dir(subdir, ext=".csv")[:4]
+        csv_files = bgs.utils.get_files_in_dir(subdir, ext=".csv")[:4]
         try:
-            graham_model = cmf.analysis.GrahamModelHierarchy.load_fit(
+            graham_model = bgs.analysis.GrahamModelHierarchy.load_fit(
                 model_file=os.path.join(
-                    cmf.HOME,
+                    bgs.HOME,
                     "projects/collisionless-merger-sample/code/analysis_scripts/hierarchical_models/stan/density/graham_hierarchy.stan",
                 ),
                 fit_files=csv_files,
@@ -105,9 +105,9 @@ if args.extract:
                 data[k][gid] = graham_model.sample_generated_quantity(
                     f"{k}_posterior", state="OOS"
                 )
-    cmf.utils.save_data(data, data_file)
+    bgs.utils.save_data(data, data_file)
 else:
-    data = cmf.utils.load_data(data_file)
+    data = bgs.utils.load_data(data_file)
 
 
 def _helper(param_name, ax):
@@ -245,5 +245,5 @@ else:
         ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
     fname = f"{args.param}-kick.pdf"
 
-cmf.plotting.savefig(figure_config.fig_path(fname), force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path(fname), force_ext=True)
 plt.show()

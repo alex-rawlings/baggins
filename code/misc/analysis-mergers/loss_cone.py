@@ -1,7 +1,7 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 import ketjugw
 
@@ -24,9 +24,9 @@ def _get_idx_in_vec(t, tarr):
 snapdir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/perturbations/000/output"
 
 bhfile = os.path.join(snapdir, "ketju_bhs_cp.hdf5")
-snaplist = cmf.utils.get_snapshots_in_dir(snapdir)
+snaplist = bgs.utils.get_snapshots_in_dir(snapdir)
 
-bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
+bh1, bh2, merged = bgs.analysis.get_bound_binary(bhfile)
 orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
 
 t = np.full_like(snaplist, np.nan, dtype=float)
@@ -44,13 +44,13 @@ for i, snapfile in enumerate(snaplist):
     this_centre_vel = pygad.analysis.mass_weighted_mean(snap.bh, "vel")
     snap["pos"] -= this_centre_pos
     snap["vel"] -= this_centre_vel
-    t[i] = cmf.general.convert_gadget_time(snap, new_unit="Myr")
+    t[i] = bgs.general.convert_gadget_time(snap, new_unit="Myr")
     try:
         idx = _get_idx_in_vec(t[i], orbit_params["t"]/myr)
         # determine loss cone J, _a is semimajor axis from ketjugw as 
         # pygad scalar object
         _a = pygad.UnitScalar(orbit_params["a_R"][idx]/ketjugw.units.pc, "pc")
-        J_lc[i] = cmf.analysis.loss_cone_angular_momentum(snap, _a)
+        J_lc[i] = bgs.analysis.loss_cone_angular_momentum(snap, _a)
         # determine the magnitude of the angular momentum
         star_J_mag = pygad.utils.geo.dist(snap.stars["angmom"])
         print(star_J_mag.min())
@@ -58,7 +58,7 @@ for i, snapfile in enumerate(snaplist):
     except ValueError:
         J_lc[i] = np.nan
         num_J_lc[i] = np.nan
-    theta[i] = cmf.analysis.angular_momentum_difference_gal_BH(snap)
+    theta[i] = bgs.analysis.angular_momentum_difference_gal_BH(snap)
     snap.delete_blocks()
 
 plt.plot(t, theta, "-o")

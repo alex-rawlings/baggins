@@ -5,7 +5,7 @@ import scipy.interpolate
 import os
 import pygad
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(description='Visualise the error in orbital trajectory arising from differeing mass resolutions.', allow_abbrev=False)
@@ -56,19 +56,19 @@ if args.path is not None:
                     if args.orbit is not None and root.split('/')[-1] == args.orbit:
                         #this is the ic file
                         id_masks_for = resolution
-                        id_masks = cmf.analysis.get_all_id_masks(snap)
+                        id_masks = bgs.analysis.get_all_id_masks(snap)
                         data_dict[resolution]['time'] = np.hstack([data_dict[resolution]['time'], [0]])
                     else:
                         #this is a regular file
                         data_dict[resolution]['time'] = np.hstack([data_dict[resolution]['time'],
-                                cmf.general.convert_gadget_time(snap)
+                                bgs.general.convert_gadget_time(snap)
                                 ])
                     #sanity check
                     if id_masks_for != resolution:
                         raise RuntimeError('Need the correct ID mask!')
                     #get the data
-                    xcoms = cmf.analysis.get_coms_of_each_galaxy(snap, masks=id_masks, verbose=args.verbose)
-                    vcoms = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=id_masks, verbose=args.verbose)
+                    xcoms = bgs.analysis.get_coms_of_each_galaxy(snap, masks=id_masks, verbose=args.verbose)
+                    vcoms = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=id_masks, verbose=args.verbose)
                     #and assign to the dictionary
                     bh_id_key = snap.bh['ID'][bh_id_order]
                     for subkey in range(2):
@@ -101,14 +101,14 @@ if args.path is not None:
 
     #save data
     if args.orbit is not None:
-        cmf.utils.save_data(data_dict, '{}.pickle'.format(args.orbit))
+        bgs.utils.save_data(data_dict, '{}.pickle'.format(args.orbit))
     else:
-        cmf.utils.save_data(data_dict, 'general-res-test.pickle')
+        bgs.utils.save_data(data_dict, 'general-res-test.pickle')
 else:
     #we want to load some previous data set
     if args.load is None:
         raise ValueError('A file must be specified for reading previous data!')
-    data_dict = cmf.utils.load_data(args.load)
+    data_dict = bgs.utils.load_data(args.load)
     print('Data {} loaded'.format(args.load))
 
     save_dir = os.path.join('/users/arawling/figures/res-test/', args.load.split('.')[0])
@@ -122,8 +122,8 @@ else:
     kpc = 1e3 * ketjugw.units.pc
     max_time = 1.4
 
-    cols = cmf.plotting.mplColours()
-    linestyles = ['-', ':', '--', '-.'] # list(cmf.plotting.mplLines().items())
+    cols = bgs.plotting.mplColours()
+    linestyles = ['-', ':', '--', '-.'] # list(bgs.plotting.mplLines().items())
     # TODO: create a marker list like above
     markers = ['o', 's', '^', 'v', 'D']
     nbins=8

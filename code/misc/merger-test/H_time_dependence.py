@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import scipy.stats
 import pandas as pd
 import seaborn as sns
-import cm_functions as cmf
+import baggins as bgs
 import ketjugw
 
 myr = ketjugw.units.yr * 1e6
@@ -56,10 +56,10 @@ def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
 
 
 data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/perturbations/"
-bhfiles = cmf.utils.get_ketjubhs_in_dir(data_path)
+bhfiles = bgs.utils.get_ketjubhs_in_dir(data_path)
 
 cube_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/cubes/A-C-3.0-0.05/"
-cube_files = cmf.utils.get_files_in_dir(cube_path)
+cube_files = bgs.utils.get_files_in_dir(cube_path)
 
 
 fig, ax = plt.subplots(1,1)
@@ -71,8 +71,8 @@ data = {"t":[], "t_err":[], "inv_a":[], "inv_a_err":[], "grad":[], "name":[]}
 
 for j, (bhfile, cubefile) in enumerate(zip(bhfiles, cube_files)):
     print(bhfile)
-    cdc = cmf.analysis.ChildSimData.load_from_file(cubefile)
-    bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
+    cdc = bgs.analysis.ChildSimData.load_from_file(cubefile)
+    bh1, bh2, merged = bgs.analysis.get_bound_binary(bhfile)
     orbit_params = ketjugw.orbital_parameters(bh1, bh2)
     # divide the evolution into segments
     time_vals = np.arange(0, 1e4, 10)

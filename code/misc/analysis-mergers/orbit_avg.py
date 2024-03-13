@@ -3,24 +3,24 @@ import matplotlib.pyplot as plt
 import scipy.signal
 import ketjugw
 
-import cm_functions as cmf
+import baggins as bgs
 
-ketju_file = cmf.utils.get_ketjubhs_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/H-H-3.0-0.001/perturbations/002")[0]
+ketju_file = bgs.utils.get_ketjubhs_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/H-H-3.0-0.001/perturbations/002")[0]
 
 myr = ketjugw.units.yr * 1e6
 pc = ketjugw.units.pc
 
-bh1, bh2, merged = cmf.analysis.get_bound_binary(ketju_file=ketju_file)
+bh1, bh2, merged = bgs.analysis.get_bound_binary(ketju_file=ketju_file)
 
 orbit_pars = ketjugw.orbital_parameters(bh1, bh2)
 t = orbit_pars["t"]/myr
-L = cmf.mathematics.radial_separation(ketjugw.orbital_angular_momentum(bh1, bh2))
-sep = cmf.mathematics.radial_separation(bh1.x/pc, bh2.x/pc)
+L = bgs.mathematics.radial_separation(ketjugw.orbital_angular_momentum(bh1, bh2))
+sep = bgs.mathematics.radial_separation(bh1.x/pc, bh2.x/pc)
 
 
 
 def find_period_idxs(tval, tarr, sep, num_orbits=1):
-    idx = cmf.general.get_idx_in_array(tval, tarr)
+    idx = bgs.general.get_idx_in_array(tval, tarr)
     y = np.diff(np.sign(np.diff(sep)))
     found_peaks = False
     multiplier = 1

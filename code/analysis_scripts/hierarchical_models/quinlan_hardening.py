@@ -1,9 +1,9 @@
 import os.path
-import cm_functions as cmf
+import baggins as bgs
 from .helpers import stan_model_selector
 
 
-parser = cmf.utils.argparse_for_stan("Run Stan model for Quinlan hardening model")
+parser = bgs.utils.argparse_for_stan("Run Stan model for Quinlan hardening model")
 parser.add_argument(
     "-m",
     "--model",
@@ -15,9 +15,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", console_level=args.verbose)
+SL = bgs.setup_logger("script", console_level=args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(
+full_figsize = bgs.plotting.get_figure_size(
     args.publish, full=True, multiplier=[1.9, 1.9]
 )
 
@@ -26,14 +26,14 @@ if args.type == "new":
 else:
     hmq_dir = None
 SL.debug(f"Input data read from {hmq_dir}")
-analysis_params = cmf.utils.read_parameters(args.apf)
+analysis_params = bgs.utils.read_parameters(args.apf)
 
 figname_base = f"hierarchical_models/hardening/{args.sample}/"
 
 if args.model == "simple":
     quinlan_model = stan_model_selector(
         args,
-        cmf.analysis.QuinlanModelSimple,
+        bgs.analysis.QuinlanModelSimple,
         "stan/hardening/quinlan_simple.stan",
         "stan/hardening/quinlan_simple_prior.stan",
         figname_base,
@@ -42,7 +42,7 @@ if args.model == "simple":
 else:
     quinlan_model = stan_model_selector(
         args,
-        cmf.analysis.QuinlanModelHierarchy,
+        bgs.analysis.QuinlanModelHierarchy,
         "stan/hardening/quinlan_hierarchy.stan",
         "stan/hardening/quinlan_hierarchy_prior.stan",
         figname_base,
@@ -71,7 +71,7 @@ if args.prior:
     quinlan_model.all_prior_plots(full_figsize)
 else:
     analysis_params["stan"]["hardening_sample_kwargs"]["output_dir"] = os.path.join(
-        cmf.DATADIR, f"stan_files/hardening/{args.sample}/{quinlan_model.merger_id}"
+        bgs.DATADIR, f"stan_files/hardening/{args.sample}/{quinlan_model.merger_id}"
     )
 
     # run the model

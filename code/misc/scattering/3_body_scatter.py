@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 import scipy.stats
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 from ketjugw.units import pc, yr, km_per_s
 
 
@@ -228,7 +228,7 @@ class ThreeBodySystem(GeneralSystem):
         # impact parameter
         b = rp * np.sqrt(1 + 2 * M / (rp * (v0*Vc)**2))
         # velocity angles
-        theta, phi = cmf.mathematics.uniform_sample_sphere(1, rng=rng)
+        theta, phi = bgs.mathematics.uniform_sample_sphere(1, rng=rng)
         # initial displacement of star
         ri = (1e10 * mu/M)**0.25 * a
         

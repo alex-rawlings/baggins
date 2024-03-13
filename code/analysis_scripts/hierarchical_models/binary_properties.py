@@ -1,9 +1,9 @@
 import os.path
 import numpy as np
-import cm_functions as cmf
+import baggins as bgs
 
 
-parser = cmf.utils.argparse_for_stan("Run Stan model for binary properties")
+parser = bgs.utils.argparse_for_stan("Run Stan model for binary properties")
 parser.add_argument(
     "-m",
     "--model",
@@ -18,16 +18,16 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", console_level=args.verbose)
+SL = bgs.setup_logger("script", console_level=args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(args.publish, full=True)
+full_figsize = bgs.plotting.get_figure_size(args.publish, full=True)
 
 if args.type == "new":
     hmq_dir = args.dir
 else:
     hmq_dir = None
 SL.debug(f"Input data read from {hmq_dir}")
-analysis_params = cmf.utils.read_parameters(args.apf)
+analysis_params = bgs.utils.read_parameters(args.apf)
 
 figname_base = f"hierarchical_models/binary/{args.sample}/"
 
@@ -45,14 +45,14 @@ if args.model == "simple":
                 exc_info=True,
             )
             raise
-        kepler_model = cmf.analysis.KeplerModelSimple.load_fit(
+        kepler_model = bgs.analysis.KeplerModelSimple.load_fit(
             model_file=stan_model_file,
             fit_files=args.load_file,
             figname_base=figname_base,
         )
     else:
         # sample
-        kepler_model = cmf.analysis.KeplerModelSimple(
+        kepler_model = bgs.analysis.KeplerModelSimple(
             model_file=stan_model_file,
             prior_file="stan/binary/binary_prior_simple.stan",
             figname_base=figname_base,
@@ -71,12 +71,12 @@ else:
                 exc_info=True,
             )
             raise
-        kepler_model = cmf.analysis.KeplerModelHierarchy.load_fit(
+        kepler_model = bgs.analysis.KeplerModelHierarchy.load_fit(
             model_file=stan_model_file, fit_files=args.dir, figname_base=figname_base
         )
     else:
         # sample
-        kepler_model = cmf.analysis.KeplerModelHierarchy(
+        kepler_model = bgs.analysis.KeplerModelHierarchy(
             model_file=stan_model_file,
             prior_file="stan/binary/binary_prior_hierarchy.stan",
             figname_base=figname_base,
@@ -124,7 +124,7 @@ if args.prior:
 
 else:
     analysis_params["stan"]["binary_sample_kwargs"]["output_dir"] = os.path.join(
-        cmf.DATADIR, f"stan_files/binary/{args.sample}/{kepler_model.merger_id}"
+        bgs.DATADIR, f"stan_files/binary/{args.sample}/{kepler_model.merger_id}"
     )
 
     # run the model

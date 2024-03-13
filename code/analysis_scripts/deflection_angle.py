@@ -3,7 +3,7 @@ import os.path
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 parser = argparse.ArgumentParser(
     description="Plot deflection angle and median eccentricity of merger runs",
@@ -56,17 +56,17 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     default="INFO",
     help="verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 if args.publish:
-    cmf.plotting.set_publishing_style()
+    bgs.plotting.set_publishing_style()
 legend_kwargs = {"ncol": 2, "fontsize": "small"}
 try:
     assert args.angle >= 0 and args.angle <= 180
@@ -80,7 +80,7 @@ data_dirs.append(args.path)
 if args.extra_dirs:
     data_dirs.extend(args.extra_dirs)
     SL.debug(f"Directories are: {data_dirs}")
-    labels = cmf.general.get_unique_path_part(data_dirs)
+    labels = bgs.general.get_unique_path_part(data_dirs)
     SL.debug(f"Labels are: {labels}")
 else:
     labels = [""]
@@ -110,7 +110,7 @@ ax[0].set_title(f"$\\theta_\mathrm{{defl,min}}={args.angle:.1f}\degree$")
 
 for j, datdir in enumerate(data_dirs):
     SL.info(f"Reading from directory: {datdir}")
-    HMQfiles = cmf.utils.get_files_in_dir(datdir)
+    HMQfiles = bgs.utils.get_files_in_dir(datdir)
     N = len(HMQfiles)
 
     thetas = np.full(N, np.nan)
@@ -122,13 +122,13 @@ for j, datdir in enumerate(data_dirs):
     # loop through each bh file in the directory
     for i, HMQfile in enumerate(HMQfiles):
         SL.debug(f"Reading file: {HMQfile}")
-        hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(HMQfile)
+        hmq = bgs.analysis.HMQuantitiesBinaryData.load_from_file(HMQfile)
         if i == 0:
             if args.label == "e":
                 labels[j] = f"{hmq.initial_galaxy_orbit['e0']:.3f}"
                 legend_title = r"$e_\mathrm{ini}$"
             else:
-                labels[j] = cmf.general.represent_numeric_in_scientific(
+                labels[j] = bgs.general.represent_numeric_in_scientific(
                     hmq.mass_resolution()
                 )
                 legend_title = r"$M_\bullet/m_\star$"
@@ -137,7 +137,7 @@ for j, datdir in enumerate(data_dirs):
         data["e_ini"].append(hmq.initial_galaxy_orbit["e0"])
         data["mass_res"].append(hmq.mass_resolution())
 
-        thetas[i], theta_idx = cmf.analysis.first_major_deflection_angle(
+        thetas[i], theta_idx = bgs.analysis.first_major_deflection_angle(
             hmq.prebound_deflection_angles, angle_defl
         )
         if theta_idx is None:
@@ -146,7 +146,7 @@ for j, datdir in enumerate(data_dirs):
 
         # determine the eccentricity
         try:
-            _, period_idxs = cmf.analysis.find_idxs_of_n_periods(
+            _, period_idxs = bgs.analysis.find_idxs_of_n_periods(
                 np.nanmedian(hmq.hardening_radius),
                 hmq.semimajor_axis,
                 hmq.binary_separation,
@@ -156,12 +156,12 @@ for j, datdir in enumerate(data_dirs):
             SL.error(f"Unable to determine hardening radius for file {i}, skipping...")
             continue
         SL.debug(f"Period idxs: {period_idxs}")
-        m, iqr = cmf.mathematics.quantiles_relative_to_median(
+        m, iqr = bgs.mathematics.quantiles_relative_to_median(
             hmq.eccentricity[period_idxs[0] : period_idxs[1]]
         )
         median_eccs[i] = m
         iqr_eccs[0, i], iqr_eccs[1, i] = iqr
-        m, iqr = cmf.mathematics.quantiles_relative_to_median(
+        m, iqr = bgs.mathematics.quantiles_relative_to_median(
             hmq.semimajor_axis[period_idxs[0] : period_idxs[1]] * 1e3
         )
         median_a[i] = m
@@ -195,8 +195,8 @@ ax[1].set_ylim(0, 1)
 
 now = datetime.now().strftime("%Y%m%d_%H%M%S")
 if args.save:
-    cmf.plotting.savefig(
-        os.path.join(cmf.FIGDIR, f"deflection_angles/deflection_angles_{now}.png")
+    bgs.plotting.savefig(
+        os.path.join(bgs.FIGDIR, f"deflection_angles/deflection_angles_{now}.png")
     )
 else:
     SL.warning("Figure will not be saved!")
@@ -212,7 +212,7 @@ if args.save_data:
             exc_info=True,
         )
         raise
-    cmf.utils.save_data(
+    bgs.utils.save_data(
         data, os.path.join(args.save_data, f"deflection_angles_{now}.pickle")
     )
 

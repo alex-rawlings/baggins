@@ -1,15 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 from ketjugw.units import pc, yr
 
 
 def get_and_centre_bhs(k, bound=False):
     if bound:
-        bh1, bh2, merged = cmf.analysis.get_bound_binary(k)
+        bh1, bh2, merged = bgs.analysis.get_bound_binary(k)
     else:
-        bh1, bh2, merged = cmf.analysis.get_bh_particles(k)
+        bh1, bh2, merged = bgs.analysis.get_bh_particles(k)
     mass_sum = np.atleast_2d(bh1.m + bh2.m).T
     xcom = (np.atleast_2d(bh1.m).T * bh1.x + np.atleast_2d(bh2.m).T * bh2.x) / mass_sum
     vcom = (np.atleast_2d(bh1.m).T * bh1.v + np.atleast_2d(bh2.m).T * bh2.v) / mass_sum
@@ -24,7 +24,7 @@ def get_and_centre_bhs(k, bound=False):
 
 mainpath = "/scratch/pjohanss/arawling/collisionless_merger/high-time-output/A-C-3.0-0.05-H"
 
-ketjufiles = cmf.utils.get_ketjubhs_in_dir(mainpath)
+ketjufiles = bgs.utils.get_ketjubhs_in_dir(mainpath)
 
 
 fig, ax = plt.subplots(1,2, sharex="all")

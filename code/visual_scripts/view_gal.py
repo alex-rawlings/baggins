@@ -1,9 +1,9 @@
 import os.path
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
-parser = cmf.utils.argparse_for_initialise(
+parser = bgs.utils.argparse_for_initialise(
     description="View the initial conditions or snapshot."
 )
 parser.add_argument(
@@ -45,7 +45,7 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
@@ -53,7 +53,7 @@ args = parser.parse_args()
 
 print("\nRunning view_gal.py\n")
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 if args.snapview:
     # load the snapshot
@@ -62,7 +62,7 @@ if args.snapview:
 else:
     # get the parameter file
     SL.info("Reading from a parameter file...")
-    pfv = cmf.utils.read_parameters(args.paramFile)
+    pfv = bgs.utils.read_parameters(args.paramFile)
     fig_loc = os.path.join(pfv.saveLocation, pfv.galaxyName, pfv.figureLocation)
     snap = pygad.Snapshot(
         os.path.join(pfv.saveLocation, pfv.galaxyName, f"{pfv.galaxyName}.hdf5"),
@@ -83,10 +83,10 @@ extent = dict(
     stars={"xz": args.starextent, "xy": args.starextent},
     dm={"xz": args.haloextent, "xy": args.haloextent},
 )
-fig, ax = cmf.plotting.plot_galaxies_with_pygad(
+fig, ax = bgs.plotting.plot_galaxies_with_pygad(
     snap, extent=extent, orientate=orientate_snap, overplot_bhs=True
 )
 if not args.snapview:
-    cmf.plotting.savefig(os.path.join(fig_loc, pfv.galaxyName))
+    bgs.plotting.savefig(os.path.join(fig_loc, pfv.galaxyName))
 if args.view:
     plt.show()

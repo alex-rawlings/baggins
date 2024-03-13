@@ -1,0 +1,78 @@
+2024-03-06 10:26:29: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 10:26:29: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 10:29:15: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 10:29:15: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 10:31:05: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 10:31:05: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 10:31:05: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 10:31:05: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 10:35:49: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 10:35:49: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 10:35:49: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 10:35:49: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 10:41:17: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 10:41:17: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 10:41:17: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 10:41:17: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 10:45:28: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 10:45:28: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 10:45:28: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 10:45:28: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 11:33:39: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 11:33:39: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 11:33:39: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 11:33:39: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 11:39:27: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 11:39:27: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 11:39:27: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 11:39:27: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 11:43:51: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 11:43:51: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 11:43:51: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 11:43:51: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 11:49:26: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 11:49:26: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 11:49:26: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 11:49:26: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 11:52:00: cm_funcs.analysis.StanModel: WARNING: Varaible `lprior` not present in Stan model. Prior sensitivty analysis will not be performed.
+2024-03-06 11:53:27: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 11:53:27: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 11:53:27: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 11:53:27: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 12:00:54: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 12:00:54: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 12:00:54: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 12:00:54: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 12:10:24: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 12:10:24: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 12:10:24: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 12:10:24: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 17:35:49: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 17:35:49: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0000.hdf5
+2024-03-06 17:35:49: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 17:35:49: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 17:42:04: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0060.hdf5
+2024-03-06 17:42:04: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 17:42:04: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 17:47:51: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0900.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 17:47:51: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0900.hdf5
+2024-03-06 17:47:51: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 17:47:51: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 17:49:55: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0900.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 17:49:55: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0900.hdf5
+2024-03-06 17:49:55: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 17:49:55: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-03-06 17:52:30: cm_funcs.analysis.StanModel: INFO: Maximum CJS distance for latent variables:
+ <xarray.Dataset>
+Dimensions:     ()
+Data variables:
+    rb          float64 0.04641
+    Re          float64 0.03405
+    log10densb  float64 0.04387
+    g           float64 0.02137
+    n           float64 0.05118
+    a           float64 0.05828
+2024-03-06 17:56:54: cm_funcs.analysis.StanModel: ERROR: HMQ file /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0900.hdf5 has been modified since the Stan model was run, proceed with caution!
+2024-03-06 17:56:54: cm_funcs.analysis.GrahamModels: INFO: Loading file: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study/H_2M-H_2M-30.000-2.000/HMQ-cube-H_2M_b-H_2M_c-30.000-2.000-v0900.hdf5
+2024-03-06 17:56:54: cm_funcs.analysis.GrahamModels: WARNING: Observations from a single file have been converted to a hierarchy format
+2024-03-06 17:56:54: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.

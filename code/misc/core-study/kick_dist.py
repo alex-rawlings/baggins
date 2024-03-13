@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 m1 = 1e-1
@@ -25,7 +25,7 @@ v = np.full(N, np.nan)
 for i, (ss1, ss2) in enumerate(zip(s1, s2)):
     print(f"Sampling {(i+1)/N*100:.1f}% complete...                      ", end="\r")
     # convert unit of spin
-    remnant = cmf.literature.ketju_calculate_bh_merger_remnant_properties(
+    remnant = bgs.literature.ketju_calculate_bh_merger_remnant_properties(
         m1=m1, m2=m2,
         s1=ss1, s2=ss2,
         x1=x1, x2=x2,

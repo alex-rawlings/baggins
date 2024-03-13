@@ -3,27 +3,27 @@ import numpy as np
 import scipy.interpolate
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 paramfile_base = "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-mergers/resolution-convergence/hardening/"
 
 def rho_sigma(snaplist, t, extent=None):
     """
-    A hacked version of cmf.analysis.get_G_rho_per_sigma that returns rho and 
+    A hacked version of bgs.analysis.get_G_rho_per_sigma that returns rho and 
     sigma separately
     """
     ts = np.full((2), np.nan)
     inner_density = np.full_like(ts, np.nan)
     inner_sigma = np.full_like(ts, np.nan)
-    idx = cmf.analysis.snap_num_for_time(snaplist, t, method="floor", units="Myr")
+    idx = bgs.analysis.snap_num_for_time(snaplist, t, method="floor", units="Myr")
     star_count = 0
     for i in range(2):
         snap = pygad.Snapshot(snaplist[idx+i], physical=True)
         extent_mask = pygad.BallMask(extent, center=pygad.analysis.center_of_mass(snap.bh))
         star_count += len(snap.stars[extent_mask]["mass"])
-        ts[i] = cmf.general.convert_gadget_time(snap, new_unit="Myr")
-        rho_temp, sigma_temp = cmf.analysis.get_inner_rho_and_sigma(snap, extent)
+        ts[i] = bgs.general.convert_gadget_time(snap, new_unit="Myr")
+        rho_temp, sigma_temp = bgs.analysis.get_inner_rho_and_sigma(snap, extent)
         rho_units = rho_temp.units
         sigma_units = sigma_temp.units
         inner_density[i], inner_sigma[i] = rho_temp, sigma_temp
@@ -69,7 +69,7 @@ if False:
         for i in range(10):
             print("  Child {}".format(i))
             perturb_idx = "{:03d}".format(i)
-            bhb = cmf.analysis.BHBinary(pf, perturbID=perturb_idx, gr_safe_radius=10)
+            bhb = bgs.analysis.BHBinary(pf, perturbID=perturb_idx, gr_safe_radius=10)
             data[n]["nstar"] = bhb.starcount
             data[n]["H_arr"][i] = bhb.H
             data[n]["K_arr"][i] = bhb.K
@@ -77,9 +77,9 @@ if False:
             data[n]["rinfl"][i] = bhb.r_infl
             data[n]["da_arr"][i] = bhb.H * bhb.G_rho_per_sigma
             data[n]["rho_arr"][i], data[n]["sig_arr"][i], data[n]["rho_grad"][i], data[n]["sig_grad"][i], data[n]["star_count"][i] = rho_sigma(bhb.snaplist, bhb.r_hard_time, bhb.r_infl)
-    cmf.utils.save_data(data, "hardening-convergence.pickle")
+    bgs.utils.save_data(data, "hardening-convergence.pickle")
 else:
-    data = cmf.utils.load_data("hardening-convergence.pickle")
+    data = bgs.utils.load_data("hardening-convergence.pickle")
 
 #plot
 for r in data.keys():

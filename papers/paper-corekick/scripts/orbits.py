@@ -2,7 +2,7 @@ import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import gadgetorbits as go
 import figure_config
 
@@ -16,14 +16,14 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
 # create logger
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 
 orbitfilebases = [
@@ -78,7 +78,7 @@ labels = [
 
 
 def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
-    orbitcl = cmf.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[0]
+    orbitcl = bgs.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[0]
     SL.info(f"Reading: {orbitcl}")
     (
         orbitids,
@@ -95,7 +95,7 @@ def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
         minangmom,
     ) = go.loadorbits(orbitcl, mergemask=mergemask, addextrainfo=True)
     radbins = np.geomspace(minrad, maxrad, nbin + 1)
-    meanrads = cmf.mathematics.get_histogram_bin_centres(radbins)
+    meanrads = bgs.mathematics.get_histogram_bin_centres(radbins)
     possibleclasses = np.arange(np.max(classids) + 1).astype(int)
     classfrequency = np.zeros((nbin, len(possibleclasses)))
     rad_len = []
@@ -130,7 +130,7 @@ def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
 # figure 1: plots of different orbital families
 fig, ax = plt.subplots(2, 4, sharex=True, sharey=True)
 fig.set_figwidth(2 * fig.get_figwidth())
-cmapper, sm = cmf.plotting.create_normed_colours(0, 900, cmap="custom_Blues")
+cmapper, sm = bgs.plotting.create_normed_colours(0, 900, cmap="custom_Blues")
 
 
 # figure 2: plots of different kick velocities
@@ -193,6 +193,6 @@ fig2.subplots_adjust(bottom=0.16, top=0.98)
 ax2[-1, 1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.45), ncol=len(labels))
 
 
-cmf.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
-cmf.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)
 plt.show()

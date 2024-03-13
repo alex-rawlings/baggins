@@ -4,7 +4,7 @@ import scipy.interpolate
 import matplotlib.pyplot as plt
 from matplotlib import colors
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 class ShellData:
@@ -35,8 +35,8 @@ class ShellData:
             fig, ax = plt.subplots(1, 2, sharex="all")
         # TODO mapping t -> r is incorrect
         f_tr = scipy.interpolate.interp1d(self.t, self.r, bounds_error=False)
-        ax2_1 = cmf.plotting.twin_axes_plot(ax[0], f_tr)
-        ax2_2 = cmf.plotting.twin_axes_plot(ax[1], f_tr)
+        ax2_1 = bgs.plotting.twin_axes_plot(ax[0], f_tr)
+        ax2_2 = bgs.plotting.twin_axes_plot(ax[1], f_tr)
         norm = colors.LogNorm(min(self.shells), max(self.shells))
         self.t = np.array(self.t)
         self.r = np.array(self.r)
@@ -82,16 +82,16 @@ if args.new:
     )
     shells = {"start": 1e-4, "stop": 500, "num": 10}
 
-    snaplist = cmf.utils.get_snapshots_in_dir(mainpath)
-    bhfile = cmf.utils.get_ketjubhs_in_dir(mainpath)[0]
-    bh1, bh2, merged = cmf.analysis.get_bh_particles(bhfile)
-    peri_time = cmf.analysis.find_pericentre_time(bh1, bh2)[0][0] / 1e3  # Gyr
+    snaplist = bgs.utils.get_snapshots_in_dir(mainpath)
+    bhfile = bgs.utils.get_ketjubhs_in_dir(mainpath)[0]
+    bh1, bh2, merged = bgs.analysis.get_bh_particles(bhfile)
+    peri_time = bgs.analysis.find_pericentre_time(bh1, bh2)[0][0] / 1e3  # Gyr
 
     shell_data = ShellData(np.geomspace(**shells))
 
     for i, snapfile in enumerate(snaplist):
         snap = pygad.Snapshot(snapfile, physical=True)
-        snap_time = cmf.general.convert_gadget_time(snap)
+        snap_time = bgs.general.convert_gadget_time(snap)
         if snap_time > peri_time:
             break
         (
@@ -99,22 +99,22 @@ if args.new:
             vcoms,
             global_xcom,
             global_vcom,
-        ) = cmf.analysis.shell_com_motions_each_galaxy(snap, shell_kw=shells)
+        ) = bgs.analysis.shell_com_motions_each_galaxy(snap, shell_kw=shells)
         xcom_mag = dict()
         vcom_mag = dict()
         for k in xcoms:
-            xcom_mag[k] = cmf.mathematics.radial_separation(xcoms[k], global_xcom[k])
-            vcom_mag[k] = cmf.mathematics.radial_separation(global_vcom[k], vcoms[k])
-        bh_sep = cmf.mathematics.radial_separation(
+            xcom_mag[k] = bgs.mathematics.radial_separation(xcoms[k], global_xcom[k])
+            vcom_mag[k] = bgs.mathematics.radial_separation(global_vcom[k], vcoms[k])
+        bh_sep = bgs.mathematics.radial_separation(
             snap.bh["pos"][0, :], snap.bh["pos"][1, :]
         )[0]
         shell_data.add_data(snap_time, bh_sep, xcom_mag, vcom_mag)
 
     data_dict = {"shell_data": shell_data}
 
-    cmf.utils.save_data(data_dict, "shell_motion.pickle")
+    bgs.utils.save_data(data_dict, "shell_motion.pickle")
 else:
-    data_dict = cmf.utils.load_data("shell_motion.pickle")
+    data_dict = bgs.utils.load_data("shell_motion.pickle")
     shell_data = data_dict["shell_data"]
 shell_data.plot()
 plt.show()

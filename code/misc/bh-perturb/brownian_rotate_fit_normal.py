@@ -3,7 +3,7 @@ import os.path
 import numpy as np
 import scipy.stats, scipy.spatial.transform
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 def plothist_and_best(mu, sigma, ax1, ax2, ax3, nbins=10, label=None, endpoint=1e-3, print_label=None):
@@ -24,7 +24,7 @@ def plothist_and_best(mu, sigma, ax1, ax2, ax3, nbins=10, label=None, endpoint=1
     ax1.hist(mu, nbins, histtype="step", density=True)
     h,bins,_ = ax2.hist(sigma, nbins, histtype="step", density=True, label=label)
     best_mean = np.nanmean(mu)
-    bincentres = cmf.mathematics.get_histogram_bin_centres(bins)
+    bincentres = bgs.mathematics.get_histogram_bin_centres(bins)
     best_sd = bincentres[np.argmax(h)]
     print("{}: mean={:.2e}, sd={:.2e}".format(print_label, best_mean, best_sd))
     distr = scipy.stats.norm(best_mean, best_sd)
@@ -43,7 +43,7 @@ args = parser.parse_args()
 
 #shortcut method to get all files in a directory
 if args.data[0] == "all":
-    args.data = cmf.utils.get_files_in_dir(args.path, ext=".pickle", name_only=True)
+    args.data = bgs.utils.get_files_in_dir(args.path, ext=".pickle", name_only=True)
 
 fig, ax = plt.subplots(3,4, sharex="col", sharey="col", figsize=(8,7))
 ax[0,0].set_title("Position Mean")
@@ -64,7 +64,7 @@ for i, val in enumerate(("x", "y", "z")):
     ax2[i,1].set_xlabel(r"v$_{}$".format(val))
 
 for l, datafile in enumerate(args.data):
-    data_dict = cmf.utils.load_data(os.path.join(args.path, datafile))
+    data_dict = bgs.utils.load_data(os.path.join(args.path, datafile))
     time_mask = data_dict["times"] > args.timelower
     means = dict(
         pos = np.full((args.rotations, 3), np.nan),
@@ -89,6 +89,6 @@ for l, datafile in enumerate(args.data):
         plothist_and_best(means["vel"][:,i], sds["vel"][:,i], ax[i,2], ax[i,3], ax2[i,1], nbins=args.bins, endpoint=args.endpoints, print_label="{} Vel ({})".format(data_dict["galaxy_name"], i))
 ax[0,1].legend()
 ax2[0,0].legend()
-fig.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/random_rots.png"))
-fig2.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/bestfit_from_random.png"))
+fig.savefig(os.path.join(bgs.FIGDIR, "brownian/along_axes/random_rots.png"))
+fig2.savefig(os.path.join(bgs.FIGDIR, "brownian/along_axes/bestfit_from_random.png"))
 plt.show()

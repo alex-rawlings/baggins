@@ -1,7 +1,7 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 def gradient_line(ax, x, y, colours, **plot_kwargs):
@@ -17,16 +17,16 @@ data_files = [
 
 
 fig, ax = plt.subplots(1,2,sharex="all")
-markers = cmf.plotting.mplChars()
+markers = bgs.plotting.mplChars()
 cmap = plt.cm.viridis
 for i, datafile in enumerate(data_files):
-    data_dict = cmf.utils.load_data(os.path.join(main_data_path, datafile))
-    displacement = cmf.mathematics.radial_separation(data_dict["diff_x"])
-    vel_mag = cmf.mathematics.radial_separation(data_dict["diff_v"])
+    data_dict = bgs.utils.load_data(os.path.join(main_data_path, datafile))
+    displacement = bgs.mathematics.radial_separation(data_dict["diff_x"])
+    vel_mag = bgs.mathematics.radial_separation(data_dict["diff_v"])
 
     if i==0:
-        gradplot_pos = cmf.plotting.GradientScatterPlot(ax[0], data_dict["times"], data_dict["stellar_density"], displacement, label=data_dict["galaxy_name"], marker=markers[i])
-        gradplot_vel = cmf.plotting.GradientLinePlot(ax[1], data_dict["times"], data_dict["stellar_density"], vel_mag, label=data_dict["galaxy_name"], marker=markers[i])
+        gradplot_pos = bgs.plotting.GradientScatterPlot(ax[0], data_dict["times"], data_dict["stellar_density"], displacement, label=data_dict["galaxy_name"], marker=markers[i])
+        gradplot_vel = bgs.plotting.GradientLinePlot(ax[1], data_dict["times"], data_dict["stellar_density"], vel_mag, label=data_dict["galaxy_name"], marker=markers[i])
     else:
         gradplot_pos.add_data(data_dict["times"], data_dict["stellar_density"], displacement, label=data_dict["galaxy_name"], marker=markers[i])
         gradplot_vel.add_data(data_dict["times"], data_dict["stellar_density"], vel_mag, label=data_dict["galaxy_name"], marker=markers[i])

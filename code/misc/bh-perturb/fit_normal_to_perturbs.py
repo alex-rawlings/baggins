@@ -3,14 +3,14 @@ import numpy as np
 import scipy.stats, scipy.spatial.transform
 import matplotlib.pyplot as plt
 import seaborn as sns
-import cm_functions as cmf
+import baggins as bgs
 
 
 def plothist_and_best(mu, sigma, ax1, ax2, ax3, nbins=10, label=None, endpoint=1e-3):
     ax1.hist(mu, nbins, histtype="step", density=True)
     h,bins,_ = ax2.hist(sigma, nbins, histtype="step", density=True, label=label)
     best_mean = np.nanmean(mu)
-    bincentres = cmf.mathematics.get_histogram_bin_centres(bins)
+    bincentres = bgs.mathematics.get_histogram_bin_centres(bins)
     best_sd = bincentres[np.argmax(h)]
     distr = scipy.stats.norm(best_mean, best_sd)
     x = np.linspace(distr.ppf(endpoint), distr.ppf(1-endpoint), 100)
@@ -48,7 +48,7 @@ for i, val in enumerate(("x", "y", "z")):
     ax2[i,1].set_xlabel(r"v$_{}$".format(val))
 
 for l, datafile in enumerate(data_files):
-    data_dict = cmf.utils.load_data(os.path.join(main_data_path, datafile))
+    data_dict = bgs.utils.load_data(os.path.join(main_data_path, datafile))
     time_mask = data_dict["times"] > time_lower
     means = dict(
         pos = np.full((reps, 3), np.nan),
@@ -73,13 +73,13 @@ for l, datafile in enumerate(data_files):
         plothist_and_best(means["vel"][:,i], sds["vel"][:,i], ax[i,2], ax[i,3], ax2[i,1], endpoint=end_points)
 ax[0,1].legend()
 ax2[0,0].legend()
-#fig.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/random_rots.png"))
+#fig.savefig(os.path.join(bgs.FIGDIR, "brownian/along_axes/random_rots.png"))
 #plt.show()
 
 """
 fig, ax = plt.subplots(3,2,sharex="col")
 for i, datafile in enumerate(data_files):
-    data_dict = cmf.utils.load_data(os.path.join(main_data_path, datafile))
+    data_dict = bgs.utils.load_data(os.path.join(main_data_path, datafile))
     for j, key in enumerate(data_dict.keys()):
         if key == "galaxy_name": continue
         for k in range(3):

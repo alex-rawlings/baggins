@@ -1,6 +1,6 @@
 import os.path
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 from local_funcs import HMQ_generator, get_hard_timespan
 
 
@@ -47,6 +47,6 @@ for (hmq, alpha, count, f) in HMQ_generator(data_dirs, True):
 ax[0].legend(fontsize="x-small")
 ax[1].legend(fontsize="x-small")
 
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"other_tests/thorsten/AC_radii.png"), fig=fig)
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"other_tests/thorsten/AC_hardtime.png"), fig=fig2)
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"other_tests/thorsten/AC_radii.png"), fig=fig)
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"other_tests/thorsten/AC_hardtime.png"), fig=fig2)
 plt.show() 

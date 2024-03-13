@@ -1,0 +1,46 @@
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-26 17:46:19: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-26 17:46:20: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-26 17:50:04: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-26 17:50:05: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-26 17:53:44: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.png
+2024-02-26 17:53:45: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.png
+2024-02-26 17:53:46: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.png
+2024-02-26 17:54:44: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240226_175444
+2024-02-26 17:57:14: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-26 17:57:15: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-26 17:57:17: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-26 17:57:18: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-26 17:57:39: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.png
+2024-02-26 17:57:43: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-26 17:57:43: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/projects/collisionless-merger-sample/papers/paper-corekick/figures/rb_pdf.pdf
+2024-02-26 17:57:44: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240226_175444

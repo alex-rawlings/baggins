@@ -1,0 +1,15 @@
+---
+cmdstan: /projappl/pjohanss/stan-env/cmdstan-2.33.1
+data_dir: /scratch/pjohanss/arawling/collisionless_merger
+date_format: '%Y-%m-%d %H:%M:%S'
+figure_dir: figures
+figure_ext: .png
+logging:
+  console_level: INFO
+  file: logs/cm_funcs.log
+  file_level: INFO
+tmp_dir: tmp_dir
+...
+---
+git_hash: heads/feature/priorsense-0-gf556b72
+...

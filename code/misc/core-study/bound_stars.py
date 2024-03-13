@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 import dask
 import multiprocessing as mp
@@ -20,7 +20,7 @@ if __name__ == "__main__":
     for snapdir in snapdirs:
         #print(f"In directory: {snapdir}")
         if "0900" not in snapdir: continue
-        snapfiles = cmf.utils.get_snapshots_in_dir(os.path.join(snapdir, "output"))
+        snapfiles = bgs.utils.get_snapshots_in_dir(os.path.join(snapdir, "output"))
         num_bound_stars = np.zeros_like(snapfiles, dtype=int)
         times = np.full_like(num_bound_stars, np.nan, dtype=float)
         sep = np.full_like(num_bound_stars, np.nan, dtype=float)
@@ -31,9 +31,9 @@ if __name__ == "__main__":
             if len(snap.bh) > 1:
                 print(f"There are {len(snap.bh)} BHs in snapshot {snapfile}")
             else:
-                times[snap_idx] = cmf.general.convert_gadget_time(snap)
-                sep[snap_idx] = cmf.mathematics.radial_separation(snap.bh["pos"])[0]
-                num_bound_stars[snap_idx] = len(cmf.analysis.find_bound_particles(snap))
+                times[snap_idx] = bgs.general.convert_gadget_time(snap)
+                sep[snap_idx] = bgs.mathematics.radial_separation(snap.bh["pos"])[0]
+                num_bound_stars[snap_idx] = len(bgs.analysis.find_bound_particles(snap))
             snap.delete_blocks()
             pygad.gc_full_collect()
             del snap

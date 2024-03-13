@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 
@@ -11,7 +11,7 @@ pygad.analysis.orientate_at(snap, "red I", total=True)
 ball_mask = pygad.BallMask(7)
 
 
-voronoi_stats = cmf.analysis.voronoi_binned_los_V_statistics(
+voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
     snap.stars[ball_mask]["pos"][:, 0],
     snap.stars[ball_mask]["pos"][:, 1],
     snap.stars[ball_mask]["vel"][:, 2],
@@ -19,12 +19,12 @@ voronoi_stats = cmf.analysis.voronoi_binned_los_V_statistics(
     part_per_bin=2000
 )
 
-ax = cmf.plotting.voronoi_plot(voronoi_stats)
+ax = bgs.plotting.voronoi_plot(voronoi_stats)
 
 for axi in ax:
     axi.plot(snap.bh["pos"][0,0], snap.bh["pos"][0,1], marker="o", c="k")
 fig = axi.get_figure()
-fig.suptitle(f"t={cmf.general.convert_gadget_time(snap):.2f} Gyr, r_BH={cmf.mathematics.radial_separation(snap.bh['pos'])[0]:.2f} kpc")
+fig.suptitle(f"t={bgs.general.convert_gadget_time(snap):.2f} Gyr, r_BH={bgs.mathematics.radial_separation(snap.bh['pos'])[0]:.2f} kpc")
 
-cmf.plotting.savefig("v0600-20-ifu.png")
+bgs.plotting.savefig("v0600-20-ifu.png")
 plt.show()

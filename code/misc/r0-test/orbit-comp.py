@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
 import os
-import cm_functions as cmf
+import baggins as bgs
 
 
 mainpath = "/scratch/pjohanss/arawling/collisionless_merger/r0-test"
@@ -12,7 +12,7 @@ kpc = ketjugw.units.pc * 1e3
 myr = ketjugw.units.yr * 1e6
 
 fig, ax = plt.subplots(1,1)
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 for i, datapath in enumerate(datapaths):
     try:
         bhfile = os.path.join(mainpath, datapath, "output/ketju_bhs.hdf5")

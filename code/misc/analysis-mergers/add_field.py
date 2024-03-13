@@ -1,13 +1,13 @@
 import os
 import multiprocessing as mp
 import numpy as np
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 def run(i):
     if True:
-        cdc = cmf.analysis.ChildSimData.load_from_file(cubefiles[i])
-        snaplist = cmf.utils.get_snapshots_in_dir(perturbdirs[i])
+        cdc = bgs.analysis.ChildSimData.load_from_file(cubefiles[i])
+        snaplist = bgs.utils.get_snapshots_in_dir(perturbdirs[i])
         ballmask = pygad.BallMask(pygad.UnitScalar(30, "kpc"))
         num_vescs = np.full_like(snaplist, np.nan, dtype=float)
         jj = 0
@@ -19,7 +19,7 @@ def run(i):
                 continue
             snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
             snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
-            num_vescs[jj], prev_hypers = cmf.analysis.count_new_hypervelocity_particles(snap[ballmask], prev=prev_hypers)
+            num_vescs[jj], prev_hypers = bgs.analysis.count_new_hypervelocity_particles(snap[ballmask], prev=prev_hypers)
             # save memory
             snap.delete_blocks()
             jj += 1

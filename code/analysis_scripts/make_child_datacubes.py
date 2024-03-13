@@ -2,7 +2,7 @@ import argparse
 import multiprocessing as mp
 import os
 import time
-import cm_functions as cmf
+import baggins as bgs
 
 # set up command line arguments
 parser = argparse.ArgumentParser(
@@ -17,7 +17,7 @@ parser.add_argument(
     help="path to analysis parameter file",
     dest="apf",
     default=os.path.join(
-        cmf.HOME,
+        bgs.HOME,
         "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.py",
     ),
 )
@@ -33,14 +33,14 @@ args = parser.parse_args()
 # helper function to run
 def run_maker(c_dir):
     # make the child sim cube for this subdir in the perturbation directory
-    cdc = cmf.analysis.ChildSim(args.pf, c_dir, apfile=args.apf)
+    cdc = bgs.analysis.ChildSim(args.pf, c_dir, apfile=args.apf)
     file_save_name = os.path.join(file_save_dir, "cube-{}.hdf5".format(cdc.merger_name))
     cdc.make_hdf5(file_save_name)
 
 
 if __name__ == "__main__":
-    pfv = cmf.utils.read_parameters(args.pf, verbose=False)
-    afv = cmf.utils.read_parameters(args.apf, verbose=False)
+    pfv = bgs.utils.read_parameters(args.pf, verbose=False)
+    afv = bgs.utils.read_parameters(args.apf, verbose=False)
     # determine which perturbation directories to run
     if args.pnum == "all":
         perturb_dir = os.path.join(pfv.full_save_location, pfv.perturbSubDir)
