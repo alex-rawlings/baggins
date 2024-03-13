@@ -2,6 +2,9 @@
 node_modules/
 dist/
 
+# Build directories for compiled code
+**/build
+
 # Python and pickle code
 __pycache__
 *.pyc
