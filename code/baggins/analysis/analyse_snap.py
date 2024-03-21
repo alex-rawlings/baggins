@@ -8,6 +8,7 @@ import pygad
 import dask
 
 from . import masks as masks
+from ..C.lib import bagginsCXX
 from ..mathematics import radial_separation, density_sphere, spherical_components
 from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time
@@ -40,7 +41,9 @@ __all__ = [
     "velocity_anisotropy",
     "softened_inverse_r",
     "softened_acceleration",
-    "add_to_loss_cone_refill"
+    "add_to_loss_cone_refill",
+    "find_bound_substructure",
+    "find_individual_bound_particles"
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -259,7 +262,7 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
     Parameters
     ----------
     snap : pygad.Snapshot
-        _description_
+        snapshot to analyse
     xcom : dict, optional
         CoM coordinates for each galaxy, assumes the dict keys are the BH
         particle IDs, by default None
@@ -417,9 +420,9 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
     combined : bool, optional
         should the radius be calculated for the binary as a single object
         (True), or separately for each BH (False)?, by default False
-    mass_frac : int, optional
-        fraction of the mass to search for. Influence radius corresponds
-        to mass_frac = 2., by default 1
+    mass_frac : float, optional
+        fraction of the stellar mass (relative to BH mass) to search for. 
+        Influence radius corresponds to mass_frac = 2., by default 1.
 
     Returns
     -------
@@ -440,6 +443,7 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
         # interpolate in mass-radius plane
         # determine how many m are in M -> this will be the index of r we need
         idx = int(np.ceil(M / m)) - 1
+        print(f"Idx: {idx}")
         ms = np.array([idx, idx + 1]) * m
         f = scipy.interpolate.interp1d(ms, [r[idx], r[idx + 1]])
         return pygad.UnitScalar(f(M), r.units)
@@ -1306,83 +1310,85 @@ def add_to_loss_cone_refill(snap, J_lc, prev):
     in_cone_ids = set(snap["ID"][pygad.utils.geo.dist(snap["angmom"]) < J_lc])
     return prev.union(in_cone_ids)
 
+def _set_bound_search_rad(snap):
+    """
+    Define the search area for bound particles. The search is restricted to the 
+    influence radius of the most massive BH, centred on that BH.
 
-def find_bound_particles_python(snap):
-    try:
-        num_bhs = len(snap.bh)
-        assert num_bhs >0 and num_bhs<3
-    except AssertionError:
-        _logger.exception("At least 1 and no more than 2 BHs must be present in the snapshot!", exc_info=True)
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
 
-    class Central:
-        def __init__(self) -> None:
-            self._mass = []
-            self._pos = []
-            self._vel = []
-            self._ids = []
+    Returns
+    -------
+    pygad.SubSnapshot
+        subsnapshot with just those particles to search for boundedness
+    """
+    rinf = influence_radius(snap)
+    bh_id = get_massive_bh_ID(snap)
+    ball_mask = pygad.BallMask(rinf[bh_id], snap.bh[snap.bh["ID"]==bh_id]["pos"])
+    return snap[pygad.IDMask(snap.bh["ID"]) | pygad.IDMask(snap.stars["ID"])][ball_mask]
 
-        @property
-        def mass(self):
-            return np.sum(self._mass)
+def find_bound_substructure(snap):
+    """
+    Simple structure finder restricted to the influence radius of the BH.
 
-        @property
-        def pos(self):
-            return np.average(self._pos, axis=0, weights=self._mass)
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
 
-        @property
-        def vel(self):
-            return np.average(self._vel, axis=0, weights=self._mass)
+    Returns
+    -------
+    bound_IDs : list
+        list of bound particle IDs
+    """
+    subsnap = _set_bound_search_rad(snap)
+    particle_types = [5 for _ in range(len(subsnap.bh["mass"]))]
+    particle_types.extend([4 for _ in range(len(subsnap.stars["mass"]))])
+    bound_IDs = bagginsCXX.find_bound_particles(
+        particle_types,
+        subsnap["ID"].view(np.ndarray).tolist(),
+        subsnap["mass"].view(np.ndarray).tolist(),
+        subsnap["pos"].view(np.ndarray).tolist(),
+        subsnap["vel"].view(np.ndarray).tolist()
+    )
+    return bound_IDs
 
-        def update(self, pid, m, x, v):
-            def _checker(q):
-                if isinstance(q, list):
-                    return q
-                elif isinstance(q, (np.ndarray, pygad.UnitArr)):
-                    return q.tolist()
-                else:
-                    raise ValueError(f"Input must be type list, np.ndarray, or pygad.UnitArr, not {type(q)}")
-            self._ids.append(pid)
-            self._mass.append(m)
-            self._pos.append(_checker(x))
-            self._vel.append(_checker(v))
+def find_individual_bound_particles(snap, return_frac=False):
+    """
+    Find individual particles bound to the most massive BH (two-body energy is 
+    checked).
 
-    central = Central()
-    for i in range(len(snap.bh)):
-        central.update(snap.bh["ID"][i], snap.bh["mass"][i], snap.bh["pos"][i,:], snap.bh["vel"][i,:])
-    iters = 0
-    start_t = datetime.now()
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
+    return_frac : bool, optional
+        return the fraction of bound particles inside the influence radius, by 
+        default False
+
+    Returns
+    -------
+    : list
+        list of bound particle IDs
+    : float, optional
+        fraction of bound particles inside influence radius if `return_frac` is 
+        True
+    """
+    subsnap = _set_bound_search_rad(snap)
+    bh_id_mask = pygad.IDMask(get_massive_bh_ID(subsnap.bh))
+    # shift to BH frame
+    trans = pygad.Translation(-subsnap[bh_id_mask]["pos"][0,:])
+    boost = pygad.Boost(-subsnap.bh[bh_id_mask]["vel"][0,:])
+    trans.apply(subsnap, total=True)
+    boost.apply(subsnap, total=True)
     G = pygad.UnitScalar(4.3009e-6, "kpc/Msol*(km/s)**2")
-    while True:
-        # recentre on the central object
-        trans = pygad.Translation(-central.pos)
-        boost = pygad.Boost(-central.vel)
-        trans.apply(snap, total=True)
-        boost.apply(snap, total=True)
-
-        # sort stellar particles so we can sequentially add them to the central object
-        ids_new = pygad.IDMask(
-            list(set(snap.stars["ID"]) - set(central._ids))
-        )
-        subsnap = snap.stars[ids_new]
-        nearest_star_idx = np.argmin(subsnap["r"])
-        KE = pygad.UnitArr(0.5 * np.linalg.norm(subsnap["vel"][nearest_star_idx])**2, "(km/s)**2")
-        PE = G * pygad.UnitScalar(central.mass, "Msol") / pygad.UnitArr(subsnap["r"][nearest_star_idx], subsnap["r"].units)
-        print(KE)
-        print(PE)
-        if KE - PE > 0:
-            _logger.info(f"All bound particles found after {iters} iterations.")
-            break
-        else:
-            # move to original coordinate frame, so that the list of coordinates is consistent for the Central object
-            trans.inverse().apply(snap, total=True)
-            boost.inverse().apply(snap, total=True)
-            central.update(
-                subsnap["ID"][nearest_star_idx],
-                subsnap["mass"][nearest_star_idx],
-                subsnap["pos"][nearest_star_idx],
-                subsnap["vel"][nearest_star_idx]
-            )
-        iters += 1
-    _logger.info(f"Bound particle search took {datetime.now()-start_t}")
-    return central._ids
-
+    KE = pygad.UnitArr(0.5 * np.linalg.norm(subsnap[~bh_id_mask]["vel"], axis=1)**2, "(km/s)**2")
+    PE = G * pygad.UnitScalar(snap.bh[bh_id_mask]["mass"][0], "Msol") / pygad.UnitArr(subsnap[~bh_id_mask]["r"], snap["r"].units)
+    bound_IDs = subsnap[~bh_id_mask][KE-PE < 0]["ID"]
+    if return_frac:
+        return bound_IDs, len(bound_IDs)/len(subsnap)
+    else:
+        return bound_IDs

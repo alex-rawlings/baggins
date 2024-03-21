@@ -57,7 +57,6 @@ SL.debug(f"We will be plotting {num_dirs} different families...")
 fig, ax = plt.subplots(1, 1)
 ax.set_xlabel(f"Index/{args.thin}")
 ax.set_ylabel("Number of Ketju particles")
-ax.set_yscale("log")
 for i, d in enumerate(ketju_dirs):
     try:
         assert os.path.exists(d)
@@ -79,6 +78,8 @@ for i, d in enumerate(ketju_dirs):
                         c=_line[0].get_color(),
                         ls=lstyles[j],
                     )
+if ax.get_ylim()[1] > 100:
+    ax.set_yscale("log")
 if args.save:
     now = datetime.now().strftime("%Y%m%d_%H%M%S")
     bgs.plotting.savefig(

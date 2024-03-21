@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 3.8)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(PYBIND11_PYTHON_VERSION 3.8)
 
 project(bagginsCXX LANGUAGES CXX)
@@ -34,7 +35,6 @@ set(WARNING_FLAGS
     >
 )
 
-find_package (Boost 1.73 REQUIRED)
 find_package(OpenMP)
 include(FindPythonInterp)
 include(FindPythonLibs)
