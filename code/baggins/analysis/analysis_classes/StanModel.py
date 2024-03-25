@@ -71,6 +71,10 @@ class _StanModel(ABC):
         self._input_data_file_count = 0
         self._input_data_files = {}
 
+        # properties which are defined in child classes
+        self._latent_qtys = None
+        self._folded_qtys = None
+
     @property
     def num_OOS(self):
         return self._num_OOS
@@ -634,6 +638,15 @@ class _StanModel(ABC):
         self._fit = self._sampler(sample_kwargs=sample_kwargs, diagnose=diagnose)
         # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
+        if diagnose:
+            # prior sensitivity only done for posterior model
+            self._fit_for_az.add_groups(
+                {"log_prior": self._fit_for_az["posterior"]["lprior"]}
+            )
+            priorsens = az.psens(self._fit_for_az, var_names=self._latent_qtys)
+            _logger.info(
+                f"Maximum CJS distance for latent variables:\n {priorsens.max()}"
+            )
 
     def sample_prior(self, sample_kwargs={}, diagnose=True):
         """

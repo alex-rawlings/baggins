@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import figure_config
 
 #------------------------------------------------------------
@@ -8,8 +8,8 @@ import figure_config
 #------------------------------------------------------------
 
 # read in data
-data_e090 = cmf.utils.load_data(figure_config.data_path("nasim_scatter_e0-0.900.pickle"))
-data_e099 = cmf.utils.load_data(figure_config.data_path("nasim_scatter_e0-0.990.pickle"))
+data_e090 = bgs.utils.load_data(figure_config.data_path("nasim_scatter_e0-0.900.pickle"))
+data_e099 = bgs.utils.load_data(figure_config.data_path("nasim_scatter_e0-0.990.pickle"))
 
 # nasim 2020 data. from Fig. 8
 nasim = dict(
@@ -32,7 +32,7 @@ ax.set_yscale("log")
 # 1e10 Msol
 N_star = data_e090["mass_res"] / 1e8 * 1e10 * 2
 # set up the twin axis
-ax_twin = cmf.plotting.twin_axes_from_samples(ax, data_e090["mass_res"], N_star, log=False)
+ax_twin = bgs.plotting.twin_axes_from_samples(ax, data_e090["mass_res"], N_star, log=False)
 ax_twin.set_xlabel(r"$N_{\star,\mathrm{tot}}$")
 
 # plot data
@@ -46,9 +46,9 @@ mass_res_seq = np.geomspace(1.5e3, 3e4, 10)
 ax.plot(mass_res_seq, 1.2*mass_res_seq**-0.5, c="k", label=r"$\propto 1/\sqrt{N_{\star,\mathrm{tot}}}$")
 
 # final touch ups
-cmf.plotting.nice_log10_scale(ax, "xy")
+bgs.plotting.nice_log10_scale(ax, "xy")
 ax.set_xlim(7e2, ax.get_xlim()[1])
 ax.legend(fontsize="small", loc="lower left")
 
 # save
-cmf.plotting.savefig(figure_config.fig_path("convergence.pdf"), force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("convergence.pdf"), force_ext=True)

@@ -1,7 +1,7 @@
 import argparse
 import os.path
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 parser = argparse.ArgumentParser(
     description="Compare the analytical hardening rate to ketju output",
@@ -16,7 +16,7 @@ parser.add_argument(
     help="path to analysis parameter file",
     dest="apf",
     default=os.path.join(
-        cmf.HOME,
+        bgs.HOME,
         "projects/collisionless-merger-sample/parameters/parameters-analysis/datacubes.yml",
     ),
 )
@@ -24,7 +24,7 @@ args = parser.parse_args()
 
 
 # create the bh binary class that will hold all the data
-bh_binary = cmf.analysis.BHBinary(args.path, args.num, args.apf)
+bh_binary = bgs.analysis.BHBinary(args.path, args.num, args.apf)
 bh_binary.print()
 fig, ax = plt.subplots(2, 1, sharex=True, gridspec_kw={"height_ratios": [3, 1]})
 bh_binary.plot(ax)

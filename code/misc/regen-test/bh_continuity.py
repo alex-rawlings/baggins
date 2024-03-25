@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 
@@ -12,14 +12,14 @@ extraction_snap = "/scratch/pjohanss/arawling/collisionless_merger/regen-test/or
 
 snap = pygad.Snapshot(extraction_snap)
 snap.to_physical_units()
-snaptime = cmf.general.convert_gadget_time(snap)
+snaptime = bgs.general.convert_gadget_time(snap)
 
 kpc = ketjugw.units.pc * 1e3
 myr = ketjugw.units.yr * 1e6
 kmps = ketjugw.units.km_per_s
 
-cols = cmf.plotting.mplColours()
-lstyles = cmf.plotting.mplLines()
+cols = bgs.plotting.mplColours()
+lstyles = bgs.plotting.mplLines()
 axlabels = ["x", "y", "z"]
 alpha = 0.3
 

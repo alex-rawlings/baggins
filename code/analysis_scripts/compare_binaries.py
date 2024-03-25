@@ -4,7 +4,7 @@ from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import dask
-import cm_functions as cmf
+import baggins as bgs
 import ketjugw
 
 
@@ -61,16 +61,16 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 if args.publish:
-    cmf.plotting.set_publishing_style()
+    bgs.plotting.set_publishing_style()
     legend_kwargs = {"ncol": 2, "fontsize": "x-small"}
     fig_kwargs = {"transparent": True}
 else:
@@ -82,7 +82,7 @@ ketju_dirs.append(args.path)
 if args.extra_dirs:
     ketju_dirs.extend(args.extra_dirs)
     SL.debug(f"Directories are: {ketju_dirs}")
-    labels = cmf.general.get_unique_path_part(ketju_dirs)
+    labels = bgs.general.get_unique_path_part(ketju_dirs)
     SL.debug(f"Labels are: {labels}")
 
 ax = None
@@ -96,10 +96,10 @@ if args.orbits:
 else:
     ax2 = None
 
-myr = cmf.general.units.Myr
-kpc = cmf.general.units.kpc
-cols = cmf.plotting.mplColours()
-linestyles = cmf.plotting.mplLines()
+myr = bgs.general.units.Myr
+kpc = bgs.general.units.kpc
+cols = bgs.plotting.mplColours()
+linestyles = bgs.plotting.mplLines()
 num_dirs = len(ketju_dirs)
 total_sim_count = 0
 SL.debug(f"We will be plotting {num_dirs} different families...")
@@ -110,7 +110,7 @@ def dask_data_loader(kf):
     """Dask helper to load data and calculate quantities"""
     SL.debug(f"Reading: {kf}")
     try:
-        bh1, bh2, merged = cmf.analysis.get_bound_binary(kf, interp=args.interp)
+        bh1, bh2, merged = bgs.analysis.get_bound_binary(kf, interp=args.interp)
         if merged.merged:
             SL.info(f"Merger in {kf}")
             SL.info(merged)
@@ -130,7 +130,7 @@ def dask_data_loader(kf):
 
 def plotter(d, ax, ax2, j):
     """Serial plotting"""
-    kfs = cmf.utils.get_ketjubhs_in_dir(d)
+    kfs = bgs.utils.get_ketjubhs_in_dir(d)
     results = []
     line_count = 0
     for i, k in enumerate(kfs):
@@ -155,7 +155,7 @@ def plotter(d, ax, ax2, j):
                 )
 
         if num_dirs == 1:
-            cmf.plotting.binary_param_plot(
+            bgs.plotting.binary_param_plot(
                 op,
                 ax=ax,
                 label=f"{kf.split('/')[-3]}",
@@ -166,7 +166,7 @@ def plotter(d, ax, ax2, j):
                 c = cols[i % len(cols)]
                 _orbit_plotter(bh1, bh2, c)
         else:
-            cmf.plotting.binary_param_plot(
+            bgs.plotting.binary_param_plot(
                 op,
                 ax=ax,
                 label=(labels[j] if i == 0 else ""),
@@ -186,15 +186,15 @@ def plotter(d, ax, ax2, j):
 """
 # TODO delete once testing done
 for kd in ketju_dirs:
-    kfs = cmf.utils.get_ketjubhs_in_dir(kd)
+    kfs = bgs.utils.get_ketjubhs_in_dir(kd)
     for kf in kfs:
-        bh1, bh2, merged = cmf.analysis.get_bh_particles(kf)
+        bh1, bh2, merged = bgs.analysis.get_bh_particles(kf)
         plt.plot(ketjugw.orbital_energy(bh1, bh2))
 plt.show()
 quit()"""
 
 # initialise the plot
-ax = cmf.plotting.binary_param_plot({"t": np.nan, "a_R": np.nan, "e_t": np.nan}, ax)
+ax = bgs.plotting.binary_param_plot({"t": np.nan, "a_R": np.nan, "e_t": np.nan}, ax)
 for axi in ax:
     axi.set_prop_cycle(None)
 
@@ -221,14 +221,14 @@ try:
         ax[0].set_xscale("log")
     if args.save:
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        cmf.plotting.savefig(
-            os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}.png"),
+        bgs.plotting.savefig(
+            os.path.join(bgs.FIGDIR, f"merger/compare_binaries_{now}.png"),
             fig=fig,
             save_kwargs=fig_kwargs,
         )
         if args.orbits:
-            cmf.plotting.savefig(
-                os.path.join(cmf.FIGDIR, f"merger/compare_binaries_{now}_orbit.png"),
+            bgs.plotting.savefig(
+                os.path.join(bgs.FIGDIR, f"merger/compare_binaries_{now}_orbit.png"),
                 fig=fig2,
                 save_kwargs=fig_kwargs,
             )

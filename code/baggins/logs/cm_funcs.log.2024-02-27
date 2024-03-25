@@ -1,0 +1,213 @@
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 13:37:37: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 13:37:38: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 13:41:15: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.png
+2024-02-27 13:41:17: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.png
+2024-02-27 13:41:18: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.png
+2024-02-27 13:42:16: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_134216
+2024-02-27 13:44:45: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-27 13:44:46: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-27 13:44:47: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-27 13:44:49: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-27 13:45:10: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.png
+2024-02-27 13:45:13: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-27 13:45:14: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_134216
+2024-02-27 13:52:24: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 13:52:25: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 13:52:25: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 13:56:02: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.png
+2024-02-27 13:56:03: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.png
+2024-02-27 13:56:04: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.png
+2024-02-27 13:57:01: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_135701
+2024-02-27 13:59:31: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-27 13:59:32: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-27 13:59:33: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-27 13:59:35: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-27 13:59:56: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.png
+2024-02-27 13:59:59: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-27 14:00:00: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_135701
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 14:06:17: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 14:06:17: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 14:11:44: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 14:11:45: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 14:15:22: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.png
+2024-02-27 14:15:23: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.png
+2024-02-27 14:15:24: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.png
+2024-02-27 14:16:21: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_141621
+2024-02-27 14:18:51: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-27 14:18:51: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-27 14:18:53: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-27 14:18:54: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-27 14:19:15: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.png
+2024-02-27 14:19:19: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_141621
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 14:29:32: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 14:29:33: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 14:33:10: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.png
+2024-02-27 14:33:11: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.png
+2024-02-27 14:33:12: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.png
+2024-02-27 14:34:10: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_143410
+2024-02-27 14:36:39: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-27 14:36:40: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-27 14:36:42: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-27 14:36:43: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-27 14:37:04: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.png
+2024-02-27 14:37:08: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_143410
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 16:15:27: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 16:15:27: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 16:19:08: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.png
+2024-02-27 16:19:09: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.png
+2024-02-27 16:19:10: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.png
+2024-02-27 16:20:08: cm_funcs.analysis.StanModel: ERROR: Value error trying to read generated quantities data: creating temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_162008
+2024-02-27 16:22:38: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.png
+2024-02-27 16:22:39: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.png
+2024-02-27 16:22:40: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.png
+2024-02-27 16:22:42: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.png
+2024-02-27 16:23:03: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.png
+2024-02-27 16:23:09: cm_funcs.analysis.CoreKick: INFO: Forward-folded core radius mode is 1.608 kpc (3.056 rb0)
+2024-02-27 16:23:10: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.png
+2024-02-27 16:23:10: cm_funcs.utils.os_operations: WARNING: Deleted temporary directory /scratch/pjohanss/arawling/collisionless_merger/tmp_dir_20240227_162008
+2024-02-27 17:05:14: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/projects/collisionless-merger-sample/papers/paper-corekick/figures/triaxiality.pdf
+2024-02-27 17:35:48: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/projects/collisionless-merger-sample/papers/paper-corekick/figures/rb-kick.pdf
+2024-02-27 17:37:07: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/projects/collisionless-merger-sample/papers/paper-corekick/figures/rb-kick.pdf
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 17:54:35: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 17:54:37: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 17:58:47: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.pdf
+2024-02-27 17:58:48: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.pdf
+2024-02-27 17:58:49: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.pdf
+2024-02-27 18:02:45: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.pdf
+2024-02-27 18:02:45: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.pdf
+2024-02-27 18:02:46: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.pdf
+2024-02-27 18:02:48: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.pdf
+2024-02-27 18:03:10: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.pdf
+2024-02-27 18:03:29: cm_funcs.analysis.CoreKick: INFO: Forward-folded core radius mode is 1.608 kpc (3.056 rb0)
+2024-02-27 18:03:29: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.pdf
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0000
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0060
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0120
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0180
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0240
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0300
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0360
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0420
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0480
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0540
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0600
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0660
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0720
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0780
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0840
+2024-02-27 18:07:07: cm_funcs.analysis.CoreKick: INFO: Getting data for kick 0900
+2024-02-27 18:07:08: cm_funcs.analysis.StanModel: WARNING: Instance instantiated from file: sampling the model again is not possible --> Skipping.
+2024-02-27 18:11:13: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_trace_0-0.pdf
+2024-02-27 18:11:14: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_rank_0-0.pdf
+2024-02-27 18:11:15: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pair_0.pdf
+2024-02-27 18:15:14: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_pred_rb.pdf
+2024-02-27 18:15:15: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs_0.pdf
+2024-02-27 18:15:16: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_0.pdf
+2024-02-27 18:15:17: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_corner_OOS_1.pdf
+2024-02-27 18:15:40: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_OOS_rb_posterior.pdf
+2024-02-27 18:15:59: cm_funcs.analysis.CoreKick: INFO: Forward-folded core radius mode is 1.608 kpc (3.056 rb0)
+2024-02-27 18:15:59: cm_funcs.plotting.plot_utils: INFO: Saved image: /users/arawling/figures/core-study/rb-dist_posterior_gqs.pdf

@@ -1,6 +1,6 @@
 import numpy as np
 import h5py
-from cm_functions.mathematics import radial_separation
+from baggins.mathematics import radial_separation
 
 
 rng = np.random.default_rng(42)

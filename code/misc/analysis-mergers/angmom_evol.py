@@ -1,14 +1,14 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 
 snapdir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/perturbations/002/output"
 
 bhfile = os.path.join(snapdir, "ketju_bhs_cp.hdf5")
-snaplist = cmf.utils.get_snapshots_in_dir(snapdir)
+snaplist = bgs.utils.get_snapshots_in_dir(snapdir)
 
 t = np.full_like(snaplist, np.nan, dtype=float)
 r = np.full_like(t, np.nan)
@@ -24,9 +24,9 @@ for i, snapfile in enumerate(snaplist):
     snap["pos"] -= pygad.analysis.center_of_mass(snap.bh)
     snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.bh, "vel")
     ballmask = pygad.BallMask(pygad.UnitScalar(30, "kpc"))
-    t[i] = cmf.general.convert_gadget_time(snap)
+    t[i] = bgs.general.convert_gadget_time(snap)
     r[i] = pygad.utils.geo.dist(snap.bh["pos"][0,:], snap.bh["pos"][1,:])
-    theta[i] = cmf.analysis.angular_momentum_difference_gal_BH(snap, mask=ballmask)
+    theta[i] = bgs.analysis.angular_momentum_difference_gal_BH(snap, mask=ballmask)
     angmom_stars[i,:] = snap.stars[ballmask]["angmom"].sum(axis=0)
     angmom_bh[i,:] = snap.bh["angmom"].sum(axis=0)
     snap.delete_blocks()

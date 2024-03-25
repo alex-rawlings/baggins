@@ -3,7 +3,7 @@ import os.path
 import numpy as np
 import scipy.optimize
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -56,16 +56,16 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 if args.publish:
-    cmf.plotting.set_publishing_style()
+    bgs.plotting.set_publishing_style()
     legend_kwargs = {"ncol": 2, "fontsize": "x-small"}
 else:
     legend_kwargs = {}
@@ -77,7 +77,7 @@ if args.extra_dirs:
     SL.debug(f"Directories are: {hmq_dirs}")
 
 # read in the analysis parameters
-analysis_params = cmf.utils.read_parameters(args.apf)
+analysis_params = bgs.utils.read_parameters(args.apf)
 
 # list to store the values to plot
 e_ini = []
@@ -90,8 +90,8 @@ suite_count = 0
 for d in hmq_dirs:
     SL.debug(f"Reading from directory: {d}")
     # we can hack into the Kepler HM classes to extract the data
-    HMQ_files = cmf.utils.get_files_in_dir(d)
-    km = cmf.analysis.KeplerModelHierarchy("", "", "")
+    HMQ_files = bgs.utils.get_files_in_dir(d)
+    km = bgs.analysis.KeplerModelHierarchy("", "", "")
     km.extract_data(HMQ_files, analysis_params)
     eccs = np.array([np.nanmean(ecc) for ecc in km.obs["e"]])
     sigma_e.append(np.nanstd(eccs))
@@ -182,19 +182,19 @@ if args.groups == "res":
     for nl, lab, ls in zip(
         (nasim_line_1, nasim_line_2),
         (r"$\propto 1/\sqrt{N}$", r"$\propto 1/N$"),
-        cmf.plotting.mplLines(),
+        bgs.plotting.mplLines(),
     ):
         popt, pcov = scipy.optimize.curve_fit(nl, x, sigma_e)
         ax.plot(xseq, nl(xseq, *popt), c="k", label=lab, ls=ls)
-    cmf.plotting.nice_log10_scale(ax, "x")
+    bgs.plotting.nice_log10_scale(ax, "x")
     ax.legend(fontsize="small")
 else:
     ax.set_xlabel(r"$e_0$")
-    cmf.plotting.nice_log10_scale(ax, "y")
+    bgs.plotting.nice_log10_scale(ax, "y")
 
 if args.save:
-    cmf.plotting.savefig(
-        os.path.join(cmf.FIGDIR, f"merger/nasim_scatter_{fig_prefix}.png")
+    bgs.plotting.savefig(
+        os.path.join(bgs.FIGDIR, f"merger/nasim_scatter_{fig_prefix}.png")
     )
 
 if args.save_data is not None:
@@ -205,7 +205,7 @@ if args.save_data is not None:
         sigma_e_cut=sigma_e_cut,
         sigma_e_cut_threshold=args.ecut,
     )
-    cmf.utils.save_data(
+    bgs.utils.save_data(
         data, os.path.join(args.save_data, f"nasim_scatter_{fig_prefix}.pickle")
     )
 

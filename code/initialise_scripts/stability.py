@@ -3,12 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 
 # get the command line arguments
-parser = cmf.utils.argparse_for_initialise(
+parser = bgs.utils.argparse_for_initialise(
     description="Analyse the stability of the initial conditions."
 )
 parser.add_argument(
@@ -31,7 +31,7 @@ args = parser.parse_args()
 
 print("\nRunning stability.py\n")
 
-pfv = cmf.utils.read_parameters(args.paramFile)
+pfv = bgs.utils.read_parameters(args.paramFile)
 # population percentages
 if args.percentages_to_check is None:
     args.percentages_to_check = [5, 10, 30, 50, 80, 95]
@@ -47,7 +47,7 @@ outpath = os.path.join(pfv.saveLocation, pfv.galaxyName)
 datapath = os.path.join(outpath, pfv.dataLocation)
 figPath = os.path.join(outpath, pfv.figureLocation)
 
-datfiles = cmf.utils.get_snapshots_in_dir(datapath)
+datfiles = bgs.utils.get_snapshots_in_dir(datapath)
 
 # create data frame
 stability_data = pd.DataFrame(data={"Time": np.full_like(datfiles, np.nan)})
@@ -61,7 +61,7 @@ for ind, this_file in enumerate(datfiles):
     print("Reading: " + this_file)
     gal = pygad.Snapshot(this_file)
     gal.to_physical_units()
-    stability_data.loc[ind, "Time"] = cmf.general.convert_gadget_time(gal) * 1e3
+    stability_data.loc[ind, "Time"] = bgs.general.convert_gadget_time(gal) * 1e3
     particle_families = []
     if "stars" in gal:
         particle_families.append("stars")
@@ -95,7 +95,7 @@ for ind, this_file in enumerate(datfiles):
                 np.max(subsnap[subsnap["r"] < max_dists[f_ind]]["r"])
             )
 
-colours = cmf.plotting.mplColours()
+colours = bgs.plotting.mplColours()
 point_style = {"stars": "*", "dm": "s"}
 fig, ax = plt.subplots(1, 1, figsize=(7, 3))
 ax.set_yscale("log")

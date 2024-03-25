@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 # set up command line arguments
@@ -74,10 +74,10 @@ class Brownian:
         if self.verbose:
             print(f"{self.count}: {self.bhid}")
         assert snap.phys_units_requested
-        self.times[self.count] = cmf.general.convert_gadget_time(snap)
-        id_masks_stars = cmf.analysis.get_all_id_masks(snap)
+        self.times[self.count] = bgs.general.convert_gadget_time(snap)
+        id_masks_stars = bgs.analysis.get_all_id_masks(snap)
         if xcom is None:
-            xcom = cmf.analysis.get_com_of_each_galaxy(
+            xcom = bgs.analysis.get_com_of_each_galaxy(
                 snap,
                 method="ss",
                 masks=id_masks_stars,
@@ -85,7 +85,7 @@ class Brownian:
                 verbose=self.verbose,
             )
         if vcom is None:
-            vcom = cmf.analysis.get_com_velocity_of_each_galaxy(
+            vcom = bgs.analysis.get_com_velocity_of_each_galaxy(
                 snap, xcom, masks=id_masks_stars, verbose=self.verbose
             )
         self.x_offset[self.count, :] = xcom[self.bhid] - snap.bh[self.id_mask_bh]["pos"]
@@ -99,8 +99,8 @@ class Brownian:
         return xcom, vcom
 
     def compute_offset_magnitude(self):
-        self.x_offset_mag = cmf.mathematics.radial_separation(self.x_offset)
-        self.v_offset_mag = cmf.mathematics.radial_separation(self.v_offset)
+        self.x_offset_mag = bgs.mathematics.radial_separation(self.x_offset)
+        self.v_offset_mag = bgs.mathematics.radial_separation(self.v_offset)
 
     def save(self, fname=None):
         data_dict = dict(
@@ -121,12 +121,12 @@ class Brownian:
             os.path.dirname(os.path.realpath(__file__)),
             f"pickle/bh_perturb_merger/{fname}",
         )
-        cmf.utils.save_data(data_dict, savepath)
+        bgs.utils.save_data(data_dict, savepath)
 
     @classmethod
     def load(cls, fname):
         c = cls(None, 0)
-        data = cmf.utils.load_data(fname)
+        data = bgs.utils.load_data(fname)
         for k, v in data.items():
             setattr(c, k, v)
         return c
@@ -165,7 +165,7 @@ class Brownian:
 brownian_objects = []
 
 if new_data:
-    snapfiles = cmf.utils.get_snapshots_in_dir(args.path)
+    snapfiles = bgs.utils.get_snapshots_in_dir(args.path)
 
     for ind, snapfile in enumerate(snapfiles):
         if ind <= args.last_snap:

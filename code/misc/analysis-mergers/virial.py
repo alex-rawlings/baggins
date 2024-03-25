@@ -1,7 +1,7 @@
 import numpy as np
 import pygad
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 centering = True
 pidx = "002"
@@ -31,7 +31,7 @@ snap["vel"] -= pygad.analysis.mass_weighted_mean(snap.stars[mask_30_kpc], "vel")
 if True:
     # Virial theorem
     #K = 0.5 * np.sum(snap["mass"]*(np.sum(snap["vel"]**2, axis=-1)))
-    v2 = pygad.UnitArr(cmf.mathematics.radial_separation(snap["vel"]), units=snap["vel"].units)**2
+    v2 = pygad.UnitArr(bgs.mathematics.radial_separation(snap["vel"]), units=snap["vel"].units)**2
     K = 0.5 * np.sum(snap["mass"] * v2, axis=-1)
     W = np.sum(snap["mass"]*snap["pot"])
     #print(K, W)
@@ -51,7 +51,7 @@ if True:
         tdyn = np.sqrt(rvir**3 / (pygad.physics.G * np.sum(snap["mass"])))
         print(tdyn.in_units_of("Gyr"))
 
-        cmf.plotting.plot_galaxies_with_pygad(snap)
+        bgs.plotting.plot_galaxies_with_pygad(snap)
         plt.show()
 
 

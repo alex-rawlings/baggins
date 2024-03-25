@@ -1,7 +1,7 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 mdict = {"linewidth":0.5, "edgecolor":"k"}
@@ -30,12 +30,12 @@ ax[2,1].set_ylabel(r"|BH$_\mathrm{parent}-$BH$_\mathrm{child}$|/km/s")
 ax[3,1].set_xlabel("Child")
 ax[3,1].set_ylabel(r"|COM$_\mathrm{SS}-$BH$_\mathrm{child}$|/km/s")
 
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 
 for i in range(-1, 10):
     print(i)
     if i < 0:
-        snaplist = cmf.utils.get_snapshots_in_dir(os.path.join(data_path, "output"))
+        snaplist = bgs.utils.get_snapshots_in_dir(os.path.join(data_path, "output"))
         snap = pygad.Snapshot(snaplist[pidx], physical=True)
         ppos = dict.fromkeys(snap.bh["ID"])
         pvel = dict.fromkeys(snap.bh["ID"])
@@ -44,7 +44,7 @@ for i in range(-1, 10):
             ppos[k] = snap.bh[idmask]["pos"]
             pvel[k] = snap.bh[idmask]["vel"]
     else:
-        snaplist = cmf.utils.get_snapshots_in_dir(os.path.join(data_path, f"perturbations/{i:03d}/output"))
+        snaplist = bgs.utils.get_snapshots_in_dir(os.path.join(data_path, f"perturbations/{i:03d}/output"))
         snap = pygad.Snapshot(snaplist[0], physical=True)
     
     for j, (x,y) in enumerate(zip((0,0), (1,2))):
@@ -60,20 +60,20 @@ for i in range(-1, 10):
             print(pvel[k])
             print(snap.bh[idmask]["vel"])
             print()
-            psep = cmf.mathematics.radial_separation(snap.bh[idmask]["pos"], ppos[k])
+            psep = bgs.mathematics.radial_separation(snap.bh[idmask]["pos"], ppos[k])
             ax[2,0].scatter(i, psep, marker=("o" if j<1 else "s"), c=cols[i], alpha=alpha, **mdict)
-            vsep = cmf.mathematics.radial_separation(snap.bh[idmask]["vel"], pvel[k])
+            vsep = bgs.mathematics.radial_separation(snap.bh[idmask]["vel"], pvel[k])
             ax[2,1].scatter(i, vsep, marker=("o" if j<1 else "s"), c=cols[i], alpha=alpha, **mdict)
-            comxsep = cmf.mathematics.radial_separation(snap.bh[idmask]["pos"], xcoms[k])
+            comxsep = bgs.mathematics.radial_separation(snap.bh[idmask]["pos"], xcoms[k])
             ax[3,0].scatter(i, comxsep, c=cols[i], marker=("o" if j<1 else "s"), alpha=alpha, **mdict)
-            comvsep = cmf.mathematics.radial_separation(snap.bh[idmask]["vel"], vcoms[k])
+            comvsep = bgs.mathematics.radial_separation(snap.bh[idmask]["vel"], vcoms[k])
             ax[3,1].scatter(i, comvsep, c=cols[i], marker=("o" if j<1 else "s"), alpha=alpha, **mdict)
 
 
     else:
-        id_masks = cmf.analysis.get_all_id_masks(snap)
-        xcoms = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", masks=id_masks)
-        vcoms = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=id_masks)
+        id_masks = bgs.analysis.get_all_id_masks(snap)
+        xcoms = bgs.analysis.get_com_of_each_galaxy(snap, method="ss", masks=id_masks)
+        vcoms = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=id_masks)
         for ii, k in enumerate(xcoms.keys()):
             for j, (x,y) in enumerate(zip((0,0), (1,2))):
                 ax[j,0].scatter(xcoms[k][x], xcoms[k][y], marker="x", c="k")
@@ -85,7 +85,7 @@ for i in range(-1, 10):
             ax[3,1].axhline(parent_vsep, c="k", alpha=0.5, ls=":")
     '''snap["pos"] -= list(xcoms.values())[0]
     snap["vel"] -= list(vcoms.values())[0]
-    H, KE, PE = cmf.analysis.calculate_Hamiltonian(snap)
+    H, KE, PE = bgs.analysis.calculate_Hamiltonian(snap)
     sc = ax.scatter(KE-PE, KE, c=("k" if i<0 else cols[i]))
     ax.scatter(KE-PE, PE, c=sc.get_facecolor())'''
 

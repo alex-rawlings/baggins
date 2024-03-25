@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 def bh_inset(ax, bounds, bhs, bh_num, stars):
@@ -47,5 +47,5 @@ pygad.plotting.image(snap.stars[ball_mask], ax=ax, **plot_kwargs)
 bh_inset(ax, [0.05, 0.5, 0.3, 0.3], snap.bh, 0, snap.stars)
 bh_inset(ax, [0.65, 0.02, 0.3, 0.3], snap.bh, 1, snap.stars)
 
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "ketju.pdf"), fig=fig, force_ext=True)
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "ketju.pdf"), fig=fig, force_ext=True)
 plt.show()

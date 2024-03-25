@@ -1,7 +1,7 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import ketjugw
 import pygad
 
@@ -16,9 +16,9 @@ idx2 = -1000
 alpha = 0.4
 t0 = 5071
 #parentdir = os.path.join(data_path, "output")
-#parentfile = cmf.utils.get_ketjubhs_in_dir(parentdir)[0]
-all_list = cmf.utils.get_ketjubhs_in_dir(data_path)
-#all_list = cmf.utils.get_ketjubhs_in_dir(os.path.join(data_path, "perturbations"))
+#parentfile = bgs.utils.get_ketjubhs_in_dir(parentdir)[0]
+all_list = bgs.utils.get_ketjubhs_in_dir(data_path)
+#all_list = bgs.utils.get_ketjubhs_in_dir(os.path.join(data_path, "perturbations"))
 #all_list.insert(0, parentfile)
 #all_list.insert(0, "testing")
 myr = ketjugw.units.yr * 1e6
@@ -29,14 +29,14 @@ fig, ax = plt.subplots(2,2)
 for i, bhfile in enumerate(all_list):
     print(bhfile)
     #if i==0: continue
-    bh1, bh2, merged = cmf.analysis.get_bh_particles(bhfile)
+    bh1, bh2, merged = bgs.analysis.get_bh_particles(bhfile)
     ls = "--" if i==0 else "-"
     if i==0:
         #continue
-        '''snaplist = cmf.utils.get_snapshots_in_dir(parentdir)
-        snap_idx = cmf.analysis.snap_num_for_time(snaplist, perturbtime)
+        '''snaplist = bgs.utils.get_snapshots_in_dir(parentdir)
+        snap_idx = bgs.analysis.snap_num_for_time(snaplist, perturbtime)
         snap = pygad.Snapshot(snaplist[snap_idx], physical=True)
-        t0 = cmf.general.convert_gadget_time(snap, new_unit="Myr")'''
+        t0 = bgs.general.convert_gadget_time(snap, new_unit="Myr")'''
         idx0 = np.argmax(bh1.t/myr > t0)
         idxs = np.r_[idx0-idx:idx0+idx2]
         for j, (x,y) in enumerate(zip((0,0), (1,2))):
@@ -64,5 +64,5 @@ ax[1,1].set_xlabel("vx/km/s")
 ax[0,1].set_ylabel("vz/km/s")
 ax[1,1].set_ylabel("vy/km/s")
 plt.suptitle(r"$t\approx {:.3f}$ Gyr".format(perturbtime/1e3))
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "merger-test/AC-030-0050-perturbs.png"))
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "merger-test/AC-030-0050-perturbs.png"))
 plt.show()

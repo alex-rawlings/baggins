@@ -3,7 +3,7 @@ import copy
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
-import cm_functions as cmf
+import baggins as bgs
 import ketjugw
 
 
@@ -30,7 +30,7 @@ args = parser.parse_args()
 
 myr = 1e6 * ketjugw.units.yr
 
-ketjufiles = cmf.utils.get_ketjubhs_in_dir(args.path)
+ketjufiles = bgs.utils.get_ketjubhs_in_dir(args.path)
 fig, ax = plt.subplots(1,1)
 ax.set_xlabel("t/Myr")
 ax.set_ylabel("r/pc")
@@ -40,13 +40,13 @@ alpha = (0.7, 0.1)
 
 for i, k in enumerate(ketjufiles):
     print(k)
-    bh1, bh2, merged = cmf.analysis.get_bh_particles(k)
-    bh1b, bh2b, merged = cmf.analysis.get_bound_binary(k)
+    bh1, bh2, merged = bgs.analysis.get_bh_particles(k)
+    bh1b, bh2b, merged = bgs.analysis.get_bound_binary(k)
     unbound_mask = bh1.t < bh1b.t[0]
     for j, (b1, b2, a) in enumerate(zip((bh1[unbound_mask], bh1b), (bh2[unbound_mask], bh2b), alpha)):
         b1, b2 = move_bh_to_com(b1, b2)
-        bh1_r = cmf.mathematics.radial_separation(b1.x)/ketjugw.units.pc
-        bh2_r = cmf.mathematics.radial_separation(b2.x)/ketjugw.units.pc
+        bh1_r = bgs.mathematics.radial_separation(b1.x)/ketjugw.units.pc
+        bh2_r = bgs.mathematics.radial_separation(b2.x)/ketjugw.units.pc
         if j ==0:
             l = ax.plot(b1.t/myr, bh1_r, label=f"{k.split('/')[-3]}", alpha=a)
         else:

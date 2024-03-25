@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import ketjugw
 import scipy.stats, scipy.interpolate
-import cm_functions as cmf
+import baggins as bgs
 
 
 def fit_path(tvals, ivals, tnorm=1, pnorm=1, nbins=50, com=[0,0,0]):
@@ -43,7 +43,7 @@ vcom = (bh1.v * bh1.m[0] + bh2.v * bh2.m[0]) / (bh1.m[0] + bh2.m[0])
 
 if True:
     saveDir = "/users/arawling/figures/perturb-test/"
-    cols = cmf.plotting.mplColours()
+    cols = bgs.plotting.mplColours()
     nbins = 50
     setbinwidth = [100, 50, 25, 20, 15, 10, 5, 2, 1, 0.5, 0.25, 0.1, 0.05]
     endidx = 100100

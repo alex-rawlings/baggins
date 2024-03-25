@@ -4,7 +4,7 @@ import dask
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -34,7 +34,7 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     default="INFO",
     help="verbosity level",
@@ -42,7 +42,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 # set up a logger
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 
 def _cleanup(sf):
@@ -52,17 +52,17 @@ def _cleanup(sf):
 
 
 # get a list of snapshots
-snapfiles = cmf.utils.get_snapshots_in_dir(args.path)
+snapfiles = bgs.utils.get_snapshots_in_dir(args.path)
 LENGTH = len(snapfiles)
 
 
 @dask.delayed
 def _helper(_snap, i):
     SL.debug(f"Reading snapshot {_snap.filename}")
-    t = cmf.general.convert_gadget_time(_snap)
+    t = bgs.general.convert_gadget_time(_snap)
     # recentre
-    xcom = cmf.analysis.get_com_of_each_galaxy(_snap, method="ss", family="stars")
-    vcom = cmf.analysis.get_com_velocity_of_each_galaxy(_snap, xcom)
+    xcom = bgs.analysis.get_com_of_each_galaxy(_snap, method="ss", family="stars")
+    vcom = bgs.analysis.get_com_velocity_of_each_galaxy(_snap, xcom)
     xtrans = pygad.Translation(-list(xcom.values())[0])
     vtrans = pygad.Boost(-list(vcom.values())[0])
     xtrans.apply(_snap, total=True)
@@ -76,7 +76,7 @@ def _helper(_snap, i):
         while rho[0] < threshold:
             r_edges = [0.9 * r_edges[0], 1.1 * r_edges[1]]
             rho = pygad.analysis.profile_dens(_snap.stars, "mass", r_edges=r_edges)
-    ve = cmf.analysis.escape_velocity(_snap)(r)
+    ve = bgs.analysis.escape_velocity(_snap)(r)
     vm = pygad.utils.geo.dist(_snap.bh["vel"])
     _cleanup(_snap)
     return [i, t, vm[0], ve[0], r[0], rho[0][0]]
@@ -91,7 +91,7 @@ else:
 # read the first snapshot to see if we can enable parallelism
 for i, s in enumerate(snapfiles[start_snap:], start=start_snap):
     snap = pygad.Snapshot(s, physical=True)
-    if cmf.analysis.determine_if_merged(snap)[0]:
+    if bgs.analysis.determine_if_merged(snap)[0]:
         SL.info(f"First snapshot to analyse: {i:03d}")
         res.append(_helper(snap, i))
         start_i = i + 1
@@ -147,7 +147,7 @@ else:
 
 
 if args.save:
-    cmf.utils.save_data(
+    bgs.utils.save_data(
         dict(
             data_dir=args.path,
             results=results,
@@ -161,7 +161,7 @@ if args.save:
 # plot
 fig, ax = plt.subplots(2, 1, sharex="all")
 # velocity of BH
-ax_twin1 = cmf.plotting.twin_axes_from_samples(ax[0], results[:, 1], results[:, 0])
+ax_twin1 = bgs.plotting.twin_axes_from_samples(ax[0], results[:, 1], results[:, 0])
 ax[0].set_xlabel(r"$t/\mathrm{Gyr}$")
 ax[0].set_ylabel(r"$v/\mathrm{kms}^{-1}$")
 ax_twin1.set_xlabel("Snap number")
@@ -183,11 +183,11 @@ if results[0, 2] > 50:
     ax[0].set_yscale("log")
 
 # position of BH, coloured by the stellar density in a shell about its position
-ax_twin2 = cmf.plotting.twin_axes_from_samples(ax[1], results[:, 1], results[:, 0])
+ax_twin2 = bgs.plotting.twin_axes_from_samples(ax[1], results[:, 1], results[:, 0])
 ax[1].set_xlabel(r"$t/\mathrm{Gyr}$")
 ax[1].set_ylabel(r"$r/\mathrm{kpc}$")
 ax_twin2.set_xlabel("Snap number")
-cmap, sm = cmf.plotting.create_normed_colours(
+cmap, sm = bgs.plotting.create_normed_colours(
     10 ** np.floor(np.log10(min(results[:, 5]))),
     10 ** np.ceil(np.log10(min(results[:, 5]))),
     norm="LogNorm",

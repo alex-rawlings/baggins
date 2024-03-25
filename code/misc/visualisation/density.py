@@ -2,9 +2,9 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
-cmf.plotting.set_publishing_style()
+bgs.plotting.set_publishing_style()
 
 gal_file = "/scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquist/hernquist.hdf5"
 
@@ -17,7 +17,7 @@ rad_bins = dict(
 
 rad_bin_centres = {}
 for k, v in rad_bins.items():
-    rad_bin_centres[k] = cmf.mathematics.get_histogram_bin_centres(v)
+    rad_bin_centres[k] = bgs.mathematics.get_histogram_bin_centres(v)
 
 fig, ax = plt.subplots(1,1)
 star_dens_3d = pygad.analysis.profile_dens(snap.stars, "mass", r_edges=rad_bins["stars"])
@@ -30,5 +30,5 @@ ax.set_xlabel("Radius [kpc]")
 ax.set_ylabel(r"Density [M$_\odot$/kpc$^3$]")
 ax.legend()
 
-plt.savefig(os.path.join(cmf.FIGDIR, "demo_density.pdf"))
+plt.savefig(os.path.join(bgs.FIGDIR, "demo_density.pdf"))
 plt.show()

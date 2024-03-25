@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.fft
-import cm_functions as cmf
+import baggins as bgs
 
 
 

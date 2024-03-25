@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 
@@ -12,7 +12,7 @@ epsilons = [0.0035, 0.0200, 0.0300, 0.0035, 0.0035, 0.0035, 0.0035]
 data["etas"] = etas
 data["epsilons"] = epsilons
 
-cmf.utils.add_time_column(data, unit="h", colname="Elapsed", newcolname="Elapsed_s")
+bgs.utils.add_time_column(data, unit="h", colname="Elapsed", newcolname="Elapsed_s")
 
 print(data)
 
@@ -26,5 +26,5 @@ cbar.ax.set_ylabel("Walltime [h]")
 plt.xlabel(r"$\eta$")
 plt.ylabel(r"$\varepsilon_\star$")
 plt.title("Walltime to Reach 1 Gyr")
-plt.savefig("{}/errtolintacc/time1gyr.png".format(cmf.FIGDIR))
+plt.savefig("{}/errtolintacc/time1gyr.png".format(bgs.FIGDIR))
 #plt.show()

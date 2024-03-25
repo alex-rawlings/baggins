@@ -1,7 +1,7 @@
 import argparse
 import os.path
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import figure_config
 
 
@@ -18,16 +18,16 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 if args.combine:
-    pickle_files = cmf.utils.get_files_in_dir(args.path, ext=".pickle")
+    pickle_files = bgs.utils.get_files_in_dir(args.path, ext=".pickle")
     pickle_files = [p for p in pickle_files if "triax_v" in p]
     try:
         assert pickle_files
@@ -39,15 +39,15 @@ if args.combine:
     data = {}
     for p in pickle_files:
         k = os.path.splitext(os.path.basename(p))[0].replace("triax_", "")
-        data[k] = cmf.utils.load_data(p)
-    cmf.utils.save_data(data, os.path.join(args.path, "triax_core-study.pickle"))
+        data[k] = bgs.utils.load_data(p)
+    bgs.utils.save_data(data, os.path.join(args.path, "triax_core-study.pickle"))
 else:
     assert os.path.isfile(args.path)
-    data = cmf.utils.load_data(args.path)
+    data = bgs.utils.load_data(args.path)
 
 # set up figure
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
-cmapper, sm = cmf.plotting.create_normed_colours(vmin=0, vmax=900, cmap="custom_Blues")
+cmapper, sm = bgs.plotting.create_normed_colours(vmin=0, vmax=900, cmap="custom_Blues")
 
 for k, v in data.items():
     if k == "__githash" or k == "__script":
@@ -66,5 +66,5 @@ for axi, lab in zip(ax, (r"$b/a$", r"$c/a$")):
     axi.set_ylabel(lab)
 ax[1].set_xlabel(r"$r/\mathrm{kpc}$")
 
-cmf.plotting.savefig(figure_config.fig_path("triaxiality.pdf"), force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("triaxiality.pdf"), force_ext=True)
 plt.show()

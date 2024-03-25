@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import dask
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 # set up command line arguments
@@ -54,7 +54,7 @@ parser.add_argument(
 parser.add_argument(
     "-r",
     "--radii",
-    type=cmf.utils.cl_str_2_space,
+    type=bgs.utils.cl_str_2_space,
     help="radii to calculate inertia tensor at",
     dest="radii",
     default=None,
@@ -74,7 +74,7 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbose",
     default="INFO",
     help="verbosity level",
@@ -82,17 +82,17 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", args.verbose)
+SL = bgs.setup_logger("script", args.verbose)
 
 
 @dask.delayed
 def dask_helper(s, r):
     """Helper function to parallelise axis ratio calculation over radial values"""
-    mask = list(cmf.analysis.get_all_radial_masks(s, r, family=args.family).values())[0]
+    mask = list(bgs.analysis.get_all_radial_masks(s, r, family=args.family).values())[0]
     if len(s[mask]) < 1000:
         SL.warning(f"Only {len(s[mask])} particles in {r}")
         return (np.nan, np.nan)
-    rats = cmf.analysis.get_galaxy_axis_ratios(s, bin_mask=mask, family=args.family)
+    rats = bgs.analysis.get_galaxy_axis_ratios(s, bin_mask=mask, family=args.family)
     del mask
     return rats
 
@@ -104,7 +104,7 @@ def memory_helper():
 
 
 if os.path.isfile(args.path) and os.path.splitext(args.path)[1] == ".pickle":
-    data = cmf.utils.load_data(args.path)
+    data = bgs.utils.load_data(args.path)
     figname = os.path.splitext(os.path.basename(args.path))[0]
     times = data["times"]
     ratios = data["ratios"]
@@ -113,7 +113,7 @@ else:
     if os.path.os.path.isfile(args.path):
         snaplist = [args.path]
     else:
-        snaplist = cmf.utils.get_snapshots_in_dir(args.path)
+        snaplist = bgs.utils.get_snapshots_in_dir(args.path)
     if args.num is not None:
         if args.num < 0:
             # assume that negative number means that many from the end
@@ -149,10 +149,10 @@ else:
         SL.info(f"Reading: {snapfile}")
         memory_helper()
         snap = pygad.Snapshot(snapfile, physical=True)
-        times[i] = cmf.general.convert_gadget_time(snap)
+        times[i] = bgs.general.convert_gadget_time(snap)
 
         # recentre snapshot to CoM
-        xcom = cmf.analysis.get_com_of_each_galaxy(
+        xcom = bgs.analysis.get_com_of_each_galaxy(
             snap, method="ss", family=args.family
         )
         translation = pygad.Translation(list(xcom.values())[0])
@@ -186,7 +186,7 @@ else:
         memory_helper()
     data = dict(times=times, ratios=ratios)
     figname = f"triax_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    cmf.utils.save_data(data, os.path.join(args.savedir, f"{figname}.pickle"))
+    bgs.utils.save_data(data, os.path.join(args.savedir, f"{figname}.pickle"))
 
 
 fig, ax = plt.subplots(1, 2, sharex="all", sharey="all")
@@ -196,12 +196,12 @@ ax[0].set_ylabel(r"$b/a$")
 ax[1].set_ylabel(r"$c/a$")
 
 # create a colour scale
-cmapper, sm = cmf.plotting.create_normed_colours(min(times), max(times))
+cmapper, sm = bgs.plotting.create_normed_colours(min(times), max(times))
 
 for i, t in enumerate(times):
     ax[0].semilogx(ratios["r"][i, :], ratios["ba"][i, :], c=cmapper(t))
     ax[1].semilogx(ratios["r"][i, :], ratios["ca"][i, :], c=cmapper(t))
 ax[0].set_ylim(0, 1)
 cbar = plt.colorbar(sm, ax=ax[-1], label=r"$t/\mathrm{Gyr}$")
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "triaxiality", figname))
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "triaxiality", figname))
 plt.show()

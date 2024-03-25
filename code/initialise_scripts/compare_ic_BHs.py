@@ -3,7 +3,7 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -24,14 +24,14 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 
 ic_dirs = []
@@ -39,7 +39,7 @@ ic_dirs.append(args.path)
 if args.extra_dirs:
     ic_dirs.extend(args.extra_dirs)
     SL.debug(f"Directories are: {ic_dirs}")
-    labels = cmf.general.get_unique_path_part(ic_dirs)
+    labels = bgs.general.get_unique_path_part(ic_dirs)
     SL.debug(f"Labels are: {labels}")
 else:
     labels = [os.path.basename(args.path)]
@@ -55,7 +55,7 @@ for i in range(2):
     ax[1, i].set_xlabel(r"$v_z/\mathrm{km/s}$")
 
 for d, label in zip(ic_dirs, labels):
-    ic_files = cmf.utils.get_files_in_dir(d, recursive=True)
+    ic_files = bgs.utils.get_files_in_dir(d, recursive=True)
     for f in ic_files:
         if "output" in f:
             continue

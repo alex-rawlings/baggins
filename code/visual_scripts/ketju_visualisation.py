@@ -1,18 +1,18 @@
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 datapath = "/scratch/pjohanss/arawling/gadget4-ketju/hardening_convergence/mergers/H_1-000/H_1-000-a-H_1-000-a-0.05-0.02/output"
 
-snapfiles = cmf.utils.get_snapshots_in_dir(datapath)
-ketjufile = cmf.utils.get_ketjubhs_in_dir(datapath)[0]
+snapfiles = bgs.utils.get_snapshots_in_dir(datapath)
+ketjufile = bgs.utils.get_ketjubhs_in_dir(datapath)[0]
 
 fig, ax = plt.subplots(1, 1)
 ax.set_facecolor("k")
 ax.set_aspect("equal")
 
-smbh_anim = cmf.visualisation.SMBHtrajectory(
+smbh_anim = bgs.visualisation.SMBHtrajectory(
     ketjufile,
     ax,
     stepping={"start": 5000, "step": 5},

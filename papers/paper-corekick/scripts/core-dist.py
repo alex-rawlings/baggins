@@ -8,7 +8,7 @@ except ImportError:
 
     use("Agg")
     import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import figure_config # noqa
 
 parser = argparse.ArgumentParser(
@@ -26,14 +26,14 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     default="INFO",
     help="verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 
 # set the stan model file
@@ -52,7 +52,7 @@ figname_base = "core-study/rb-dist"
 
 
 if args.type == "new":
-    ck = cmf.analysis.CoreKick(
+    ck = bgs.analysis.CoreKick(
         stan_file,
         "",
         figname_base=figname_base,
@@ -61,7 +61,7 @@ if args.type == "new":
     )
 
 else:
-    ck = cmf.analysis.CoreKick.load_fit(
+    ck = bgs.analysis.CoreKick.load_fit(
         stan_file,
         fit_files,
         figname_base,
@@ -76,7 +76,7 @@ if args.verbosity == "DEBUG":
 ck.set_stan_data()
 
 sample_kwargs = {
-    "output_dir": os.path.join(cmf.DATADIR, "stan_files/core-kick-relation")
+    "output_dir": os.path.join(bgs.DATADIR, "stan_files/core-kick-relation")
 }
 ck.sample_model(sample_kwargs=sample_kwargs)
 

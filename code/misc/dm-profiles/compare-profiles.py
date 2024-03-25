@@ -1,13 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 filenames = ["/users/arawling/projects/collisionless-merger-sample/parameters/parameters-galaxies/dm-compare/hernquist/hernquist.hdf5", "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-galaxies/dm-compare/nfw/nfw.hdf5", ]
 labels = ["hernquist", "nfw"]
 
 radial_edges = np.logspace(1, 4, 25)
-radial_centres = cmf.mathematics.get_histogram_bin_centres(radial_edges)
+radial_centres = bgs.mathematics.get_histogram_bin_centres(radial_edges)
 
 fig, ax = plt.subplots(1,2, sharex="all", figsize=(7, 4))
 for i, (snapfile, label) in enumerate(zip(filenames, labels)):

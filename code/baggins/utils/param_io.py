@@ -124,7 +124,7 @@ def read_parameters(filepath):
     params_and_calc = params_list[0].copy()
     params_and_calc["calculated"] = {}
     for i, params in enumerate(params_list):
-        params = _unpack_helper(params, l=0)
+        params = _unpack_helper(params, lev=0)
         if i == 0:
             continue
         for k in params.keys():

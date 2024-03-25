@@ -1,9 +1,9 @@
 import numpy as np
-import cm_functions as cmf
+import baggins as bgs
 
 f = "/scratch/pjohanss/arawling/testing/cube-H-H-0.05-0.02-000.hdf5"
 
-cube = cmf.analysis.BHBinaryData.load_from_file(f)
+cube = bgs.analysis.BHBinaryData.load_from_file(f)
 
 new_data = np.arange(10)
 

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import scipy.interpolate
 import os.path
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 # set up the command line options
@@ -46,7 +46,7 @@ parser.add_argument(
     type=str,
     help="directory for figures",
     dest="figdir",
-    default=cmf.FIGDIR,
+    default=bgs.FIGDIR,
 )
 parser.add_argument(
     "-rc",
@@ -74,7 +74,7 @@ for ind1, ld in enumerate(args.loopdir):
         snap_location = os.path.join(args.pathbase, ld, args.subdir, args.outputdir)
     else:
         snap_location = os.path.join(args.pathbase, args.subdir, ld, args.outputdir)
-    snap_files = cmf.utils.get_snapshots_in_dir(snap_location)
+    snap_files = bgs.utils.get_snapshots_in_dir(snap_location)
 
     for ind2, snapfile in enumerate(snap_files):
         print("Reading: {}".format(snapfile))
@@ -85,15 +85,15 @@ for ind1, ld in enumerate(args.loopdir):
             if args.verbose:
                 print("Creating ID masks...")
             id_masks = dict(
-                stars=cmf.analysis.get_all_id_masks(snap),
-                dm=cmf.analysis.get_all_id_masks(snap, family="dm"),
+                stars=bgs.analysis.get_all_id_masks(snap),
+                dm=bgs.analysis.get_all_id_masks(snap, family="dm"),
             )
             time_dict[ld] = np.full_like(snap_files, np.nan, dtype=float)
             xcom_dict[ld] = {}
             for bhid in snap.bh["ID"]:
                 xcom_dict[ld][bhid] = np.full((len(snap_files), 3), np.nan)
-        time_dict[ld][ind2] = cmf.general.convert_gadget_time(snap)
-        this_xcom = cmf.analysis.get_com_of_each_galaxy(
+        time_dict[ld][ind2] = bgs.general.convert_gadget_time(snap)
+        this_xcom = bgs.analysis.get_com_of_each_galaxy(
             snap, method="ss", masks=id_masks["stars"], verbose=args.verbose
         )
         for k in this_xcom.keys():

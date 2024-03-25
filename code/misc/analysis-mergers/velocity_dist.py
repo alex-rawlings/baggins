@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 
@@ -16,8 +16,8 @@ ax.set_xlabel("v/(km/s)")
 
 for k, v in snapfiles.items():
     snap = pygad.Snapshot(v, physical=True)
-    xcom = cmf.analysis.get_com_of_each_galaxy(snap, method="ss", family="stars")
-    vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
+    xcom = bgs.analysis.get_com_of_each_galaxy(snap, method="ss", family="stars")
+    vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom)
     ax.hist(pygad.utils.geo.dist(snap.stars["vel"], list(vcom.values())[0]), bins=100, density=True, histtype="step", label=k)
 ax.legend()
 

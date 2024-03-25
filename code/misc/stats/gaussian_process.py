@@ -4,23 +4,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.gaussian_process import GaussianProcessRegressor, kernels
-import cm_functions as cmf
+import baggins as bgs
 
 avg_over_idxs = 50
 
 # load the data
-GP = cmf.analysis.HierarchicalModel_2D("stan/gp.stan", "", "gaussian_processes/gp")
+GP = bgs.analysis.HierarchicalModel_2D("stan/gp.stan", "", "gaussian_processes/gp")
 
 theta = []
 e_hard = []
 
-for f in cmf.utils.get_files_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/eccentricity_study/H_500K-H_500K-11.000-0.825"):
-    hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(f)
+for f in bgs.utils.get_files_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/eccentricity_study/H_500K-H_500K-11.000-0.825"):
+    hmq = bgs.analysis.HMQuantitiesBinaryData.load_from_file(f)
     try:
         hmq.hardening_radius
     except AttributeError:
         continue
-    t = cmf.analysis.first_major_deflection_angle(hmq.prebound_deflection_angles)[0]
+    t = bgs.analysis.first_major_deflection_angle(hmq.prebound_deflection_angles)[0]
     if np.isnan(t): continue
     theta.append(
         [t]

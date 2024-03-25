@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
-import cm_functions as cmf
+import baggins as bgs
 import figure_config
 
 
@@ -27,7 +27,7 @@ for j in range(2):
     bound_idx = []
     bound_idx_strided = []
     if j==0:
-        angle_data = cmf.utils.load_data("data/deflection_angles_e0-0.900.pickle")
+        angle_data = bgs.utils.load_data("data/deflection_angles_e0-0.900.pickle")
 
         # print some info if desired to help choose sims to plot
         if print_data:
@@ -55,7 +55,7 @@ for j in range(2):
         B_idx = [A_idx[0]+26, A_idx[1]+16]
         extra_bound_bit = [1000, 1000]
     else:
-        angle_data = cmf.utils.load_data("data/deflection_angles_e0-0.990.pickle")
+        angle_data = bgs.utils.load_data("data/deflection_angles_e0-0.990.pickle")
 
         # print some info if desired to help choose sims to plot
         if print_data:
@@ -98,14 +98,14 @@ for j in range(2):
     ax[j].set_ylim(-0.5, 2)
     for axi in (ax[j], axins1, axins2): axi.set_prop_cycle(figure_config.color_cycle)
 
-    glp = cmf.plotting.GradientLinePlot(ax=ax[j], cmap="custom_diverging")
+    glp = bgs.plotting.GradientLinePlot(ax=ax[j], cmap="custom_diverging")
     glp.marker_kwargs = {"ec":"w", "lw":0.2}
 
     for i, (dd, axins, ang) in enumerate(zip(data_dirs, (axins1, axins2), angles)):
-        ketjufile = cmf.utils.get_ketjubhs_in_dir(dd)[0]
-        bh1, bh2, *_ = cmf.analysis.get_bh_particles(ketjufile)
-        bh1, bh2 = cmf.analysis.move_to_centre_of_mass(bh1, bh2)
-        bh1u, bh2u, *_ = cmf.analysis.get_binary_before_bound(ketjufile)
+        ketjufile = bgs.utils.get_ketjubhs_in_dir(dd)[0]
+        bh1, bh2, *_ = bgs.analysis.get_bh_particles(ketjufile)
+        bh1, bh2 = bgs.analysis.move_to_centre_of_mass(bh1, bh2)
+        bh1u, bh2u, *_ = bgs.analysis.get_binary_before_bound(ketjufile)
         bound_idx.append(len(bh1u))
         bound_idx_strided.append(int(np.floor(bound_idx[i]/idx_stride)))
 
@@ -115,9 +115,9 @@ for j in range(2):
         else:
             bh = bh2
         bh = bh[:bound_idx[i]+extra_bound_bit[i]]
-        x = bh.x[::idx_stride,0] / cmf.general.units.kpc
-        y = bh.x[::idx_stride,2] / cmf.general.units.kpc
-        t = bh.t[::idx_stride] / cmf.general.units.Myr
+        x = bh.x[::idx_stride,0] / bgs.general.units.kpc
+        y = bh.x[::idx_stride,2] / bgs.general.units.kpc
+        t = bh.t[::idx_stride] / bgs.general.units.Myr
         t = t - t[bound_idx_strided[i]]
         if use_gradient_line:
             glp.add_data(x, y, c=t)
@@ -147,12 +147,12 @@ for j in range(2):
         axins1.set_xlim(-0.015, 0.033)
         axins1.set_ylim(-0.03, 0.04)
         for axins in (axins1, axins2):
-            cmf.plotting.draw_sizebar(axins, 0.01, "pc", location="lower right", **sizebar_kwargs)
+            bgs.plotting.draw_sizebar(axins, 0.01, "pc", location="lower right", **sizebar_kwargs)
     else:
         axins1.set_xlim(-0.06, 0.05)
         axins1.set_ylim(-0.08, 0.03)
         for axins in (axins1, axins2):
-            cmf.plotting.draw_sizebar(axins, 0.01, "pc", location="lower right", **sizebar_kwargs)
+            bgs.plotting.draw_sizebar(axins, 0.01, "pc", location="lower right", **sizebar_kwargs)
     axins2.set_xlim(*axins1.get_xlim())
     axins2.set_ylim(*axins1.get_ylim())
     axins1.set_aspect("equal")
@@ -164,6 +164,6 @@ for j in range(2):
     ax[j].set_title(label)
 
 if use_gradient_line:
-    cmf.plotting.savefig(figure_config.fig_path(f"orbit.pdf"), force_ext=True)
+    bgs.plotting.savefig(figure_config.fig_path(f"orbit.pdf"), force_ext=True)
 else:
     plt.show()

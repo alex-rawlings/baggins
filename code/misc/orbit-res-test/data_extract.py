@@ -5,7 +5,7 @@ import scipy.interpolate
 import os
 import pygad
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 
 #define a class to hold extracted information
@@ -116,18 +116,18 @@ for ind, (root, directories, files) in enumerate(os.walk(args.path)):
                 if args.orbit is not None and root.split('/')[-1] == args.orbit:
                     #this is the ic file
                     id_masks_for = resolution
-                    star_id_masks = cmf.analysis.get_all_id_masks(snap)
+                    star_id_masks = bgs.analysis.get_all_id_masks(snap)
                     res_dict[resolution].update_property('time', [0, 0])
                 else:
                     #this is a regular file
-                    snap_time = cmf.general.convert_gadget_time(snap)
+                    snap_time = bgs.general.convert_gadget_time(snap)
                     res_dict[resolution].update_property('time', [snap_time, snap_time])
                 #sanity check
                 if id_masks_for != resolution:
                     raise RuntimeError('Need the correct ID mask!')
                 #get the data
-                xcoms = cmf.analysis.get_coms_of_each_galaxy(snap, masks=star_id_masks, verbose=args.verbose)
-                vcoms = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=star_id_masks, verbose=args.verbose)
+                xcoms = bgs.analysis.get_coms_of_each_galaxy(snap, masks=star_id_masks, verbose=args.verbose)
+                vcoms = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcoms, masks=star_id_masks, verbose=args.verbose)
                 
                 #and assign to the class
                 res_dict[resolution].update_property('xcom', xcoms)
@@ -152,6 +152,6 @@ for r in res_dict:
 
 #save data
 if args.orbit is not None:
-    cmf.utils.save_data(res_dict, '{}.pickle'.format(args.orbit))
+    bgs.utils.save_data(res_dict, '{}.pickle'.format(args.orbit))
 else:
-    cmf.utils.save_data(res_dict, 'general-res-test.pickle')
+    bgs.utils.save_data(res_dict, 'general-res-test.pickle')

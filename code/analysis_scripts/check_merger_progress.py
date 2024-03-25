@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 parser = argparse.ArgumentParser(
     description="Check the progress of an ongiong merger simulation.",
@@ -28,19 +28,19 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", console_level="INFO")
+SL = bgs.setup_logger("script", console_level="INFO")
 
 # copy file so it can be read
-new_filename = cmf.utils.create_file_copy(args.file)
+new_filename = bgs.utils.create_file_copy(args.file)
 
 gyr = ketjugw.units.yr * 1e9
 kpc = ketjugw.units.pc * 1e3
 
-bh1, bh2, merged = cmf.analysis.get_bh_particles(new_filename, interp=args.interp)
+bh1, bh2, merged = bgs.analysis.get_bh_particles(new_filename, interp=args.interp)
 if merged():
     SL.info("A merger has occured!")
 
-separation = cmf.mathematics.radial_separation(bh1.x / kpc, bh2.x / kpc)
+separation = bgs.mathematics.radial_separation(bh1.x / kpc, bh2.x / kpc)
 energy = ketjugw.orbital_energy(bh1, bh2)
 
 bound_points = np.diff(np.sign(energy), prepend=0) < 0
@@ -75,7 +75,7 @@ ax[1].set_ylabel("Energy")
 
 
 if args.orbparams:
-    bh1, bh2, merged = cmf.analysis.get_bound_binary(new_filename, interp=args.interp)
+    bh1, bh2, merged = bgs.analysis.get_bound_binary(new_filename, interp=args.interp)
     op = ketjugw.orbital_parameters(bh1, bh2)
-    cmf.plotting.binary_param_plot(op)
+    bgs.plotting.binary_param_plot(op)
 plt.show()

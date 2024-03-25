@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 #plot, for both dm and stars, radius containing x particles against eta
@@ -16,7 +16,7 @@ data_paths = [
 
 particle_numbers = [100, 200, 400, 800, 1600]
 
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 fig, ax = plt.subplots(1,2, sharex="row", sharey="row")
 
 for i, data_path in enumerate(data_paths):
@@ -31,19 +31,19 @@ for i, data_path in enumerate(data_paths):
     
     for j in range(10):
         perturbation = "{:03d}".format(j)
-        snaplist = cmf.utils.get_snapshots_in_dir(os.path.join(eta_path, "{}/output/".format(perturbation)))
+        snaplist = bgs.utils.get_snapshots_in_dir(os.path.join(eta_path, "{}/output/".format(perturbation)))
         snap = pygad.Snapshot(snaplist[-1], physical=True)
-        merged, remnant_id = cmf.analysis.determine_if_merged(snap)
+        merged, remnant_id = bgs.analysis.determine_if_merged(snap)
         initial_com_guess = pygad.analysis.center_of_mass(snap.stars)
         """if merged:
             initial_com_guess = snap.bh["pos"][snap.bh["ID"]==remnant_id]
         else:
             initial_com_guess = None"""
         #ensure CoMs are sufficiently close that the system is like one system
-        star_id_masks = cmf.analysis.get_all_id_masks(snap)
-        xcoms = cmf.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, initial_guess=initial_com_guess)
+        star_id_masks = bgs.analysis.get_all_id_masks(snap)
+        xcoms = bgs.analysis.get_com_of_each_galaxy(snap, masks=star_id_masks, initial_guess=initial_com_guess)
         #print(xcoms)
-        com_separation = cmf.mathematics.radial_separation(*list(xcoms.values()))[0]
+        com_separation = bgs.mathematics.radial_separation(*list(xcoms.values()))[0]
         if com_separation > 1:
             print("CoM separation > 1 kpc --> skipping")
             continue
@@ -51,7 +51,7 @@ for i, data_path in enumerate(data_paths):
             subsnap = getattr(snap, family)
             #let's just take the mean com for now, should be pretty close
             xcom = np.nanmean(np.array(list(xcoms.values())), axis=0)
-            all_separations = cmf.mathematics.radial_separation(subsnap["pos"], xcom)
+            all_separations = bgs.mathematics.radial_separation(subsnap["pos"], xcom)
             all_separations.sort()
             for n in particle_numbers:
                 particle_number_dict[family][n][j] = all_separations[n]

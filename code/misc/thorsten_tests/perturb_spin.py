@@ -2,7 +2,7 @@ import os
 import numpy as np
 import scipy.stats
 import h5py
-import cm_functions as cmf
+import baggins as bgs
 
 
 datadir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/remnant_perturbations/009"
@@ -11,23 +11,23 @@ rng = np.random.default_rng(42)
 CONST_G = 43007.1
 CONST_c = 2.99792458e5
 
-SL = cmf.setup_logger("script", console_level="INFO")
+SL = bgs.setup_logger("script", console_level="INFO")
 
 subdirs = [f.path for f in os.scandir(datadir) if f.is_dir()]
 subdirs.sort()
 
 for j, s in enumerate(subdirs):
     if j<1: continue
-    ic_file = cmf.utils.get_snapshots_in_dir(s)
+    ic_file = bgs.utils.get_snapshots_in_dir(s)
     try:
         assert len(ic_file) < 2
     except AssertionError:
         SL.exception("More than one snapshot returned! Unable to determine which is the IC file.")
         raise
     # determine new spins of BHs
-    spin_params = cmf.literature.zlochower_dry_spins
+    spin_params = bgs.literature.zlochower_dry_spins
     spin_mag = scipy.stats.beta.rvs(*spin_params.values(), size=2, random_state=rng)
-    theta, phi = cmf.mathematics.uniform_sample_sphere(2, rng=rng)
+    theta, phi = bgs.mathematics.uniform_sample_sphere(2, rng=rng)
     # assign new spins
     with h5py.File(ic_file[0], "r+") as f:
         spins = f["/PartType5/Spins"][:]

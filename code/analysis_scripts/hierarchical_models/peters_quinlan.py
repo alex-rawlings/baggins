@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -48,22 +48,22 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbose",
     default="INFO",
     help="verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbose)
+SL = bgs.setup_logger("script", args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(args.publish)
+full_figsize = bgs.plotting.get_figure_size(args.publish)
 
 figname_base = "hierarchical_models/PQ"
 
-analysis_params = cmf.utils.read_parameters(args.apf)
+analysis_params = bgs.utils.read_parameters(args.apf)
 
-HMQ_files = cmf.utils.get_files_in_dir(args.dir)
+HMQ_files = bgs.utils.get_files_in_dir(args.dir)
 
 # TODO set up model selection
 if args.model == "simple":
@@ -79,14 +79,14 @@ if args.model == "simple":
                 exc_info=True,
             )
             raise
-        pq_model = cmf.analysis.PQModelSimple.load_fit(
+        pq_model = bgs.analysis.PQModelSimple.load_fit(
             model_file=stan_model_file,
             fit_files=args.load_file,
             figname_base=figname_base,
         )
     else:
         # sample
-        pq_model = cmf.analysis.PQModelSimple(
+        pq_model = bgs.analysis.PQModelSimple(
             model_file=stan_model_file,
             prior_file="stan/peters_quinaln/pq_simple_prior.stan",
             figname_base=figname_base,
@@ -104,14 +104,14 @@ else:
                 exc_info=True,
             )
             raise
-        pq_model = cmf.analysis.PQModelHierarchy.load_fit(
+        pq_model = bgs.analysis.PQModelHierarchy.load_fit(
             model_file=stan_model_file,
             fit_files=args.load_file,
             figname_base=figname_base,
         )
     else:
         # sample
-        pq_model = cmf.analysis.PQModelHierarchy(
+        pq_model = bgs.analysis.PQModelHierarchy(
             model_file=stan_model_file,
             prior_file="stan/peters_quinlan/pq_hierarchy_prior.stan",
             figname_base=figname_base,

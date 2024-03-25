@@ -2,7 +2,7 @@ import argparse
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 from datetime import datetime
 
@@ -26,7 +26,7 @@ if __name__ == "__main__":
         figname = "alex"
     r_edges = np.geomspace(1e-2, 100, 51)
     rng = np.random.default_rng(42)
-    logs = cmf.ScriptLogger("density_logs", "INFO")
+    logs = bgs.ScriptLogger("density_logs", "INFO")
 
     parser = argparse.ArgumentParser(description="Construct projected density estimates for time series data", allow_abbrev=False)
     parser.add_argument("-n", "--new", help="Run new analysis", action="store_true", dest="new")
@@ -36,12 +36,12 @@ if __name__ == "__main__":
     if args.new:
         data = {}
 
-        x = cmf.mathematics.get_histogram_bin_centres(r_edges)
+        x = bgs.mathematics.get_histogram_bin_centres(r_edges)
 
         for i, (sim, snapdir) in enumerate(snapdirs.items()):
             data[sim] = {}
             data[sim]["x"] = x
-            snapfiles = cmf.utils.get_snapshots_in_dir(snapdir)
+            snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
             n = len(snapfiles)
             data[sim]["t"] = np.full(len(snapfiles), np.nan, dtype=float)
             data[sim]["density"] = {}
@@ -50,10 +50,10 @@ if __name__ == "__main__":
                 logs.logger.info(f"{ii+1} of {n} snaps")
                 print(f"Reading {snapfile}")
                 snap = pygad.Snapshot(snapfile, physical=True)
-                data[sim]["t"][ii] = cmf.general.convert_gadget_time(snap)
-                #idmask = cmf.analysis.get_all_id_masks(snap)
+                data[sim]["t"][ii] = bgs.general.convert_gadget_time(snap)
+                #idmask = bgs.analysis.get_all_id_masks(snap)
                 start_time = datetime.now()
-                re, vsig, vsig_r, Sigma = cmf.analysis.projected_quantities(snap, obs=args.obs, r_edges=r_edges, rng=rng)
+                re, vsig, vsig_r, Sigma = bgs.analysis.projected_quantities(snap, obs=args.obs, r_edges=r_edges, rng=rng)
                 end_time = datetime.now()
                 print(f"Execution time: {end_time-start_time}")
                 _kk = f"{data[sim]['t'][ii]:.1f}"
@@ -66,9 +66,9 @@ if __name__ == "__main__":
                 snap.delete_blocks()
                 del snap
                 pygad.gc_full_collect()
-        cmf.utils.save_data(data, filename=savefile)
+        bgs.utils.save_data(data, filename=savefile)
     else:
-        data = cmf.utils.load_data(savefile)
+        data = bgs.utils.load_data(savefile)
 
     # set up figure
     fig, ax = plt.subplots(2,len(data), sharex="all", sharey="row", squeeze=False)
@@ -83,7 +83,7 @@ if __name__ == "__main__":
     for v in data.values():
         max_time.append(max(v["t"]))
     
-    mpcol, sm = cmf.plotting.create_normed_colours(0, 1.1*max(max_time), cmap="plasma")
+    mpcol, sm = bgs.plotting.create_normed_colours(0, 1.1*max(max_time), cmap="plasma")
 
     for i, (k,v) in enumerate(data.items()):
         ax[0,i].set_title(k)
@@ -98,5 +98,5 @@ if __name__ == "__main__":
             ax[1,i].fill_between(v["x"], y1=np.sqrt(np.nanquantile(sig_v, 0.75, axis=0)), y2=np.sqrt(np.nanquantile(sig_v, 0.25, axis=0)), alpha=0.4, fc=mpcol(v["t"][j]))
     cbar = plt.colorbar(sm, ax=ax[:,-1])
     cbar.ax.set_ylabel("t/Gyr")
-    cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"other_tests/{figname}.png"))
+    bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"other_tests/{figname}.png"))
     if not args.new: plt.show()

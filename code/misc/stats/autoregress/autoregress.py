@@ -3,7 +3,7 @@ import os.path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 
@@ -16,7 +16,7 @@ args = parser.parse_args()
 autoregress_df = pd.DataFrame(columns=["name", "slope", "intercept", "scatter"])
 
 # set up Stan Model
-my_stan = cmf.analysis.StanModel("stan/ar.stan", "stan/ar.stan", args.obs_file, figname_base=f"stats/autoregress/{args.var}", autoregress=True)#, random_select_obs={"num":200, "group":"name"})
+my_stan = bgs.analysis.StanModel("stan/ar.stan", "stan/ar.stan", args.obs_file, figname_base=f"stats/autoregress/{args.var}", autoregress=True)#, random_select_obs={"num":200, "group":"name"})
 
 # do data transformations
 my_stan.transform_obs("a", "inv_a", lambda a:1/a)
@@ -33,7 +33,7 @@ for n in names:
     )
     my_stan.figname_base = f"{my_stan.figname_base}_{n}"
     my_stan.build_model()
-    my_stan.sample_model(data=data, save=False, sample_kwargs={"output_dir":os.path.join(cmf.env_config.data_dir, "stan_files")})
+    my_stan.sample_model(data=data, save=False, sample_kwargs={"output_dir":os.path.join(bgs.env_config.data_dir, "stan_files")})
     my_stan.parameter_plot(["alpha", "beta", "sigma"])
     my_stan.posterior_plot(args.var, args.var, "posterior_pred")
     plt.close()

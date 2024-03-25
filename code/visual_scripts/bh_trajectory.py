@@ -1,9 +1,9 @@
 import matplotlib.animation
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 fig, ax = plt.subplots(1, 1)
-bht = cmf.visualisation.SMBHtrajectory(
+bht = bgs.visualisation.SMBHtrajectory(
     "/scratch/pjohanss/arawling/collisionless_merger/merger-test/D-E-3.0-0.001/perturbations_eta_0002/000/output/ketju_bhs.hdf5",
     ax,
     axis_offset=0.01,

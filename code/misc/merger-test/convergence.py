@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 datasets = [
@@ -25,10 +25,10 @@ if False:
             print("----------------")
             perturb_num = "{:03d}".format(j)
             full_data_path = os.path.join(dataset, perturb_num, "output")
-            snaplist = cmf.utils.get_snapshots_in_dir(full_data_path)
-            bhfile = cmf.utils.get_ketjubhs_in_dir(full_data_path)[0]
+            snaplist = bgs.utils.get_snapshots_in_dir(full_data_path)
+            bhfile = bgs.utils.get_ketjubhs_in_dir(full_data_path)[0]
             try:
-                bh_binary = cmf.analysis.BHBinary(bhfile, snaplist, 12)
+                bh_binary = bgs.analysis.BHBinary(bhfile, snaplist, 12)
                 if j == -9:
                     bh_binary.plot()
                     plt.show()
@@ -47,9 +47,9 @@ if False:
                     Gps = Gps,
                     e0_scatter = e0_scatter
     )
-    cmf.utils.save_data(data_dict, "convergence.pickle")
+    bgs.utils.save_data(data_dict, "convergence.pickle")
 else:
-    data_dict = cmf.utils.load_data("convergence.pickle")
+    data_dict = bgs.utils.load_data("convergence.pickle")
     H = data_dict["H"]
     Gps = data_dict["Gps"]
     e0_scatter = data_dict["e0_scatter"]

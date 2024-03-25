@@ -1,14 +1,14 @@
 import numpy as np
 import scipy.constants as C
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import ketjugw
 
 
 ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.001/perturbations/005/output/ketju_bhs_cp.hdf5"
 
 bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
-bh1, bh2, merged = cmf.analysis.get_bound_binary(ketju_file)
+bh1, bh2, merged = bgs.analysis.get_bound_binary(ketju_file)
 print(merged)
 
 

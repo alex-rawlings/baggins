@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 class COMobject:
@@ -14,26 +14,26 @@ snapdir = "/scratch/pjohanss/arawling/collisionless_merger/regen-test/original/o
 extract_idx = 14
 brownian = {"pos":0.012, "vel":14}
 
-snapfiles = cmf.utils.get_snapshots_in_dir(snapdir)
+snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
 snaptimes = np.full_like(snapfiles, np.nan, dtype=float)
 
 for ind, snapfile in enumerate(snapfiles):
     print("{}: {}".format(ind, snapfile))
     snap = pygad.Snapshot(snapfile)
     snap.to_physical_units()
-    snaptimes[ind] = cmf.general.convert_gadget_time(snap, new_unit="Myr")
+    snaptimes[ind] = bgs.general.convert_gadget_time(snap, new_unit="Myr")
     if ind == 0:
         id_masks = dict(
-            stars = cmf.analysis.get_all_id_masks(snap),
-            dm = cmf.analysis.get_all_id_masks(snap, family="dm")
+            stars = bgs.analysis.get_all_id_masks(snap),
+            dm = bgs.analysis.get_all_id_masks(snap, family="dm")
         )
         com = dict(
             stars = COMobject(len(snapfiles), *list(id_masks["stars"].keys())),
             dm = COMobject(len(snapfiles), *list(id_masks["dm"].keys()))
         )
     for ind2, (family, r0) in enumerate(zip(("stars", "dm"), (100, 1000))):
-        xcom = cmf.analysis.get_com_of_each_galaxy(snap, masks=id_masks[family], family=family, initial_radius=r0)
-        vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=id_masks[family], family=family)
+        xcom = bgs.analysis.get_com_of_each_galaxy(snap, masks=id_masks[family], family=family, initial_radius=r0)
+        vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom, masks=id_masks[family], family=family)
         for ind3, bhid in enumerate(id_masks["stars"].keys()):
             com[family].xcom[bhid][ind, :] = xcom[bhid]
             com[family].vcom[bhid][ind, :] = vcom[bhid]
