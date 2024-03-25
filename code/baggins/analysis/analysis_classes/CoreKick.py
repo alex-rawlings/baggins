@@ -321,7 +321,9 @@ class CoreKick(HierarchicalModel_2D):
             save=False,
         )
         rb_mode = self.calculate_mode("rb_posterior")
-        _logger.info(f"Forward-folded core radius mode is {rb_mode*self._rb0:.3f} kpc ({rb_mode:.3f} rb0)")
+        _logger.info(
+            f"Forward-folded core radius mode is {rb_mode*self._rb0:.3f} kpc ({rb_mode:.3f} rb0)"
+        )
         # add a secondary axis, turning off ticks from the top axis (if they are there)
         ax.flatten()[0].tick_params(axis="x", which="both", top=False)
         rb02kpc = lambda x: x * self._rb0
