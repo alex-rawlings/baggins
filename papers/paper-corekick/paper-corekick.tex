@@ -97,8 +97,8 @@ $^{1}$
 Department of Physics,
 Gustaf H\"allstr\"omin katu 2, FI-00014, University of Helsinki, Finland
 \\%
-$^{2}$
-Max-Planck-Institut f\"ur Astrophysik, Karl-Schwarzchild-Str 1, D-85748 Garching, Germany
+%$^{2}$
+%Max-Planck-Institut f\"ur Astrophysik, Karl-Schwarzchild-Str 1, D-85748 Garching, Germany
 }
 
 % These dates will be filled out by the publisher
@@ -164,11 +164,21 @@ The merger configuration results in a rapid coalescence of the BH binary, howeve
 We then select the snapshot just prior ($\sim8\,\mathrm{Myr}$) to the GW-driven SMBH merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. Additionally, the merger remnant displays almost no triaxiality, as seen in the $\vk=0\,\kmps$ case in \autoref{sec:app_triax}. We check for this by directing the recoil kick along the global $y$-axis, and final identical evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
 The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant, $v_\mathrm{esc}$.
 We additionally run one simulation with a recoil kick above $v_\mathrm{esc}$, with $\vk=2000\,\kmps$.
-Each child simulation is run until the median remnant SMBH velocity relative to the galaxy CoM \drafting{check abbreviation} velocity is less than $10\,\kmps$ for at least $0.1\,\mathrm{Gyr}$.
-The time to this point, from the time of SMBH binary coalescence, we term the `infall time'.
-Those simulations where the maximum displacement of the kicked SMBH exceeds $30\,\mathrm{kpc}$ are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
-In practice, this limits our sample of analysed simulations to those with $\vk\leq 900\,\kmps$, thus totalling sixteen simulations in our analysis.
-Interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
+As discussed in \drafting{section}, higher recoil velocities typically result in larger excursions of the remnant SMBH from the isophotal centre.
+To provide a fair comparison between simulations, we choose to analyse each child simulation at a fixed time after the recoil kick, namely $t\simeq 0.075\,\mathrm{Gyr}$.
+This value is chosen so as to minimise the effects of relaxation in the central regions of the galaxy remnant.
+We estimate the relaxation time $t_\mathrm{relax}$ at a radius $r$ as \citep{binney2008}:
+\begin{equation}
+    t_\mathrm{relax} \simeq 2.1 \frac{\sigma r^2}{G \bar{m} \ln \Lambda},
+\end{equation}
+where $\sigma$ is the particle velocity dispersion within $r$, $\bar{m}$ is the mean particle mass (hence the mean of the stellar and DM particle masses), and $\Lambda$ is the argument of the Coulomb logarithm, given by:
+\begin{equation}
+    \Lambda = \frac{r \langle v^2 \rangle}{2 G \bar{m}},
+\end{equation}
+where $\langle v^2 \rangle$ is the mean squared particle velocity within $r$. 
+The relaxation time increases exponentially with increasing $r$, and we find for a radius of $r=0.1\,\mathrm{kpc}$ the relaxation time to be $t_\mathrm{relax} \sim 0.1 \, \mathrm{Gyr}$, thus motivating our choice of $0.075\,\mathrm{Gyr}$ for the analysis time. 
+
+For all simulations, interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, DM with a softening length of $\varepsilon = 300\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
 
 
 % RESULTS
@@ -191,6 +201,12 @@ Interactions between stellar particles are softened with a softening length of $
         \item Number of oscillations before settling?
         \item Plot of maximum displacement of kicked BH as a function of kick velocity. How does this compare to core size? Which simulations have BH kicked beyond the core?
     \end{enumerate}
+}
+\drafting{
+    Include this text here, this is how we identify `settled' systems, but we're not really interested in when the SMBH has settled for the rest of the paper (refer to Nasim where the majority of the GW-induced scouring occurs during the first excursion of the SMBH).
+    Each child simulation is run until the median remnant SMBH velocity relative to the galaxy CoM \drafting{check abbreviation} velocity is less than $10\,\kmps$ for at least $0.1\,\mathrm{Gyr}$.
+    The time to this point, from the time of SMBH binary coalescence, we term the `infall time'.
+    Those simulations where the maximum displacement of the kicked SMBH exceeds $30\,\mathrm{kpc}$ are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
 }
 \begin{figure}
     \centering
