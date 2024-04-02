@@ -174,7 +174,7 @@ def fit_gauss_hermite_distribution(data):
     return mu0, sigma0, h3, h4
 
 
-def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, **kwargs):
+def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
     """
     Determine the statistics of each voronoi bin.
 
@@ -203,6 +203,26 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, **kwargs):
     x = x - xcom
     y = y - ycom
     vz = V - Vcom
+
+    if seeing:
+        try:
+            for k in ("num", "sigma"):
+                assert k in seeing.keys()
+        except AssertionError:
+            _logger.exception(
+                f"Key {k} is not present in dict `seeing`!", exc_info=True
+            )
+            raise
+        rng = seeing["rng"] if "rng" in seeing else np.random.default_rng()
+        x = np.array(
+            [xx + rng.normal(0, seeing["sigma"], size=seeing["num"]) for xx in x]
+        )
+        y = np.array(
+            [yy + rng.normal(0, seeing["sigma"], size=seeing["num"]) for yy in y]
+        )
+        vz = np.repeat(vz, seeing["num"])
+    else:
+        _logger.warning("No seeing correction will be applied!")
 
     _logger.info(f"Binning {len(x)} particles...")
     particle_vor_bin_num, pixel_vor_bin_num, extent, xBar, yBar = voronoi_grid(
@@ -307,4 +327,4 @@ def radial_profile_velocity_moment(vorstat, stat):
     """
     R, inds = _get_R(vorstat)
     F = vorstat["bin_mass"][inds]
-    return R, np.nancumsum(F * R * vorstat[f"bin_{stat}"]) / np.nancumsum(F * R)
+    return R, F * R * vorstat[f"bin_{stat}"][inds] / (F * R)

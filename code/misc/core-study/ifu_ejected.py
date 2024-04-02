@@ -7,13 +7,9 @@ snapfile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/v
 
 snap = pygad.Snapshot(snapfile, physical=True)
 assert len(snap.bh) == 1
-#rhalf = pygad.analysis.half_mass_radius(snap.stars)
-# TODO why is this not changing with frac??
-rhalf = list(
-    bgs.analysis.enclosed_mass_radius(snap, 2).values()
-)[0]
-print(rhalf)
-ball_mask = pygad.BallMask(rhalf, snap.bh["pos"][0,:])
+rlang = bgs.analysis.lagrangian_radius(snap, 0.1)
+print(rlang)
+ball_mask = pygad.BallMask(rlang, snap.bh["pos"][0,:])
 print(snap.stars[~ball_mask]["pos"][:2,:])
 pygad.analysis.orientate_at(snap[ball_mask], "red I", total=True)
 print(snap.stars[~ball_mask]["pos"][:2,:])

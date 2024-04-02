@@ -9,7 +9,7 @@ except ImportError:
     use("Agg")
     import matplotlib.pyplot as plt
 import baggins as bgs
-import figure_config # noqa
+import figure_config  # noqa
 
 parser = argparse.ArgumentParser(
     "Determine core - kick relation",

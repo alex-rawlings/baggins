@@ -21,7 +21,6 @@ Also need to install `ketjugw`, `voronoi-binning-cpp`, `merger-ic-generator`, `o
 3. Edit the necessary fields in `code/baggins/env_params.yml` that are listed under the top document (for e.g. directory where to save the figures to). The fields under the second document are internal settings of the code, and should not be edited.  
 4. You'll need to compile the C code for some optimised routines. Make sure that you have given GitHub your public SSH key (for the device you're compiling on). Note that on Mahti, the module `git` doesn't seem to work with these commands; the base `git` does. As well, on Mahti, unload any `python-data` module during compilation so that the root python can be used.  
 ```
-git submodule add -b stable git@github.com:pybind/pybind11.git code/baggins/C/thirdparty/pybind11
 git submodule update --init
 cd code/baggins/C
 mkdir build && cd build
@@ -47,6 +46,14 @@ python ./script.py -h
 ```
 A list of 
 required inputs and optional inputs will be displayed.  
+
+## Developer Notes  
+### Adding the pybind module  
+To add the pybind module (this should not need to be done when generally cloning the repo), first do:  
+```
+git submodule add -b stable git@github.com:pybind/pybind11.git code/baggins/C/thirdparty/pybind11
+```
+before running the `git submodule update --init` steps.  
 
 ### Who do I talk to?  
 * Alex Rawlings (alexander.rawlings@helsinki.fi)

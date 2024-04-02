@@ -55,7 +55,14 @@ for k, v in snapshots.items():
     tstart = datetime.now()
 
     snap = pygad.Snapshot(v, physical=True)
-    pygad.analysis.orientate_at(snap, "red I", total=True)
+
+    # align the snapshot with the 10% Lagrangian radii, centered on stellar density
+    com = pygad.analysis.shrinking_sphere(
+        snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
+    )
+    rlang10 = bgs.analysis.lagrangian_radius(snap, mass_frac=0.1, centre=com)
+    ball_mask_I = pygad.BallMask(rlang10, center=com)
+    pygad.analysis.orientate_at(snap[ball_mask_I], "red I", total=True)
 
     rhalf = pygad.analysis.half_mass_radius(snap.stars)
 

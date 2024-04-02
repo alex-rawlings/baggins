@@ -4,7 +4,6 @@ dist/
 
 # Build directories and objects for compiled code
 **/build
-**/thirdparty
 *.so
 
 # Python and pickle code

@@ -77,5 +77,5 @@ ax.set_xlim(0, 0.25)
 ax.legend(title="Number bound stars")
 plt.colorbar(sm, ax=ax)
 bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "core-study/bound_stars.png"))
-
+plt.show()
 

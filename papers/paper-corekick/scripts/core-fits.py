@@ -234,7 +234,7 @@ else:
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         x = np.linspace(*ax.get_xlim(), 500)
-        ax.plot(x, 3.70 * (x/1800)**0.562 + 1, c=col_list[1])
+        ax.plot(x, 3.70 * (x / 1800) ** 0.562 + 1, c=col_list[1])
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":
