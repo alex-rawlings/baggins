@@ -43,7 +43,7 @@ username = home_dir.rstrip("/").split("/")[-1]
 
 # create the logger
 _cmlogger = setup_logger(
-    name="cm_funcs",
+    name="baggins",
     console_level=user_params["logging"]["console_level"],
     logfile=os.path.join(this_dir, user_params["logging"]["file"]),
     file_level=user_params["logging"]["file_level"],
@@ -71,7 +71,7 @@ rc_file(os.path.join(this_dir, "plotting/matplotlibrc"))
 # only set git hash if in the collisionless-merger-sample repo
 if "collisionless-merger-sample" in os.getcwd():
     # the standard git describe command, save git hash to yml file for use
-    # of cm_functions outside the collisionless-merger-sample repo
+    # of baggins outside the collisionless-merger-sample repo
     git_hash = (
         subprocess.run(
             ["git", "describe", "--always", "--long", "--all"],

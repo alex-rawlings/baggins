@@ -3,6 +3,6 @@ General
 
 General methods.
 
-.. automodule:: cm_functions.general
+.. automodule:: baggins.general
     :imported-members:
     :members:

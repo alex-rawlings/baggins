@@ -35,7 +35,7 @@ class TmpDirRegister:
         """
         Class to hold a register of temporary directories. This means that
         temporary directories are particular to the given invocation of
-        cm_functions, and can be cleaned up at exit without affecting the
+        baggins, and can be cleaned up at exit without affecting the
         temporary directories of other invocations running concurrently.
 
         Parameters

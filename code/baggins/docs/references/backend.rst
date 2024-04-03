@@ -3,12 +3,12 @@ Backend
 
 Methods that are designed to be ported into any module of the code.
 
-.. automodule:: cm_functions._backend
+.. automodule:: baggins._backend
     :imported-members:
     :members:
 
-.. autoclass:: cm_functions._backend.InternalLogger
+.. autoclass:: baggins._backend.InternalLogger
     :members:
 
-.. autoclass:: cm_functions._backend.ScriptLogger
+.. autoclass:: baggins._backend.ScriptLogger
     :members:
