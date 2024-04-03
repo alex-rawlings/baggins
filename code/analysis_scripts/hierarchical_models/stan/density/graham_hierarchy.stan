@@ -72,14 +72,14 @@ parameters {
 transformed parameters {
     // prior information for sensitivity analysis
     array[10] real lprior;
-    lprior[1] = normal_lpdf(log10densb_mean | 10, 1);
-    lprior[2] = normal_lpdf(log10densb_std | 0, 0.05);
+    lprior[1] = normal_lpdf(log10densb_mean | 10, 2);
+    lprior[2] = normal_lpdf(log10densb_std | 0, 1);
     lprior[3] = exponential_lpdf(g_lam | 10);
-    lprior[4] = normal_lpdf(rb_sig | 0, 0.2);
-    lprior[5] = normal_lpdf(n_mean | 4, 2);
-    lprior[6] = normal_lpdf(n_std | 0, 2);
+    lprior[4] = normal_lpdf(rb_sig | 0, 1);
+    lprior[5] = normal_lpdf(n_mean | 8, 4);
+    lprior[6] = normal_lpdf(n_std | 0, 4);
     lprior[7] = gamma_lpdf(a_sig | 2, 0.2);
-    lprior[8] = normal_lpdf(Re_sig | 0, 20);
+    lprior[8] = normal_lpdf(Re_sig | 0, 12);
     lprior[9] = normal_lpdf(err_mean | 0, 1);
     lprior[10] = normal_lpdf(err_std | 0, 0.2);
 }

@@ -235,8 +235,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
             xmodel="R",
             ymodel=f"{self._folded_qtys[0]}_prior",
             xobs="R",
-            yobs="log10_proj_density_mean",
-            yobs_err="log10_proj_density_std",
+            yobs="log10_proj_density",
             ax=ax1,
         )
 
@@ -473,7 +472,14 @@ class GrahamModelHierarchy(_GrahamModelBase):
                 [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
             )
         )
-        self._expand_dimension(["err"], "group")
+        ax = self.parameter_corner_plot(self._hyper_qtys, labeller=self._labeller_hyper, figsize=figsize)
+        fig = ax[0, 0].get_figure()
+        savefig(
+            self._make_fig_name(
+                self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
+            ),
+            fig=fig,
+        )
         return super().all_prior_plots(figsize, ylim)
 
     def all_posterior_pred_plots(self, figsize=None, ylim=(6, 10)):
