@@ -42,12 +42,14 @@ analysis_params = bgs.utils.read_parameters(args.apf)
 
 figname_base = "hierarchical_models/density/"
 
+this_dir = os.path.dirname(os.path.realpath(__file__))
+
 if args.model == "simple":
     graham_model = stan_model_selector(
         args,
         bgs.analysis.GrahamModelSimple,
-        "stan/density/graham_simple.stan",
-        "stan/density/graham_prior_simple.stan",
+        os.path.join(this_dir, "stan/density/graham_simple.stan"),
+        os.path.join(this_dir, "stan/density/graham_prior_simple.stan"),
         figname_base,
         SL,
     )
@@ -55,8 +57,8 @@ elif args.model == "factor":
     graham_model = stan_model_selector(
         args,
         bgs.analysis.GrahamModelKick,
-        "stan/density/graham_factor.stan",
-        "stan/density/graham_factor_prior_novk.stan",
+        os.path.join(this_dir, "stan/density/graham_factor.stan"),
+        os.path.join(this_dir, "stan/density/graham_factor_prior_novk.stan"),
         figname_base,
         SL,
     )
@@ -64,8 +66,8 @@ else:
     graham_model = stan_model_selector(
         args,
         bgs.analysis.GrahamModelHierarchy,
-        "stan/density/graham_hierarchy.stan",
-        "stan/density/graham_prior_hierarchy.stan",
+        os.path.join(this_dir, "stan/density/graham_hierarchy.stan"),
+        os.path.join(this_dir, "stan/density/graham_prior_hierarchy.stan"),
         figname_base,
         SL,
     )
