@@ -93,7 +93,7 @@ def draw_sizebar(
 
 
 def create_normed_colours(
-    vmin, vmax, cmap="cividis", norm="Normalize", norm_kwargs={}, trunc=(None, None)
+    vmin, vmax, cmap="cividis", norm="Normalize", norm_kwargs={}, trunc=(None, None), bad=None
 ):
     """
     Convenience wrapper for creating colour normalisation and colourbar
@@ -127,6 +127,8 @@ def create_normed_colours(
     except ValueError:
         _logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
         cmapv = plt.get_cmap("cividis")
+    if bad is not None:
+        cmapv.set_bad(color=bad)
     try:
         _norm = getattr(colors, norm)
     except AttributeError:

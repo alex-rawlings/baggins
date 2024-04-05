@@ -255,10 +255,12 @@ def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
         ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
         ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
     ax = np.concatenate(ax).flatten()
+    div_cols = sns.color_palette("vlag", as_cmap=True)
+    asc_cols = sns.color_palette("flare_r", as_cmap=True)
     for i, (statkey, cmap, label) in enumerate(
         zip(
             ("V", "sigma", "h3", "h4"),
-            ("coolwarm", "plasma", "coolwarm", "coolwarm"),
+            (div_cols, asc_cols, div_cols, div_cols),
             (
                 r"$V/\mathrm{km}\,\mathrm{s}^{-1}$",
                 r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$",
@@ -268,6 +270,7 @@ def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
         )
     ):
         # plot the statistic
+        cmap.set_bad(color="k")
         stat = vdat[f"img_{statkey}"]
         if i != 1:
             norm = colors.CenteredNorm(vcenter=0, halfrange=_clims[statkey][0])

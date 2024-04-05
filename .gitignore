@@ -227,3 +227,6 @@ code/baggins/env_params.yml
 code/misc/**/*.png
 code/misc/**/*.pdf
 papers/paper-corekick/figures/IFU
+
+# submission scripts for SLURM
+code/analysis_scripts/submission_scripts

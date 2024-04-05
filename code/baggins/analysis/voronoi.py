@@ -123,7 +123,7 @@ def gauss_hermite_function(x, mu, sigma, h3, h4):
         np.sqrt(6) * h4 * sigma / 4 + sigma
     )  # normalization when the function is non-negative
     # TODO for fitting the function should be always normalized
-    return np.clip(a * (1 + h3 * H3 + h4 * H4) / N, 1e-300, None)
+    return np.clip(a * (1 + h3 * H3 + h4 * H4) / N, 1e-30, None)
 
 
 def fit_gauss_hermite_distribution(data):
@@ -161,10 +161,11 @@ def fit_gauss_hermite_distribution(data):
     sigma0 = np.nanstd(data)
 
     def log_likelihood(pars):
-        return -np.nansum(np.log(gauss_hermite_function(data, mu0, sigma0, *pars)))
+        ll = -np.nansum(np.log(gauss_hermite_function(data, mu0, sigma0, *pars)))
+        return ll
 
     try:
-        res = scipy.optimize.least_squares(log_likelihood, (0.0, 0.0), loss="huber")
+        res = scipy.optimize.least_squares(log_likelihood, (0.0, 0.0), loss="huber", bounds=((-1, -1), (1, 1)))
         h3, h4 = res.x
     except ValueError as err:
         _logger.warning(
@@ -216,11 +217,12 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
         rng = seeing["rng"] if "rng" in seeing else np.random.default_rng()
         x = np.array(
             [xx + rng.normal(0, seeing["sigma"], size=seeing["num"]) for xx in x]
-        )
+        ).flatten()
         y = np.array(
             [yy + rng.normal(0, seeing["sigma"], size=seeing["num"]) for yy in y]
-        )
-        vz = np.repeat(vz, seeing["num"])
+        ).flatten()
+        vz = np.repeat(vz, seeing["num"]).flatten()
+        m = np.repeat(m, seeing["num"]).flatten()
     else:
         _logger.warning("No seeing correction will be applied!")
 
