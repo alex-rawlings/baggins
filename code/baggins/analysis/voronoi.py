@@ -197,6 +197,11 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
     : dict
         binned quantitites convereted to CoM frame
     """
+    try:
+        assert len(x) == len(y) == len(V) == len(m)
+    except AssertionError:
+        _logger.exception("Input arrays must be of the same length!", exc_info=True)
+        raise
     M = np.sum(m)
     xcom = np.sum(m * x) / M
     ycom = np.sum(m * y) / M

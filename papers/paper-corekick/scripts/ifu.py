@@ -70,8 +70,8 @@ if args.extract:
 
         pre_ball_mask = pygad.BallMask(30, center=pygad.analysis.shrinking_sphere(snap.stars, pygad.analysis.center_of_mass(snap.stars), 30))
         rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
-        extent = rhalf
-        n_regular_bins = int(extent / pygad.UnitScalar(0.21, "kpc"))
+        extent = 0.25 * rhalf
+        n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
 
         ball_mask = pygad.BallMask(
             R=extent,
@@ -94,7 +94,7 @@ if args.extract:
                 V=snap.stars[ball_mask]["vel"][:, LOS_axis],
                 m=snap.stars[ball_mask]["mass"],
                 Npx=n_regular_bins,
-                part_per_bin=1000 * seeing["num"],
+                part_per_bin=2000 * seeing["num"],
                 seeing = seeing
             )
 
