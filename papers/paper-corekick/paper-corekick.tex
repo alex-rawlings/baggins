@@ -241,17 +241,13 @@ The idea behind the HM is as such: for each projection, we infer the six paramet
 Hence, we are effectively inferring the global hyperparameters $\vb{\theta}^\mathrm{hyp}$ that describe the latent parameters $\vb{\theta}$ that we are interested in.
 This idea is demonstrated in the directed acyclic graph (DAG) for the model, shown in \autoref{fig:dag}.
 
-We use weakly-constrained priors for each of the hyperparameters in $\vb{\theta}^\mathrm{hyp}$, where these priors are not necessarily Gaussian (given that distributions of positive-constrained quantities, like radius, should not be described by a distribution with support on the full real space).
+We use weakly-constrained prior distributions for each of the hyperparameters in $\vb{\theta}^\mathrm{hyp}$, where these prior distributions are chosen to reflect reasonable values that the parameters may take (e.g. distributions of a radial quantity are chosen so as to be positively-constrained).
 The distributions\footnote{Note that the normal distributions $\mathcal{N}$ are parameterised using the standard deviation $\sigma$, as opposed to the variance $\sigma^2$ as is common in many statistics references.} of the hyperparameters are given in \autoref{tab:hyper}.
-We use the Hamiltonian Monte Carlo code \textsc{Stan} \citep{standevelopmentteam2018} with four chains each of 2000 posterior sample draws (excluding an additional 2000 burn-in draws) to fit the model parameters, ensuring that:
-\begin{enumerate}
-    \item the number of diverging draws is less than 5\%,
-    \item the effective draws per transition exceeds 0.001,
-    \item the sampler transitions of HMC potential energy is in excess of 0.3, and
-    \item the value $\hat{R}$ (comparison of between-chain and within-chain estimates) is less than 1.05.
-\end{enumerate}
-Example corner plots of the latent parameters can be found in \autoref{sec:app_fit}.
-\drafting{Do we need specifics of MC parameters and exit conditions?}
+
+We fit the model with \textsc{Stan} using the No U-turn sampler (NUTS, a variant of Hamiltonian Monte Carlo) with four chains each of 4000 iterations, of which the first 2000 are discarded as warmup.
+This resulted in 2000 draws from the posterior distribution of $\vb{\theta}$, whereby we ensure the diagnostic value $\hat{R}$ (comparison of between-chain and within-chain estimates) is less than 1.05.
+We perform additional prior sensitivity tests using the power scaling method described in \citet{kallioinen21}, ensuring that the cumulative Jensen-Shannon (CJS) divergence is less than 0.05 for the latent parameters $\vb{\theta}$ of the model. 
+This recommended threshold indicates that the sampled posterior distributions of the latent parameters are not sensitive to the particular prior distributions used.
 
 In agreement with previous studies \citep{nasim2021b}, we find an increase in the core radius $\rb$ with kick velocity.
 \drafting{Need to check if others discuss this:} We find that the core radius saturates to a value of $\sim2$ times that of the merger remnant with no kick velocity by $\vk = 600\,\kmps$, corresponding to $0.3 v_\mathrm{esc}$. 
@@ -302,7 +298,7 @@ Thus, assuming the \citet{zlochower2015} model to be a reasonable description of
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{dag}
-    \caption{Directed acyclic graph of the core-S\'ersic model of projected mass density within the Bayesian hierarchical framework. Single-line circle nodes represent fit parameters, double-line circles represent measured quantities (the data), and diamond nodes represent deterministic quantities. The particular distribution connecting nodes is written below the corresponding black square, with a subscript `T' indicating a truncated distribution, and the subscript `likelihood' indicating the likelihood function. The $R$ box indicates variables fit for each radial bin, and the projection box indicates variables specific to each projection realisation. Note that we additionally use $\hat{\Sigma}$ to distinguish the calculated value of surface density from the measured value $\Sigma$. The various distributions are normal ($\mathcal{N}$), exponential ($\mathrm{Exp}$), and Rayleigh ($\mathrm{Ray}$).}
+    \caption{Directed acyclic graph of the core-S\'ersic model of projected mass density within the Bayesian hierarchical framework. Single-line circle nodes represent fit parameters, double-line circles represent measured quantities (the data), and diamond nodes represent deterministic quantities. The particular distribution connecting nodes is written below the corresponding black square, with a subscript `$\mathrm{T}[l,u]$' indicating a distribution $f(\lambda)$ truncated to $l<\lambda<u$, and the subscript `likelihood' indicating the likelihood function. The $R$ box indicates variables fit for each radial bin, and the projection box indicates variables specific to each projection realisation. Note that we additionally use $\hat{\Sigma}$ to distinguish the calculated value of surface density from the measured value $\Sigma$. The various distributions are normal ($\mathcal{N}$), exponential ($\mathrm{Exp}$), and Rayleigh ($\mathrm{Ray}$).}
     \label{fig:dag}
 \end{figure}
 
@@ -494,7 +490,10 @@ We list here the roles and contributions of the authors according to the Contrib
 NumPy \citep{harris2020},
 SciPy \citep{virtanen2020},
 Matplotlib \citep{hunter2007},
-pygad \citep{rottgers2020}.
+pygad \citep{rottgers2020},
+\textsc{Stan} \citep{standevelopmentteam2018},
+CmdStanPy \citep{standevelopmentteam2018},
+Arviz \citep{kumar2019}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
