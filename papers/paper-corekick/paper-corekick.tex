@@ -147,13 +147,13 @@ symmetric interactions and manifest momentum conservation. \ketju{} also include
 
 \subsection{Initial Conditions}
 \drafting{Rantala 2018 ICs}
-We model the merger of two gas-poor elliptical galaxies using collisionless merger simulations.
+We model the merger of two gas-free elliptical galaxies using collisionless merger simulations.
 Our galaxy initial conditions are chosen to match the model IC-3 presented in \citet{rantala2019}. 
 The galaxy is thus represented as a multicomponent sphere, including a stellar component of total mass $M_\star\sim 1.38\times10^{11}\,\Msun$ embedded within a DM \drafting{ensure abbreviation stated} component of total mass $M_\mathrm{DM}=2.5\times10^{13}\,\Msun$, and at the centre a SMBH with mass $M_\bullet=2.93\times10^{9}\,\Msun$.
 The stellar and DM components each follow a \citet{dehnen1993} profile with shape parameter $\gamma=1$, and scale radius $a_\star=3.9\,\mathrm{kpc}$ and $a_\mathrm{DM}=245\,\mathrm{kpc}$, respectively\footnote{A Dehnen profile with $\gamma=1$ is commonly referred to as a Hernquist profile.}.
 The density profile is given by:
 \begin{equation}\label{eq:dehnen}
-    \rho_\star(r) = \frac{(3-\gamma)M_\star}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
+    \rho(r) = \frac{(3-\gamma)M}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
 \end{equation}
 The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the mass of a DM particle is set to $m_\mathrm{DM}=5\times10^6\,\Msun$.
 
@@ -161,14 +161,14 @@ The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the m
 We merge two independently Monte Carlo sampled galaxy ICs, creating an equal mass galaxy merger with a near-radial orbit. 
 The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
 The merger configuration results in a rapid coalescence of the BH binary, however we note that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
-We then select the snapshot just prior ($\sim8\,\mathrm{Myr}$) to the GW-driven SMBH merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. Additionally, the merger remnant displays almost no triaxiality, as seen in the $\vk=0\,\kmps$ case in \autoref{sec:app_triax}. We check for this by directing the recoil kick along the global $y$-axis, and final identical evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
+We then select the snapshot just prior ($\sim8\,\mathrm{Myr}$) to the GW-driven SMBH merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. To test the effect of differing kick directions on the merger remnant, we test directing the recoil kick along the global $y$-axis, and find identical evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
 The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant, $v_\mathrm{esc}$.
 We additionally run one simulation with a recoil kick above $v_\mathrm{esc}$, with $\vk=2000\,\kmps$.
 As discussed in \drafting{section}, higher recoil velocities typically result in larger excursions of the remnant SMBH from the isophotal centre.
 To provide a fair comparison between simulations, we choose to analyse each child simulation at a fixed time after the recoil kick, namely $t\simeq 0.075\,\mathrm{Gyr}$.
 This value is chosen so as to minimise the effects of relaxation in the central regions of the galaxy remnant.
 We estimate the relaxation time $t_\mathrm{relax}$ at a radius $r$ as \citep{binney2008}:
-\begin{equation}
+\begin{equation}\label{eq:relax}
     t_\mathrm{relax} \simeq 2.1 \frac{\sigma r^2}{G \bar{m} \ln \Lambda},
 \end{equation}
 where $\sigma$ is the particle velocity dispersion within $r$, $\bar{m}$ is the mean particle mass (hence the mean of the stellar and DM particle masses), and $\Lambda$ is the argument of the Coulomb logarithm, given by:
@@ -176,7 +176,9 @@ where $\sigma$ is the particle velocity dispersion within $r$, $\bar{m}$ is the 
     \Lambda = \frac{r \langle v^2 \rangle}{2 G \bar{m}},
 \end{equation}
 where $\langle v^2 \rangle$ is the mean squared particle velocity within $r$. 
-The relaxation time increases exponentially with increasing $r$, and we find for a radius of $r=0.1\,\mathrm{kpc}$ the relaxation time to be $t_\mathrm{relax} \sim 0.1 \, \mathrm{Gyr}$, thus motivating our choice of $0.075\,\mathrm{Gyr}$ for the analysis time. 
+The relaxation time increases quadratically with increasing $r$, and we find for a radius of $r=0.1\,\mathrm{kpc}$ the relaxation time to be $t_\mathrm{relax} \sim 0.1 \, \mathrm{Gyr}$, thus motivating our choice of $0.075\,\mathrm{Gyr}$ for the analysis time. 
+We  note that \autoref{eq:relax} does not take into account gravitational softening, and thus provides a conservative lower bound for the relaxation time.
+This is critical as the \ketju{} region does not include gravitational softening between stellar particles and the SMBH, so is a not fully-softened simulation.
 
 For all simulations, interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, DM with a softening length of $\varepsilon = 300\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
 
@@ -231,11 +233,11 @@ where
 \begin{equation}
     \Sigma' = \Sigma_\mathrm{b} 2^{-\gamma/\alpha} \exp\left[b\left(2^{1/a} \frac{\rb}{\Reff}\right)^{1/n}\right].
 \end{equation}
-Here $\rb$ is the core radius, $\Sigma_\mathrm{b}$ is the density at the core radius, $\gamma$ is the core slope, $\Reff$ is the effective (half-light) radius, $\alpha$ is the profile transition index, and $n$ is the S\'ersic index.
+Here $\rb$ is the core radius, $\Sigma_\mathrm{b}$ is the density at the core radius, $\gamma$ is the core slope, $\Reff$ is the effective (half-light) radius\footnote{As we assume a constant mass-to-light ratio, the half-light radius is equivalent to the projected half-mass radius.}, $\alpha$ is the profile transition index, and $n$ is the S\'ersic index.
 We refer to the collective vector of these parameters as $\vb{\theta}$.
-We view the simulated merger remnant from fifteen different angles, and use a Bayesian hierarchical model (HM) to fit the model parameters.
+We view the simulated merger remnant from fifteen random angles, and use a Bayesian hierarchical model (HM) to fit the model parameters.
 As each of the projections are unordered and exchangeable (i.e., there is no distinguishing label for the projections), and each projection is of the same merger remnant, a HM naturally lends itself.
-The idea behind the HM is straightforward: for each projection, we infer the six parameters of $\vb{\theta}$, and assume that these values are draws from a common, global distribution of all possible vectors $\vb{\theta}$.
+The idea behind the HM is as such: for each projection, we infer the six parameters of $\vb{\theta}$, and assume that these values are draws from a common, global distribution of all possible $\vb{\theta}$ vectors.
 Hence, we are effectively inferring the global hyperparameters $\vb{\theta}^\mathrm{hyp}$ that describe the latent parameters $\vb{\theta}$ that we are interested in.
 This idea is demonstrated in the directed acyclic graph (DAG) for the model, shown in \autoref{fig:dag}.
 
@@ -282,14 +284,14 @@ Thus, assuming the \citet{zlochower2015} model to be a reasonable description of
         \hline
         Hyperparameter & Distribution & Truncation \\
         \hline
-        $\mu_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(10, 1)$ & None \\
-        $\sigma_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(0, 0.05)$ & $x>0$ \\
+        $\mu_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(10, 2)$ & None \\
+        $\sigma_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
         $\lambda_\gamma$ & $\mathrm{Exp}(10)$ & None \\
-        $\mu_n$ & $\mathcal{N}(4,2)$ & $0 < x \leq 15$ \\
-        $\sigma_n$ & $\mathcal{N}(0,2)$ & $x>0$ \\
-        $\sigma_\alpha$ & $\mathcal{N}(0, 20)$ & $x>0$ \\
-        $\sigma_{r_\mathrm{b}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
-        $\sigma_{R_\mathrm{e}}$ & $\mathcal{N}(0, 20)$ & $x>0$ \\
+        $\mu_n$ & $\mathcal{N}(8,4)$ & $0 < x \leq 15$ \\
+        $\sigma_n$ & $\mathcal{N}(0,4)$ & $x>0$ \\
+        $\sigma_\alpha$ & $\mathrm{Gamma}(2, 0.2)$ & None \\
+        $\sigma_{r_\mathrm{b}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
+        $\sigma_{R_\mathrm{e}}$ & $\mathcal{N}(0, 12)$ & $x>0$ \\
         $\mu_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
         $\sigma_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
         \hline
@@ -333,11 +335,16 @@ Thus, assuming the \citet{zlochower2015} model to be a reasonable description of
 
 
 \subsection{Integral field unit kinematics}
-We create mock integral field unit (IFU) observations using \drafting{ reference to Cappellari maybe?}. 
-Prior to performing the analysis, we reorientate each merger remnant so that the $z$-axis coincides with the minor axis of the reduced inertia tensor.
+We create mock integral field unit (IFU) observations using two different projections for the line of sight (LOS) velocity distribution: one where the LOS is along the BH kick axis (`parallel'), and another where the LOS is along an axis orthogonal to the BH kick axis (`orthogonal').
+Testing these two special projections, we investigate the limiting cases of how the galaxy kinematics behave when all or none of the BH motion is directed along the LOS to the observer.
 
-\drafting{Describe voronoi tesselation}.
-For each Voronoi bin, we follow \citet{vandermarel1993} and decompose the line of sight (LOS) velocity into a series of Gauss-Hermite functions, described by the mean radial velocity $V$, the velocity dispersion $\sigma$, asymmetric deviations $h_3$, and symmetric deviations $h_4$.
+We create our mock IFU observations following \citet{naab2014}.
+Our observations are centred on the stellar centre of mass using the shrinking sphere method, and encompass a circular aperture of $0.25R_{1/2}$, where $R_{1/2}$ is the three-dimensional half mass radius. 
+For each particle within this aperture, we generate 25 pseudo-particles with identical LOS velocities as the original particle, but are spatially displaced from the original particle with a Gaussian distribution in the projected $x$ and $y$ direction with a standard deviation of $0.3\,\mathrm{kpc}$, to mimic seeing effects.
+The pseudo-particles are then binned onto a spatial grid, where the grid is assumed to have a resolution of $0.2''$, similar to the observations of \citet{neureiter2023}, which then corresponds to a physical resolution\footnote{https://cosmocalc.icrar.org} of $\sim0.04\,\mathrm{kpc}$ at redshift $z=0.01$. 
+Following the method in \citet{cappellari2003}, we then group adjacent bins into larger Voronoi bins to achieve a particle number of $\sim 50000$ particles per Voronoi bin.
+
+For each Voronoi bin, we follow \citet{vandermarel1993} and decompose the LOS velocity into a series of Gauss-Hermite functions, described by the mean radial velocity $V$, the velocity dispersion $\sigma$, asymmetric deviations $h_3$, and symmetric deviations $h_4$.
 The line profile is thus described by:
 \begin{equation}
     \mathfrak{L} = \frac{1}{\sqrt{2\pi}\sigma} e^{-w^2/2} \left\{ 1 + \sum_{j=3}^4 h_j H_j(w) \right\},
@@ -350,11 +357,10 @@ where $w \equiv (v_\mathrm{LOS} - V)/\sigma$, and the Hermite polynomials $H_3$ 
 A recent comprehensive study of LOS velocity distribution fitting applied to elliptical galaxies can be found in \citet{mehrgan2023}.
 
 We observe a trend of the Voronoi bins with $h_4<0$ extending to larger radii for remnants with larger recoil kicks than for those remnants with smaller recoil kicks.
-To quantify this recoil velocity dependence, we calculate a radially-varying mass-weighted $h_4$ parameter analogous to the observational spin parameter $\lambda$:
+To quantify this recoil velocity dependence, we calculate the cumulative $h_4$ parameter:
 \begin{equation}
-    \langle h_4(R') \rangle = \frac{\langle R h_4 \rangle}{\langle R \rangle} = \frac{\sum_i^N M_i h_{4,i} R_i}{\sum_i^N M_i R_i} \;\forall R_i \leq R',
+    \langle h_4 \rangle = \sum_i^N h_4(R_i)
 \end{equation}
-where the $\langle\rangle$ brackets indicate a mass-weighted average (thus equivalent to a flux weighted average in the case of constant mass-to-light ratio).
 We observe an overall shift to more negative values of $h_4$ for kick velocities up until $\vk\sim400\,\kmps$ \drafting{check this, currently just read off plot}, above which the radial $h_4$ profile is not sensitive to increasing kick velocity. 
 Additionally, all $h_4$ profiles are radially decreasing, obtaining a local minimum at $R\simeq 2\,\mathrm{kpc}$ ($R/\Reff\simeq 0.2$), and a modestly increasing for $R \gtrsim 2\,\mathrm{kpc}$.
 
@@ -416,11 +422,35 @@ Additionally, all $h_4$ profiles are radially decreasing, obtaining a local mini
     \label{fig:orbits}
 \end{figure*}
 
-To understand the kinematic maps, we perform an orbit analysis on the sixteen merger remnants in our sample following \citet{frigo2021}.
+To understand the kinematic maps, we perform an orbit analysis of the merger remnants in our sample following \citet{frigo2021}, and is briefly described here.
+
 \drafting{Discuss how the orbit analysis is done, in particular the different orbital families}.
-First, the merger remnant is rotated so that the $z$-axis coincides with the minor axis of the reduced inertia tensor (and hence has the same orientation as the IFU maps in \autoref{fig:IFU0} and \autoref{fig:IFU900}).
-The potential of the merger remnant is fit using a \drafting{self consistent field (SCF) potential, describe more?} method, providing an analytical potential in which the orbits of individual stellar particles can be integrated.
-The potential of the merger remnant is checked for stability, and each stellar particle within $30\,\mathrm{kpc}$ of the centre is integrated for fifty orbits to determine which, if any, orbital resonances exist. 
+First, the merger remnant is rotated so that the $z$-axis coincides with the minor axis of the reduced inertia tensor as measured using the top 50\% most bound stellar particles to the stellar centre of mass.
+We cannot centre on the recoiling SMBH for this analysis, as for high kick velocities the SMBH is significantly displaced from the centre.
+The stellar potential of the merger remnant is fit using a self consistent field (SCF) potential \citep{hernquist1992}, using the \citet{hernquist1990} profile as a zeroth-order basis and limiting the expansion to $n_\mathrm{max}=18$ and $l_\mathrm{max}=7$ following \citet{frigo2021}.
+The potential from the SMBH is then added as a point mass potential to the SCF potential.
+Collectively, this represents the potential in an analytical form in which the orbits of individual stellar particles can be integrated.
+The potential of the merger remnant is checked for stability by comparing the potential from the SCF method to the potential computed from the particle data, and ensuring the ratio of the two is $\sim1$ at all radii.
+Each stellar particle within $30\,\mathrm{kpc}$ of the centre is integrated for fifty orbits to determine which, if any, orbital resonances exist. 
+The orbital resonances define the different families of orbits, as given in \citet{frigo2021}.
+
+\begin{table}
+    \caption{Orbital families}
+    \label{tab:orbits}
+    \begin{tabular*}{0.48\textwidth}{p{0.1\textwidth}p{0.35\textwidth}}
+        \hline
+        Family & Description \\
+        \hline
+        $x$-tube & Rotate about the major axis of the galaxy \\
+        $z$-tube & Rotate about the minor axis of the galaxy \\
+        $\pi$-box & Non-resonant motion with no net angular momentum (radial motion) \\
+        boxlet & Resonant motion with angular momentum \\
+        Keplerian & Typical orbit in a point-mass dominated spherically-symmetric potential \\
+        irregular & No integrals of motion \\
+        unclassified & Orbits unable to be classified \\
+        \hline
+    \end{tabular*}
+\end{table}
 
 As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box and boxlet orbits, and a lower fraction of $x$-tube orbits, and to some extent Keplerian orbits, than their lower kick velocity counterparts.
 The other two orbital families are generally consistent between all merger remnants. 
