@@ -31,7 +31,7 @@ orbitfilebases = [
     for d in os.scandir(
         "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/orbit_analysis"
     )
-    if d.is_dir() and d.name != "fast"
+    if d.is_dir() and "kick" in d.name
 ]
 orbitfilebases.sort()
 
@@ -130,11 +130,11 @@ def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
 # figure 1: plots of different orbital families
 fig, ax = plt.subplots(2, 4, sharex=True, sharey=True)
 fig.set_figwidth(2 * fig.get_figwidth())
-cmapper, sm = bgs.plotting.create_normed_colours(0, 900, cmap="custom_Blues")
+cmapper, sm = bgs.plotting.create_normed_colours(0, 2000, cmap="custom_Blues")
 
 
 # figure 2: plots of different kick velocities
-fig2, ax2 = plt.subplots(4, 4, sharex=True, sharey=True)
+fig2, ax2 = plt.subplots(8, 4, sharex=True, sharey=True)
 fig2.set_figwidth(2 * fig2.get_figwidth())
 fig2.set_figheight(2 * fig2.get_figheight())
 

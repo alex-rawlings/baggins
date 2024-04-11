@@ -579,9 +579,9 @@ class _StanModel(ABC):
                 try:
                     pf = self._model.pathfinder(data=self.stan_data, show_console=True)
                     inits = pf.create_inits()
-                except RuntimeError:
+                except (RuntimeError, ValueError) as e:
                     _logger.warning(
-                        "Stan pathfinder failed: normal initialisation will be used!"
+                        f"Stan pathfinder failed: normal initialisation will be used! Reason: {e}"
                     )
                     inits = None
                 fit = self._model.sample(

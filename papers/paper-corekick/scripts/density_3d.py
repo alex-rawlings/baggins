@@ -1,0 +1,68 @@
+import argparse
+import os.path
+import numpy as np
+import matplotlib.pyplot as plt
+import pygad
+import baggins as bgs
+import figure_config
+
+
+parser = argparse.ArgumentParser(
+    description="Plot IFU maps", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument(
+    "-v",
+    "--verbosity",
+    type=str,
+    default="INFO",
+    choices=bgs.VERBOSITY,
+    dest="verbosity",
+    help="set verbosity level",
+)
+args = parser.parse_args()
+
+
+SL = bgs.setup_logger("script", args.verbosity)
+
+snapfiles = bgs.utils.read_parameters(
+    os.path.join(
+        bgs.HOME,
+        "projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml",
+    )
+)
+
+fig, ax = plt.subplots(1,1)
+
+r_edges = np.geomspace(5e-2, 30, 100)
+r_centres = bgs.mathematics.get_histogram_bin_centres(r_edges)
+ball_mask = pygad.BallMask(r_edges[-1])
+
+# create the colour scale
+cmapper, sm = bgs.plotting.create_normed_colours(0, 2000, cmap="custom_Blues")
+
+
+
+for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
+    snapfile = os.path.join(
+        snapfiles["parent_dir"], f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5"
+    )
+    SL.debug(f"Reading: {snapfile}")
+    snap = pygad.Snapshot(snapfile, physical=True)
+    xcom = pygad.analysis.shrinking_sphere(snap.stars, pygad.analysis.center_of_mass(snap.stars[ball_mask]), 30)
+    trans = pygad.Translation(-xcom)
+    trans.apply(snap, total=True)
+
+    dens = pygad.analysis.profile_dens(snap.stars, "mass", r_edges=r_edges)
+    mask = dens > 0
+    ax.loglog(r_centres[mask], dens[mask], color=cmapper(float(k.lstrip("v"))), ls="-")
+
+    # conserve memory
+    snap.delete_blocks()
+    del snap
+    pygad.gc_full_collect()
+
+ax.set_xlabel(r"$r/\mathrm{kpc}$")
+ax.set_ylabel(r"$\rho(r)/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$")
+plt.colorbar(sm, ax=ax, label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
+bgs.plotting.savefig(figure_config.fig_path("density_3d.pdf"), fig=fig, force_ext=True)
+plt.show()

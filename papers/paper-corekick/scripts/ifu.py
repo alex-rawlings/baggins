@@ -117,7 +117,7 @@ if args.extract:
             # have to set colour limits by hand
             ax = bgs.plotting.voronoi_plot(
                 voronoi_stats,
-                clims={"V": [40], "sigma": [150, 260], "h3": [0.045], "h4": [0.045]},
+                clims={"V": [26], "sigma": [160, 255], "h3": [0.086], "h4": [0.042]},
             )
             fig = ax[0].get_figure()
 
@@ -157,9 +157,12 @@ cmapper, sm = bgs.plotting.create_normed_colours(
 )
 for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items()):
     idx_sorted = np.argsort(vp["R"])
-    ax[0].plot(vp["R"][idx_sorted], vp["h4"][idx_sorted], c=cmapper(get_kick_val(kp)), ls="-")
+    vpc = np.cumsum(vp["h4"][idx_sorted])
+    ax[0].plot(vp["R"][idx_sorted], vpc, c=cmapper(get_kick_val(kp)), ls="-")
     idx_sorted = np.argsort(vo["R"])
-    ax[1].plot(vo["R"][idx_sorted], vo["h4"][idx_sorted], c=cmapper(get_kick_val(ko)), ls="-")
+    voc = np.cumsum(vo["h4"][idx_sorted])
+    ax[1].plot(vo["R"][idx_sorted], voc, c=cmapper(get_kick_val(ko)), ls="-")
+    SL.debug(f"vk {get_kick_val(ko):.0f}: {vpc[-1]:.1f}, {voc[-1]:.1f}")
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")

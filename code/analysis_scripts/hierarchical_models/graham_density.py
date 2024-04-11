@@ -102,11 +102,6 @@ else:
         sample_kwargs=analysis_params["stan"]["density_sample_kwargs"]
     )
 
-    try:
-        graham_model.determine_loo()
-    except ValueError:
-        SL.warning("LOO cannot be determined for this model: skipping...")
-
     ax = graham_model.all_posterior_pred_plots(full_figsize)
     fig = ax[0, 0].get_figure()
 
