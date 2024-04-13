@@ -74,6 +74,7 @@
 
 \newcommand{\dd}[1]{\ensuremath{\mathrm{d}#1}}                % integral dx
 \newcommand{\dv}[2]{\ensuremath{\frac{\dd{#1}}{\dd{#2}}}}     % derivative
+\newcommand{\dnv}[3]{\ensuremath{\frac{\mathrm{d}^#1#2}{\dd{#3}^#1}}}  % nth derivative
 \newcommand{\vb}[1]{\ensuremath{\bm{#1}}}                     % vectors
 
 \graphicspath{{figures/}}
@@ -131,18 +132,24 @@ black hole physics -- galaxies: kinematics and dynamics -- methods: numerical --
 
 % INTRODUCTION
 \section{Introduction}
-There is much evidence for the presence of supermassive black holes (SMBHs) at the centres of massive galaxies, with the shadow of one such SMBH being directly imaged.
+There is much evidence for the presence of supermassive black holes (SMBHs) at the centres of massive galaxies, with the shadow of one such SMBH being directly imaged \citep{eht2019}.
 The dynamical interactions of two or more galaxies, during a galaxy merger, are thus also expected to induce an interaction of the residing SMBHs.
 The interaction of two SMBHs during the merger of two galaxies is well understood to occur in a three stage process \citep{begelman1980}.
-First, as the galaxies begin to dynamically interact and the SMBHs traverse through a dense stellar field, the overdensity of stars in the wakes of the SMBHs provides a restoring force which brings the SMBHs to the centre of the two interacting galaxies, generally torquing the SMBHs to highly radial orbits in the process. 
-Second, after the SMBHs have formed a bound binary, iterative interactions with the surrounding stars ejects stars with high velocity, thus removing orbital energy and angular momentum from the SMBH binary orbit.
+First, as the galaxies begin to dynamically interact and the SMBHs traverse through a dense stellar field, the overdensity of stars in the wakes of the SMBHs provides a restoring force which brings the SMBHs to the centre of the two interacting galaxies \citep{chandrasekhar1943}, generally torquing the SMBHs to highly radial orbits in the process. 
+Second, after the SMBHs have formed a bound binary, iterative interactions with the surrounding stars ejects stars with high velocity \citep[e.g.][]{hills1980,hills1983,quinlan1996}, thus removing orbital energy and angular momentum from the SMBH binary orbit.
+The removal of stars from the central regions by this slingshot mechanism produces a `core' \citep[e.g.][]{lauer1983,lauer1985,kormendy1984}, or depletion, in the luminosity profile of the remnant galaxy \citep[e.g.][]{begelman1980,hills1983,quinlan1996,rantala2018}, and can extend up to some kiloparsecs \citep{postman2012}.
 Finally, at very small, sub-parsec, separations the SMBH binary loses its remaining orbital energy and angular momentum through gravitational wave (GW) emission, driving the SMBH binary to coalescence \citep{peters1963,peters1964}.
 
-Due to the anisotropic emission of the final GW emission \drafting{during? following?} coalescence, the remnant SMBH recoils with some velocity, termed the kick velocity. 
+The final GW emission from the coalescing SMBH binary occurs anisotropically, and carries with it linear momentum from the system \citep[e.g.][]{gonzalez2007}.
+This results in the remnant SMBH recoiling with some velocity, termed the kick velocity. 
 The kick velocity is dependent on the mass ratio between the SMBHs prior to coalescence, and the magnitude and direction of angular momentum (spin) vector of each SMBH. 
-Previous studies \drafting{reference} indicate that while the majority of recoil kicks are of the order of a few hundred kilometres per second, in special configurations the SMBH may have an imparted kick velocity in excess of $4000\,\kmps$ \drafting{references}.
-Taking the central escape velocity of a typical early type galaxy (ETG) as $\sim2000\,\kmps$, there may be a non-negligible fraction of ETGs with a SMBH that has escaped the galaxy.
-In cases where the kick velocity is less than the escape velocity of the inner regions of the host galaxy, the radial oscillations of the remnant SMBH as it returns to the centre of the merger remnant is expected to influence the surrounding stellar environment. 
+As reported by \citet{campanelli2007}, symmetries in the masses or spins of the SMBHs suppresses the resulting recoil kick imparted to the coalesced SMBH.
+In particular, it is found that asymmetry in the spins of the SMBHs has a larger impact on the magnitude of the recoil kick than asymmetry in the masses \citep{campanelli2007}, with antialigned spins in the orbital plane producing the largest recoil kick velocities \citep{gonzalez2007b,tichy2007}.
+Numerical relativity studies indicate that while the majority of recoil kicks are of the order of a few hundred kilometres per second, in special configurations the SMBH may be imparted a kick velocity in excess of a $2000\,\kmps$, even up to $4000\,\kmps$ \citep{campanelli2007,gonzalez2007b,tichy2007}.
+Taking the central escape velocity of a typical early type galaxy (ETG) as $\sim2000\,\kmps$, there may be a non-negligible fraction of ETGs with a SMBH that has escaped the galaxy \citep{madau2004}, though not so many so as to introduce considerable scatter into the observed relation between SMBH mass and stellar velocity dispersion \citep{volonteri2007}.
+In cases where the kick velocity is less than the escape velocity of the inner regions of the host galaxy, the radial oscillations of the remnant SMBH as it returns to the centre of the merger remnant is expected to influence the surrounding stellar environment. \drafting{What sort of influences? References?}
+
+Observations by \citet{komossa2008} point to a recoiling SMBH \drafting{need to read\dots}
 
 In this work, we first aim to determine how the velocity with which the SMBH is kicked affects the surrounding stellar environment.
 We then aim to determine if there is an observational signature of the SMBH recoil kick that may be used to infer the occurrence of a kicked SMBH. 
@@ -155,26 +162,36 @@ We then aim to determine if there is an observational signature of the SMBH reco
 \label{sec:num_sims}
 
 \subsection{Simulation Code}
-\drafting{Taken from eccentricity paper, leave here as a guide for a similar description about Ketju}
-We construct a number of idealised galaxy merger simulations, which we evolve with our new version of the \ketju{} code \citep{mannerkoski2023,rantala2017} coupled with \gadget{}.
-The dynamics of
-SMBHs, and stars in a small region around them, are integrated with an algorithmically regularised integrator \citep{rantala2020}, whereas the dynamics of the remaining particles
-is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) with second order multipoles. Together with hierarchical time integration this allows for
-symmetric interactions and manifest momentum conservation. \ketju{} also includes post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{blanchet2014}. 
+\drafting{Taken from eccentricity paper, edited a little bit but need to ensure it is different enough.}
+To investigate the effect of the recoiling SMBH on the host galaxy, and potential observational signatures of this, we run a number of numerical simulations of a galaxy merger setting using our new version of the \ketju{} code \citep{mannerkoski2023,rantala2017} coupled with \gadget{}.
+\ketju{} integrates the dynamics of SMBHs, and stars in a small region thrice the stellar softening length around them, to high accuracy using the algorithmically regularised integrator \textsc{mstar} \citep{rantala2020}.
+The dynamics of stellar particles beyond this small region of high integration accuracy, and all dark matter (DM) particles, is computed with the \gadget{} \citep{springel2021} fast multiple method (FMM) with second order multipoles. 
+Additionally, we use hierarchical time integration, which allows for symmetric interactions and manifest momentum conservation. 
+\ketju{} also includes post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{blanchet2014} and the fitting formula of \citet{zlochower2015} for recoil kick velocity, making \ketju{} a particularly well-suited code for investigating the consequence of SMBH recoil self-consistently in a galaxy merger environment. 
 
 \subsection{Initial Conditions}
 \drafting{Rantala 2018 ICs}
-We model the merger of two gas-free elliptical galaxies using collisionless merger simulations.
-Our galaxy initial conditions are chosen to match the model IC-3 presented in \citet{rantala2019}. 
-The galaxy is thus represented as a multicomponent sphere, including a stellar component of total mass $M_\star\sim 1.38\times10^{11}\,\Msun$ embedded within a DM \drafting{ensure abbreviation stated} component of total mass $M_\mathrm{DM}=2.5\times10^{13}\,\Msun$, and at the centre a SMBH with mass $M_\bullet=2.93\times10^{9}\,\Msun$.
+We model the merger of two gas-free elliptical galaxies using gas-free merger simulations.
+Our galaxy initial conditions are chosen similarly to the model IC-3 presented in \citet{rantala2019}, however with different stellar density slope. 
+The galaxy is thus represented as an isotropic multicomponent sphere, and consists of a stellar component of total mass $M_\star\sim 1.38\times10^{11}\,\Msun$ embedded within a DM component of total mass $M_\mathrm{DM}=2.5\times10^{13}\,\Msun$.
+At the centre a SMBH with mass $M_\bullet=2.93\times10^{9}\,\Msun$ is placed with zero velocity.
 The stellar and DM components each follow a \citet{dehnen1993} profile with shape parameter $\gamma=1$, and scale radius $a_\star=3.9\,\mathrm{kpc}$ and $a_\mathrm{DM}=245\,\mathrm{kpc}$, respectively\footnote{A Dehnen profile with $\gamma=1$ is commonly referred to as a Hernquist profile.}.
-The density profile is given by:
+The density profile $\rho_i$ for a given component $i$ is given by:
 \begin{equation}\label{eq:dehnen}
-    \rho(r) = \frac{(3-\gamma)M}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
+    \rho_i(r) = \frac{(3-\gamma)M}{4\pi} \frac{a}{r^\gamma (r+a)^{(4-\gamma)}}.
 \end{equation}
-The mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the mass of a DM particle is set to $m_\mathrm{DM}=5\times10^6\,\Msun$.
+We generate the ICs using the distribution function method following \citet{hilz2012}, where for each component (stellar and DM) the distribution function $f_i$ is computed using Eddington's formula \citep{binney2008} for each density profile $\rho_i$:
+\begin{equation}
+    f_i(\mathcal{E}) = \frac{1}{2\sqrt{2}\pi^2} \int_{\Phi_\mathrm{T}=0}^{\Phi_\mathrm{T}=\mathcal{E}} \dnv{2}{\rho_i}{\Phi_\mathrm{T}} \frac{\dd{\Phi_\mathrm{T}}}{\sqrt{\mathcal{E}-\Phi_\mathrm{T}}}.
+\end{equation}
+Here $\mathcal{E}$ is the relative energy, and $\Phi_\mathrm{T}$ is the total gravitational potential. 
+The distribution functions are then sampled with discrete particles, where the mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the mass of a DM particle is set to $m_\mathrm{DM}=5\times10^6\,\Msun$.
+The radial velocity profiles of both stellar and DM particles is ergodic. 
 
-\subsection{Merger Simulations}
+As we are interested in the evolution of the galaxy merger \textit{remnant} following SMBH coalescence, the initial conditions such that that at the time of SMBH coalescence (\autoref{ssec:mergers}) the galaxy remnant agrees with observational data.
+Specifically, we ensure that our remnant agrees with the half-light -- stellar mass data presented in \citet{sahu2020}, and lies within the $1\sigma$ predictive interval of the SMBH mass -- stellar velocity dispersion data given in \citet{vandenbosch2016}.
+
+\subsection{Merger Simulations}\label{ssec:mergers}
 We merge two independently Monte Carlo sampled galaxy ICs, creating an equal mass galaxy merger with a near-radial orbit. 
 The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
 The merger configuration results in a rapid coalescence of the BH binary, however we note that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
