@@ -472,7 +472,9 @@ class GrahamModelHierarchy(_GrahamModelBase):
                 [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
             )
         )
-        ax = self.parameter_corner_plot(self._hyper_qtys, labeller=self._labeller_hyper, figsize=figsize)
+        ax = self.parameter_corner_plot(
+            self._hyper_qtys, labeller=self._labeller_hyper, figsize=figsize
+        )
         fig = ax[0, 0].get_figure()
         savefig(
             self._make_fig_name(

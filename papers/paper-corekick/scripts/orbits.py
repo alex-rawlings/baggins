@@ -136,9 +136,10 @@ cmapper, sm = bgs.plotting.create_normed_colours(0, 2000, cmap="custom_Blues")
 # figure 2: plots of different kick velocities
 fig2, ax2 = plt.subplots(8, 4, sharex=True, sharey=True)
 fig2.set_figwidth(2 * fig2.get_figwidth())
-fig2.set_figheight(2 * fig2.get_figheight())
+fig2.set_figheight(2.5 * fig2.get_figheight())
 
-for axj, orbitfilebase in zip(ax2.flat, orbitfilebases):
+for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
+    # if j<28: continue
     try:
         meanrads, classfrequency, rad_len = radial_frequency(orbitfilebase)
     except:  # noqa
@@ -155,10 +156,10 @@ for axj, orbitfilebase in zip(ax2.flat, orbitfilebases):
         axj.semilogx(meanrads, classfrequency[:, cfi], label=labels[i])
         cfi += 1
     axj.text(
-        0.05,
+        0.95,
         0.9,
         f"${vkick:.0f}\, \mathrm{{km}}\,\mathrm{{s}}^{{-1}}$",
-        ha="left",
+        ha="right",
         va="center",
         transform=axj.transAxes,
     )
@@ -170,7 +171,7 @@ for i in range(ax.shape[0]):
 for i in range(ax.shape[1]):
     ax[1, i].set_xlabel(r"$r/\mathrm{kpc}$")
 for axi, label in zip(ax.flat, labels):
-    axi.text(0.05, 0.9, label, ha="left", va="center", transform=axi.transAxes)
+    axi.text(0.95, 0.86, label, ha="right", va="center", transform=axi.transAxes)
 
 # add the colour bar in the top right subplot, hiding that subplot
 plt.colorbar(
@@ -189,10 +190,9 @@ for i in range(ax2.shape[0]):
     ax2[i, 0].set_ylabel(r"$f_\mathrm{orbit}$")
 for i in range(ax2.shape[1]):
     ax2[-1, i].set_xlabel(r"$r/\mathrm{kpc}$")
-fig2.subplots_adjust(bottom=0.16, top=0.98)
-ax2[-1, 1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.45), ncol=len(labels))
+fig2.subplots_adjust(bottom=0.1, top=0.98)
+ax2[-1, 1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.6), ncol=len(labels))
 
 
 bgs.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
 bgs.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)
-plt.show()

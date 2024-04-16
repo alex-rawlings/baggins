@@ -93,7 +93,13 @@ def draw_sizebar(
 
 
 def create_normed_colours(
-    vmin, vmax, cmap="cividis", norm="Normalize", norm_kwargs={}, trunc=(None, None), bad=None
+    vmin,
+    vmax,
+    cmap="cividis",
+    norm="Normalize",
+    norm_kwargs={},
+    trunc=(None, None),
+    bad=None,
 ):
     """
     Convenience wrapper for creating colour normalisation and colourbar

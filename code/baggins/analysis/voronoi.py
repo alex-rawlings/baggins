@@ -165,7 +165,9 @@ def fit_gauss_hermite_distribution(data):
         return ll
 
     try:
-        res = scipy.optimize.least_squares(log_likelihood, (0.0, 0.0), loss="huber", bounds=((-1, -1), (1, 1)))
+        res = scipy.optimize.least_squares(
+            log_likelihood, (0.0, 0.0), loss="huber", bounds=((-1, -1), (1, 1))
+        )
         h3, h4 = res.x
     except ValueError as err:
         _logger.warning(

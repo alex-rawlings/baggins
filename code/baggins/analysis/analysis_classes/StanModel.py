@@ -713,6 +713,7 @@ class _StanModel(ABC):
         np.ndarray
             set of draws for the variable gq
         """
+
         def _choose_model():
             # determine if we should use the prior or posterior model
             if self._model is None:
@@ -729,7 +730,9 @@ class _StanModel(ABC):
 
         if self.generated_quantities is None or force_resample:
             _model, _fit = _choose_model()
-            self._generated_quantities = _model.generate_quantities(data=self.stan_data, previous_fit=_fit)
+            self._generated_quantities = _model.generate_quantities(
+                data=self.stan_data, previous_fit=_fit
+            )
         try:
             self.generated_quantities.stan_variable(gq)
         except ValueError:

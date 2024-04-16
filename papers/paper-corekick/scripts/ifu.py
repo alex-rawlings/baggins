@@ -29,10 +29,7 @@ SL = bgs.setup_logger("script", args.verbosity)
 
 h4_file = os.path.join(bgs.DATADIR, "mergers/processed_data/core-paper-data/h4.pickle")
 
-# add small trial to see if we can make figures
-fig, ax = plt.subplots(1,1)
-del fig, ax
-plt.close()
+bgs.plotting.check_backend()
 
 if args.extract:
     snapfiles = bgs.utils.read_parameters(
@@ -42,16 +39,17 @@ if args.extract:
         )
     )
 
-    seeing = {"num":25, "sigma":0.3}
+    seeing = {"num": 25, "sigma": 0.3}
 
     snapshots = dict()
     for k, v in snapfiles["snap_nums"].items():
         snapshots[k] = os.path.join(
-            snapfiles["parent_dir"], f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5"
+            snapfiles["parent_dir"],
+            f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5",
         )
 
     # dict to store radial h4 profiles
-    h4_vals = {"para":{}, "ortho":{}}
+    h4_vals = {"para": {}, "ortho": {}}
 
     # determine colour limits
     Vlim = -np.inf
@@ -68,7 +66,12 @@ if args.extract:
         # as the BH kick direction is always along the x-axis, use
         # this axis as the LOS parallel direction
 
-        pre_ball_mask = pygad.BallMask(30, center=pygad.analysis.shrinking_sphere(snap.stars, pygad.analysis.center_of_mass(snap.stars), 30))
+        pre_ball_mask = pygad.BallMask(
+            30,
+            center=pygad.analysis.shrinking_sphere(
+                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
+            ),
+        )
         rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
         extent = 0.25 * rhalf
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
@@ -83,7 +86,7 @@ if args.extract:
         SL.debug(f"IFU extent is {extent:.2f} kpc")
         SL.debug(f"Number of regular bins is {n_regular_bins}^2")
 
-        # try two orientations: 
+        # try two orientations:
         # 1: LOS parallel with BH motion
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
@@ -95,7 +98,7 @@ if args.extract:
                 m=snap.stars[ball_mask]["mass"],
                 Npx=n_regular_bins,
                 part_per_bin=2000 * seeing["num"],
-                seeing = seeing
+                seeing=seeing,
             )
 
             SL.debug(f"Completed binning in {datetime.now()-tstart}")
@@ -104,7 +107,10 @@ if args.extract:
             _Vlim = np.max(np.abs(voronoi_stats["img_V"]))
             Vlim = _Vlim if _Vlim > Vlim else Vlim
 
-            _sigmalim = [np.min(voronoi_stats["img_sigma"]), np.max(voronoi_stats["img_sigma"])]
+            _sigmalim = [
+                np.min(voronoi_stats["img_sigma"]),
+                np.max(voronoi_stats["img_sigma"]),
+            ]
             sigmalim[0] = _sigmalim[0] if _sigmalim[0] < sigmalim[0] else sigmalim[0]
             sigmalim[1] = _sigmalim[1] if _sigmalim[1] > sigmalim[1] else sigmalim[1]
 
@@ -122,13 +128,16 @@ if args.extract:
             fig = ax[0].get_figure()
 
             SL.info(f"Total time: {datetime.now() - tstart}")
-            bgs.plotting.savefig(figure_config.fig_path(f"IFU/IFU_{orientation}_{k}.pdf"), force_ext=True)
+            bgs.plotting.savefig(
+                figure_config.fig_path(f"IFU/IFU_{orientation}_{k}.pdf"), force_ext=True
+            )
             plt.close()
 
             h4_vals[orientation][k] = {}
-            h4_vals[orientation][k]["R"], h4_vals[orientation][k]["h4"] = bgs.analysis.radial_profile_velocity_moment(
-                voronoi_stats, "h4"
-            )
+            (
+                h4_vals[orientation][k]["R"],
+                h4_vals[orientation][k]["h4"],
+            ) = bgs.analysis.radial_profile_velocity_moment(voronoi_stats, "h4")
 
         # conserve memory
         snap.delete_blocks()
@@ -145,7 +154,9 @@ if args.extract:
     print(f"h4: {h4lim}")
     print("-------------")
 else:
-    SL.warning("Reading in saved dataset for h4 analysis, IFU maps will not be recreated!")
+    SL.warning(
+        "Reading in saved dataset for h4 analysis, IFU maps will not be recreated!"
+    )
     h4_vals = bgs.utils.load_data(h4_file)
 
 # plot h4 radial profiles
@@ -153,20 +164,35 @@ fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
 get_kick_val = lambda k: float(k.lstrip("v"))
 kick_vels = [get_kick_val(k) for k in h4_vals["para"].keys()]
 cmapper, sm = bgs.plotting.create_normed_colours(
-    vmin=min(kick_vels), vmax=max(kick_vels), cmap="custom_Blues"
+    vmin=min(kick_vels), vmax=900, cmap="custom_Blues", norm_kwargs={"clip": True}
 )
+
 for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items()):
+    m = bgs.plotting.mplChars()[int(get_kick_val(kp)) // 600]
     idx_sorted = np.argsort(vp["R"])
     vpc = np.cumsum(vp["h4"][idx_sorted])
-    ax[0].plot(vp["R"][idx_sorted], vpc, c=cmapper(get_kick_val(kp)), ls="-")
+    ax[0].plot(
+        vp["R"][idx_sorted],
+        vpc,
+        c=cmapper(get_kick_val(kp)),
+        ls="-",
+        marker=m,
+        markevery=[-1],
+    )
     idx_sorted = np.argsort(vo["R"])
     voc = np.cumsum(vo["h4"][idx_sorted])
-    ax[1].plot(vo["R"][idx_sorted], voc, c=cmapper(get_kick_val(ko)), ls="-")
+    ax[1].plot(
+        vo["R"][idx_sorted],
+        voc,
+        c=cmapper(get_kick_val(ko)),
+        ls="-",
+        marker=m,
+        markevery=[-1],
+    )
     SL.debug(f"vk {get_kick_val(ko):.0f}: {vpc[-1]:.1f}, {voc[-1]:.1f}")
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
-cbar = plt.colorbar(sm, ax=ax.flat)
+cbar = plt.colorbar(sm, ax=ax.flat, extend="max")
 cbar.ax.set_ylabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
 bgs.plotting.savefig(figure_config.fig_path("h4.pdf"), force_ext=True)
-

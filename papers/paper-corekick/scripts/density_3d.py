@@ -31,15 +31,16 @@ snapfiles = bgs.utils.read_parameters(
     )
 )
 
-fig, ax = plt.subplots(1,1)
+fig, ax = plt.subplots(1, 1)
 
 r_edges = np.geomspace(5e-2, 30, 100)
 r_centres = bgs.mathematics.get_histogram_bin_centres(r_edges)
 ball_mask = pygad.BallMask(r_edges[-1])
 
 # create the colour scale
-cmapper, sm = bgs.plotting.create_normed_colours(0, 2000, cmap="custom_Blues")
-
+cmapper, sm = bgs.plotting.create_normed_colours(
+    0, 900, cmap="custom_Blues", norm_kwargs={"clip": True}
+)
 
 
 for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
@@ -48,7 +49,9 @@ for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
     )
     SL.debug(f"Reading: {snapfile}")
     snap = pygad.Snapshot(snapfile, physical=True)
-    xcom = pygad.analysis.shrinking_sphere(snap.stars, pygad.analysis.center_of_mass(snap.stars[ball_mask]), 30)
+    xcom = pygad.analysis.shrinking_sphere(
+        snap.stars, pygad.analysis.center_of_mass(snap.stars[ball_mask]), 30
+    )
     trans = pygad.Translation(-xcom)
     trans.apply(snap, total=True)
 
@@ -63,6 +66,8 @@ for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
 
 ax.set_xlabel(r"$r/\mathrm{kpc}$")
 ax.set_ylabel(r"$\rho(r)/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$")
-plt.colorbar(sm, ax=ax, label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
+plt.colorbar(
+    sm, ax=ax, label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$", extend="max"
+)
 bgs.plotting.savefig(figure_config.fig_path("density_3d.pdf"), fig=fig, force_ext=True)
 plt.show()
