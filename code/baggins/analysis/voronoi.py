@@ -335,5 +335,4 @@ def radial_profile_velocity_moment(vorstat, stat):
         radial moment profile
     """
     R, inds = _get_R(vorstat)
-    F = vorstat["bin_mass"][inds]
     return R, vorstat[f"bin_{stat}"][inds]
