@@ -9,7 +9,7 @@ except ImportError:
     use("Agg")
     import matplotlib.pyplot as plt
 import baggins as bgs
-import figure_config # noqa
+import figure_config  # noqa
 
 parser = argparse.ArgumentParser(
     "Determine core - kick relation",
@@ -35,6 +35,7 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
+bgs.plotting.check_backend()
 
 # set the stan model file
 stan_file = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/core_kick_relation/core-kick.stan"
@@ -45,7 +46,7 @@ datafile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_da
 # simulation output data at the moment just before merger
 ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0000/output"
 # load the fit files
-fit_files = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240301163718*.csv"
+fit_files = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240418140152*.csv"
 # set the escape velocity in km/s
 ESCAPE_VEL = 1800
 figname_base = "core-study/rb-dist"

@@ -1,3 +1,17 @@
+[project]
+name = "baggins"
+version = "2024.04"
+requires-python = ">=3.8"
+authors = [
+    {name = "Alex Rawlings", email = "alexander.rawlings@helsinki.fi"},
+    {name = "Matias Mannerkoski", email = "matias.mannerkoski@helsinki.fi"}
+]
+maintainers = [
+    {name = "Alex Rawlings", email = "alexander.rawlings@helsinki,fi"}
+]
+description = "Bayesian Analysis of Galaxy-Galaxy Interactions in Simulations"
+readme = "README.md"
+
 [tool.black]
 target-version = ['py39']
 line-length = 88

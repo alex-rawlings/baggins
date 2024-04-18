@@ -25,6 +25,7 @@ __all__ = [
     "determine_if_merged",
     "get_massive_bh_ID",
     "enclosed_mass_radius",
+    "lagrangian_radius",
     "influence_radius",
     "hardening_radius",
     "gravitational_radiation_radius",
@@ -44,6 +45,7 @@ __all__ = [
     "add_to_loss_cone_refill",
     "find_bound_substructure",
     "find_individual_bound_particles",
+    "relax_time",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -409,9 +411,22 @@ def get_massive_bh_ID(bhs):
     return bhs["ID"][massive_idx]
 
 
+def _find_radius_for_mass(M, m, pos, centre):
+    # determine the radius where the enclosed mass = desired mass M
+    r = pygad.utils.geo.dist(pos, centre)
+    r.sort()
+    # interpolate in mass-radius plane
+    # determine how many m are in M -> this will be the index of r we need
+    idx = int(np.ceil(M / m)) - 1
+    ms = np.array([idx, idx + 1]) * m
+    f = scipy.interpolate.interp1d(ms, [r[idx], r[idx + 1]])
+    return pygad.UnitScalar(f(M), r.units)
+
+
 def enclosed_mass_radius(snap, combined=False, mass_frac=1):
     """
-    Determine the radius containining the given mass.
+    Determine the radius containining a fraction of the mass of the (possibly
+    combined) BH.
 
     Parameters
     ----------
@@ -435,19 +450,6 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
     AssertionError:
         if snapshot not in physical units
     """
-
-    def _find_radius_for_mass(M, m, pos, centre):
-        # determine the radius where the enclosed mass = desired mass M
-        r = pygad.utils.geo.dist(pos, centre)
-        r.sort()
-        # interpolate in mass-radius plane
-        # determine how many m are in M -> this will be the index of r we need
-        idx = int(np.ceil(M / m)) - 1
-        print(f"Idx: {idx}")
-        ms = np.array([idx, idx + 1]) * m
-        f = scipy.interpolate.interp1d(ms, [r[idx], r[idx + 1]])
-        return pygad.UnitScalar(f(M), r.units)
-
     assert snap.phys_units_requested
     r = dict()
     if combined:
@@ -473,6 +475,37 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
             )
             r[id] = _r
     return r
+
+
+def lagrangian_radius(snap, mass_frac=0.1, centre=None):
+    """
+    Determine the Lagrangian radius of a system. Note that a single particle mass is assumed.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
+    mass_frac : float, optional
+        lagrangian radius, by default 0.1
+    centre : array-like, optional
+        centre position coordinates, by default None
+
+    Returns
+    -------
+    : pygad.UnitArray
+        lagrangian radius from centre
+    """
+    assert 0 < mass_frac < 1
+    target_mass = mass_frac * np.sum(snap.stars["mass"])
+    if centre is None:
+        centre = pygad.analysis.shrinking_sphere(
+            snap.stars,
+            center=pygad.analysis.center_of_mass(snap.stars),
+            R=np.quantile(snap.stars["r"], 0.75),
+        )
+    return _find_radius_for_mass(
+        target_mass, snap.stars["mass"][0], snap.stars["pos"], centre
+    )
 
 
 def influence_radius(snap, combined=False):
@@ -1401,3 +1434,53 @@ def find_individual_bound_particles(snap, return_frac=False):
         return bound_IDs, len(bound_IDs) / len(subsnap)
     else:
         return bound_IDs
+
+
+def relax_time(snap, r):
+    """
+    Half mass relaxation time, as given in Binney and Tremaine 2008 Eq. 7.107
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
+    r : float, pygad.UnitArr
+        radius to determine relaxation time for
+
+    Returns
+    -------
+    tr : pygad.UnitArr
+        relaxation time
+    """
+    try:
+        assert len(np.unique(snap.stars["mass"])) == 1
+        star_mass = np.mean(
+            [
+                pygad.UnitScalar(snap.stars["mass"][0], "Msol"),
+                pygad.UnitScalar(snap.dm["mass"][0], "Msol"),
+            ]
+        )
+        star_mass = pygad.UnitScalar(star_mass, snap["mass"].units)
+    except AssertionError:
+        _logger.exception(
+            "Calculation only valid for stellar particles with constant mass!",
+            exc_info=True,
+        )
+    if not isinstance(r, pygad.UnitArr):
+        r = pygad.UnitScalar(r, snap["pos"].units)
+    id_mask = pygad.IDMask(get_massive_bh_ID(snap))
+    centre = pygad.analysis.shrinking_sphere(snap.stars, snap.bh[id_mask]["pos"], 30)
+    ball_mask = pygad.BallMask(r, centre)
+    G = pygad.physics.G.in_units_of("kpc/Msol*(km/s)**2")
+    coulomb = np.log(
+        r
+        * np.mean(radial_separation(snap[ball_mask]["vel"]) ** 2)
+        / (2 * G * star_mass)
+    )
+    tr = (
+        2.1
+        * pygad.UnitScalar(np.std(snap[ball_mask]["vel"]), "km/s")
+        * r**2
+        / (G * star_mass * coulomb)
+    )
+    return tr.in_units_of("Gyr")

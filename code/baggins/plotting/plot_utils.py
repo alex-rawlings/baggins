@@ -1,13 +1,19 @@
 from datetime import datetime
 import inspect
-from matplotlib import rc_file, rcdefaults, rcParams
-from matplotlib.pyplot import gcf
+from matplotlib import rc_file, rcdefaults, rcParams, use
+from matplotlib.pyplot import gcf, subplots, close
 from PIL import Image
 import os.path
 from .._backend.States import PublishingState
 from ..env_config import _cmlogger, git_hash, username, date_format, fig_ext
 
-__all__ = ["savefig", "get_meta", "set_publishing_style", "get_figure_size"]
+__all__ = [
+    "savefig",
+    "get_meta",
+    "set_publishing_style",
+    "get_figure_size",
+    "check_backend",
+]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -127,3 +133,20 @@ def get_figure_size(publishing=False, full=False, multiplier=[1, 1]):
             m *= 2
         figsize = (m, m)
     return figsize
+
+
+def check_backend(fallback="Agg"):
+    """
+    Ensure that the pyplot backend is working, and switch to a default if not
+
+    Parameters
+    ----------
+    fallback : str, optional
+        default backend to use, by default "Agg"
+    """
+    try:
+        fig, ax = subplots()
+        close(fig)
+    except:  # noqa
+        _logger.error(f"Backend failed, switching to '{fallback}'")
+        use(fallback)

@@ -3,6 +3,6 @@ Mathematics
 
 Functions describing general mathematical operations.
 
-.. automodule:: cm_functions.mathematics
+.. automodule:: baggins.mathematics
     :imported-members:
     :members:

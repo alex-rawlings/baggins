@@ -14,7 +14,7 @@ _logger = _cmlogger.getChild(__name__)
 class LiteratureTables:
     def __init__(self) -> None:
         """
-        Convenience class for loading data included with the cm_functions
+        Convenience class for loading data included with the baggins
         package. Cleaning/reformatting of the data is wrapped up into load()
         functions.
 

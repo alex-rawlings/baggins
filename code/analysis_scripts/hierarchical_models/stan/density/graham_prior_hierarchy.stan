@@ -1,116 +1,86 @@
 functions {
     #include funcs_graham.stan
+    #include ../custom_rngs.stan
 }
 
 
 data {
+    // total number of points
     int<lower=1> N_tot;
+    // array of radial values
+    vector<lower=0>[N_tot] R;
+
+    // Individual groups
+    // number of groups
     int<lower=1> N_groups;
-    array[N_tot] int<lower=1> group_id;
-    array[N_tot] real<lower=0.0> R;
+    // indexing of observations to group
+    array[N_tot] int<lower=1, upper=N_groups> group_idx;
 }
 
 
 generated quantities {
-    // hyperpriors
-    real log10_r_b_mean;
-    real r_b_std;
-    real log10_Re_mean;
-    real Re_std;
-    real log10_I_b_mean;
-    real log10_I_b_std;
-    real log10_g_mean;
-    real g_std;
-    real log10_n_mean;
-    real n_std;
-    real log10_a_mean;
-    real a_std;
+    // hierarchy: observations belong to different groups
+    // introduce hyperparameters
+    real log10densb_mean = normal_rng(10, 2);
+    real log10densb_std = lower_trunc_normal_rng(0, 1, 0);
+    real g_lam = exponential_rng(10);
+    real rb_sig = lower_trunc_normal_rng(0, 1, 0);
+    real n_mean = trunc_normal_rng(8, 4, 0, 15);
+    real n_std = lower_trunc_normal_rng(0, 4, 0);
+    real a_sig = gamma_rng(2, 0.2);
+    real Re_sig = lower_trunc_normal_rng(0, 12, 0);
+    real err_mean = lower_trunc_normal_rng(0, 1, 0);
+    real err_std = lower_trunc_normal_rng(0, 0.2, 0);
 
-    // transformed latent parameters
-    array[N_groups] real r_b;
-    array[N_groups] real Re;
-    array[N_groups] real log10_I_b;
-    array[N_groups] real g;
-    array[N_groups] real n;
-    array[N_groups] real a;
+    // model variance, function of radius
+    vector<lower=0>[N_tot] err;
 
-    // relation error
-    real err = normal_rng(0, 1);
-    while(err < 0){
-        err = normal_rng(0, 1);
-    }
+    // define latent parameters for each group
+    vector[N_groups] rb;
+    vector[N_groups] Re;
+    vector[N_groups] n;
+    vector[N_groups] g;
+    vector[N_groups] log10densb;
+    vector[N_groups] a;
+
 
     // prior check
-    array[N_tot] real log10_surf_rho_prior;
-
-    // sample hyperpriors
-    log10_r_b_mean = normal_rng(0.0, 0.7);
-    r_b_std = normal_rng(0, 1);
-    while(r_b_std<0){
-        r_b_std = normal_rng(0, 1);
-    }
-    log10_Re_mean = normal_rng(0.85, 0.5);
-    Re_std = normal_rng(0, 4);
-    while(Re_std<0){
-        Re_std = normal_rng(0, 4);
-    }
-    log10_I_b_mean = normal_rng(0, 3);
-    log10_I_b_std = normal_rng(0, 5);
-    while(log10_I_b_std < 0){
-        log10_I_b_std = normal_rng(0, 5);
-    }
-    log10_g_mean = normal_rng(-0.5, 0.2);
-    g_std = normal_rng(0, 1);
-    while(g_std<0){
-        g_std = normal_rng(0, 1);
-    }
-    log10_n_mean = normal_rng(0.6, 0.4);
-    while(log10_n_mean>1.3){
-        log10_n_mean = normal_rng(0.6, 0.4);
-    }
-    n_std = normal_rng(0, 2);
-    while(n_std<0) {
-        n_std = normal_rng(0, 5);
-    }
-    log10_a_mean = normal_rng(1.0, 0.5);
-    a_std = normal_rng(0, 10);
-    while(a_std<0){
-        a_std = normal_rng(0, 10);
-    }
+    vector[N_tot] log10_surf_rho_prior;
+    vector[N_tot] surf_rho_prior;
 
     // sample latent parameters and prior check
     {
-        array[N_groups] real b_param;
-        array[N_groups] real pre_term;
+        vector[N_groups] b_param;
+        vector[N_groups] pre_term;
 
         for(i in 1:N_groups){
-            r_b[i] = normal_rng(pow(10,log10_r_b_mean), r_b_std);
-            while(r_b[i] < 0){
-                r_b[i] = normal_rng(pow(10,log10_r_b_mean), r_b_std);
-            }
-            Re[i] = normal_rng(pow(10,log10_Re_mean), Re_std);
-            while(Re[i] < 0){
-                Re[i] = normal_rng(pow(10,log10_Re_mean), Re_std);
-            }
-            log10_I_b[i] = normal_rng(log10_I_b_mean, log10_I_b_std);
-            g[i] = normal_rng(pow(10,log10_g_mean), g_std);
-            while(g[i] < 0){
-                g[i] = normal_rng(pow(10,log10_g_mean), g_std);
-            }
-            n[i] = normal_rng(pow(10,log10_n_mean), n_std);
-            while(n[i] < 0){
-                n[i] = normal_rng(pow(10,log10_n_mean), n_std);
-            }
-            a[i] = normal_rng(pow(10,log10_a_mean), a_std);
-            while(a[i] < 0){
-                a[i] = normal_rng(pow(10,log10_a_mean), a_std);
-            }
-            b_param[i] = sersic_b_parameter(n[i]);
-            pre_term[i] = graham_preterm(g[i], a[i], n[i], b_param[i], r_b[i], Re[i]);
+            log10densb[i] = trunc_normal_rng(log10densb_mean, log10densb_std, -5, 15);
+            g[i] = trunc_exponential_rng(g_lam, 0, 2);
+            rb[i] = trunc_rayleigh_rng(rb_sig, 0, 5);
+            n[i] = trunc_normal_rng(n_mean, n_std, 0, 20);
+            a[i] = trunc_rayleigh_rng(a_sig, 0, 15);
+            Re[i] = trunc_rayleigh_rng(Re_sig, 0, 20);
         }
 
+        // some helper quantities
+        b_param = sersic_b_parameter(n);
+        pre_term = graham_preterm(g, a, n, b_param, rb, Re);
+
+        // push forward data
+        vector[N_tot] mean_gsd = graham_surf_density_vec(
+                                        R,
+                                        pre_term[group_idx],
+                                        g[group_idx],
+                                        a[group_idx],
+                                        rb[group_idx],
+                                        n[group_idx],
+                                        b_param[group_idx],
+                                        Re[group_idx],
+                                        log10densb[group_idx]);
         for(i in 1:N_tot){
-            log10_surf_rho_prior[i] = normal_rng(graham_surf_density(R[i], pre_term[group_id[i]], g[group_id[i]], a[group_id[i]], r_b[group_id[i]], n[group_id[i]], b_param[group_id[i]], Re[group_id[i]], log10_I_b[group_id[i]]), err);
+            err[i] = lower_trunc_normal_rng(err_mean, err_std, 0.);
+            log10_surf_rho_prior[i] = trunc_normal_rng(mean_gsd[i], err[i], -5, 15);
         }
     }
+    surf_rho_prior = pow(10., log10_surf_rho_prior);
 }

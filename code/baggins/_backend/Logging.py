@@ -16,7 +16,7 @@ class CustomLogger(logging.Logger):
 
     def getChild(self, suffix: str) -> None:
         """
-        Remove the leading cm_functions. part from a child name
+        Remove the leading baggins. part from a child name
 
         Parameters
         ----------
@@ -28,7 +28,7 @@ class CustomLogger(logging.Logger):
         CustomLogger
             child logger
         """
-        suffix = suffix.replace("cm_functions.", "")
+        suffix = suffix.replace("baggins.", "")
         suffix = suffix.replace("analysis_classes.", "")
         return super().getChild(suffix)
 

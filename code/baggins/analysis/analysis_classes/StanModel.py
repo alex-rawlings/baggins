@@ -579,9 +579,9 @@ class _StanModel(ABC):
                 try:
                     pf = self._model.pathfinder(data=self.stan_data, show_console=True)
                     inits = pf.create_inits()
-                except RuntimeError:
+                except (RuntimeError, ValueError) as e:
                     _logger.warning(
-                        "Stan pathfinder failed: normal initialisation will be used!"
+                        f"Stan pathfinder failed: normal initialisation will be used! Reason: {e}"
                     )
                     inits = None
                 fit = self._model.sample(
@@ -713,29 +713,37 @@ class _StanModel(ABC):
         np.ndarray
             set of draws for the variable gq
         """
-        if self.generated_quantities is None or force_resample:
+
+        def _choose_model():
+            # determine if we should use the prior or posterior model
             if self._model is None:
                 _logger.debug("Generated quantities will be taken from the prior model")
-                self._generated_quantities = self._prior_model.generate_quantities(
-                    data=self._stan_data, previous_fit=self._prior_fit
-                )
+                _model = self._prior_model
+                _fit = self._prior_fit
             else:
                 _logger.debug(
                     "Generated quantities will be taken from the posterior model"
                 )
-                self._generated_quantities = self._model.generate_quantities(
-                    data=self._stan_data, previous_fit=self._fit, gq_output_dir=None
-                )
+                _model = self._model
+                _fit = self._fit
+            return _model, _fit
+
+        if self.generated_quantities is None or force_resample:
+            _model, _fit = _choose_model()
+            self._generated_quantities = _model.generate_quantities(
+                data=self.stan_data, previous_fit=_fit
+            )
         try:
             self.generated_quantities.stan_variable(gq)
         except ValueError:
+            _model, _fit = _choose_model()
             TMPDIRs.make_new_dir()
             _logger.error(
                 f"Value error trying to read generated quantities data: creating temporary directory {TMPDIRs.register[-1]}"
             )
-            self._generated_quantities = self._model.generate_quantities(
-                data=self._stan_data,
-                previous_fit=self._fit,
+            self._generated_quantities = _model.generate_quantities(
+                data=self.stan_data,
+                previous_fit=_fit,
                 gq_output_dir=TMPDIRs.register[-1],
             )
         return self.generated_quantities.stan_variable(gq)

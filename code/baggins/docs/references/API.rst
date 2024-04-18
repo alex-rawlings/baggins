@@ -1,12 +1,12 @@
-.. _cm_functions-api:
+.. _baggins-api:
 
 Python API
 ==========
 
-cm_functions
+baggins
 ++++++++++++
 
-Here you can find a list of available functions and classes in the cm_functions package.
+Here you can find a list of available functions and classes in the baggins package.
 
 
 .. toctree::
