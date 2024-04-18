@@ -25,6 +25,8 @@ args = parser.parse_args()
 # create logger
 SL = bgs.setup_logger("script", args.verbosity)
 
+bgs.plotting.check_backend()
+
 
 orbitfilebases = [
     d.path
@@ -130,7 +132,9 @@ def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
 # figure 1: plots of different orbital families
 fig, ax = plt.subplots(2, 4, sharex=True, sharey=True)
 fig.set_figwidth(2 * fig.get_figwidth())
-cmapper, sm = bgs.plotting.create_normed_colours(0, 2000, cmap="custom_Blues")
+cmapper, sm = bgs.plotting.create_normed_colours(
+    0, 900, cmap="custom_Blues", norm_kwargs={"clip": True}
+)
 
 
 # figure 2: plots of different kick velocities
@@ -181,6 +185,7 @@ plt.colorbar(
     fraction=0.5,
     aspect=10,
     label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$",
+    extend="max",
 )
 ax[0, 3].set_visible(False)
 

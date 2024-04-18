@@ -130,7 +130,7 @@ def _helper(param_name, ax):
         param,
         positions=kick_vels,
         showfliers=False,
-        whis=False,
+        whis=0,
         widths=40,
         manage_ticks=False,
         patch_artist=True,
@@ -144,7 +144,41 @@ def _helper(param_name, ax):
         m.set_color(p.get_facecolor())
         m.set_linewidth(2)
         m.set_alpha(1)
+    for w in bp["whiskers"]:
+        w.set_alpha(0)
     return np.nanmedian(normalisation)
+
+
+def core_radius_relation(v):
+    """
+    Core radius relation, as determined by `core-dists.py`, and just plotted
+    here. Note that parameter values need to be set by hand!
+
+    Parameters
+    ----------
+    v : array-like
+        kick velocities normalised to the escape velocity
+
+    Returns
+    -------
+    : array-like
+        core radius
+    """
+    nu = 21.5
+    mu = 0.182
+    sigma = 0.601
+    k = 0.894
+    b = -34.5
+    c = 1.64
+    x = v / 1800
+    term1 = np.sqrt((nu - 2) / nu) * (
+        1 + ((x - mu) / (sigma * np.sqrt((nu - 2) / nu))) ** 2
+    ) ** (-(nu + 1) / 2)
+    term2 = np.sqrt(nu / (nu - 2)) * (
+        1 + ((x - mu) / (sigma * np.sqrt(nu / (nu - 2)))) ** 2
+    ) ** (-(nu + 1) / 2)
+    sigmoidfun = k / (1 + np.exp(-b * (x - mu)))
+    return (term1 + term2) / (2 * np.pi * sigma) - sigmoidfun + c
 
 
 xlabel = r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$"
@@ -231,7 +265,7 @@ else:
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         x = np.linspace(*ax.get_xlim(), 500)
-        # ax.plot(x, 3.70 * (x / 1800) ** 0.562 + 1, c=col_list[1])
+        ax.plot(x, core_radius_relation(x), c=col_list[1])
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":

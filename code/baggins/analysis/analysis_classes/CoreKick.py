@@ -37,8 +37,16 @@ class CoreKick(HierarchicalModel_2D):
         self._folded_qtys = ["rb"]
         self._folded_qtys_labs = [r"$r_\mathrm{b}$"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = ["K", "b", "err"]
-        self._latent_qtys_labs = [r"$K$", r"$\beta$", r"$\sigma$"]
+        self._latent_qtys = ["nu", "mu", "sigma", "k", "b", "c", "err"]
+        self._latent_qtys_labs = [
+            r"$\nu$",
+            r"$\mu$",
+            r"$\sigma$",
+            r"$k$",
+            r"$b$",
+            r"$c$",
+            r"$\tau$",
+        ]
         self._latent_qtys_posterior = self._latent_qtys
         self._labeller_latent = MapLabeller(
             dict(zip(self._latent_qtys, self._latent_qtys_labs))
@@ -105,16 +113,13 @@ class CoreKick(HierarchicalModel_2D):
         for k, v in data["rb"].items():
             if k == "__githash" or k == "__script":
                 continue
-            # TODO remove this
-            if float(k) > 900:
-                break
             _logger.info(f"Getting data for kick {k}")
             mask = ~np.isnan(v)
             v = v[mask]
             rb0 = data["rb"]["0000"][mask]
             idxs = self._rng.choice(np.arange(len(v)), 200, replace=False)
-            obs["vkick"].append(np.repeat(float(k) / self.escape_vel, npoints))
-            obs["rb"].append(v[idxs].flatten() / rb0[idxs].flatten())
+            obs["vkick"].append([float(k) / self.escape_vel])
+            obs["rb"].append([np.nanmedian(v[idxs].flatten() / rb0[idxs].flatten())])
         self._rb0 = np.nanmean(rb0)
         self.obs = obs
         if not self._loaded_from_file:
