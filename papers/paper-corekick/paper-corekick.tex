@@ -188,7 +188,7 @@ Here $\mathcal{E}$ is the relative energy, and $\Phi_\mathrm{T}$ is the total gr
 The distribution functions are then sampled with discrete particles, where the mass of a stellar particle is set to $m_\star=5\times10^4\,\Msun$, and the mass of a DM particle is set to $m_\mathrm{DM}=5\times10^6\,\Msun$.
 The radial velocity profiles of both stellar and DM particles is ergodic. 
 
-As we are interested in the evolution of the galaxy merger \textit{remnant} following SMBH coalescence, the initial conditions such that that at the time of SMBH coalescence (\autoref{ssec:mergers}) the galaxy remnant agrees with observational data.
+As we are interested in the evolution of the galaxy merger \textit{remnant} following SMBH coalescence, the initial conditions are constructed such that at the time of SMBH coalescence (\autoref{ssec:mergers}) the galaxy remnant agrees with observational data.
 Specifically, we ensure that our remnant agrees with the half-light -- stellar mass data presented in \citet{sahu2020}, and lies within the $1\sigma$ predictive interval of the SMBH mass -- stellar velocity dispersion data given in \citet{vandenbosch2016}.
 
 \subsection{Merger Simulations}\label{ssec:mergers}
@@ -196,6 +196,7 @@ We merge two independently Monte Carlo sampled galaxy ICs, creating an equal mas
 The merger orbit has an initial separation of $D=30\,\mathrm{kpc}$, a first pericentre distance of $r_\mathrm{peri}=2\,\mathrm{kpc}$, and an initial eccentricity of $e_0=0.97$.
 The merger configuration results in a rapid coalescence of the BH binary, however we note that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
 We then select the snapshot just prior ($\sim8\,\mathrm{Myr}$) to the GW-driven SMBH merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. To test the effect of differing kick directions on the merger remnant, we test directing the recoil kick along the global $y$-axis, and find identical evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
+At the moment of the merger, the centre of mass (CoM) velocity of the SMBH binary is $v_{\mathrm{bin},\mathrm{CoM}}\sim[4.2, 1.1, 1.6]\,\kmps$ in the global coordinate frame.
 The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant, $v_\mathrm{esc}$.
 We additionally run one simulation with a recoil kick above $v_\mathrm{esc}$, with $\vk=2000\,\kmps$.
 As discussed in \drafting{section}, higher recoil velocities typically result in larger excursions of the remnant SMBH from the isophotal centre.
@@ -300,12 +301,30 @@ As shown in \autoref{fig:csparams}, the density at the core radius $\Sigma_\math
 Interestingly, we observe a similar decrease in S\'ersic index $n$ with increasing kick velocity, although no correlation is seen between $n$ and $\Sigma_\mathrm{b}$ in the latent parameter corner plots (see for example \autoref{fig:csparams}).
 
 \subsection{Predicted core size distribution}
-Following \citet{nasim2021b}, we fit a power law of the form
-\begin{equation}\label{eq:vkrb}
-    \frac{\rb}{r_{\mathrm{b},0}} = K \left( \frac{\vk}{v_\mathrm{esc}} \right)^\beta + 1
+To predict the distribution of core sizes, we require a mapping from the kick velocity to the core radius. 
+Previous work by \citet{nasim2021b} fit a power law of the form:
+\begin{equation}\label{eq:vkrb_nasim}
+    \frac{\rb}{r_{\mathrm{b},0}} = K (v')^\beta + 1
 \end{equation}
-to our simulations, which is thus valid for $0\leq\vk/\kmps\leq900$, or equivalently $0\leq\vk/v_\mathrm{esc}\leq 0.5$.
-We estimate the parameters $K$ and $\beta$ using HMC, and find median values of $K=3.70$ and $\beta=0.562$.
+where $v'=\vk/v_\mathrm{esc}$, and $K$ and $\beta$ are free parameters.
+We see immediately that \autoref{eq:vkrb_nasim} does not capture the peak in the data at \drafting{$600\kmps$}, and so opt for an alternative form.
+We fit a function that is the sum of a modified $t$-distribution with a sigmoid function, and takes the form:
+\begin{equation}\label{eq:vkrb}
+    \frac{\rb}{r_{\mathrm{b},0}} = \frac{A(v'; \mu,\nu,\sigma)+B(v'; \mu,\nu,\sigma)}{2\pi\sigma} - S(v';k,b,\mu) + c,
+\end{equation}
+where
+\begin{equation}
+    A(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu-2}{\nu}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu-2}{\nu}}} \right)^2 \right)^{-(\nu + 1)/2},
+\end{equation}
+and
+\begin{equation}
+    B(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu}{\nu-2}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu}{\nu-2}}} \right)^2 \right)^{-(\nu + 1)/2},
+\end{equation}
+and
+\begin{equation}
+    S(v';k,b,\mu) = \frac{k}{1 + \exp(-b (v'-\mu))}.
+\end{equation}
+Hence \autoref{eq:vkrb} takes six free parameters ($\mu$, $\nu$, $\sigma$, $k$, $b$, $c$), which we constrain using the median trend of the $vk/v_\mathrm{esc}$--$\rb$ relation in \autoref{fig:vkrb}, and plot with an orange line. 
 
 Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal spin alignment (their Fig. 15, right panel).
 The dimensionless spin parameter $\alpha_\bullet$ for the dry mergers follows a beta distribution, namely:
@@ -519,7 +538,7 @@ This can be explained by the derivative of the orbital fraction distribution bei
 % FINAL BITS
 \section*{acknowledgments}
 A.R. acknowledges the support by the University of Helsinki Research Foundation.
-A.R., acknowledge the support
+P.H.J., acknowledge the support
 by the European Research Council via ERC Consolidator Grant KETJU (no. 818930) and the support of the Academy of Finland grant 339127.
 
 The numerical simulations used computational resources provided by
