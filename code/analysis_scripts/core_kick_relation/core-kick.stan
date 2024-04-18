@@ -1,10 +1,17 @@
 functions {
-    vector relation(vector v, real K, real b){
-        return K .* pow(v, b) + 1.;
+    vector relation(vector x, real nu, real mu, real sigma, real k, real b, real c){
+        int N = size(x);
+        vector[N] term1;
+        vector[N] term2;
+        vector[N] sigmoidfun;
+        term1 = sqrt((nu-2.)./nu) .* pow(1. + pow(((x - mu) ./ (sigma .* sqrt((nu-2.)./nu))), 2.), (-(nu + 1)./2));
+        term2 = sqrt(nu./(nu-2.)) .* pow(1. + pow(((x - mu) ./ (sigma .* sqrt(nu./(nu-2.)))), 2.), (-(nu + 1)./2));
+        sigmoidfun  = k ./ (1 + exp(-b .* (x-mu)));
+        return (term1 + term2) ./ (2 * pi() .* sigma) - sigmoidfun + c;
     }
 
-    real partial_sum(array[] real y_slice, int start, int end, vector vk, real K, real b, real err){
-        return normal_lpdf( y_slice | relation(vk[start:end], K, b), err);
+    real partial_sum(array[] real y_slice, int start, int end, vector vk, real nu, real mu, real sigma, real k, real b, real c, real err){
+        return normal_lpdf( y_slice | relation(vk[start:end], nu, mu, sigma, k, b, c), err);
     }
 
     #include "../hierarchical_models/stan/custom_rngs.stan"
@@ -35,17 +42,25 @@ transformed data {
 
 
 parameters {
-    real<lower=0.> K;
-    real<lower=0.> b;
+    real<lower=0.> mu;
+    real<lower=0.> nu;
+    real<lower=0.> sigma;
+    real<lower=0.> k;
+    real<upper=0.> b;
+    real<lower=0.> c;
     real<lower=0.> err;
 }
 
 
 transformed parameters {
-    array[3] real lprior;
-    lprior[1] = normal_lpdf(K | 0., 6);
-    lprior[2] = normal_lpdf(b | 0., 1.);
-    lprior[3] = normal_lpdf(err | 0., 9.);
+    array[7] real lprior;
+    lprior[1] = normal_lpdf(mu | 0.3, 0.2);
+    lprior[2] = normal_lpdf(nu | 5, 10);
+    lprior[3] = normal_lpdf(sigma | 0, 0.5);
+    lprior[4] = normal_lpdf(k | 1, 0.4);
+    lprior[5] = normal_lpdf(b | -30, 20);
+    lprior[6] = normal_lpdf(c | 1, 2);
+    lprior[7] = normal_lpdf(err | 0, 9);
 }
 
 
@@ -53,7 +68,7 @@ model {
     // density at priors
     target += sum(lprior);
 
-    target += reduce_sum(partial_sum, to_array_1d(rb), 1, vkick, K, b, err);
+    target += reduce_sum(partial_sum, to_array_1d(rb), 1, vkick, nu, mu, sigma, k, b, c, err);
 
 }
 
@@ -61,7 +76,7 @@ model {
 generated quantities {
     // generate data replication
     vector[N_GQ] rb_posterior;
-    vector[N_GQ] rel_mean = relation(vkick_GQ, K, b);
+    vector[N_GQ] rel_mean = relation(vkick_GQ, nu, mu, sigma, k, b, c);
     for(i in 1:N_GQ){
         rb_posterior[i] = lower_trunc_normal_rng(rel_mean[i], err, 0.);
     }

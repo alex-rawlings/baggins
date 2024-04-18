@@ -1,7 +1,7 @@
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 def b_param(t):
@@ -17,11 +17,11 @@ if True:
     stat_func = np.std
     ylab = "Std Dev"
 else:
-    stat_func = cmf.mathematics.iqr
+    stat_func = bgs.mathematics.iqr
     ylb = IQR
 
 
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 fig, ax = plt.subplots(1,2, sharex="all")
 for i in range(2): 
     ax[i].set_xlabel("Mass Res")
@@ -31,7 +31,7 @@ ax[1].set_ylabel(f"{ylab} $b/b_{{90}}$")
 
 
 for i, d in enumerate(data):
-    datadict = cmf.utils.load_data(d)
+    datadict = bgs.utils.load_data(d)
     ts = np.array(datadict["thetas"])
     bs = b_param(ts)
     mr = np.unique(datadict["mass_res"])

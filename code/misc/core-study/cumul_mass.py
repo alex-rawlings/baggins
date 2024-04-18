@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pygad
 import yaml
-import cm_functions as cmf
+import baggins as bgs
 
 
 fig, ax = plt.subplots(1,1)
@@ -15,7 +15,7 @@ for k, v in data["snap_nums"].items():
     if v > 0:
         files.append(os.path.join(data["parent_dir"], f'kick-vel-{k.lstrip("v")}/output/snap_{v:03d}.hdf5'))
 
-cmapper, sm = cmf.plotting.create_normed_colours(1, 1200)
+cmapper, sm = bgs.plotting.create_normed_colours(1, 1200)
 
 for i, f in enumerate(files):
     snap = pygad.Snapshot(f, physical=True)

@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
 import ketjugw
 from ketjugw.units import pc, yr, km_per_s
-import cm_functions as cmf
+import baggins as bgs
 
 
 class FrozenParticle:
@@ -245,8 +245,8 @@ if __name__ == "__main__":
     fig_name_base = f"scatter/S-{gal.ey:.1f}-{gal.ez:.1f}-e-{kepler_initial_e:.1f}-crd-{perturb_crd_str[perturb_crd]}"
     figax1[0].suptitle(fig_name_base.split("/")[-1])
     figax2[0].suptitle(fig_name_base.split("/")[-1])
-    #figax1[0].savefig(os.path.join(cmf.FIGDIR, f"{fig_name_base}-orbit.png"))
-    #figax2[0].savefig(os.path.join(cmf.FIGDIR, f"{fig_name_base}-pars.png"))
+    #figax1[0].savefig(os.path.join(bgs.FIGDIR, f"{fig_name_base}-orbit.png"))
+    #figax2[0].savefig(os.path.join(bgs.FIGDIR, f"{fig_name_base}-pars.png"))
     plt.show()
 
 

@@ -2,7 +2,7 @@ import argparse
 import os
 import matplotlib.animation
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -40,12 +40,12 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-snaplist = cmf.utils.get_snapshots_in_dir(args.path)
+snaplist = bgs.utils.get_snapshots_in_dir(args.path)
 
 fig, ax = plt.subplots(2, 2, figsize=(6, 6), subplot_kw={"rasterized": True})
 axis_offsets = {"stars": args.starextent, "dm": args.haloextent}
 
-overview_anim = cmf.visualisation.OverviewAnimation(
+overview_anim = bgs.visualisation.OverviewAnimation(
     snaplist, fig, ax, centre=args.centre, axis_offsets=axis_offsets
 )
 

@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(description="Run stan model for Quinlan evolution.", allow_abbrev=False)
@@ -33,7 +33,7 @@ ax[1].set_ylabel(r"a$_{i}$/pc")
 #ax[1].set_xscale("log")
 #ax[1].set_yscale("log")
 
-chars = cmf.plotting.mplChars()
+chars = bgs.plotting.mplChars()
 
 for j, n in enumerate(np.unique(df.loc[:, "name"])):
     if j>0: break

@@ -1,11 +1,11 @@
 import os.path
 import numpy as np
 import scipy.optimize
-import cm_functions as cmf
+import baggins as bgs
 from helpers import stan_model_selector
 
 
-parser = cmf.utils.argparse_for_stan("Run stan model for Core-Sersic model")
+parser = bgs.utils.argparse_for_stan("Run stan model for Core-Sersic model")
 parser.add_argument(
     "-m",
     "--model",
@@ -27,9 +27,9 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", console_level=args.verbose)
+SL = bgs.setup_logger("script", console_level=args.verbose)
 
-full_figsize = cmf.plotting.get_figure_size(
+full_figsize = bgs.plotting.get_figure_size(
     args.publish, full=True, multiplier=[1.9, 1.9]
 )
 
@@ -38,34 +38,36 @@ if args.type == "new":
     SL.debug(f"Input data read from {hmq_dir}")
 else:
     hmq_dir = None
-analysis_params = cmf.utils.read_parameters(args.apf)
+analysis_params = bgs.utils.read_parameters(args.apf)
 
 figname_base = "hierarchical_models/density/"
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
 
 if args.model == "simple":
     graham_model = stan_model_selector(
         args,
-        cmf.analysis.GrahamModelSimple,
-        "stan/density/graham_simple.stan",
-        "stan/density/graham_prior_simple.stan",
+        bgs.analysis.GrahamModelSimple,
+        os.path.join(this_dir, "stan/density/graham_simple.stan"),
+        os.path.join(this_dir, "stan/density/graham_prior_simple.stan"),
         figname_base,
         SL,
     )
 elif args.model == "factor":
     graham_model = stan_model_selector(
         args,
-        cmf.analysis.GrahamModelKick,
-        "stan/density/graham_factor.stan",
-        "stan/density/graham_factor_prior_novk.stan",
+        bgs.analysis.GrahamModelKick,
+        os.path.join(this_dir, "stan/density/graham_factor.stan"),
+        os.path.join(this_dir, "stan/density/graham_factor_prior_novk.stan"),
         figname_base,
         SL,
     )
 else:
     graham_model = stan_model_selector(
         args,
-        cmf.analysis.GrahamModelHierarchy,
-        "stan/density/graham_hierarchy.stan",
-        "stan/density/graham_prior_hierarchy.stan",
+        bgs.analysis.GrahamModelHierarchy,
+        os.path.join(this_dir, "stan/density/graham_hierarchy.stan"),
+        os.path.join(this_dir, "stan/density/graham_prior_hierarchy.stan"),
         figname_base,
         SL,
     )
@@ -92,18 +94,13 @@ if args.prior:
     graham_model.all_prior_plots(full_figsize)
 else:
     analysis_params["stan"]["density_sample_kwargs"]["output_dir"] = os.path.join(
-        cmf.DATADIR, f"stan_files/density/{args.sample}/{graham_model.merger_id}"
+        bgs.DATADIR, f"stan_files/density/{args.sample}/{graham_model.merger_id}"
     )
 
     # run the model
     graham_model.sample_model(
         sample_kwargs=analysis_params["stan"]["density_sample_kwargs"]
     )
-
-    try:
-        graham_model.determine_loo()
-    except ValueError:
-        SL.warning("LOO cannot be determined for this model: skipping...")
 
     ax = graham_model.all_posterior_pred_plots(full_figsize)
     fig = ax[0, 0].get_figure()
@@ -116,7 +113,7 @@ else:
         # note the argument order here is different to the function
         # core_Sersic_profile
         log_core_sersic = lambda x, rb, Re, Ib, gamma, n, a: np.log10(
-            cmf.literature.core_Sersic_profile(
+            bgs.literature.core_Sersic_profile(
                 x, Re=Re, rb=rb, Ib=Ib, n=n, gamma=gamma, alpha=a
             )
         )
@@ -133,7 +130,7 @@ else:
             all_optimal_pars[i, :] = popt
         all_optimal_pars[:, 2] = np.log10(all_optimal_pars[:, 2])
         SL.debug(f"Least Squares optimal values:\n{all_optimal_pars}")
-        naive_median, naive_spread = cmf.mathematics.quantiles_relative_to_median(
+        naive_median, naive_spread = bgs.mathematics.quantiles_relative_to_median(
             all_optimal_pars, axis=0
         )
         for axi, nm, nsl, nsu in zip(
@@ -143,9 +140,9 @@ else:
             axi.errorbar(
                 nm, y, xerr=np.atleast_2d([nsl, nsu]).T, c="k", capsize=2, fmt="."
             )
-        cmf.plotting.savefig(
+        bgs.plotting.savefig(
             os.path.join(
-                cmf.FIGDIR, f"{graham_model.figname_base}_latentqty_compare.png"
+                bgs.FIGDIR, f"{graham_model.figname_base}_latentqty_compare.png"
             ),
             fig=fig,
         )

@@ -3,7 +3,7 @@ import os.path
 import multiprocessing as mp
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 def find_nearest_star(snap, bhid):
@@ -33,13 +33,13 @@ def _mphelper(perturbNum, ax):
     times = []
     infl_rad = {"bh1":[], "bh2":[]}
     nearest_star = {"bh1":[], "bh2":[]}
-    snapfiles = cmf.utils.get_snapshots_in_dir(os.path.join(mainpath, perturbNum, "output"))
+    snapfiles = bgs.utils.get_snapshots_in_dir(os.path.join(mainpath, perturbNum, "output"))
     for snapfile in snapfiles:
         snap = pygad.Snapshot(snapfile, physical=True)
         bhids = snap.bh["ID"]
         bhids.sort()
-        times.append(cmf.general.convert_gadget_time(snap, new_unit="Myr"))
-        rh = cmf.analysis.influence_radius(snap, binary=False)
+        times.append(bgs.general.convert_gadget_time(snap, new_unit="Myr"))
+        rh = bgs.analysis.influence_radius(snap, binary=False)
         infl_rad["bh1"].append(rh[bhids[0]])
         infl_rad["bh2"].append(rh[bhids[1]])
         nearest_star["bh1"].append(find_nearest_star(snap, bhids[0]))
@@ -49,7 +49,7 @@ def _mphelper(perturbNum, ax):
         infl_rad = infl_rad,
         nearest_star = nearest_star
     )
-    cmf.utils.save_data(data, f"./pickle/early-{perturbNum}.pickle")
+    bgs.utils.save_data(data, f"./pickle/early-{perturbNum}.pickle")
     # plot
     plotter(ax, data, perturbNum)
 
@@ -81,9 +81,9 @@ if __name__ == "__main__":
     else:
         for p in subdirs:
             print(f"Reading {p}")
-            data = cmf.utils.load_data(f"./pickle/early-{p}.pickle")
+            data = bgs.utils.load_data(f"./pickle/early-{p}.pickle")
             plotter(ax, data, p, plot_median=False)
     ax[0,1].legend(title="Run", bbox_to_anchor=(1.04,1), loc="upper left")
-    plt.savefig(os.path.join(cmf.FIGDIR, "merger-test/earlytimes/rinfl.png"))
+    plt.savefig(os.path.join(bgs.FIGDIR, "merger-test/earlytimes/rinfl.png"))
     if not args.new:
         plt.show()

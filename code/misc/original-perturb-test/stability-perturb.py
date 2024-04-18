@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pygad
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 pc = ketjugw.units.pc
 myr = ketjugw.units.yr * 1e6
@@ -11,7 +11,7 @@ kms = ketjugw.units.km_per_s
 bhfile = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/NGCa0524/output/ketju_bhs.hdf5"
 snapdir = "/scratch/pjohanss/arawling/collisionless_merger/stability-tests/NGCa0524/output/"
 
-snap_files = cmf.utils.get_snapshots_in_dir(snapdir)
+snap_files = bgs.utils.get_snapshots_in_dir(snapdir)
 
 bhs = ketjugw.data_input.load_hdf5(bhfile)
 

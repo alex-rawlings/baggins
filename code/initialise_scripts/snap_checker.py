@@ -4,7 +4,7 @@ import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -21,13 +21,13 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
 snap = pygad.Snapshot(args.snap, physical=True)
 centre = pygad.analysis.shrinking_sphere(snap, pygad.analysis.center_of_mass(snap), 30)
@@ -84,7 +84,7 @@ for i, f in enumerate(valid_fams_wo_bh):
     )
     ax_dens[i].set_title(f)
 if args.savefig is not None:
-    cmf.plotting.savefig(os.path.join(args.savefig, "densities.png"), fig=fig_dens)
+    bgs.plotting.savefig(os.path.join(args.savefig, "densities.png"), fig=fig_dens)
 
 if "gas" in valid_fams:
     # phase diagram if gas
@@ -117,7 +117,7 @@ if "gas" in valid_fams:
             f"Density threshold not plotted (threshold: {dens_threshold:.1e}, xmax: {current_xlims[1]:.1e})"
         )
     if args.savefig is not None:
-        cmf.plotting.savefig(os.path.join(args.savefig, "phase.png"), fig=fig_phase)
+        bgs.plotting.savefig(os.path.join(args.savefig, "phase.png"), fig=fig_phase)
 
     # metallicity gradient if gas
     SL.debug("Creating metallicity profile...")
@@ -130,13 +130,13 @@ if "gas" in valid_fams:
             bins=50,
         )
         ax_met.plot(
-            cmf.mathematics.get_histogram_bin_centres(edges), stat, lw=2, label=_fam
+            bgs.mathematics.get_histogram_bin_centres(edges), stat, lw=2, label=_fam
         )
     ax_met.legend()
     ax_met.set_xlabel(r"$\log(r/kpc)$")
     ax_met.set_ylabel(r"$Z/Z_\odot$")
     if args.savefig:
-        cmf.plotting.savefig(os.path.join(args.savefig, "metallicity.png"), fig=fig_met)
+        bgs.plotting.savefig(os.path.join(args.savefig, "metallicity.png"), fig=fig_met)
 
 # half mass and effective radius
 if "stars" in valid_fams:
@@ -147,11 +147,11 @@ if "stars" in valid_fams:
     )
     SL.info(f"Stellar effective radius: {eff_rad:.3f}")
     fig_re, ax_re = plt.subplots(1, 1)
-    lt = cmf.literature.LiteratureTables.load_sahu_2020_data()
+    lt = bgs.literature.LiteratureTables.load_sahu_2020_data()
     lt.scatter("logM*_sph", "logRe_maj_kpc", ax=ax_re)
     ax_re.plot(np.log10(sum(snap.stars["mass"])), np.log10(eff_rad), **mkwargs)
     if args.savefig is not None:
-        cmf.plotting.savefig(os.path.join(args.savefig, "eff_rad.png"), fig=fig_re)
+        bgs.plotting.savefig(os.path.join(args.savefig, "eff_rad.png"), fig=fig_re)
 else:
     SL.warning("No half mass nor effective radius calculated!")
     r_half = None
@@ -166,11 +166,11 @@ if "dm" in valid_fams and r_half is not None:
     dm_frac = sum(snap.dm[ball_mask]["mass"]) / sum(snap[ball_mask]["mass"])
     SL.info(f"DM fraction with half mass radius: {dm_frac:.3f}")
     fig_dm, ax_dm = plt.subplots(1, 1)
-    lt = cmf.literature.LiteratureTables.load_jin_2020_data()
+    lt = bgs.literature.LiteratureTables.load_jin_2020_data()
     lt.scatter("log(M*/Msun)", "f_DM", ax=ax_dm)
     ax_dm.plot(np.log10(sum(snap.stars["mass"])), dm_frac, **mkwargs)
     if args.savefig is not None:
-        cmf.plotting.savefig(os.path.join(args.savefig, "fdm.png"), fig=fig_dm)
+        bgs.plotting.savefig(os.path.join(args.savefig, "fdm.png"), fig=fig_dm)
 
 # some stellar stuff
 if "stars" in valid_fams:
@@ -183,7 +183,7 @@ if "stars" in valid_fams:
     vsig = np.sqrt(np.mean(vsig2))
     SL.info(f"Projected stellar velocity dispersion: {vsig:.3e}")
     fig_msig, ax_msig = plt.subplots(1, 1)
-    lt = cmf.literature.LiteratureTables.load_vdBosch_2016_data()
+    lt = bgs.literature.LiteratureTables.load_vdBosch_2016_data()
     lt.scatter(
         "logsigma",
         "logBHMass",
@@ -193,18 +193,18 @@ if "stars" in valid_fams:
     )
     ax_msig.plot(np.log10(vsig), np.log10(sum(snap.bh["mass"])), **mkwargs)
     if args.savefig is not None:
-        cmf.plotting.savefig(os.path.join(args.savefig, "msig.png"), fig=fig_msig)
+        bgs.plotting.savefig(os.path.join(args.savefig, "msig.png"), fig=fig_msig)
 
     # stellar formation time
     if "age" in snap.stars.available_blocks():
         fig_age, ax_age = plt.subplots(1, 1)
-        ages = cmf.general.particle_ages(snap.stars)
+        ages = bgs.general.particle_ages(snap.stars)
         ax_age.hist(ages, 50)
         ax_age.set_xlabel(f"Age {ages.units}")
         ax_age.set_ylabel("Count")
         ax_age.set_yscale("log")
         if args.savefig is not None:
-            cmf.plotting.savefig(
+            bgs.plotting.savefig(
                 os.path.join(args.savefig, "star_formation.png"), fig=fig_age
             )
     else:

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.signal
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 from ketjugw.units import yr, pc, km_per_s
 
 myr = 1e6 * yr
@@ -16,7 +16,7 @@ def mass_wgt_mean(m1, q1, m2, q2):
 #mainpath = "/scratch/pjohanss/arawling/collisionless_merger/mergers/A-C-3.0-0.05/perturbations"
 mainpath = "/scratch/pjohanss/arawling/collisionless_merger/hernquist/H-H-3.0-0.05/perturbations-gadget-3.5pc"
 
-ketjufiles = cmf.utils.get_ketjubhs_in_dir(mainpath)
+ketjufiles = bgs.utils.get_ketjubhs_in_dir(mainpath)
 
 fig, ax = plt.subplots(10, 6, sharex="col", sharey="col", figsize=(8,8))
 #fig2, ax2 = plt.subplots(6, 10, sharex="row", sharey="row", figsize=(15,8))
@@ -38,8 +38,8 @@ ax[-1,5].set_xlabel("t/Myr")
 
 for i, k in enumerate(ketjufiles):
     print(f"{i:03d}")
-    bh1, bh2, merged = cmf.analysis.get_bh_particles(k)
-    bh1bound, bh2bound, _ = cmf.analysis.get_bound_binary(k)
+    bh1, bh2, merged = bgs.analysis.get_bh_particles(k)
+    bh1bound, bh2bound, _ = bgs.analysis.get_bound_binary(k)
 
     xcom = mass_wgt_mean(bh1.m, bh1.x, bh2.m, bh2.x)
     vcom = mass_wgt_mean(bh1.m, bh1.v, bh2.m, bh2.v)
@@ -59,13 +59,13 @@ for i, k in enumerate(ketjufiles):
         ax[i,j+3].plot(bh2v[bh2pre_mask, x]/km_per_s, bh2v[bh2pre_mask, y]/km_per_s, markevery=[-1], marker=".")
 
     
-    sep = cmf.mathematics.radial_separation(bh1x[bh1pre_mask, :], bh2x[bh2pre_mask,:])
+    sep = bgs.mathematics.radial_separation(bh1x[bh1pre_mask, :], bh2x[bh2pre_mask,:])
     #peaks, props = scipy.signal.find_peaks(-sep, height=(-1e16, None))
     #print(len(peaks))
     #ax.scatter(bh1.t[bh1pre_mask][peaks]/myr, sep[peaks])
     ax[i,2].semilogy(bh1.t[bh1pre_mask]/myr, sep/kpc)
 
-    sep = cmf.mathematics.radial_separation(bh1v[bh1pre_mask, :], bh2v[bh2pre_mask,:])
+    sep = bgs.mathematics.radial_separation(bh1v[bh1pre_mask, :], bh2v[bh2pre_mask,:])
     ax[i,5].semilogy(bh1.t[bh1pre_mask]/myr, sep/km_per_s)
 
     #ax[0,i].set_title(f"{i:03d}")

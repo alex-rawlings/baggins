@@ -2,11 +2,11 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
-snapfiles = cmf.utils.read_parameters(os.path.join(
-                                            cmf.HOME,
+snapfiles = bgs.utils.read_parameters(os.path.join(
+                                            bgs.HOME,
                                             "projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml"
 ))
 
@@ -30,7 +30,7 @@ for i, (k, v) in enumerate(snapshots.items()):
     )
 
 
-    voronoi_stats = cmf.analysis.voronoi_binned_los_V_statistics(
+    voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
         snap.stars[ball_mask]["pos"][:,0],
         snap.stars[ball_mask]["pos"][:,1],
         snap.stars[ball_mask]["vel"][:,2],
@@ -38,8 +38,8 @@ for i, (k, v) in enumerate(snapshots.items()):
         100,
         part_per_bin=1000
     )
-    #cmf.plotting.voronoi_plot(voronoi_stats)
+    #bgs.plotting.voronoi_plot(voronoi_stats)
 
-    rs, h4r = cmf.analysis.radial_profile_velocity_moment(voronoi_stats, "h4")
+    rs, h4r = bgs.analysis.radial_profile_velocity_moment(voronoi_stats, "h4")
     plt.plot(rs, h4r, marker="o")
 plt.show()

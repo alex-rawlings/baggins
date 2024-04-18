@@ -8,8 +8,8 @@ except ImportError:
 
     use("Agg")
     import matplotlib.pyplot as plt
-import cm_functions as cmf
-import figure_config # noqa
+import baggins as bgs
+import figure_config  # noqa
 
 parser = argparse.ArgumentParser(
     "Determine core - kick relation",
@@ -26,15 +26,16 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     default="INFO",
     help="verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 
+bgs.plotting.check_backend()
 
 # set the stan model file
 stan_file = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/core_kick_relation/core-kick.stan"
@@ -45,14 +46,14 @@ datafile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_da
 # simulation output data at the moment just before merger
 ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0000/output"
 # load the fit files
-fit_files = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240301163718*.csv"
+fit_files = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/core-kick-relation/core-kick-20240418140152*.csv"
 # set the escape velocity in km/s
 ESCAPE_VEL = 1800
 figname_base = "core-study/rb-dist"
 
 
 if args.type == "new":
-    ck = cmf.analysis.CoreKick(
+    ck = bgs.analysis.CoreKick(
         stan_file,
         "",
         figname_base=figname_base,
@@ -61,7 +62,7 @@ if args.type == "new":
     )
 
 else:
-    ck = cmf.analysis.CoreKick.load_fit(
+    ck = bgs.analysis.CoreKick.load_fit(
         stan_file,
         fit_files,
         figname_base,
@@ -76,7 +77,7 @@ if args.verbosity == "DEBUG":
 ck.set_stan_data()
 
 sample_kwargs = {
-    "output_dir": os.path.join(cmf.DATADIR, "stan_files/core-kick-relation")
+    "output_dir": os.path.join(bgs.DATADIR, "stan_files/core-kick-relation")
 }
 ck.sample_model(sample_kwargs=sample_kwargs)
 

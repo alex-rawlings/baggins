@@ -2,7 +2,7 @@ import argparse
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 from local_funcs import HMQ_generator
 
 
@@ -34,7 +34,7 @@ ax2[0].set_ylabel(r"$\beta(r)$")
 
 hmq_gen = HMQ_generator(data_dirs, args.merged, args.kicked)
 for (hmq, alpha, count, f) in hmq_gen:
-    r = cmf.mathematics.get_histogram_bin_centres(hmq.radial_edges)
+    r = bgs.mathematics.get_histogram_bin_centres(hmq.radial_edges)
     Sigma = np.nanmedian(list(hmq.projected_mass_density.values())[-1], axis=0)
     beta = list(hmq.velocity_anisotropy.values())[-1]
 
@@ -68,8 +68,8 @@ elif args.kicked == "High":
 else:
     kflag = "low_kick"
 
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"other_tests/thorsten/AC_density_{mflag}_{kflag}.png"), fig=fig)
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, f"other_tests/thorsten/AC_beta_{mflag}_{kflag}.png"), fig=fig2)
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"other_tests/thorsten/AC_density_{mflag}_{kflag}.png"), fig=fig)
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"other_tests/thorsten/AC_beta_{mflag}_{kflag}.png"), fig=fig2)
 plt.close(fig)
 plt.close(fig2)
 plt.show()

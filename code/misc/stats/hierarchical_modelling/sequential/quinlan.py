@@ -2,7 +2,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import ketjugw
 
 
@@ -32,13 +32,13 @@ def extract_data(pickle_file, min_radius=10):
     myr = ketjugw.units.yr * 1e6
 
     # files to read
-    bhfiles = cmf.utils.get_ketjubhs_in_dir(data_path)
-    cube_files = cmf.utils.get_files_in_dir(cube_path)
+    bhfiles = bgs.utils.get_ketjubhs_in_dir(data_path)
+    cube_files = bgs.utils.get_files_in_dir(cube_path)
     print("Extracting new dataset...")
     for j, (bhfile, cubefile) in enumerate(zip(bhfiles, cube_files), start=1):
         print(bhfile)
-        cdc = cmf.analysis.ChildSimData.load_from_file(cubefile)
-        bh1, bh2, merged = cmf.analysis.get_bound_binary(bhfile)
+        cdc = bgs.analysis.ChildSimData.load_from_file(cubefile)
+        bh1, bh2, merged = bgs.analysis.get_bound_binary(bhfile)
         orbit_params = ketjugw.orbital_parameters(bh1, bh2)
         idx_0, idx_f = _get_params_in_timespan(orbit_params["a_R"]/ketjugw.units.pc, cdc.r_hard, min_radius)
         idxs = np.r_[idx_0:idx_f]
@@ -55,7 +55,7 @@ if args.extract:
     extract_data(args.obs_file)
 
 # set up Stan Model
-my_stan = cmf.analysis.StanModel("stan/quinlan_k_2.stan", "stan/quinlan_prior_k_2.stan", args.obs_file, figname_base="stats/quinlan_stan/quinlan", random_select_obs={"num":20, "group":"name"})
+my_stan = bgs.analysis.StanModel("stan/quinlan_k_2.stan", "stan/quinlan_prior_k_2.stan", args.obs_file, figname_base="stats/quinlan_stan/quinlan", random_select_obs={"num":20, "group":"name"})
 
 # do data transformations
 my_stan.transform_obs("a", "inv_a", lambda a:1/a)
@@ -82,7 +82,7 @@ for n in np.unique(my_stan.obs.loc[:, "name"]):
     ax.scatter(my_stan.obs.loc[mask, "t"], my_stan.obs.loc[mask, "inv_a"], marker=".")
 ax.set_xlabel("t/Myr")
 ax.set_ylabel(r"1/a | (a$_h$ < a/pc < 10)")
-plt.savefig(f"{cmf.FIGDIR}/{my_stan.figname_base}_raw.png")
+plt.savefig(f"{bgs.FIGDIR}/{my_stan.figname_base}_raw.png")
 plt.show()
 quit()"""
 

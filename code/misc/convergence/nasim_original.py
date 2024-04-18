@@ -3,7 +3,7 @@ import numpy as np
 import scipy.optimize
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
-import cm_functions as cmf
+import baggins as bgs
 
 
 datapaths = [
@@ -20,13 +20,13 @@ datapaths = [
 apf = "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml"
 
 if True:
-    cmf.plotting.set_publishing_style()
+    bgs.plotting.set_publishing_style()
     full_figsize = rcParams["figure.figsize"]
     full_figsize[0] *= 2
 else:
     full_figsize = None
 
-analysis_params = cmf.utils.read_parameters(apf)
+analysis_params = bgs.utils.read_parameters(apf)
 
 ecc = []
 Nhalf = []
@@ -34,8 +34,8 @@ counts = np.zeros(len(datapaths))
 
 
 for i, d in enumerate(datapaths):
-    HMQ_files = cmf.utils.get_files_in_dir(d)
-    k = cmf.analysis.KeplerModelSimple(None, None, "", None)
+    HMQ_files = bgs.utils.get_files_in_dir(d)
+    k = bgs.analysis.KeplerModelSimple(None, None, "", None)
     k.extract_data(HMQ_files, analysis_params)
     counts[i] = k.num_groups
     try:
@@ -45,7 +45,7 @@ for i, d in enumerate(datapaths):
     ecc.append([v for v in k.obs["var_e"]])
     Nhalf.append(k.obs["var_e"])
     for f in HMQ_files:
-        hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(f)
+        hmq = bgs.analysis.HMQuantitiesBinaryData.load_from_file(f)
         Nhalf[i].append(np.nanmedian(hmq.masses_in_galaxy_radius["stars"])/hmq.particle_masses["stars"])
 
 print(f"counts: {counts}")
@@ -55,7 +55,7 @@ ecc_std_std = []
 Nhalf_mean = []
 for e, n in zip(ecc, Nhalf):
     #ecc_std_mean.append(np.nanstd(np.log10(e)))
-    #ecc_std_mean.append(cmf.mathematics.iqr(np.log10(e)))
+    #ecc_std_mean.append(bgs.mathematics.iqr(np.log10(e)))
     ecc_std_mean.append(np.sqrt(np.nanmean(e)))
     ecc_std_std.append(np.nanstd(e))
     Nhalf_mean.append(np.nanmedian(n))
@@ -66,7 +66,7 @@ popt, pcov = scipy.optimize.curve_fit(func, Nhalf_mean, ecc_std_mean, sigma=ecc_
 print(f"Optimal parameters: {popt}")
 
 
-cmapper, sm = cmf.plotting.create_normed_colours(0.5, 10.5, cmap="tab10_r")
+cmapper, sm = bgs.plotting.create_normed_colours(0.5, 10.5, cmap="tab10_r")
 
 fig, ax = plt.subplots(1,1)
 ax.set_xscale("log")
@@ -83,8 +83,8 @@ xseq = np.geomspace(0.9*np.min(Nhalf_mean), 1.1*np.max(Nhalf_mean), 500)
 ax.plot(xseq, func(xseq, popt), c="k", ls="--", lw=3, label=f"k={popt[0]:.2f}")
 
 # set nicer y limits
-cmf.plotting.nice_log10_scale(ax)
+bgs.plotting.nice_log10_scale(ax)
 ax.legend(handletextpad=2)
 
-plt.savefig(os.path.join(cmf.FIGDIR, "nasim_plot.pdf"))
+plt.savefig(os.path.join(bgs.FIGDIR, "nasim_plot.pdf"))
 plt.show()

@@ -3,7 +3,7 @@ import numpy as np
 import os
 import warnings
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(
@@ -58,7 +58,7 @@ else:
 snap = pygad.Snapshot(args.snap)
 snap.to_physical_units()
 if args.plot:
-    cmf.plotting.plot_galaxies_with_pygad(snap)
+    bgs.plotting.plot_galaxies_with_pygad(snap)
 # orientate the snapshot
 # note this will orientate the RIT or L with the z axis!!
 if args.orientate == "ri":
@@ -78,13 +78,13 @@ rotation.apply(snap)
 # recentre the snapshot
 if args.verbose:
     print("Recentring galaxy wrt stellar CoM motion...")
-xcom = cmf.analysis.get_com_of_each_galaxy(snap, verbose=args.verbose)
-vcom = cmf.analysis.get_com_velocity_of_each_galaxy(snap, xcom, verbose=args.verbose)
+xcom = bgs.analysis.get_com_of_each_galaxy(snap, verbose=args.verbose)
+vcom = bgs.analysis.get_com_velocity_of_each_galaxy(snap, xcom, verbose=args.verbose)
 snap["pos"] -= list(xcom.values())[0]
 snap["vel"] -= list(vcom.values())[0]
 
 if args.plot:
-    cmf.plotting.plot_galaxies_with_pygad(snap)
+    bgs.plotting.plot_galaxies_with_pygad(snap)
     plt.show()
 new_file = os.path.splitext(args.snap)[0] + "_aligned.hdf5"
 if os.path.exists(new_file):

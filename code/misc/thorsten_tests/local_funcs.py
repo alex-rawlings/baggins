@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.interpolate
-import cm_functions as cmf
+import baggins as bgs
 
 
 __all__ = ["HMQ_generator", "get_hard_timespan"]
@@ -8,10 +8,10 @@ __all__ = ["HMQ_generator", "get_hard_timespan"]
 def HMQ_generator(dirs, merged=False, kick="None"):
     count = -1
     for d in dirs:
-        HMQ_files = cmf.utils.get_files_in_dir(d)
+        HMQ_files = bgs.utils.get_files_in_dir(d)
         for f in HMQ_files:
             count += 1
-            hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(f)
+            hmq = bgs.analysis.HMQuantitiesBinaryData.load_from_file(f)
             if merged:
                 # highlight mergers
                 if hmq.merger_remnant["merged"]:

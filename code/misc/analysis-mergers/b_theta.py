@@ -3,9 +3,9 @@ import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
-data = cmf.utils.load_data("/users/arawling/projects/collisionless-merger-sample/papers/paper-eccentricity/scripts/data/deflection_angles_e0-0.900.pickle")
+data = bgs.utils.load_data("/users/arawling/projects/collisionless-merger-sample/papers/paper-eccentricity/scripts/data/deflection_angles_e0-0.900.pickle")
 #print(data)
 #quit()
 

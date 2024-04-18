@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 fig, ax = plt.subplots(1,2)
@@ -16,15 +16,15 @@ snaplist = [
 ]
 
 labels = ["Parent", r"$\eta=$0.002", r"$\eta=$0.005", r"$\eta=$0.020"]
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 
 relerr = lambda h, hp: np.abs((h-hp)/hp)
 
 for i, snapfile in enumerate(snaplist):
     snap = pygad.Snapshot(snapfile, physical=True)
-    hamiltonian_all = -cmf.analysis.calculate_Hamiltonian(snap)
-    hamiltonian_stars = -cmf.analysis.calculate_Hamiltonian(snap.stars)
-    hamiltonian_dm = -cmf.analysis.calculate_Hamiltonian(snap.dm)
+    hamiltonian_all = -bgs.analysis.calculate_Hamiltonian(snap)
+    hamiltonian_stars = -bgs.analysis.calculate_Hamiltonian(snap.stars)
+    hamiltonian_dm = -bgs.analysis.calculate_Hamiltonian(snap.dm)
     if i==0:
         parent_H_all = hamiltonian_all
         parent_H_stars = hamiltonian_stars

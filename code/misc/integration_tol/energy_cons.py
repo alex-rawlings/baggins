@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.interpolate
 import os.path
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 def calculate_H(s, chunk=1e5):
@@ -13,7 +13,7 @@ def calculate_H(s, chunk=1e5):
     PE = 0
     for start in range(0, total_N, chunk):
         end = min(start+chunk, total_N)
-        vel_mag = cmf.mathematics.radial_separation(s["vel"][start:end])
+        vel_mag = bgs.mathematics.radial_separation(s["vel"][start:end])
         vel_mag = pygad.UnitArr(vel_mag, "km/s")
         KE += np.sum(0.5 * s["mass"][start:end]*vel_mag**2)
         PE += np.sum(s["pot"][start:end]*s["mass"][start:end])
@@ -48,14 +48,14 @@ ax = [ax]
 for j, snapdir in enumerate(snapdirs):
     labval = snapdir.split("/")[-1]
     snapdir = os.path.join(snapdir, "output")
-    snapfiles = cmf.utils.get_snapshots_in_dir(snapdir)
+    snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
     rel_energy_error = np.full_like(snapfiles, np.nan, dtype=float)
     snaptimes = np.full_like(snapfiles, np.nan, dtype=float)
     numfiles = len(snapfiles)
     for i, snapfile in enumerate(snapfiles):
         print("Running {:.2f}%                    ".format(i/(numfiles-1)*100), end="\r")
         snap = pygad.Snapshot(snapfile, physical=True)
-        snaptimes[i] = cmf.general.convert_gadget_time(snap)
+        snaptimes[i] = bgs.general.convert_gadget_time(snap)
         H = calculate_H(snap)
         if i == 0:
             H0 = H
@@ -79,5 +79,5 @@ ax[0].set_ylabel(r"$|(H-H_0)/H_0|$")
 #ax[1].set_ylabel("Residual (to fiducial)")
 ax[0].legend()
 ax[0].set_yscale("log")
-plt.savefig("{}/{}/energy_cons.png".format(cmf.FIGDIR, subfigdir))
+plt.savefig("{}/{}/energy_cons.png".format(bgs.FIGDIR, subfigdir))
 plt.show()

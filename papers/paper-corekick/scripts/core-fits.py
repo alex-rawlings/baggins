@@ -1,12 +1,10 @@
 import argparse
 import os
-from itertools import chain
 import numpy as np
 import matplotlib.pyplot as plt
-import cm_functions as cmf
+import baggins as bgs
 import figure_config
 import arviz as az
-
 
 parser = argparse.ArgumentParser(
     description="Plot core fits given a Stan sample",
@@ -35,22 +33,23 @@ parser.add_argument(
     "--verbosity",
     type=str,
     default="INFO",
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbosity",
     help="set verbosity level",
 )
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", args.verbosity)
+SL = bgs.setup_logger("script", args.verbosity)
 data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
 rng = np.random.default_rng(42)
 col_list = figure_config.color_cycle_shuffled.by_key()["color"]
 
+bgs.plotting.check_backend()
 
 if args.extract:
     main_path = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/density/mcs"
-    analysis_params = cmf.utils.read_parameters(
+    analysis_params = bgs.utils.read_parameters(
         "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml"
     )
 
@@ -77,11 +76,11 @@ if args.extract:
 
     # load the fits
     for subdir in subdirs:
-        csv_files = cmf.utils.get_files_in_dir(subdir, ext=".csv")[:4]
+        csv_files = bgs.utils.get_files_in_dir(subdir, ext=".csv")[-4:]
         try:
-            graham_model = cmf.analysis.GrahamModelHierarchy.load_fit(
+            graham_model = bgs.analysis.GrahamModelHierarchy.load_fit(
                 model_file=os.path.join(
-                    cmf.HOME,
+                    bgs.HOME,
                     "projects/collisionless-merger-sample/code/analysis_scripts/hierarchical_models/stan/density/graham_hierarchy.stan",
                 ),
                 fit_files=csv_files,
@@ -105,9 +104,9 @@ if args.extract:
                 data[k][gid] = graham_model.sample_generated_quantity(
                     f"{k}_posterior", state="OOS"
                 )
-    cmf.utils.save_data(data, data_file)
+    bgs.utils.save_data(data, data_file)
 else:
-    data = cmf.utils.load_data(data_file)
+    data = bgs.utils.load_data(data_file)
 
 
 def _helper(param_name, ax):
@@ -117,8 +116,6 @@ def _helper(param_name, ax):
     for k, v in data[param_name].items():
         if k == "__githash" or k == "__script":
             continue
-        if float(k) > 900:
-            break
         SL.info(f"Determining ratio for model {k}")
         kick_vels.append(float(k))
         v = v[~np.isnan(v)]
@@ -133,9 +130,11 @@ def _helper(param_name, ax):
         param,
         positions=kick_vels,
         showfliers=False,
+        whis=0,
         widths=40,
         manage_ticks=False,
         patch_artist=True,
+        showcaps=False,
     )
     for p in bp["boxes"]:
         p.set_facecolor(col_list[0])
@@ -145,9 +144,41 @@ def _helper(param_name, ax):
         m.set_color(p.get_facecolor())
         m.set_linewidth(2)
         m.set_alpha(1)
-    for w in chain(bp["whiskers"], bp["caps"]):
-        w.set_color("#373737")
+    for w in bp["whiskers"]:
+        w.set_alpha(0)
     return np.nanmedian(normalisation)
+
+
+def core_radius_relation(v):
+    """
+    Core radius relation, as determined by `core-dists.py`, and just plotted
+    here. Note that parameter values need to be set by hand!
+
+    Parameters
+    ----------
+    v : array-like
+        kick velocities normalised to the escape velocity
+
+    Returns
+    -------
+    : array-like
+        core radius
+    """
+    nu = 21.5
+    mu = 0.182
+    sigma = 0.601
+    k = 0.894
+    b = -34.5
+    c = 1.64
+    x = v / 1800
+    term1 = np.sqrt((nu - 2) / nu) * (
+        1 + ((x - mu) / (sigma * np.sqrt((nu - 2) / nu))) ** 2
+    ) ** (-(nu + 1) / 2)
+    term2 = np.sqrt(nu / (nu - 2)) * (
+        1 + ((x - mu) / (sigma * np.sqrt(nu / (nu - 2)))) ** 2
+    ) ** (-(nu + 1) / 2)
+    sigmoidfun = k / (1 + np.exp(-b * (x - mu)))
+    return (term1 + term2) / (2 * np.pi * sigma) - sigmoidfun + c
 
 
 xlabel = r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$"
@@ -161,7 +192,7 @@ if args.param == "all":
         g=r"$\gamma$",
     )
     fig, ax = plt.subplots(2, 3, sharex="all")
-    fig.set_figwidth(2 * fig.get_figwidth())
+    fig.set_figwidth(3 * fig.get_figwidth())
     fig.set_figheight(1.2 * fig.get_figheight())
     for axi in ax[-1, :]:
         axi.set_xlabel(xlabel)
@@ -190,7 +221,7 @@ elif args.param == "OOS":
     for k, v in data["R_OOS"].items():
         if k == "__githash" or k == "__script":
             continue
-        if k not in ("0000", "0240", "0480", "0720", "0900"):
+        if k not in ("0000", "0480", "0720", "0900", "1680"):
             continue
         SL.info(f"Determining density for model {k}")
         c = next(cgen)
@@ -233,6 +264,8 @@ else:
         )
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
+        x = np.linspace(*ax.get_xlim(), 500)
+        ax.plot(x, core_radius_relation(x), c=col_list[1])
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":
@@ -245,5 +278,5 @@ else:
         ax.set_ylabel(r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))")
     fname = f"{args.param}-kick.pdf"
 
-cmf.plotting.savefig(figure_config.fig_path(fname), force_ext=True)
-plt.show()
+bgs.plotting.savefig(figure_config.fig_path(fname), force_ext=True)
+# plt.show()

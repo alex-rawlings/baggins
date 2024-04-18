@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import seaborn as sns
 import pandas as pd
-import cm_functions as cmf
+import baggins as bgs
 import pygad
 
 sclw = 0.5
@@ -31,7 +31,7 @@ def extract_and_plot_point(attrs, xdkey="estimate", ydkey="estimate", zdkey="mer
     rawdat = []
     for i, c in enumerate(cubes):
         print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
-        cdc = cmf.analysis.ChildSimData.load_from_file(c)
+        cdc = bgs.analysis.ChildSimData.load_from_file(c)
 
         if not cdc.relaxed_remnant_flag: continue
 
@@ -61,7 +61,7 @@ def extract_and_plot_point(attrs, xdkey="estimate", ydkey="estimate", zdkey="mer
             p = sns.jointplot(data=df, x=xlabel, y=ylabel, hue=zlabel)
     else:
         alpha = [1, 0.4]
-        cols = cmf.plotting.mplColours()
+        cols = bgs.plotting.mplColours()
         for i, zi in enumerate(np.unique(df.loc[:,zlabel])):
             mask = df.loc[:,zlabel] == zi
             for j, b in enumerate((True, False)):
@@ -73,14 +73,14 @@ def extract_and_plot_point(attrs, xdkey="estimate", ydkey="estimate", zdkey="mer
         plt.ylabel(ylabel)
         if earlyreturn:
             return df
-    plt.savefig(os.path.join(cmf.FIGDIR, "analysis-explore/{}-{}.png".format(xlabel, ylabel)))
+    plt.savefig(os.path.join(bgs.FIGDIR, "analysis-explore/{}-{}.png".format(xlabel, ylabel)))
     return p, df
     #plt.show()
     #quit()
 
 
 if __name__ == "__main__":
-    cubes = cmf.utils.get_files_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/cubes", recursive=True)
+    cubes = bgs.utils.get_files_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/cubes", recursive=True)
     num_sims = len(cubes)
     call = 1
     
@@ -130,7 +130,7 @@ if __name__ == "__main__":
         attrs = ["virial_info", "relaxed_half_mass_radius", "merger_name"]
         jp,_ = extract_and_plot_point(attrs, xdkey="radius")
         rvir = np.linspace(300, 800, 1000)
-        jp.ax_joint.plot(rvir, cmf.literature.Kratsov13(rvir))
+        jp.ax_joint.plot(rvir, bgs.literature.Kratsov13(rvir))
         plt.show()
     
     if False:
@@ -142,7 +142,7 @@ if __name__ == "__main__":
         plt.xlim(1e13, 2e14)
         plt.xscale("log")
         plt.yscale("log")
-        plt.savefig(os.path.join(cmf.FIGDIR, "analysis-explore/{}-{}.png".format(attrs[0]+"_mass", attrs[1])))
+        plt.savefig(os.path.join(bgs.FIGDIR, "analysis-explore/{}-{}.png".format(attrs[0]+"_mass", attrs[1])))
     
     if False:
         print("Call {}".format(call))
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     if False:
         print("Call {}".format(call))
         call += 1
-        cols = cmf.plotting.mplColours()
+        cols = bgs.plotting.mplColours()
 
         fig, ax = plt.subplots(1,1)
         ax.axhline(np.pi/2, c="k", ls="--")
@@ -183,7 +183,7 @@ if __name__ == "__main__":
 
         for i, c in enumerate(cubes):
             print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
-            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            cdc = bgs.analysis.ChildSimData.load_from_file(c)
             #marker = "o" if cdc.binary_merger_remnant["merged"] else ""
             alpha = 0.9  if cdc.binary_merger_remnant["merged"] else 0.3
             ax.plot(cdc.snapshot_times, cdc.ang_mom_diff_angle, c=cols[int(cdc.binary_spin_flip)], alpha=alpha)
@@ -201,11 +201,11 @@ if __name__ == "__main__":
 
         fig, ax = plt.subplots(1,1)
         #colour lines by their age
-        cmapper, sm = cmf.plotting.create_normed_colours(0, 13.8e3)
+        cmapper, sm = bgs.plotting.create_normed_colours(0, 13.8e3)
 
         for i, c in enumerate(cubes):
             print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
-            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            cdc = bgs.analysis.ChildSimData.load_from_file(c)
             age = cdc.parent_quantities["perturb_time"] + cdc.binary_lifetime_timescale
             ax.loglog(cdc.radial_bin_centres["stars"], cdc.relaxed_density_profile["stars"], c=cmapper(age))
         plt.colorbar(sm)
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     
     if False:
         for c in cubes:
-            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            cdc = bgs.analysis.ChildSimData.load_from_file(c)
             myname = c.split("/")[-1]
             if cdc.relaxed_remnant_flag: break
         eb = [np.mean(e) for e in cdc.binding_energy_bins]
@@ -223,20 +223,20 @@ if __name__ == "__main__":
         plt.ylim(0, 1)
         plt.legend()
         plt.title(myname)
-        plt.savefig(os.path.join(cmf.FIGDIR, f"analysis-explore/{myname}-triaxial.png"))
+        plt.savefig(os.path.join(bgs.FIGDIR, f"analysis-explore/{myname}-triaxial.png"))
     
     if False:
         print("Call {}".format(call))
         call += 1
 
         fig, ax = plt.subplots(2,1, sharex="all", sharey="all")
-        gradplotM = cmf.plotting.GradientLinePlot(ax[0], cmap="plasma")
-        gradplotNM = cmf.plotting.GradientLinePlot(ax[1], cmap="plasma")
+        gradplotM = bgs.plotting.GradientLinePlot(ax[0], cmap="plasma")
+        gradplotNM = bgs.plotting.GradientLinePlot(ax[1], cmap="plasma")
 
         for i, c in enumerate(cubes):
             print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
             #if i>9:break
-            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            cdc = bgs.analysis.ChildSimData.load_from_file(c)
             #N_in_30pc = [len(v)/cdc.particle_count["stars"] for v in cdc.stellar_shell_inflow_velocity.values()]
             try:
                 if cdc.binary_merger_remnant["merged"]:
@@ -279,7 +279,7 @@ if __name__ == "__main__":
         for i, c in enumerate(cubes):
             #print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
             #if i>19:break
-            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            cdc = bgs.analysis.ChildSimData.load_from_file(c)
             try:
                 if not cdc.relaxed_remnant_flag:
                     print(f"\nWarning! \n{c} not relaxed")
@@ -317,7 +317,7 @@ if __name__ == "__main__":
 
     if False:
         radcut = 600
-        snaplist = cmf.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/C-D-3.0-0.005/perturbations/001/output")
+        snaplist = bgs.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/C-D-3.0-0.005/perturbations/001/output")
         escapers = np.full_like(snaplist, np.nan, dtype=float)
         for i, snapfile in enumerate(snaplist):
             if i < 50: continue
@@ -329,7 +329,7 @@ if __name__ == "__main__":
             vmag = pygad.utils.geo.dist(snap.stars[ballmask]["vel"])
             r = snap.stars[ballmask]["r"]
 
-            '''vesc_fun = cmf.analysis.escape_velocity(snap[ballmask])
+            '''vesc_fun = bgs.analysis.escape_velocity(snap[ballmask])
             vesc = vesc_fun(r)
             escapers[i] = np.sum(vmag>vesc)'''
             
@@ -338,13 +338,13 @@ if __name__ == "__main__":
             ax.set_ylabel("|v|/km/s")
 
             # escape velocity
-            vesc = cmf.analysis.escape_velocity(snap)
+            vesc = bgs.analysis.escape_velocity(snap)
             r_ = np.linspace(1e-1, radcut*0.99, 300)
             ax.plot(r_, vesc(r_), c="tab:red", label=r"$v_\mathrm{esc}$")
             #plt.hist(vmag, bins=np.arange(0, 3500, 100), histtype="step")
             #plt.yscale("log")
             plt.colorbar(p[3], label="Count")
-            ax.text(0.02, 0.955, f"{cmf.general.convert_gadget_time(snap):.2f} Gyr", ha="left", bbox={"ec":"k", "fc":"w"}, transform=ax.transAxes)
+            ax.text(0.02, 0.955, f"{bgs.general.convert_gadget_time(snap):.2f} Gyr", ha="left", bbox={"ec":"k", "fc":"w"}, transform=ax.transAxes)
             ax.legend()
             plt.show()
             quit()
@@ -361,7 +361,7 @@ if __name__ == "__main__":
         for i, c in enumerate(cubes):
             print("Reading cubes: {:.1f}%                              ".format(i/(num_sims-1)*100), end="\r")
             #if i>19:break
-            cdc = cmf.analysis.ChildSimData.load_from_file(c)
+            cdc = bgs.analysis.ChildSimData.load_from_file(c)
             if not cdc.relaxed_remnant_flag:
                     print(f"\nWarning! \n{c} not relaxed")
                     continue

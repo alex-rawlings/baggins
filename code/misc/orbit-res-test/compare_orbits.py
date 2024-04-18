@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 
 main_path = "/scratch/pjohanss/arawling/collisionless_merger/res-tests/"
@@ -10,7 +10,7 @@ orbits = ["0-001", "0-005", "0-030", "0-180", "1-000"]
 
 kpc = ketjugw.units.pc * 1e3
 
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 fig, ax = plt.subplots(1, 1)
 ax.set_aspect("equal")
 ax.set_xlabel('x/kpc')

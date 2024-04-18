@@ -4,7 +4,7 @@ import pandas as pd
 import scipy.stats, scipy.spatial.transform
 import matplotlib.pyplot as plt
 import seaborn as sns
-import cm_functions as cmf
+import baggins as bgs
 
 
 main_data_path = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/pickle/bh_perturb/"
@@ -25,12 +25,12 @@ ax[0].set_yscale("log")
 ax[1].set_yscale("log")
 ax[0].set_title("Position")
 ax[1].set_title("Velocity")
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 name_list = []
 Astat_pos = np.full((len(data_files), 3), np.nan, dtype=float)
 Astat_vel = np.full_like(Astat_pos, np.nan)
 for i, datafile in enumerate(data_files):
-    data_dict = cmf.utils.load_data(os.path.join(main_data_path, datafile))
+    data_dict = bgs.utils.load_data(os.path.join(main_data_path, datafile))
     if apply_rotation:
         rotation_quat = scipy.spatial.transform.Rotation.random()
         print(rotation_quat.as_quat())
@@ -68,16 +68,16 @@ if apply_rotation:
     suffix="random"
 else:
     suffix="iso"
-fig.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/anderson_{}.png".format(suffix)))
+fig.savefig(os.path.join(bgs.FIGDIR, "brownian/along_axes/anderson_{}.png".format(suffix)))
 
 #plot the displacement and velocity magnitudes, with a kernel-density estimate
 px = sns.jointplot(data=dataframe, x="x", y="vx", hue="name")
 px.set_axis_labels("x Displacement [kpc]", "x-Velocity [km/s]")
-px.figure.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/x_{}.png".format(suffix)))
+px.figure.savefig(os.path.join(bgs.FIGDIR, "brownian/along_axes/x_{}.png".format(suffix)))
 py = sns.jointplot(data=dataframe, x="y", y="vy", hue="name")
 py.set_axis_labels("y Displacement [kpc]", "y-Velocity [km/s]")
-py.figure.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/y_{}.png".format(suffix)))
+py.figure.savefig(os.path.join(bgs.FIGDIR, "brownian/along_axes/y_{}.png".format(suffix)))
 pz = sns.jointplot(data=dataframe, x="z", y="vz", hue="name")
 pz.set_axis_labels("z Displacement [kpc]", "z-Velocity [km/s]")
-pz.figure.savefig(os.path.join(cmf.FIGDIR, "brownian/along_axes/z_{}.png".format(suffix)))
+pz.figure.savefig(os.path.join(bgs.FIGDIR, "brownian/along_axes/z_{}.png".format(suffix)))
 plt.show()

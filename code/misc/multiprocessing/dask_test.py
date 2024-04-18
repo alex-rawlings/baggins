@@ -3,7 +3,7 @@ from dask.distributed import Client, LocalCluster
 import dask
 import time
 from datetime import datetime
-import cm_functions as cmf
+import baggins as bgs
 
 def myfunc(j, n):
     def _f(i, n):
@@ -25,7 +25,7 @@ def myfunc(j, n):
 
 
 if __name__ == "__main__":
-    print(cmf.utils.get_cpu_count())
+    print(bgs.utils.get_cpu_count())
     now = datetime.now()
     r = myfunc(9, 3)
     print(f"Execution: {datetime.now()-now}")

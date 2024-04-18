@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import rcParams
 import yaml
 
-import cm_functions as cmf
+import baggins as bgs
 
 parser = argparse.ArgumentParser(
     description="Compare Graham density fits of different mergers", allow_abbrev=False
@@ -28,17 +28,17 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbose",
     default="INFO",
     help="verbosity level",
 )
 args = parser.parse_args()
 
-SL = cmf.setup_logger("script", console_level=args.verbose)
+SL = bgs.setup_logger("script", console_level=args.verbose)
 
 if args.publish:
-    cmf.plotting.set_publishing_style()
+    bgs.plotting.set_publishing_style()
     full_figsize = rcParams["figure.figsize"]
     full_figsize[0] *= 2
 else:
@@ -54,15 +54,15 @@ with open(args.files, "r") as f:
 try:
     for i, (k, f) in enumerate(stan_files[f"family-{args.fam}"].items()):
         models.append(
-            cmf.analysis.StanModel.load_fit(
+            bgs.analysis.StanModel.load_fit(
                 stan_model_file, f["stan"], figname_base=figname_base
             )
         )
         if args.cvar == "rperi":
             colour_var.append(float(k.split("-")[-1]))
         elif args.cvar == "res":
-            c = cmf.utils.get_files_in_dir(f["cube"])[0]
-            _hmq = cmf.analysis.HMQuantitiesBinaryData.load_from_file(c)
+            c = bgs.utils.get_files_in_dir(f["cube"])[0]
+            _hmq = bgs.analysis.HMQuantitiesBinaryData.load_from_file(c)
             # TODO give actual values instead of fraction?
             s = k.split("-")[0]
             if len(s) == 1:
@@ -80,10 +80,10 @@ except KeyError:
     raise
 SL.debug(f"Colour values are {colour_var}")
 
-fig, ax = cmf.plotting.create_odd_number_subplots(
+fig, ax = bgs.plotting.create_odd_number_subplots(
     2, 3, fkwargs={"figsize": full_figsize}
 )
-fig2, ax2 = cmf.plotting.create_odd_number_subplots(
+fig2, ax2 = bgs.plotting.create_odd_number_subplots(
     2, 3, fkwargs={"figsize": full_figsize}
 )
 ax[3].set_xscale("log")
@@ -109,7 +109,7 @@ for axi, xl in zip(ax2, xlabels):
     axi.set_ylabel(xl)
     axi.set_xscale("log")
 
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 
 for i, (m, cv) in enumerate(zip(models, colour_var)):
     m.plot_generated_quantity_dist(
@@ -137,18 +137,18 @@ else:
     legend_title = ""
 ax[-1].legend(title=legend_title)
 
-cmf.plotting.savefig(
-    os.path.join(cmf.FIGDIR, f"{figname_base}_{args.fam}_gqs_{args.cvar}.png"), fig=fig
+bgs.plotting.savefig(
+    os.path.join(bgs.FIGDIR, f"{figname_base}_{args.fam}_gqs_{args.cvar}.png"), fig=fig
 )
-cmf.plotting.savefig(
-    os.path.join(cmf.FIGDIR, f"{figname_base}_{args.fam}_gqs_{args.cvar}_2d.png"),
+bgs.plotting.savefig(
+    os.path.join(bgs.FIGDIR, f"{figname_base}_{args.fam}_gqs_{args.cvar}_2d.png"),
     fig=fig2,
 )
 
 if args.cvar == "rperi":
     # compare latent parameter distributions to observations
     fig, ax = plt.subplots(1, 3)
-    sersic_n = cmf.literature.LiteratureTables("sahu_2020")
+    sersic_n = bgs.literature.LiteratureTables("sahu_2020")
     sersic_n.scatter("logM*_sph", "n_maj", ax=ax[0])
     sersic_n.scatter("logM*_sph", "Re_maj_kpc", ax=ax[1])
     errbar_kwargs = {"fmt": "o", "ls": "", "elinewidth": 1}

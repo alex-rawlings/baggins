@@ -3,7 +3,7 @@ import scipy.optimize
 import os.path
 import matplotlib.pyplot as plt
 import ketjugw
-import cm_functions as cmf
+import baggins as bgs
 
 
 low_e = "/scratch/pjohanss/arawling/collisionless_merger/mergers/nasim/stars_only_low_e"
@@ -26,11 +26,11 @@ ax.set_yscale("log")
 for d, lab in zip((low_e, high_e), (r"$e_0=0.9$", "$e_0>0.99$")):
     ecc_std = []
     for res in ("PR", "LR", "MR", "HR"):
-        ketju_files = cmf.utils.get_ketjubhs_in_dir(os.path.join(d, res))
+        ketju_files = bgs.utils.get_ketjubhs_in_dir(os.path.join(d, res))
         ecc_std_temp = []
         for k in ketju_files:
             try:
-                bh1, bh2, merged = cmf.analysis.get_bound_binary(k)
+                bh1, bh2, merged = bgs.analysis.get_bound_binary(k)
             except:
                 print(f"No bound binary in {k}, skipping")
                 continue
@@ -47,5 +47,5 @@ for d, lab in zip((low_e, high_e), (r"$e_0=0.9$", "$e_0>0.99$")):
 ax.legend()
 ax.set_title("Star-only Hernquist mergers")
 ax.text(0.1, 0.1, r"$f(x;k)=\frac{k}{\sqrt{x+k^2}}$", transform=ax.transAxes, fontsize=20)
-cmf.plotting.savefig(os.path.join(cmf.FIGDIR, "nasim_style_plot.png"))
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "nasim_style_plot.png"))
 plt.show()

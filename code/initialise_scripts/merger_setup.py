@@ -2,7 +2,7 @@ import argparse
 import os.path
 import re
 import numpy as np
-import cm_functions as cmf
+import baggins as bgs
 
 
 parser = argparse.ArgumentParser(
@@ -34,7 +34,7 @@ parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
-    choices=cmf.VERBOSITY,
+    choices=bgs.VERBOSITY,
     dest="verbose",
     default="INFO",
     help="verbosity level",
@@ -42,14 +42,14 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-SL = cmf.setup_logger("script", console_level=args.verbose)
+SL = bgs.setup_logger("script", console_level=args.verbose)
 rng = np.random.default_rng()
 
 
 if args.method == "new":
     if args.batch == 1:
         # set up a single merger
-        merger = cmf.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
+        merger = bgs.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
         merger.setup()
     else:
         # set up a number of mergers where the galaxy ICs have been created
@@ -68,7 +68,7 @@ if args.method == "new":
             for s2 in suffixes[i : args.batch]:
                 # create a new parameter file for each realisation
                 try:
-                    new_filename = cmf.utils.create_file_copy(
+                    new_filename = bgs.utils.create_file_copy(
                         args.paramfile, suffix=f"_{s1}{s2}", exist_ok=False
                     )
                 except AssertionError:
@@ -147,18 +147,18 @@ if args.method == "new":
                             )
                             raise
                     # overwrite copied parameter file
-                    cmf.utils.overwrite_parameter_file(f, contents)
+                    bgs.utils.overwrite_parameter_file(f, contents)
                 SL.warning(f"File {new_filename} created")
                 # generate the merger
-                merger = cmf.initialise.MergerIC(new_filename, exist_ok=args.overwrite)
+                merger = bgs.initialise.MergerIC(new_filename, exist_ok=args.overwrite)
                 merger.setup()
 elif args.method == "field":
     if args.batch > 1:
         SL.error("Perturbation methods can only be performed for non-batch mode.")
-    merger = cmf.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
+    merger = bgs.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
     merger.perturb_field_particle()
 else:
     if args.batch > 1:
         SL.error("Perturbation methods can only be performed for non-batch mode.")
-    merger = cmf.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
+    merger = bgs.initialise.MergerIC(args.paramfile, exist_ok=args.overwrite)
     merger.perturb_bhs()

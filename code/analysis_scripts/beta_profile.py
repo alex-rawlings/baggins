@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 # set up the command line arguments
@@ -47,7 +47,7 @@ parser.add_argument(
     type=str,
     help="figure directory",
     dest="figpath",
-    default="{}/beta/".format(cmf.FIGDIR),
+    default="{}/beta/".format(bgs.FIGDIR),
 )
 parser.add_argument(
     "-fn", "--figname", type=str, help="figure name", dest="figname", default="beta"
@@ -78,7 +78,7 @@ else:
     gridspec = {}
 
 if args.all:
-    snapfiles = cmf.utils.get_snapshots_in_dir(args.path)
+    snapfiles = bgs.utils.get_snapshots_in_dir(args.path)
 else:
     snapfiles = [os.path.join(args.path, p) for p in args.files]
 
@@ -87,7 +87,7 @@ for i, snapfile in enumerate(snapfiles):
         print("Reading: {}".format(snapfile))
     snap = pygad.Snapshot(snapfile)
     snap.to_physical_units()
-    snaptime = cmf.general.convert_gadget_time(snap)
+    snaptime = bgs.general.convert_gadget_time(snap)
     if i == 0:
         number_of_systems = len(snap.bh["ID"])
         snaptimes = np.full_like(snapfiles, np.nan, dtype=float)
@@ -109,15 +109,15 @@ for i, snapfile in enumerate(snapfiles):
                 squeeze=False,
                 gridspec_kw=gridspec,
             )
-            star_id_masks = cmf.analysis.get_all_id_masks(snap)
+            star_id_masks = bgs.analysis.get_all_id_masks(snap)
         lower_beta = 100
     snaptimes[i] = snaptime
 
     # recentre
-    xcom = cmf.analysis.get_com_of_each_galaxy(
+    xcom = bgs.analysis.get_com_of_each_galaxy(
         snap, masks=star_id_masks, verbose=args.verbose
     )
-    vcom = cmf.analysis.get_com_velocity_of_each_galaxy(
+    vcom = bgs.analysis.get_com_velocity_of_each_galaxy(
         snap, xcom=xcom, masks=star_id_masks, verbose=args.verbose
     )
     for ind, idx in enumerate(snap.bh["ID"]):
@@ -129,10 +129,10 @@ for i, snapfile in enumerate(snapfiles):
         else:
             subsnap = snap.stars[star_id_masks[idx]]
         # determine spherical velocity and beta
-        vspherical = cmf.mathematics.spherical_components(
+        vspherical = bgs.mathematics.spherical_components(
             subsnap["pos"], subsnap["vel"]
         )
-        beta_r, radbins, bincount = cmf.analysis.beta_profile(
+        beta_r, radbins, bincount = bgs.analysis.beta_profile(
             subsnap["r"], vspherical, args.binwidth
         )
         this_lower_beta = np.quantile(beta_r, plot_quantile_min)
@@ -144,7 +144,7 @@ for i, snapfile in enumerate(snapfiles):
             bincount[bincount < 1] = 1
             sigma = 1 / np.sqrt(bincount)
             params_opt, params_cov = scipy.optimize.curve_fit(
-                cmf.literature.OsipkovMerritt,
+                bgs.literature.OsipkovMerritt,
                 radbins,
                 beta_r,
                 p0=[1],
@@ -166,7 +166,7 @@ for i, snapfile in enumerate(snapfiles):
                 radbins, beta_r, s=labsize, c=s.get_facecolor(), zorder=10 + ind
             )
         if args.osipkovmerritt:
-            om_values = cmf.literature.OsipkovMerritt(radbins, *params_opt)
+            om_values = bgs.literature.OsipkovMerritt(radbins, *params_opt)
             ax[0][ind].plot(
                 radbins,
                 om_values,

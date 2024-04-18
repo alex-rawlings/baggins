@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import pygad
-import cm_functions as cmf
+import baggins as bgs
 
 
 runs = dict(
@@ -16,9 +16,9 @@ runs = dict(
 
 softenings = {"stars":0.005, "dm":0.3, "bh":0.005}
 
-SL = cmf.setup_logger("script", console_level="DEBUG")
+SL = bgs.setup_logger("script", console_level="DEBUG")
 
-cols = cmf.plotting.mplColours()
+cols = bgs.plotting.mplColours()
 
 hamiltonian_dat = {"run":[], "H":[]}
 
@@ -26,10 +26,10 @@ for i, (key, dir) in enumerate(runs.items()):
     subdirs = [d.path for d in os.scandir(dir) if os.path.isdir(d)]
     for j, subdir in enumerate(subdirs):
         SL.debug(f"Reading from subdir {subdir}")
-        snapfiles = cmf.utils.get_snapshots_in_dir(subdir)
+        snapfiles = bgs.utils.get_snapshots_in_dir(subdir)
         if not snapfiles:
             continue
-        perturb_idx = cmf.analysis.snap_num_for_time(snapfiles, 10)
+        perturb_idx = bgs.analysis.snap_num_for_time(snapfiles, 10)
         snap = pygad.Snapshot(snapfiles[perturb_idx], physical=True)
         bhsep = pygad.utils.geo.dist(snap.bh["pos"][0,:], snap.bh["pos"][1,:])
         assert bhsep > 10
@@ -39,7 +39,7 @@ for i, (key, dir) in enumerate(runs.items()):
         translation = pygad.Translation(-snap.bh[bhid_mask]["pos"].flatten())
         translation.apply(snap, total=True)
         # TODO is this being affected by some extreme value from DM or a BH?
-        hamiltonian_dat["H"] = cmf.analysis.calculate_Hamiltonian(snap)
+        hamiltonian_dat["H"] = bgs.analysis.calculate_Hamiltonian(snap)
         SL.debug(f"Hamiltonian:\n{hamiltonian_dat['H'][-1]}")
         hamiltonian_dat["run"].append(key)
         pygad.gc_full_collect()
