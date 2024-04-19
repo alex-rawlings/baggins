@@ -170,7 +170,6 @@ Additionally, we use hierarchical time integration, which allows for symmetric i
 \ketju{} also includes post-Newtonian (PN) correction terms up to order 3.5 between each pair of SMBHs \citep{blanchet2014} and the fitting formula of \citet{zlochower2015} for recoil kick velocity, making \ketju{} a particularly well-suited code for investigating the consequence of SMBH recoil self-consistently in a galaxy merger environment. 
 
 \subsection{Initial Conditions}
-\drafting{Rantala 2018 ICs}
 We model the merger of two gas-free elliptical galaxies using gas-free merger simulations.
 Our galaxy initial conditions are chosen similarly to the model IC-3 presented in \citet{rantala2019}, however with different stellar density slope. 
 The galaxy is thus represented as an isotropic multicomponent sphere, and consists of a stellar component of total mass $M_\star\sim 1.38\times10^{11}\,\Msun$ embedded within a DM component of total mass $M_\mathrm{DM}=2.5\times10^{13}\,\Msun$.
@@ -221,15 +220,6 @@ For all simulations, interactions between stellar particles are softened with a 
 % RESULTS
 \section{Results}\label{sec:results}
 
-\drafting{
-    Main points to hammer home:
-    \begin{enumerate}
-        \item Core radius, break density, sersic index have a dependence on the kick velocity, whereas other parameters (e.g. effective radius) do not.
-        \item Increasing kick velocity induces a decrease in the overall $\langle h_4 \rangle$ profile
-        \item Explanation of h4 trends through orbit decompostion.
-    \end{enumerate}
-}
-
 \subsection{Infall time}
 \drafting{
     \textbf{Atte's section}. Would be good to have:
@@ -260,14 +250,23 @@ For all simulations, interactions between stellar particles are softened with a 
 
 
 \subsection{Mass density profiles in three dimensions}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.4\textwidth]{density_3d}
+    \caption{
+        Three dimensional stellar mass density, with the line colour corresponding to the kick velocity of the SMBH. 
+        All simulations with $\vk \geq 0.5v_\mathrm{esc}=900\,\kmps$ share the same colour, as there is little variation in the profiles for these kick velocities. 
+        A clear dichotomy is revealed in the mass profiles, whereby high kick velocoties induce a core, and low kick velocities do not, with a sudden transition at \drafting{$\vk=600\,\kmps$}.
+        }
+    \label{fig:density3d}
+\end{figure}
 Before considering the projected, 2D stellar mass density profiles of the merger remnants, we investigate the 3D stellar mass distribution.
 This alleviates the influence of projection effects on inferring if a core has formed during the BH binary merger process, and gives insight into the dependence of how matter is spatially distributed as a function of the recoiling SMBH kick velocity.
-We observe a clear dichotomy in the 3D spatial distribution of stellar mass, with mergers that had an SMBH with a kick velocity $\vk<540\,\kmps$ having more mass in the central $2\,\mathrm{kpc}$ than those mergers with $\vk>540\,\kmps$. 
+In \autoref{fig:density3d}, we observe a clear dichotomy in the 3D spatial distribution of stellar mass, with mergers that had an SMBH with a kick velocity $\vk<540\,\kmps$ having more mass in the central $2\,\mathrm{kpc}$ than those mergers with $\vk>540\,\kmps$. 
 All merger remnants have a consistent mass density distribution at $r>2\,\mathrm{kpc}$. 
+Additionally, for kick velocities $\vk<540\,\kmps$, we observe a gradient in decreasing central stellar density with increasing kick velocity.
+
 The reasons for the dichotomy are discussed further in \drafting{section}, however we continue our analysis using the projected stellar density (as an observer would see) with the knowledge that there is \textit{a} dependence of the removal of central stellar mass on the SMBH kick velocity. 
-
-\drafting{INCLUDE FIGURE HERE}
-
 
 
 \subsection{Projected mass density profiles}
@@ -295,47 +294,15 @@ This resulted in 2000 draws from the posterior distribution of $\vb{\theta}$, wh
 We perform additional prior sensitivity tests using the power scaling method described in \citet{kallioinen21}, ensuring that the cumulative Jensen-Shannon (CJS) divergence is less than 0.05 for the latent parameters $\vb{\theta}$ of the model. 
 This recommended threshold indicates that the sampled posterior distributions of the latent parameters are not sensitive to the particular prior distributions used.
 
-In agreement with previous studies \citep{nasim2021b}, we find an increase in the core radius $\rb$ with kick velocity.
-\drafting{Need to check if others discuss this:} We find that the core radius saturates to a value of $\sim2$ times that of the merger remnant with no kick velocity by $\vk = 600\,\kmps$, corresponding to $0.3 v_\mathrm{esc}$. 
-As shown in \autoref{fig:csparams}, the density at the core radius $\Sigma_\mathrm{b}$ decreases monotonically with kick velocity, consistent with the picture of the kicked SMBH removing more mass the more number of oscillations it is able to undergo before settling to Brownian motion limits. 
-Interestingly, we observe a similar decrease in S\'ersic index $n$ with increasing kick velocity, although no correlation is seen between $n$ and $\Sigma_\mathrm{b}$ in the latent parameter corner plots (see for example \autoref{fig:csparams}).
+In agreement with previous studies \citep{nasim2021b} \drafting{others?}, we find an increase in the core radius $\rb$ with kick velocity, however only up to a given kick velocity.
+We find that unlike the results of \citet{nasim2021b}, where core radius monotonically increases with kick velocity, we observe a peak in core radius occurring at $480\,\kmps$, with the core radii measured from simulations with kick velocities in excess of $480\,\kmps$ plateauing at $\rb\sim1.75 r_{\mathrm{b},0}$.
+We caution however that the systems in the study of \citet{nasim2021b} differ from ours in both structure, and the time of the analysis.
+Whereas we use a fixed time following the SMBH binary coalescence for our analysis, \citet{nasim2021b} wait until either the ejected SMBH settles back to the CoM, or $2\,\mathrm{Gyr}$ has passed.
+\drafting{As discussed in section \textbf{Atte}, we find relaxation increasingly dominates our merger remnants with increasing time.}
+As a result, a direct comparison between this work and that of \citet{nasim2021b} cannot be made.
 
-\subsection{Predicted core size distribution}
-To predict the distribution of core sizes, we require a mapping from the kick velocity to the core radius. 
-Previous work by \citet{nasim2021b} fit a power law of the form:
-\begin{equation}\label{eq:vkrb_nasim}
-    \frac{\rb}{r_{\mathrm{b},0}} = K (v')^\beta + 1
-\end{equation}
-where $v'=\vk/v_\mathrm{esc}$, and $K$ and $\beta$ are free parameters.
-We see immediately that \autoref{eq:vkrb_nasim} does not capture the peak in the data at \drafting{$600\kmps$}, and so opt for an alternative form.
-We fit a function that is the sum of a modified $t$-distribution with a sigmoid function, and takes the form:
-\begin{equation}\label{eq:vkrb}
-    \frac{\rb}{r_{\mathrm{b},0}} = \frac{A(v'; \mu,\nu,\sigma)+B(v'; \mu,\nu,\sigma)}{2\pi\sigma} - S(v';k,b,\mu) + c,
-\end{equation}
-where
-\begin{equation}
-    A(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu-2}{\nu}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu-2}{\nu}}} \right)^2 \right)^{-(\nu + 1)/2},
-\end{equation}
-and
-\begin{equation}
-    B(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu}{\nu-2}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu}{\nu-2}}} \right)^2 \right)^{-(\nu + 1)/2},
-\end{equation}
-and
-\begin{equation}
-    S(v';k,b,\mu) = \frac{k}{1 + \exp(-b (v'-\mu))}.
-\end{equation}
-Hence \autoref{eq:vkrb} takes six free parameters ($\mu$, $\nu$, $\sigma$, $k$, $b$, $c$), which we constrain using the median trend of the $vk/v_\mathrm{esc}$--$\rb$ relation in \autoref{fig:vkrb}, and plot with an orange line. 
-
-Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal spin alignment (their Fig. 15, right panel).
-The dimensionless spin parameter $\alpha_\bullet$ for the dry mergers follows a beta distribution, namely:
-\begin{equation}
-    P_\mathrm{Zlochower}(\alpha_\bullet) \propto (1-\alpha_\bullet)^{4.66884-1} \alpha_\bullet^{10.5868-1}.
-\end{equation}
-The range of kick velocities predicted by the model varies from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$ \drafting{check this}.
-Using transformation sampling allows us to obtain a distribution of core radii predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}.
-We find that the mode of the forward-folded core radius distribution is $1.64\,\mathrm{kpc}$ ($3.12\,r_{\mathrm{b},0}$).
-Thus, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, most massive elliptical galaxies should have a non-negligible core \drafting{add references}. 
-
+Complimentary to the peak in core radius at $480\,\kmps$, we observe a dip in the projected density at the core radius $\Sigma_\mathrm{b}$ at this same kick velocity in \autoref{fig:csparams}.
+The effective radius $\Reff$ and core density slope $\gamma$ are relatively robust to the SMBH recoil velocity.
 
 \begin{table}
     \caption{Hyperparameter distributions for core-S\'ersic model. $\mathcal{N}$ indicates a normal distribution, $\mathrm{Exp}(\lambda)$ indicates an exponential distribution.}
@@ -380,16 +347,76 @@ Thus, assuming the \citet{zlochower2015} model to be a reasonable description of
     \centering
     \includegraphics[width=0.4\textwidth]{rb-kick}
     \caption{
-        Bayesian estimate of the merger remnant core size $r_b$, scaled to the core size of the pre-merger remnant $r_{b,0}$, as a function of kick velocity $\vk$.
+        Bayesian estimate of the merger remnant core size $r_b$, scaled to the core size of the pre-merger remnant $r_{\mathrm{b},0}$, as a function of kick velocity $\vk$.
         The core size distributions are shown as box plots, with the median core size indicated by the central mark.
         Larger kick velocities are correlated with larger core sizes. Additionally, a greater spread in the distribution of core sizes over different viewing projections of the merger remnant is associated with larger kick velocities.}
     \label{fig:vkrb}
 \end{figure}
 
+
+\subsection{Predicted core size distribution}
+\drafting{Would a Gaussian process fit be better motivated here?}
+To predict the distribution of core sizes, we require a mapping from the kick velocity to the core radius. 
+Previous work by \citet{nasim2021b} fit a power law of the form:
+\begin{equation}\label{eq:vkrb_nasim}
+    \frac{\rb}{r_{\mathrm{b},0}} = K v'^\beta + 1
+\end{equation}
+where $v'=\vk/v_\mathrm{esc}$, and $K$ and $\beta$ are free parameters.
+We see immediately that \autoref{eq:vkrb_nasim} does not capture the peak in the data at $480\kmps$, and so opt for an alternative form.
+We fit a function that is the sum of a modified $t$-distribution with a sigmoid function, and takes the form:
+\begin{equation}\label{eq:vkrb}
+    \frac{\rb}{r_{\mathrm{b},0}} = \frac{A(v'; \mu,\nu,\sigma)+B(v'; \mu,\nu,\sigma)}{2\pi\sigma} - S(v';k,b,\mu) + c,
+\end{equation}
+where
+\begin{equation}
+    A(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu-2}{\nu}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu-2}{\nu}}} \right)^2 \right)^{-(\nu + 1)/2},
+\end{equation}
+and
+\begin{equation}
+    B(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu}{\nu-2}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu}{\nu-2}}} \right)^2 \right)^{-(\nu + 1)/2},
+\end{equation}
+and
+\begin{equation}
+    S(v';k,b,\mu) = \frac{k}{1 + \exp(-b (v'-\mu))}.
+\end{equation}
+Hence \autoref{eq:vkrb} takes six free parameters ($\mu$, $\nu$, $\sigma$, $k$, $b$, $c$), which we constrain using the median trend of the $vk/v_\mathrm{esc}$--$\rb$ relation in \autoref{fig:vkrb}, and assume a normally-distributed scatter $\tau$.
+The fit is plotted with an orange line in \autoref{fig:vkrb}, and the values of the fitted parameters are given in \autoref{tab:vkrb}.
+
+\begin{table}
+    \caption{Values of the fitted parameters in the core radius -- kick velocity relation in \autoref{eq:vkrb}.}
+    \label{tab:vkrb}
+    \begin{tabular}{lccc}
+        \hline
+        Parameter & Median & IQR & Constraints \\
+        \hline
+        $\mu$ & 0.182 & 0.0427 & $\geq 0$ \\
+        $\nu$ & 21.5 & 11.9 & $\geq 0$ \\
+        $\sigma$ & 0.601 & 0.298 & $\geq 0$ \\
+        $k$ & 0.894 & 0.189 & $\geq 0$ \\
+        $b$ & -34.5 & 30.9 & $\leq 0$ \\
+        $c$ & 1.64 & 0.0661 & $\geq 0$ \\
+        $\tau$ & 0.170 & 0.0336 & $\geq 0$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+
+Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal spin alignment (their Fig. 15, right panel).
+The dimensionless spin parameter $\alpha_\bullet$ for the dry mergers follows a beta distribution, namely:
+\begin{equation}
+    P_\mathrm{Zlochower}(\alpha_\bullet) \propto (1-\alpha_\bullet)^{4.66884-1} \alpha_\bullet^{10.5868-1}.
+\end{equation}
+The range of kick velocities predicted by the model varies from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$ \drafting{check this}.
+Using transformation sampling allows us to obtain a distribution of core radii predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}.
+We find that the mode of the forward-folded core radius distribution is $1.64\,\mathrm{kpc}$ ($3.12\,r_{\mathrm{b},0}$).
+Thus, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, most massive elliptical galaxies should have a non-negligible core \drafting{add references}. 
+
+
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{rb_pdf}
-    \caption{Probability density function of transformation sampled core radius. The SMBH kick velocity is Monte Carlo sampled from the \citet{zlochower2015} relation assuming randomly-aligned azimuthal spins, and pushed through the fitted model in \autoref{eq:vkrb}. The predicted kick velocities range from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$. \drafting{check this}}
+    \caption{Probability density function of transformation sampled core radius. The SMBH kick velocity is Monte Carlo sampled from the \citet{zlochower2015} relation assuming randomly-aligned azimuthal spins, and pushed through the fitted model in \autoref{eq:vkrb}. The predicted kick velocities range from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$. \drafting{check this}
+    The asymmetry at $\rb/r_{\mathrm{b},0}\simeq 1$ is due to the low kick velocities producing a modest core, as seen in \autoref{fig:vkrb}.}
     \label{fig:rb_pdf}
 \end{figure}
 
@@ -416,51 +443,24 @@ where $w \equiv (v_\mathrm{LOS} - V)/\sigma$, and the Hermite polynomials $H_3$ 
 \end{align}
 A recent comprehensive study of LOS velocity distribution fitting applied to elliptical galaxies can be found in \citet{mehrgan2023}.
 
-We observe a trend of the Voronoi bins with $h_4<0$ extending to larger radii for remnants with larger recoil kicks than for those remnants with smaller recoil kicks.
-To quantify this recoil velocity dependence, we calculate the cumulative $h_4$ parameter:
-\begin{equation}
+For the parallel projections, we do not observe a systematic variation in $h_4$ with increasing kick velocity.
+To quantify the radial dependence of $h_4$, we calculate the cumulative $h_4$ parameter:
+\begin{equation}\label{eq:h4}
     \langle h_4 \rangle = \sum_i^N h_4(R_i)
 \end{equation}
-We observe an overall shift to more negative values of $h_4$ for kick velocities up until $\vk\sim400\,\kmps$ \drafting{check this, currently just read off plot}, above which the radial $h_4$ profile is not sensitive to increasing kick velocity. 
-Additionally, all $h_4$ profiles are radially decreasing, obtaining a local minimum at $R\simeq 2\,\mathrm{kpc}$ ($R/\Reff\simeq 0.2$), and a modestly increasing for $R \gtrsim 2\,\mathrm{kpc}$.
-
-\drafting{Jens: maybe you have some thoughts\dots Why is this 
-\begin{enumerate}
-    \item saturating beyond some point,
-    \item displaying a dip at 0.2 Re??
-\end{enumerate}
-}
-
-
-\begin{figure*}
-    \centering
-    \includegraphics[width=\textwidth]{IFU_v0000}
-    \caption{
-        Mock integral field unit kinematic maps of the $\vk=0\,\kmps$ remnant, plotted out to $0.5\,\Reff$. 
-        Note the small magnitude of the unordered rotation $V$, and the centrally-concentrated velocity dispersion $\sigma$.
-        The majority of the merger remnant within this aperture has $h_4>0$, with a small concentration of $h_4<0$ in an annulus about the central regions.
-    }
-    \label{fig:IFU0}
-\end{figure*}
-
-\begin{figure*}
-    \centering
-    \includegraphics[width=\textwidth]{IFU_v0900}
-    \caption{
-        Mock integral field unit kinematic maps of the $\vk=900\,\kmps$ remnant, again plotted out to $0.5\,\Reff$, with the same colour scaling as \autoref{fig:IFU0}. 
-        Contrasting to the $\vk=0\,\kmps$ case in \autoref{fig:IFU0}, this IFU map has a much greater extent of $h_4<0$ that also reaches more extreme values of $h_4$. 
-    }
-    \label{fig:IFU900}
-\end{figure*}
+As shown in \autoref{fig:h4}, for the parallel projections, we do not observe a systematic variation in $h_4$ with increasing kick velocity.
+Conversely, for the orthogonal projections, we observe a dichotomy similar to that seen in \autoref{fig:density3d}, with the bifurcation occurring at a similar kick velocity, here $600\,\kmps$. 
+Within the two partitions of the bifurcation, there is no apparent dependence on kick velocity.
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.4\textwidth]{h4}
+    \includegraphics[width=0.5\textwidth]{h4}
     \caption{
-        Plot of the flux-weighted value of $h_4$ as a function of mean bin distance $R$for each merger remnant simulated.
-        The lines are coloured by the kick velocity. 
-        Immediately apparent is the decrease in $\langle h_4 \rangle$ with increasing $\vk$.
-        All merger remnants have a global minimum in $\langle h_4 \rangle$ at $R\simeq 2.0$, corresponding to $R/\Reff\simeq0.2$.
+        Cumulative $h_4$ parameter, as defined in \autoref{eq:h4}, for the parallel (top panel) and orthogonal (bottom panel) projections.
+        Similar to \autoref{fig:density3d}, simulations with $\vk\geq 900\,\kmps$ have a consistent colour.
+        Lines terminating with a circle point indicate simulations with $\vk/\kmps < 600$, those with square points indicate simulations with $600 \leq \vk/\kmps < 1200$, those with triangle points $1200 \leq \vk/\kmps < 1800$, and those with diamond points $\vk/\kmps > 1800$.
+        For the parallel case, no systematic trend between $h_4$ and $\vk$ appears to exist.
+        Conversely, for the orthogonal projection, a dichotomy similar to the bifurcation seen in \autoref{fig:density3d} is observed. 
     }
     \label{fig:h4}
 \end{figure}
@@ -474,19 +474,25 @@ Additionally, all $h_4$ profiles are radially decreasing, obtaining a local mini
     \caption{
         Orbit analysis of all sixteen merger remnants.
         Stellar particles are assigned to one of seven different orbital families, and binned into ten logarithmically-spaced radial shells such that $0.2 \leq R/\mathrm{kpc} \leq 30.0$.
-        At radii greater than $1\,\mathrm{kpc}$, there is very little to distinguish between the different kick velocities for boxlet, $z$-tube, Keplerian, irregular, and unclassified orbits.
-        Conversely, for radii $1 \leq R/\mathrm{kpc} \leq 10$, there is a clear gradient for $\pi$-box and $x$-tube families.
-        For higher kick velocities, there is a tendency to a higher fraction of $\pi$-box orbits compared to lower kick velocities.
-        An inverse trend is visible for $x$-tube orbits. 
+        Note the colour scheme is consistent with that in \autoref{fig:density3d}, with kick velocities exceeding $900\,\kmps$ represented using the same colour.
     }
     \label{fig:orbits}
 \end{figure*}
 
-To understand the kinematic maps, we perform an orbit analysis of the merger remnants in our sample following \citet{frigo2021}, and is briefly described here.
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{orbits2}
+    \caption{
+        Same as \autoref{fig:orbits}, but each merger remnant is shown in its own panel, with the different orbital families depicted by colour, to better demonstrate the radial fraction of orbits for a given merger.
+    }
+    \label{fig:orbits2}
+\end{figure*}
 
-\drafting{Discuss how the orbit analysis is done, in particular the different orbital families}.
+To understand the kinematic maps, we perform an orbit analysis of the merger remnants in our sample following \citet{frigo2021}, which is briefly described here.
+
 First, the merger remnant is rotated so that the $z$-axis coincides with the minor axis of the reduced inertia tensor as measured using the top 50\% most bound stellar particles to the stellar centre of mass.
 We cannot centre on the recoiling SMBH for this analysis, as for high kick velocities the SMBH is significantly displaced from the centre.
+Thus, we use the shrinking sphere method on stellar particles to determine the centre of mass of the system.
 The stellar potential of the merger remnant is fit using a self consistent field (SCF) potential \citep{hernquist1992}, using the \citet{hernquist1990} profile as a zeroth-order basis and limiting the expansion to $n_\mathrm{max}=18$ and $l_\mathrm{max}=7$ following \citet{frigo2021}.
 The potential from the SMBH is then added as a point mass potential to the SCF potential.
 Collectively, this represents the potential in an analytical form in which the orbits of individual stellar particles can be integrated.
@@ -512,6 +518,39 @@ The orbital resonances define the different families of orbits, as given in \cit
     \end{tabular*}
 \end{table}
 
+Three distinct trends are made apparent in \autoref{fig:orbits}.
+The first and most important, is the complete absence of Keplerian orbits for all simulations with $\vk>600\,\kmps$.
+Conversely, all simulations with $\vk<600\,\kmps$ (except for $\vk=540\,\kmps$) have more than $\sim25\%$ of the orbits in the innermost radial bin being identified as Keplerian. 
+The second and third trend are complimentary, and are an increase in the fraction of $\pi$-box orbits with increasing kick velocity, and a similar decrease in the fraction of $x$-tube orbits with increasing kick velocity.
+Finally, there is a weak tendency for simulations with $\vk<900\,\kmps$ to have slightly higher fractions of boxlet orbits at small radii, and higher fractions of $z$-tube orbits, than those simulations with $\vk>900\,\kmps$.
+
+
+% DISCUSSION
+\section{Discussion} \label{sec:discussion}
+\drafting{
+    Ok, we're here. Let's recap:
+    We see a bifurcation in simulations, where this seems to happen at $\vk=600\,\kmps$.
+    This is manifested in:
+    \begin{itemize}
+        \item The 3D density
+        \item the transition from increasing to decreasing/constant core radius
+        \item the orthogonal projection of the IFU h4 quantity
+        \item The presence of Keplerian orbits. 
+    \end{itemize}
+    What is going on? 
+    I believe the driver of all this is the orbits. The other items in the above list are ways we can \textit{observe} these differences in orbits. 
+    I suspect, and need to think about how we determine this, that below $600\,\kmps$, there is insufficient energy released from the recoiling SMBH to significantly alter the orbital structure, i.e. little core heating.
+    Conversely, above $600\,\kmps$, the SMBH is so rapidly removed from the centre (and in this analysis doesn't return yet) that the system is unable to respond to the rapid change in potential quick enough.
+    $600\,\kmps$ therefore represents a sweetspot, where we have a lot of energy that is then able to be given to the surrounding stars in a reasonable time. 
+    
+    Some incongruencies:
+    \begin{itemize}
+        \item In 3D density, there is a smooth decrease with increasing kick velocity, until it saturates. How do we then explain a peak in the core radius in the projected density maps?
+    \end{itemize}
+}
+
+
+\drafting{Need to update, leave this here for now
 As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box and boxlet orbits, and a lower fraction of $x$-tube orbits, and to some extent Keplerian orbits, than their lower kick velocity counterparts.
 The other two orbital families are generally consistent between all merger remnants. 
 As discussed in \citet{frigo2021}, negative values of $h_4$ indicate regions with weaker tails of the LOS velocity distribution due to the superposition of radial orbits with different orientations.
@@ -522,12 +561,7 @@ With a higher kick velocity, the SMBH is able to cumulatively disturb orbits at 
 This also explains the overall downward shift in the $\langle h_4 \rangle$ profiles in \autoref{fig:h4} for higher kick velocities. 
 A peculiar feature of \autoref{fig:h4} is the consistency in the $\langle h_4 \rangle$ profile shape.
 This can be explained by the derivative of the orbital fraction distribution being consistent across all kick velocities for $x$-tube and boxlet orbits out to $\sim3\,\mathrm{kpc}$, as shown in \autoref{fig:orbits2}. 
-\drafting{Thorsten: I would really appreciate your thoughts on this section, and its relation to the kinematic maps. }
-
-
-% DISCUSSION
-\section{Discussion}
-\label{sec:discussion}
+}
 
 
 
@@ -590,6 +624,7 @@ The data underlying this article will be shared on reasonable request to the cor
 
 \appendix
 \section{Triaxiality}\label{sec:app_triax}
+\drafting{Need to update}
 We present the triaxiality of all sixteen merger remnants in the analysis at the time when the SMBH has settled.
 We determine the ratios $b/a$ and $c/a$, where $a$, $b$, and $c$ are the eigenvalues of the reduced inertia tensor $I_\mathrm{red}$ and $c\leq b\leq a$. 
 The tensor $I_\mathrm{red}$ is determined by binning the stellar component of the remnant into 20 radial shells from $10^{-3} R_\mathrm{vir}$ to $10^{-1} R_\mathrm{vir}$: i.e., the binning of particles is not cumulative. 
@@ -606,6 +641,7 @@ The difference is however minimal between all merger remnants.
         Triaxiality ratios $b/a$ and $c/a$ as a function of radius for all merger remnants in the analysis.
         Lines are colour coded by the kick velocity.
         Note that the $\vk=0\,\kmps$ case is equivalent to the pre-merger remnant. 
+        \drafting{Update colour bar to match other plots}
     }
     \label{fig:triax}
 \end{figure}
@@ -623,24 +659,83 @@ The difference is however minimal between all merger remnants.
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{corner_latent_900}
+    \includegraphics[width=\textwidth]{corner_latent_600}
     \caption{
-        Corner plot of the latent parameters in the core-S\'ersic model for the $\vk=900\,\kmps$ instance.
-        Contours indicate, from yellow to dark blue, the 25\%, 50\%, 75\%, and 99\% highest density intervals (HDIs), with sample draws beyond the 99\% HDI shown as individual points. 
+        Corner plot of the latent parameters in the core-S\'ersic model for the $\vk=600\,\kmps$ instance.
+        Contours indicate, from dark to light blue, the 25\%, 50\%, 75\%, and 99\% highest density intervals (HDIs), with sample draws beyond the 99\% HDI shown as individual points. 
         All distributions are unimodal with little cross-correlation between the latent variables.
     }
 \end{figure*}
 
-
-\section{Additional orbital plots}
+\section{Specific IFU maps}
+\drafting{Here we include both paralle and orthogonal projections of the IFU maps for three representative kick velocities: $\vk=0\,\kmps$, $\vk=600\,\kmps$, and $\vk=1800\,\kmps$.}
 
 \begin{figure*}
     \centering
-    \includegraphics[width=\textwidth]{orbits2}
+    \includegraphics[width=\textwidth]{IFU_para_v0000}
     \caption{
-        Same as \autoref{fig:orbits}, but each merger remnant is shown in its own panel, with the different orbital families depicted by colour, to better demonstrate the radial fraction of orbits for a given merger.
+        Mock integral field unit kinematic maps of the $\vk=0\,\kmps$ remnant in the parallel projection, plotted out to $0.25\,\Reff$ in a circular aperture. 
+        The small ordered rotation $V$ varies little in magnitude ($20\,\kmps$), and the velocity dispersion $\sigma$ is centrally-concentrated, peaking at around $\sim260\,\kmps$.
+        The central regions of the merger remnant have a $h_4$ value that is predominantly $0\,\kmps$, and positive $h_4$ at larger radial extents.
     }
-    \label{fig:orbits2}
+    \label{fig:IFU0p}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{IFU_ortho_v0000}
+    \caption{
+        The same as \autoref{fig:IFU0p}, but in the orthogonal projection. 
+        Note the colour scaling is consistent.
+        Qualitatively, there is little difference between the orthogonal and parallel projections for the $\vk=0\,\kmps$ case.
+    }
+    \label{fig:IFU0o}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{IFU_para_v0600}
+    \caption{
+        Mock integral field unit kinematic maps of the $\vk=600\,\kmps$ remnant in the parallel projection, plotted out to $0.25\,\Reff$ in a circular aperture. 
+        Note the colour scaling is consistent with \autoref{fig:IFU0p}.
+        Most striking is the concentration of negative ordered velocity $V$ slightly offset from the remnant centre.
+        The other kinematic moments display a similar spatial offset.
+    }
+    \label{fig:IFU600p}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{IFU_ortho_v0600}
+    \caption{
+        The same as \autoref{fig:IFU600p}, but in the orthogonal projection. 
+        Note the colour scaling is consistent with \autoref{fig:IFU0p}.
+        Compared to the parallel case, the ordered velocity $V$ and $h_3$ moments appear consistent with the $\vk=0,\kmps$ case, however a spatial offset from the centre persists in $\sigma$ and $h_4$.
+    }
+    \label{fig:IFU600o}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{IFU_para_v1800}
+    \caption{
+        Mock integral field unit kinematic maps of the $\vk=1800\,\kmps$ remnant in the parallel projection, plotted out to $0.25\,\Reff$ in a circular aperture. 
+        Note the colour scaling is consistent with \autoref{fig:IFU0p}.
+        This projection displays clear ordered rotation, however there is no clear peak in velocity dispersion.
+        The other kinematic moments are quantitatively similar to the $\vk=0,\kmps$ case. 
+    }
+    \label{fig:IFU1800p}
+\end{figure*}
+
+\begin{figure*}
+    \centering
+    \includegraphics[width=\textwidth]{IFU_ortho_v1800}
+    \caption{
+        The same as \autoref{fig:IFU1800p}, but in the orthogonal projection. 
+        Note the colour scaling is consistent with \autoref{fig:IFU0p}.
+        Aside from the lack of ordered rotation, there is little difference between the orthogonal and parallel projections at this kick velocity. 
+    }
+    \label{fig:IFU180o}
 \end{figure*}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
