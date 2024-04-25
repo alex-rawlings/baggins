@@ -141,7 +141,7 @@ The removal of stars from the central regions by this slingshot mechanism produc
 Finally, at very small, sub-parsec, separations the SMBH binary loses its remaining orbital energy and angular momentum through gravitational wave (GW) emission, driving the SMBH binary to coalescence \citep{peters1963,peters1964}.
 
 The final GW emission from the coalescing SMBH binary occurs anisotropically, and carries with it linear momentum from the system \citep[e.g.][]{gonzalez2007}.
-This results in the remnant SMBH recoiling with some velocity, termed the kick velocity. 
+This results in the remnant SMBH recoiling with some velocity directed opposite to the linear momentum of the GW emission \citep{bekenstein1973}, and is termed the kick velocity. 
 The kick velocity is dependent on the mass ratio between the SMBHs prior to coalescence, and the magnitude and direction of angular momentum (spin) vector of each SMBH. 
 As reported by \citet{campanelli2007}, symmetries in the masses or spins of the SMBHs suppresses the resulting recoil kick imparted to the coalesced SMBH.
 In particular, it is found that asymmetry in the spins of the SMBHs has a larger impact on the magnitude of the recoil kick than asymmetry in the masses \citep{campanelli2007}, with antialigned spins in the orbital plane producing the largest recoil kick velocities \citep{gonzalez2007b,tichy2007}.
@@ -149,7 +149,13 @@ Numerical relativity studies indicate that while the majority of recoil kicks ar
 Taking the central escape velocity of a typical early type galaxy (ETG) as $\sim2000\,\kmps$, there may be a non-negligible fraction of ETGs with a SMBH that has escaped the galaxy \citep{madau2004}, though not so many so as to introduce considerable scatter into the observed relation between SMBH mass and stellar velocity dispersion \citep{volonteri2007}.
 In cases where the kick velocity is less than the escape velocity of the inner regions of the host galaxy, the radial oscillations of the remnant SMBH as it returns to the centre of the merger remnant is expected to influence the surrounding stellar environment. \drafting{What sort of influences? References?}
 
-Observations by \citet{komossa2008} point to a recoiling SMBH \drafting{need to read\dots}
+Numerous observational studies have also hinted at the existence of recoiling SMBHs, generally through either an offset from the centre of the host galaxy in velocity, in position, or both.
+One of the earliest observations that pointed to a recoiling SMBH was of the quasar SDSSJ0927+2943, reported by \citet{komossa2008}, where an observed velocity offset suggested a recoil kick in excess of $2600\,\kmps$.
+Another recoiling SMBH candidate was identified by an offset in velocity by \citet{steinhardt2012}, with an estimated recoil velocity greater than $4000\,\kmps$.
+Other observations by \citet{comerford2014} and \citet{pesce2018} have also reported potential recoiling SMBHs, albeit at much lower kick velocities (some few hundreds of $\kmps$).
+\drafting{In \citet{pesce2018}, they talk about a peculiar velocity of 70ish km/s, whereas in later work, they stated velocity is 4000 km/s. Not sure which is correct, that difference seems suspicious\dots}
+Recoiling SMBHs may also be identified through a spatial offset from the host centre, where the offset can range from some parsecs \citep{batcheldor2010,lena2014,barrows2016} to over a kiloparsec \citep{koss2014,skipper2018}.
+Finally, some candidate recoiling SMBHs have both spatial and velocity offsets, such as CXO J101527.2+625911 \citet{kim2017} and 2MASX J00423991+3017515 \citet{hogg2021}.
 
 In this work, we first aim to determine how the velocity with which the SMBH is kicked affects the surrounding stellar environment.
 We then aim to determine if there is an observational signature of the SMBH recoil kick that may be used to infer the occurrence of a kicked SMBH. 
@@ -265,12 +271,13 @@ This alleviates the influence of projection effects on inferring if a core has f
 In \autoref{fig:density3d}, we observe a clear dichotomy in the 3D spatial distribution of stellar mass, with mergers that had an SMBH with a kick velocity $\vk<540\,\kmps$ having more mass in the central $2\,\mathrm{kpc}$ than those mergers with $\vk>540\,\kmps$. 
 All merger remnants have a consistent mass density distribution at $r>2\,\mathrm{kpc}$. 
 Additionally, for kick velocities $\vk<540\,\kmps$, we observe a gradient in decreasing central stellar density with increasing kick velocity.
+We check the time dependence of this dichotomy by constructing the 3D stellar mass distributions at additional times $t=0.056\,\mathrm{Gyr}$, $t=0.094\,\mathrm{Gyr}$, and $t=0.12\,\mathrm{Gyr}$, and find the dichotomy persists, with the same kick velocity split.
 
 The reasons for the dichotomy are discussed further in \drafting{section}, however we continue our analysis using the projected stellar density (as an observer would see) with the knowledge that there is \textit{a} dependence of the removal of central stellar mass on the SMBH kick velocity. 
 
 
-\subsection{Projected mass density profiles}
-To facilitate comparisons with observations \drafting{some references}, we fit the six-parameter core-S\'ersic profile \citep{graham2003} to the projection of each simulated merger remnants:
+\subsection{Projected mass density profiles}\label{ssec:projdens}
+To facilitate comparisons with observations \citep[e.g.][]{graham2003,rusli2013}, we fit the six-parameter core-S\'ersic profile \citep{graham2003} to the projection of each simulated merger remnants:
 \begin{equation}\label{eq:cs}
     \Sigma(R) = \Sigma' \left[1 + \left(\frac{\rb}{R}\right)^\alpha \right]^{\gamma/\alpha} \exp\left[-b \left(\frac{R^\alpha + \rb^\alpha}{\Reff^\alpha}\right)^{(1/\alpha n)}\right]
 \end{equation}
@@ -294,8 +301,9 @@ This resulted in 2000 draws from the posterior distribution of $\vb{\theta}$, wh
 We perform additional prior sensitivity tests using the power scaling method described in \citet{kallioinen21}, ensuring that the cumulative Jensen-Shannon (CJS) divergence is less than 0.05 for the latent parameters $\vb{\theta}$ of the model. 
 This recommended threshold indicates that the sampled posterior distributions of the latent parameters are not sensitive to the particular prior distributions used.
 
-In agreement with previous studies \citep{nasim2021b} \drafting{others?}, we find an increase in the core radius $\rb$ with kick velocity, however only up to a given kick velocity.
-We find that unlike the results of \citet{nasim2021b}, where core radius monotonically increases with kick velocity, we observe a peak in core radius occurring at $480\,\kmps$, with the core radii measured from simulations with kick velocities in excess of $480\,\kmps$ plateauing at $\rb\sim1.75 r_{\mathrm{b},0}$.
+Our results indicate that a kick non-zero kick velocity always serves to enlarge the core region relative to the core formed during the SMBH binary scouring phase.
+In agreement with previous studies \citep{gualandris2008,nasim2021b}, we find an increase in the core radius $\rb$ with kick velocity, however only up to a given kick velocity, in agreement with the results of \citet{boylan2004}.
+We find that unlike the results of \citet{nasim2021b}, where core radius monotonically increases with kick velocity, we observe a peak in core radius occurring at $\vk=480\,\kmps=0.27\,v_\mathrm{esc}$, with the core radii measured from simulations with kick velocities in excess of $480\,\kmps$ plateauing at $\rb\sim1.7 r_{\mathrm{b},0}$.
 We caution however that the systems in the study of \citet{nasim2021b} differ from ours in both structure, and the time of the analysis.
 Whereas we use a fixed time following the SMBH binary coalescence for our analysis, \citet{nasim2021b} wait until either the ejected SMBH settles back to the CoM, or $2\,\mathrm{Gyr}$ has passed.
 \drafting{As discussed in section \textbf{Atte}, we find relaxation increasingly dominates our merger remnants with increasing time.}
@@ -363,7 +371,7 @@ Previous work by \citet{nasim2021b} fit a power law of the form:
 \end{equation}
 where $v'=\vk/v_\mathrm{esc}$, and $K$ and $\beta$ are free parameters.
 We see immediately that \autoref{eq:vkrb_nasim} does not capture the peak in the data at $480\kmps$, and so opt for an alternative form.
-We fit a function that is the sum of a modified $t$-distribution with a sigmoid function, and takes the form:
+We fit a function that is the sum of a modified Student's $t$-distribution with a sigmoid function, and takes the form:
 \begin{equation}\label{eq:vkrb}
     \frac{\rb}{r_{\mathrm{b},0}} = \frac{A(v'; \mu,\nu,\sigma)+B(v'; \mu,\nu,\sigma)}{2\pi\sigma} - S(v';k,b,\mu) + c,
 \end{equation}
@@ -380,7 +388,7 @@ and
     S(v';k,b,\mu) = \frac{k}{1 + \exp(-b (v'-\mu))}.
 \end{equation}
 Hence \autoref{eq:vkrb} takes six free parameters ($\mu$, $\nu$, $\sigma$, $k$, $b$, $c$), which we constrain using the median trend of the $vk/v_\mathrm{esc}$--$\rb$ relation in \autoref{fig:vkrb}, and assume a normally-distributed scatter $\tau$.
-The fit is plotted with an orange line in \autoref{fig:vkrb}, and the values of the fitted parameters are given in \autoref{tab:vkrb}.
+The fit is found using the same Bayesian methods as in \autoref{ssec:projdens} (including posterior checking), and is plotted with an orange line in \autoref{fig:vkrb}, with the values of the fitted parameters given in \autoref{tab:vkrb}.
 
 \begin{table}
     \caption{Values of the fitted parameters in the core radius -- kick velocity relation in \autoref{eq:vkrb}.}
@@ -406,16 +414,16 @@ The dimensionless spin parameter $\alpha_\bullet$ for the dry mergers follows a 
 \begin{equation}
     P_\mathrm{Zlochower}(\alpha_\bullet) \propto (1-\alpha_\bullet)^{4.66884-1} \alpha_\bullet^{10.5868-1}.
 \end{equation}
-The range of kick velocities predicted by the model varies from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$ \drafting{check this}.
-Using transformation sampling allows us to obtain a distribution of core radii predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}.
-We find that the mode of the forward-folded core radius distribution is $1.64\,\mathrm{kpc}$ ($3.12\,r_{\mathrm{b},0}$).
-Thus, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, most massive elliptical galaxies should have a non-negligible core \drafting{add references}. 
+The range of kick velocities predicted by the model varies from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$.
+Using transformation sampling allows us to obtain a distribution of core radii predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}, whilst simultaneously accounting for uncertainty in the fit described by \autoref{eq:vkrb}.
+We find that the mode of the forward-folded core radius distribution is $1.07\,\mathrm{kpc}$ ($1.69\,r_{\mathrm{b},0}$).
+Thus, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, a large fraction massive elliptical galaxies should have a non-negligible core \citep{ferrarese1994,savorgnan2016,sahu2019}. 
 
 
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{rb_pdf}
-    \caption{Probability density function of transformation sampled core radius. The SMBH kick velocity is Monte Carlo sampled from the \citet{zlochower2015} relation assuming randomly-aligned azimuthal spins, and pushed through the fitted model in \autoref{eq:vkrb}. The predicted kick velocities range from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$. \drafting{check this}
+    \caption{Probability density function of transformation sampled core radius. The SMBH kick velocity is Monte Carlo sampled from the \citet{zlochower2015} relation assuming randomly-aligned azimuthal spins, and pushed through the fitted model in \autoref{eq:vkrb}. The predicted kick velocities range from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$.
     The asymmetry at $\rb/r_{\mathrm{b},0}\simeq 1$ is due to the low kick velocities producing a modest core, as seen in \autoref{fig:vkrb}.}
     \label{fig:rb_pdf}
 \end{figure}
