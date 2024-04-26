@@ -264,7 +264,7 @@ else:
         )
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
-        x = np.linspace(*ax.get_xlim(), 500)
+        x = np.linspace(0, 2000, 500)
         ax.plot(x, core_radius_relation(x), c=col_list[1])
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
@@ -279,4 +279,3 @@ else:
     fname = f"{args.param}-kick.pdf"
 
 bgs.plotting.savefig(figure_config.fig_path(fname), force_ext=True)
-# plt.show()
