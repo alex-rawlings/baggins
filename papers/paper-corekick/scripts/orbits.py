@@ -80,7 +80,7 @@ labels = [
 
 
 def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
-    orbitcl = bgs.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[0]
+    orbitcl = bgs.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[1]
     SL.info(f"Reading: {orbitcl}")
     (
         orbitids,
@@ -199,5 +199,5 @@ fig2.subplots_adjust(bottom=0.1, top=0.98)
 ax2[-1, 1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.6), ncol=len(labels))
 
 
-bgs.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
-bgs.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("orbits_early.pdf"), fig=fig, force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("orbits2_early.pdf"), fig=fig2, force_ext=True)
