@@ -93,3 +93,27 @@ class EccentricityScale(mpl.scale.FuncScale):
 
 
 mpl.scale.register_scale(EccentricityScale)
+
+
+class VkickColourMap:
+    """
+    Simple class to ensure consistency in how kick velocity is coloured in plots
+    """
+
+    def __init__(self) -> None:
+        self.norm = mpl.colors.Normalize(vmin=0, vmax=900, clip=True)
+        self.cmapv = mpl.pyplot.get_cmap("custom_Blues")
+        self.sm = mpl.pyplot.cm.ScalarMappable(norm=self.norm, cmap=self.cmapv)
+
+    def get_colour(self, v):
+        return self.cmapv(self.norm(v))
+
+    def make_cbar(self, ax, **kwargs):
+        cbar = mpl.pyplot.colorbar(
+            self.sm,
+            ax=ax,
+            label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$",
+            extend="max",
+            **kwargs,
+        )
+        return cbar

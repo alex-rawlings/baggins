@@ -132,9 +132,7 @@ def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
 # figure 1: plots of different orbital families
 fig, ax = plt.subplots(2, 4, sharex=True, sharey=True)
 fig.set_figwidth(2 * fig.get_figwidth())
-cmapper, sm = bgs.plotting.create_normed_colours(
-    0, 900, cmap="custom_Blues", norm_kwargs={"clip": True}
-)
+vkcols = figure_config.VkickColourMap()
 
 
 # figure 2: plots of different kick velocities
@@ -155,7 +153,11 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
         if i == 3:
             continue
         axi.semilogx(
-            meanrads, classfrequency[:, cfi], label=vkick, c=cmapper(vkick), ls="-"
+            meanrads,
+            classfrequency[:, cfi],
+            label=vkick,
+            c=vkcols.get_colour(vkick),
+            ls="-",
         )
         axj.semilogx(meanrads, classfrequency[:, cfi], label=labels[i])
         cfi += 1
@@ -178,15 +180,7 @@ for axi, label in zip(ax.flat, labels):
     axi.text(0.95, 0.86, label, ha="right", va="center", transform=axi.transAxes)
 
 # add the colour bar in the top right subplot, hiding that subplot
-plt.colorbar(
-    sm,
-    ax=ax[0, -1],
-    pad=-1.075,
-    fraction=0.5,
-    aspect=10,
-    label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$",
-    extend="max",
-)
+vkcols.make_cbar(ax[0, -1], pad=-1.075, fraction=0.5, aspect=10)
 ax[0, 3].set_visible(False)
 
 
