@@ -163,9 +163,7 @@ else:
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
 get_kick_val = lambda k: float(k.lstrip("v"))
 kick_vels = [get_kick_val(k) for k in h4_vals["para"].keys()]
-cmapper, sm = bgs.plotting.create_normed_colours(
-    vmin=min(kick_vels), vmax=900, cmap="custom_Blues", norm_kwargs={"clip": True}
-)
+vkcols = figure_config.VkickColourMap()
 
 for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items()):
     m = bgs.plotting.mplChars()[int(get_kick_val(kp)) // 600]
@@ -174,7 +172,7 @@ for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items())
     ax[0].plot(
         vp["R"][idx_sorted],
         vpc,
-        c=cmapper(get_kick_val(kp)),
+        c=vkcols.get_colour(get_kick_val(kp)),
         ls="-",
         marker=m,
         markevery=[-1],
@@ -184,7 +182,7 @@ for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items())
     ax[1].plot(
         vo["R"][idx_sorted],
         voc,
-        c=cmapper(get_kick_val(ko)),
+        c=vkcols.get_colour(get_kick_val(ko)),
         ls="-",
         marker=m,
         markevery=[-1],
@@ -193,6 +191,5 @@ for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items())
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
-cbar = plt.colorbar(sm, ax=ax.flat, extend="max")
-cbar.ax.set_ylabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
+vkcols.make_cbar(ax.flat)
 bgs.plotting.savefig(figure_config.fig_path("h4.pdf"), force_ext=True)

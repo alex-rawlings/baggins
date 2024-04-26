@@ -47,20 +47,19 @@ else:
 
 # set up figure
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
-cmapper, sm = bgs.plotting.create_normed_colours(vmin=0, vmax=2000, cmap="custom_Blues")
+vkcols = figure_config.VkickColourMap()
 
 for k, v in data.items():
     if k == "__githash" or k == "__script":
         continue
     vv = v["ratios"]
-    c = cmapper(float(k[1:]))
+    c = vkcols.get_colour(float(k[1:]))
     ax[0].plot(vv["r"][0], vv["ba"][0], c=c, ls="-")
     ax[1].plot(vv["r"][0], vv["ca"][0], c=c, ls="-")
 
 # add colour bar and other labels
-plt.colorbar(
-    sm, ax=ax.ravel().tolist(), label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$"
-)
+vkcols.make_cbar(ax.ravel().tolist())
+
 for axi, lab in zip(ax, (r"$b/a$", r"$c/a$")):
     axi.set_xscale("log")
     axi.set_ylabel(lab)
