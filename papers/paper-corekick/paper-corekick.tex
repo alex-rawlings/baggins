@@ -268,8 +268,9 @@ For all simulations, interactions between stellar particles are softened with a 
 \end{figure}
 Before considering the projected, 2D stellar mass density profiles of the merger remnants, we investigate the 3D stellar mass distribution.
 This alleviates the influence of projection effects on inferring if a core has formed during the BH binary merger process, and gives insight into the dependence of how matter is spatially distributed as a function of the recoiling SMBH kick velocity.
-In \autoref{fig:density3d}, we observe a clear dichotomy in the 3D spatial distribution of stellar mass, with mergers that had an SMBH with a kick velocity $\vk<540\,\kmps$ having more mass in the central $2\,\mathrm{kpc}$ than those mergers with $\vk>540\,\kmps$. 
-All merger remnants have a consistent mass density distribution at $r>2\,\mathrm{kpc}$. 
+For the $\vk=0\,\kmps$ case, we determine the SMBH influence radius to be $r_\mathrm{infl}\simeq 1.5\,\mathrm{kpc}$, and is insensitive to the time of measurement.
+In \autoref{fig:density3d}, we observe a clear dichotomy in the 3D spatial distribution of stellar mass, with mergers that had an SMBH with a kick velocity $\vk<540\,\kmps$ having more mass in the central $3\,\mathrm{kpc}$ ($2r_\mathrm{infl}$) than those mergers with $\vk>540\,\kmps$. 
+All merger remnants have a consistent mass density distribution at $r>3\,\mathrm{kpc}$. 
 Additionally, for kick velocities $\vk<540\,\kmps$, we observe a gradient in decreasing central stellar density with increasing kick velocity.
 We check the time dependence of this dichotomy by constructing the 3D stellar mass distributions at additional times $t=0.056\,\mathrm{Gyr}$, $t=0.094\,\mathrm{Gyr}$, and $t=0.12\,\mathrm{Gyr}$, and find the dichotomy persists, with the same kick velocity split.
 
@@ -474,7 +475,7 @@ Within the two partitions of the bifurcation, there is no apparent dependence on
 \end{figure}
 
 
-\subsection{Orbit analysis}
+\subsection{Orbit analysis}\label{ssec:orbits}
 
 \begin{figure*}
     \centering
@@ -519,7 +520,7 @@ The orbital resonances define the different families of orbits, as given in \cit
         $z$-tube & Rotate about the minor axis of the galaxy \\
         $\pi$-box & Non-resonant motion with no net angular momentum (radial motion) \\
         boxlet & Resonant motion with angular momentum \\
-        Keplerian & Typical orbit in a point-mass dominated spherically-symmetric potential \\
+        rosette & Typical orbit in a point-mass dominated spherically-symmetric potential \\
         irregular & No integrals of motion \\
         unclassified & Orbits unable to be classified \\
         \hline
@@ -527,8 +528,8 @@ The orbital resonances define the different families of orbits, as given in \cit
 \end{table}
 
 Three distinct trends are made apparent in \autoref{fig:orbits}.
-The first and most important, is the complete absence of Keplerian orbits for all simulations with $\vk>600\,\kmps$.
-Conversely, all simulations with $\vk<600\,\kmps$ (except for $\vk=540\,\kmps$) have more than $\sim25\%$ of the orbits in the innermost radial bin being identified as Keplerian. 
+The first and most important, is the complete absence of rosette orbits for all simulations with $\vk>600\,\kmps$.
+Conversely, all simulations with $\vk<600\,\kmps$ (except for $\vk=540\,\kmps$) have more than $\sim25\%$ of the orbits in the innermost radial bin being identified as rosette. 
 The second and third trend are complimentary, and are an increase in the fraction of $\pi$-box orbits with increasing kick velocity, and a similar decrease in the fraction of $x$-tube orbits with increasing kick velocity.
 Finally, there is a weak tendency for simulations with $\vk<900\,\kmps$ to have slightly higher fractions of boxlet orbits at small radii, and higher fractions of $z$-tube orbits, than those simulations with $\vk>900\,\kmps$.
 
@@ -543,7 +544,7 @@ Finally, there is a weak tendency for simulations with $\vk<900\,\kmps$ to have 
         \item The 3D density
         \item the transition from increasing to decreasing/constant core radius
         \item the orthogonal projection of the IFU h4 quantity
-        \item The presence of Keplerian orbits. 
+        \item The presence of rosette orbits. 
     \end{itemize}
     What is going on? 
     I believe the driver of all this is the orbits. The other items in the above list are ways we can \textit{observe} these differences in orbits. 
@@ -557,9 +558,29 @@ Finally, there is a weak tendency for simulations with $\vk<900\,\kmps$ to have 
     \end{itemize}
 }
 
+Using 32 simulations of gas-free post-merger elliptical galaxy remnants, we have investigated the effect of a recoiling SMBH on the stellar environment. 
+Most importantly, we report a bifurcation in the simulations at $\vk \simeq 0.3 v_\mathrm{esc}$.
+This bifurcation manifests in the three-dimensional stellar density profiles and the orthogonal projection of the kinematic $h_4$ moment.
+Additionally, the peak projected core radius $\rb$ occurs approximately at the bifurcation, where for $\vk \lesssim 0.3 v_\mathrm{esc}$ the core radius $\rb$ increases with $\vk$, and then decreases after the peak to reach a plateau.
+
+These observations, whilst helpful in understanding the presence of a general trend, are not the cause of the bifurcation.
+We argue that the bifurcation is a result of the changing orbital structure in the inner regions of the merger remnant due to the displaced SMBH. 
+As discussed in \autoref{ssec:orbits}, all simulations in which the velocity of the recoiling SMBH exceeds $\vk=600\,\kmps$ do not contain any rosette orbits. 
+Rosette orbits are bounded by distinct radial bounds \citep[pericentre and apocentre, e.g.][]{binney2008}, and produce a distinctive ring pattern in the $h_4$ kinematic moment, whereby a torus of negative $h_4$ separates an inner and outer region of positive $h_4$, as seen in fig. 14 of \citet{frigo2021}.
+We see evidence of a faint ring structure of negative $h_4$ in both the parallel and orthogonal IFU projections of the $\vk=0\,\kmps$ simulation (\autoref{fig:IFU0p} and \autoref{fig:IFU0o}), which agrees with the dominance of rosette orbits at the inner radii of the galaxy merger remnant (\autoref{fig:orbits}).
+Additionally, as rosette orbits are constrained to distinct radial bounds, these orbits contribute a relatively constant mass to the inner stellar density profile. 
+For all simulations with $\vk\geq660\,\kmps$, the majority of stellar particles have $\pi$-box orbits, i.e. those orbits with no net angular momentum, and thus move radially and can come arbitrarily close to the galactic potential centre \citep{frigo2021}.
+These orbits also display no resonant motion, unlike their boxlet counterparts; boxlet orbits are the second most dominant orbital family at small radii for $\vk \geq 660\,\kmps$, and are also radially-biased. 
+We can gain insight into the probability of finding a stellar particle on a radial orbit by approximating the motion as a simple harmonic oscillator normalised by some dispersion measure $\xi$. 
+The radial motion is described by a Gaussian function of $r/\xi$ about the centre of the potential, and thus the probability is proportional to $\int_r ^{r+\dd{r}} |\exp(-(r/\xi)^2)|^2\dd{r}$.
+The integral of a Gaussian function results in the error function, and thus the probability of finding a stellar particle in the interval $r+\dd{r}$ is near zero for small $r/\xi$, and rapidly grows as $r/\xi \rightarrow 1$, before plateauing as $r/\xi \rightarrow \infty$.
+From this simple argument, we expect a deficit of stellar mass in the central regions of the galaxy merger remnant when the majority of the stellar mass belongs to a radially-biased orbit family ($\pi$-box or boxlet). 
+We see the manifestation of an increase in radially-biased orbits in the three dimensional stellar density profile, where the bifurcation in the density profiles occur at the same kick velocity as when $\pi$-box and boxlet orbits start to dominate the inner orbital structure.
+
+
 
 \drafting{Need to update, leave this here for now
-As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box and boxlet orbits, and a lower fraction of $x$-tube orbits, and to some extent Keplerian orbits, than their lower kick velocity counterparts.
+As seen in \autoref{fig:orbits}, we observe a clear trend of higher kick velocity remnants having a higher fraction of $\pi$-box and boxlet orbits, and a lower fraction of $x$-tube orbits, and to some extent rosette orbits, than their lower kick velocity counterparts.
 The other two orbital families are generally consistent between all merger remnants. 
 As discussed in \citet{frigo2021}, negative values of $h_4$ indicate regions with weaker tails of the LOS velocity distribution due to the superposition of radial orbits with different orientations.
 This explanation supports our observation of an increase in $\pi$-box orbits (which have no net angular momentum are typically very radial orbits) with kick velocity, and a corresponding decrease in the value of $h_4$ (comparing the IFU maps in \autoref{fig:IFU0} to \autoref{fig:IFU900}).
@@ -580,8 +601,7 @@ This can be explained by the derivative of the orbital fraction distribution bei
 % FINAL BITS
 \section*{acknowledgments}
 A.R. acknowledges the support by the University of Helsinki Research Foundation.
-P.H.J., acknowledge the support
-by the European Research Council via ERC Consolidator Grant KETJU (no. 818930) and the support of the Academy of Finland grant 339127.
+P.H.J., acknowledge the support by the European Research Council via ERC Consolidator Grant KETJU (no. 818930) and the support of the Academy of Finland grant 339127.
 
 The numerical simulations used computational resources provided by
 the CSC -- IT centre for Science, Finland.
