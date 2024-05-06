@@ -241,6 +241,11 @@ For all simulations, interactions between stellar particles are softened with a 
     The time to this point, from the time of SMBH binary coalescence, we term the `infall time'.
     Those simulations where the maximum displacement of the kicked SMBH exceeds $30\,\mathrm{kpc}$ are not included in the analysis, as we expect that observationally a SMBH further than this distance from the centre of its host galaxy would not be identified with that galaxy.
 }
+
+\drafting{
+    Also maybe we can discuss the number of bound particles to the BH here. I've already looked at this, but we can talk about combining that information with the apocentre plots. 
+    It seems that increasing $\vk$ decreases the amount of bound mass, in agreement with previous studies, but also for each $\vk$, the maximum amount of stellar mass bound to the BH is maximal at apocentre.
+}
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{infall_time}
@@ -430,7 +435,7 @@ Thus, assuming the \citet{zlochower2015} model to be a reasonable description of
 \end{figure}
 
 
-\subsection{Integral field unit kinematics}
+\subsection{Integral field unit kinematics}\label{ssec:ifu}
 We create mock integral field unit (IFU) observations using two different projections for the line of sight (LOS) velocity distribution: one where the LOS is along the BH kick axis (`parallel'), and another where the LOS is along an axis orthogonal to the BH kick axis (`orthogonal').
 Testing these two special projections, we investigate the limiting cases of how the galaxy kinematics behave when all or none of the BH motion is directed along the LOS to the observer.
 
@@ -451,15 +456,19 @@ where $w \equiv (v_\mathrm{LOS} - V)/\sigma$, and the Hermite polynomials $H_3$ 
     H_4 &= \frac{1}{\sqrt{24}} (4w^4 - 12w^2 + 3).
 \end{align}
 A recent comprehensive study of LOS velocity distribution fitting applied to elliptical galaxies can be found in \citet{mehrgan2023}.
+Relative to a standard Gaussian (which has $h_4=0$), a positive value of $h_4$ corresponds to extended high velocity tails in the LOS velocity distribution, whereas a negative value of $h_4$ corresponds to weaker tails in the LOS velocity distribution.
 
-For the parallel projections, we do not observe a systematic variation in $h_4$ with increasing kick velocity.
 To quantify the radial dependence of $h_4$, we calculate the cumulative $h_4$ parameter:
 \begin{equation}\label{eq:h4}
     \langle h_4 \rangle = \sum_i^N h_4(R_i)
 \end{equation}
-As shown in \autoref{fig:h4}, for the parallel projections, we do not observe a systematic variation in $h_4$ with increasing kick velocity.
-Conversely, for the orthogonal projections, we observe a dichotomy similar to that seen in \autoref{fig:density3d}, with the bifurcation occurring at a similar kick velocity, here $600\,\kmps$. 
+As shown in \autoref{fig:h4}, for the parallel projections, simulations with $\vk \geq 600\,\kmps$ tend to positive values of $\langle h_4 \rangle$, asymptotically reaching $\langle h_4 \rangle \sim 1$.
+Conversely, when the recoiling SMBH has a kick velocity $\vk < 600\,\kmps$, the final value of $\langle h_4 \rangle$ is evenly distributed about $\langle h_4 \rangle = 0$: there is no systematic preference to heaver or weaker tails in the LOS velocity distribution.
+
+Conversely, for the orthogonal projections, we observe a dichotomy similar to that seen in \autoref{fig:density3d}, with the bifurcation occurring at a similar kick velocity, here $600\,\kmps$; both partitions tend to a positive value of $\langle h_4 \rangle$. 
 Within the two partitions of the bifurcation, there is no apparent dependence on kick velocity.
+The gradient between the two sets differs most noticeably in the radial range $2  \leq R/\mathrm{kpc} < 3$.
+This can be understood as those recoiling SMBHs with $\vk \geq 600\,\kmps$ having a larger $h_4$ magnitude per Voronoi bin than the $\vk < 600\,\kmps$ simulations.
 
 \begin{figure}
     \centering
@@ -566,17 +575,30 @@ Additionally, the peak projected core radius $\rb$ occurs approximately at the b
 These observations, whilst helpful in understanding the presence of a general trend, are not the cause of the bifurcation.
 We argue that the bifurcation is a result of the changing orbital structure in the inner regions of the merger remnant due to the displaced SMBH. 
 As discussed in \autoref{ssec:orbits}, all simulations in which the velocity of the recoiling SMBH exceeds $\vk=600\,\kmps$ do not contain any rosette orbits. 
-Rosette orbits are bounded by distinct radial bounds \citep[pericentre and apocentre, e.g.][]{binney2008}, and produce a distinctive ring pattern in the $h_4$ kinematic moment, whereby a torus of negative $h_4$ separates an inner and outer region of positive $h_4$, as seen in fig. 14 of \citet{frigo2021}.
+Rosette orbits are bounded by distinct radial limits \citep[pericentre and apocentre, e.g.][]{binney2008}, and produce a distinctive ring pattern in the $h_4$ kinematic moment, whereby a torus of negative $h_4$ separates an inner and outer region of positive $h_4$, as seen in fig. 14 of \citet{frigo2021}.
 We see evidence of a faint ring structure of negative $h_4$ in both the parallel and orthogonal IFU projections of the $\vk=0\,\kmps$ simulation (\autoref{fig:IFU0p} and \autoref{fig:IFU0o}), which agrees with the dominance of rosette orbits at the inner radii of the galaxy merger remnant (\autoref{fig:orbits}).
 Additionally, as rosette orbits are constrained to distinct radial bounds, these orbits contribute a relatively constant mass to the inner stellar density profile. 
 For all simulations with $\vk\geq660\,\kmps$, the majority of stellar particles have $\pi$-box orbits, i.e. those orbits with no net angular momentum, and thus move radially and can come arbitrarily close to the galactic potential centre \citep{frigo2021}.
 These orbits also display no resonant motion, unlike their boxlet counterparts; boxlet orbits are the second most dominant orbital family at small radii for $\vk \geq 660\,\kmps$, and are also radially-biased. 
-We can gain insight into the probability of finding a stellar particle on a radial orbit by approximating the motion as a simple harmonic oscillator normalised by some dispersion measure $\xi$. 
-The radial motion is described by a Gaussian function of $r/\xi$ about the centre of the potential, and thus the probability is proportional to $\int_r ^{r+\dd{r}} |\exp(-(r/\xi)^2)|^2\dd{r}$.
-The integral of a Gaussian function results in the error function, and thus the probability of finding a stellar particle in the interval $r+\dd{r}$ is near zero for small $r/\xi$, and rapidly grows as $r/\xi \rightarrow 1$, before plateauing as $r/\xi \rightarrow \infty$.
+We can gain insight into the probability of finding a radially-moving stellar particle at a position $r+\dd{r}$ by approximating the motion as a classical simple harmonic oscillator. 
+The differential probability $\dd{P}$ that the particle is within the interval $r+\dd{r}$ is proportional to $1/(\xi^2-r^2)$, where $\xi$ is the maximum radial displacement.
+Hence, the likelihood that the particle is at $r\ll\xi$ is much less compared to the likelihood that the particle is at $r\sim\xi$.
 From this simple argument, we expect a deficit of stellar mass in the central regions of the galaxy merger remnant when the majority of the stellar mass belongs to a radially-biased orbit family ($\pi$-box or boxlet). 
-We see the manifestation of an increase in radially-biased orbits in the three dimensional stellar density profile, where the bifurcation in the density profiles occur at the same kick velocity as when $\pi$-box and boxlet orbits start to dominate the inner orbital structure.
+We see the manifestation of an increase in radially-biased orbits in the three dimensional stellar density profile (\autoref{fig:density3d}), where the bifurcation in the density profiles occur at the same kick velocity as when $\pi$-box and boxlet orbits start to dominate the inner orbital structure, and a sudden deficit of stellar mass in the central regions of the merger is apparent.
 
+To explain the presence of the bifurcation in the IFU maps, we must investigate how the stellar density is behaving in the wake of the recoiling SMBH.
+We take two representative recoil velocities, $\vk=0\,\kmps$ and $\vk=1500\,\kmps$, and limit our investigation to stellar particles in a rectangular box defined by $0\leq x/\mathrm{kpc}$, $-5\leq y/\mathrm{kpc}\leq 5$, and $-5\leq z/\mathrm{kpc}\leq 5$ (approximately matching the aperture of the mock IFU maps), recalling that the SMBH is ejected along the positive $x$ axis.
+We create velocity vector fields of the stellar particle motion in the $x$-$y$ plane \drafting{see Appendix}.
+For the $\vk=0\,\kmps$ case, there is an excess of stellar motion parallel to the $x$-axis, with some orthogonal motion present at small radii. 
+This is contrasted to the $\vk=1500\,\kmps$ case, where there is no clear alignment of the stellar velocity flow with either the $x$- or $y$- axes.
+We interpret this feature as stellar particles diffusing into the potential wake carved by the recoiling SMBH in the $\vk=1500\,\kmps$ case, where the diffusion is neither parallel nor orthogonal to the SMBH motion, but rather at a variety of angles to it.
+
+The IFU maps describe the line of sight velocity distribution, thus the motion along the $x$-axis in \drafting{figure} is equivalent to the parallel projection, and the $y$-axis equivalent to the orthogonal projection previously described in \autoref{ssec:ifu}.
+When the SMBH recoil velocity is small, there is no potential wake created by the SMBH, and thus stellar diffusion to fill that wake does not occur, or occurs weakly in the case of a small but non-zero kick velocity.
+As a result, stellar velocities are in general aligned with one of the two observation axes, leading to a narrow distribution of stellar velocities.
+A result of this is the $h_4$ kinematic moment, which describes excess distribution tails, is close to zero: there are few high velocity outliers to the distribution.
+Conversely, when a large SMBH recoil velocity has propelled the SMBH through the galaxy, and stellar particles are diffusing into the potential wake, the variety of incoming angles, coupled with projection effects, results in a wide velocity distribution. 
+A result of this is more stellar particles with high velocities, causing high velocity tails to be present in the LOSVD, and hence an increase in the $h_4$ kinematic moment. 
 
 
 \drafting{Need to update, leave this here for now
@@ -652,24 +674,24 @@ The data underlying this article will be shared on reasonable request to the cor
 
 \appendix
 \section{Triaxiality}\label{sec:app_triax}
-\drafting{Need to update}
-We present the triaxiality of all sixteen merger remnants in the analysis at the time when the SMBH has settled.
-We determine the ratios $b/a$ and $c/a$, where $a$, $b$, and $c$ are the eigenvalues of the reduced inertia tensor $I_\mathrm{red}$ and $c\leq b\leq a$. 
-The tensor $I_\mathrm{red}$ is determined by binning the stellar component of the remnant into 20 radial shells from $10^{-3} R_\mathrm{vir}$ to $10^{-1} R_\mathrm{vir}$: i.e., the binning of particles is not cumulative. 
+We present the triaxiality of all sixteen merger remnants at the time $t \simeq 0.075\,\mathrm{Gyr}$. 
+We determine the ratios $b/a$ and $c/a$, where $a$, $b$, and $c$ are the eigenvalues of the reduced inertia tensor \citep{gerhard1983,bailin2005}
+\begin{equation}
+    \tilde{I}_\mathrm{red} = \sum_k \frac{r_{k,i} r_{k,j}}{r_k^2}
+\end{equation}
+and $c\leq b\leq a$. 
+The tensor $\tilde{I}_\mathrm{red}$ is determined by binning the stellar component of the remnant into 20 radial shells from $10^{-3} R_\mathrm{vir}$ to $10^{-1} R_\mathrm{vir}$: i.e., the binning of particles is not cumulative. 
 The variation of the ratios $b/a$ and $c/a$ is plotted as a function of radius in \autoref{fig:triax}.
-All remnants display a high degree of symmetry, with the minimum value of $b/a\simeq 0.8$, and the minimum value of $c/a\simeq0.7$.
-With a higher kick velocity, there is a slight tendency to have a higher degree of symmetry at radii $R\lesssim 10\,\mathrm{kpc}$, and a slightly lesser degree of symmetry at radii beyond this distance, compared to lower kick velocity remnants. 
-The difference is however minimal between all merger remnants. 
-
+The merger remnants display triaxial cores, albeit without dependence on the recoiling SMBH velocity. 
+At radii greater than $4\,\mathrm{kpc}$, the triaxiality of the merger remnants is almost identical. 
 
 \begin{figure}
     \centering
     \includegraphics[width=0.5\textwidth]{triaxiality}
     \caption{
         Triaxiality ratios $b/a$ and $c/a$ as a function of radius for all merger remnants in the analysis.
-        Lines are colour coded by the kick velocity.
-        Note that the $\vk=0\,\kmps$ case is equivalent to the pre-merger remnant. 
-        \drafting{Update colour bar to match other plots}
+        Lines are colour coded by the kick velocity, with the same scheme as in \autoref{fig:density3d}.
+        Note that the $\vk=0\,\kmps$ case is equivalent to the pre-merger remnant.
     }
     \label{fig:triax}
 \end{figure}
@@ -772,6 +794,11 @@ The difference is however minimal between all merger remnants.
 % Don't change these lines
 \bsp	% typesetting comment
 \label{lastpage}
+
+\section{Stellar velocity fields}
+We create vector fields of stellar particles for two representative merger remnants, namely $\vk=0\,\kmps$ and $\vk=1500\,\kmps$.
+The velocity fields are created for particles in a rectangular box defined by $0\leq x/\mathrm{kpc}$, $-5\leq y/\mathrm{kpc}\leq 5$, and $-5\leq z/\mathrm{kpc}\leq 5$, as described in \autoref{sec:discussion}, and are shown in \drafting{figure}.
+
 \end{document}
 
 % End of mnras_template.tex
