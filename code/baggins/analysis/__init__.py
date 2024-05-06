@@ -1,7 +1,8 @@
 from .analyse_snap import *  # noqa
 from .general import *  # noqa
 from .masks import *  # noqa
-from .orbit import *  # noqa
+from .analyse_ketju import *  # noqa
+from .orbits import *  # noqa
 from .voronoi import *  # noqa
 
 from .analysis_classes import (  # noqa

@@ -9,7 +9,7 @@ from arviz import plot_kde
 import dask
 from datetime import datetime
 from . import HierarchicalModel_2D, HMQuantitiesBinaryData
-from ..orbit import determine_merger_timescale
+from ..analyse_ketju import determine_merger_timescale
 from ...env_config import _cmlogger, date_format
 from ...general import units
 from ...plotting import savefig
