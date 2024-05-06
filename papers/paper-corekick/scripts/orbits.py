@@ -62,11 +62,23 @@ fig2.set_figheight(2.5 * fig2.get_figheight())
 
 for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
     try:
-        orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[0]
-        meanrads, classfrequency, rad_len, classids, peri, apo, minang = bgs.analysis.radial_frequency(orbitcl, returnextra=True)
-        rosette_mask = classids==4
+        orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[
+            0
+        ]
+        (
+            meanrads,
+            classfrequency,
+            rad_len,
+            classids,
+            peri,
+            apo,
+            minang,
+        ) = bgs.analysis.radial_frequency(orbitcl, returnextra=True)
+        rosette_mask = classids == 4
         for dist, arr in zip(("Apocentre", "Pericentre"), (apo, peri)):
-            SL.info(f"{dist} IQR for rosettes: {np.nanquantile(arr[rosette_mask], 0.25):.2e} - {np.nanquantile(arr[rosette_mask], 0.75):.2e} (median: {np.median(arr[rosette_mask]):.2e})")
+            SL.info(
+                f"{dist} IQR for rosettes: {np.nanquantile(arr[rosette_mask], 0.25):.2e} - {np.nanquantile(arr[rosette_mask], 0.75):.2e} (median: {np.median(arr[rosette_mask]):.2e})"
+            )
     except:  # noqa
         # ongoing analysis
         continue

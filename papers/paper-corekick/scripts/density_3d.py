@@ -57,7 +57,9 @@ for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
 
     dens = pygad.analysis.profile_dens(snap.stars, "mass", r_edges=r_edges)
     mask = dens > 0
-    ax.loglog(r_centres[mask], dens[mask], ls="-", c=vkcols.get_colour(float(k.lstrip("v"))))
+    ax.loglog(
+        r_centres[mask], dens[mask], ls="-", c=vkcols.get_colour(float(k.lstrip("v")))
+    )
 
     # conserve memory
     snap.delete_blocks()

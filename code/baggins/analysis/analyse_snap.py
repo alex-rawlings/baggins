@@ -1433,7 +1433,7 @@ def find_individual_bound_particles(snap, return_extra=False):
     )
     bound_IDs = subsnap[~bh_id_mask][KE - PE < 0]["ID"]
     if return_extra:
-        return bound_IDs, len(bound_IDs) / len(subsnap), KE-PE
+        return bound_IDs, len(bound_IDs) / len(subsnap), KE - PE
     else:
         return bound_IDs
 

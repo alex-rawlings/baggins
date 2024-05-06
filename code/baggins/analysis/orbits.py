@@ -40,9 +40,11 @@ mergemask = [
 ]
 
 
-def radial_frequency(orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False, mergemask=mergemask):
+def radial_frequency(
+    orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False, mergemask=mergemask
+):
     """
-    Determine radial frequency of orbit families. The total fraction of orbits 
+    Determine radial frequency of orbit families. The total fraction of orbits
     per radial bin sums to 1.
 
     Parameters
@@ -58,7 +60,7 @@ def radial_frequency(orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=Fals
     returnextra : bool, optional
         return extra information, by default False
     mergemask : array-like, optional
-        how sub-groups of orbital families should be merged, by default 
+        how sub-groups of orbital families should be merged, by default
         mergemask (local variable defined above)
 
     Returns
