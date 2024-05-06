@@ -3,7 +3,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import baggins as bgs
-import gadgetorbits as go
 import figure_config
 
 
@@ -38,95 +37,16 @@ orbitfilebases = [
 orbitfilebases.sort()
 
 
-mergemask = [
-    6,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    0,
-    5,
-    6,
-    0,
-    0,
-    4,
-]
 labels = [
     r"$\pi\mathrm{-box}$",
     r"$\mathrm{boxlet}$",
     r"$x\mathrm{-tube}$",
     "",
     r"$z\mathrm{-tube}$",
-    r"$\mathrm{Keplerian}$",
+    r"$\mathrm{rosette}$",
     r"$\mathrm{irregular}$",
     r"$\mathrm{unclassified}$",
 ]
-
-
-def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
-    orbitcl = bgs.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[1]
-    SL.info(f"Reading: {orbitcl}")
-    (
-        orbitids,
-        classids,
-        rad,
-        rot_dir,
-        energy,
-        denergy,
-        inttime,
-        b92class,
-        pericenter,
-        apocenter,
-        meanposrad,
-        minangmom,
-    ) = go.loadorbits(orbitcl, mergemask=mergemask, addextrainfo=True)
-    radbins = np.geomspace(minrad, maxrad, nbin + 1)
-    meanrads = bgs.mathematics.get_histogram_bin_centres(radbins)
-    possibleclasses = np.arange(np.max(classids) + 1).astype(int)
-    classfrequency = np.zeros((nbin, len(possibleclasses)))
-    rad_len = []
-    for i in np.arange(nbin) + 1:
-        radcond = np.logical_and(radbins[i - 1] < rad, rad < radbins[i])
-        radclassids = classids[radcond]
-        rad_len.append(float(len(radclassids)))
-
-        if rad_len[-1] > 0:
-            for cl in possibleclasses:
-                classfrequency[i - 1, cl] = (
-                    float(len(radclassids[radclassids == cl])) / rad_len[-1]
-                )
-        else:
-            SL.debug("Warning: no particles in current radial bin")
-    rad_len = np.array(rad_len)
-
-    if returnextra:
-        return (
-            meanrads,
-            classfrequency,
-            rad_len,
-            b92class,
-            pericenter,
-            apocenter,
-            minangmom,
-        )
-    else:
-        return meanrads, classfrequency, rad_len
 
 
 # figure 1: plots of different orbital families
@@ -141,9 +61,12 @@ fig2.set_figwidth(2 * fig2.get_figwidth())
 fig2.set_figheight(2.5 * fig2.get_figheight())
 
 for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
-    # if j<28: continue
     try:
-        meanrads, classfrequency, rad_len = radial_frequency(orbitfilebase)
+        orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[0]
+        meanrads, classfrequency, rad_len, classids, peri, apo, minang = bgs.analysis.radial_frequency(orbitcl, returnextra=True)
+        rosette_mask = classids==4
+        for dist, arr in zip(("Apocentre", "Pericentre"), (apo, peri)):
+            SL.info(f"{dist} IQR for rosettes: {np.nanquantile(arr[rosette_mask], 0.25):.2e} - {np.nanquantile(arr[rosette_mask], 0.75):.2e} (median: {np.median(arr[rosette_mask]):.2e})")
     except:  # noqa
         # ongoing analysis
         continue
@@ -193,5 +116,5 @@ fig2.subplots_adjust(bottom=0.1, top=0.98)
 ax2[-1, 1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.6), ncol=len(labels))
 
 
-bgs.plotting.savefig(figure_config.fig_path("orbits_early.pdf"), fig=fig, force_ext=True)
-bgs.plotting.savefig(figure_config.fig_path("orbits2_early.pdf"), fig=fig2, force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)

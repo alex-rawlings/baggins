@@ -13,7 +13,7 @@ from datetime import datetime
 bgs.plotting.check_backend()
 
 basedir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick"
-extract_data = True
+extract_data = False
 
 snapdirs = [d.path for d in os.scandir(basedir) if "kick-vel-" in d.name]
 snapdirs.sort()

@@ -26,6 +26,8 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
+bgs.plotting.check_backend()
+
 if args.combine:
     pickle_files = bgs.utils.get_files_in_dir(args.path, ext=".pickle")
     pickle_files = [p for p in pickle_files if "triax_v" in p]

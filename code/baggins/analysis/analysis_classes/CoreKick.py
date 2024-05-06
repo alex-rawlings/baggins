@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from ketjugw.units import km_per_s
 from . import HierarchicalModel_2D
-from ..orbit import get_bound_binary
+from ..analyse_ketju import get_bound_binary
 from ...env_config import _cmlogger
 from ...general.units import kpc
 from ...literature import (
