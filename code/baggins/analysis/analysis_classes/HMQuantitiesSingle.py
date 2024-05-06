@@ -15,7 +15,7 @@ from ..analyse_snap import (
     velocity_anisotropy,
     escape_velocity,
 )
-from ..orbit import get_bh_particles
+from ..analyse_ketju import get_bh_particles
 from ...env_config import _cmlogger, date_format, username
 from ...general import convert_gadget_time
 from ...utils import get_ketjubhs_in_dir, get_snapshots_in_dir, read_parameters

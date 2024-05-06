@@ -15,7 +15,7 @@ from ..analyse_snap import (
     gravitational_radiation_radius,
 )
 from ..general import snap_num_for_time
-from ..orbit import (
+from ..analyse_ketju import (
     get_bound_binary,
     linear_fit_get_H,
     linear_fit_get_K,
