@@ -588,12 +588,12 @@ We see the manifestation of an increase in radially-biased orbits in the three d
 
 To explain the presence of the bifurcation in the IFU maps, we must investigate how the stellar density is behaving in the wake of the recoiling SMBH.
 We take two representative recoil velocities, $\vk=0\,\kmps$ and $\vk=1500\,\kmps$, and limit our investigation to stellar particles in a rectangular box defined by $0\leq x/\mathrm{kpc}$, $-5\leq y/\mathrm{kpc}\leq 5$, and $-5\leq z/\mathrm{kpc}\leq 5$ (approximately matching the aperture of the mock IFU maps), recalling that the SMBH is ejected along the positive $x$ axis.
-We create velocity vector fields of the stellar particle motion in the $x$-$y$ plane \drafting{see Appendix}.
+We create velocity vector fields of the stellar particle motion in the $x$-$y$ plane \autoref{fig:wake}.
 For the $\vk=0\,\kmps$ case, there is an excess of stellar motion parallel to the $x$-axis, with some orthogonal motion present at small radii. 
 This is contrasted to the $\vk=1500\,\kmps$ case, where there is no clear alignment of the stellar velocity flow with either the $x$- or $y$- axes.
 We interpret this feature as stellar particles diffusing into the potential wake carved by the recoiling SMBH in the $\vk=1500\,\kmps$ case, where the diffusion is neither parallel nor orthogonal to the SMBH motion, but rather at a variety of angles to it.
 
-The IFU maps describe the line of sight velocity distribution, thus the motion along the $x$-axis in \drafting{figure} is equivalent to the parallel projection, and the $y$-axis equivalent to the orthogonal projection previously described in \autoref{ssec:ifu}.
+The IFU maps describe the line of sight velocity distribution, thus the motion along the $x$-axis in \autoref{fig:wake} is equivalent to the parallel projection, and the $y$-axis equivalent to the orthogonal projection previously described in \autoref{ssec:ifu}.
 When the SMBH recoil velocity is small, there is no potential wake created by the SMBH, and thus stellar diffusion to fill that wake does not occur, or occurs weakly in the case of a small but non-zero kick velocity.
 As a result, stellar velocities are in general aligned with one of the two observation axes, leading to a narrow distribution of stellar velocities.
 A result of this is the $h_4$ kinematic moment, which describes excess distribution tails, is close to zero: there are few high velocity outliers to the distribution.
@@ -788,16 +788,27 @@ At radii greater than $4\,\mathrm{kpc}$, the triaxiality of the merger remnants 
     \label{fig:IFU180o}
 \end{figure*}
 
+\section{Stellar velocity fields}
+We create vector fields of stellar particles for two representative merger remnants, namely $\vk=0\,\kmps$ and $\vk=1500\,\kmps$.
+The velocity fields are created for particles in a rectangular box defined by $0\leq x/\mathrm{kpc}$, $-5\leq y/\mathrm{kpc}\leq 5$, and $-5\leq z/\mathrm{kpc}\leq 5$, as described in \autoref{sec:discussion}, and are shown in \drafting{figure}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.5\textwidth]{wake}
+    \caption{
+        Stellar velocity field for $\vk=0\,\kmps$ (left panel) and $\vk=1500\,\kmps$ (right panel), for an aperture that is approximately consistent with the IFU maps presented in e.g. \autoref{fig:IFU0p}. 
+        The right panel demonstrates the stellar particles streaming into the potential wake caused by the recoiling SMBH (the SMBH is beyond the extent of the plot), whereas the same motion is not present in the left panel.
+        This causes a difference in the LOSVDs of the two systems, noticeably the $h_4$ kinematic moment.
+    }
+    \label{fig:wake}
+\end{figure}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 % Don't change these lines
 \bsp	% typesetting comment
 \label{lastpage}
-
-\section{Stellar velocity fields}
-We create vector fields of stellar particles for two representative merger remnants, namely $\vk=0\,\kmps$ and $\vk=1500\,\kmps$.
-The velocity fields are created for particles in a rectangular box defined by $0\leq x/\mathrm{kpc}$, $-5\leq y/\mathrm{kpc}\leq 5$, and $-5\leq z/\mathrm{kpc}\leq 5$, as described in \autoref{sec:discussion}, and are shown in \drafting{figure}.
 
 \end{document}
 
