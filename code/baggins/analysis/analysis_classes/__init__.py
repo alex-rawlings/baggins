@@ -29,6 +29,6 @@ from .QuinlanModels import QuinlanModelSimple, QuinlanModelHierarchy  # noqa
 
 from .PQModels import PQModelSimple, PQModelHierarchy  # noqa
 
-from .DeflectionAngleGP import DeflectionAngleGP  # noqa
+from .GaussianProcesses import VkickCoreradiusGP  # noqa
 
 from .CoreKick import CoreKick  # noqa

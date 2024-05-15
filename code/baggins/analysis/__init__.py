@@ -25,6 +25,6 @@ from .analysis_classes import (  # noqa
     QuinlanModelHierarchy,
     PQModelSimple,
     PQModelHierarchy,
-    DeflectionAngleGP,
+    VkickCoreradiusGP,
     CoreKick,
 )
