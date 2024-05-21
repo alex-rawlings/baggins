@@ -8,7 +8,7 @@ import figure_config
 
 
 parser = argparse.ArgumentParser(
-    description="Plot IFU maps", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    description="Plot 3D density", formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument(
     "-v",
@@ -44,6 +44,8 @@ vkcols = figure_config.VkickColourMap()
 
 
 for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
+    if v is None:
+        continue
     snapfile = os.path.join(
         snapfiles["parent_dir"], f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5"
     )

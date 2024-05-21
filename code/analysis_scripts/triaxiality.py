@@ -83,7 +83,7 @@ args = parser.parse_args()
 
 
 SL = bgs.setup_logger("script", args.verbose)
-
+bgs.plotting.check_backend()
 
 @dask.delayed
 def dask_helper(s, r):
@@ -186,6 +186,7 @@ else:
         memory_helper()
     data = dict(times=times, ratios=ratios)
     figname = f"triax_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    os.makedirs(args.savedir, exist_ok=True)
     bgs.utils.save_data(data, os.path.join(args.savedir, f"{figname}.pickle"))
 
 

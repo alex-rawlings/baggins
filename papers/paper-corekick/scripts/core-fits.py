@@ -44,6 +44,7 @@ SL = bgs.setup_logger("script", args.verbosity)
 data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
 rng = np.random.default_rng(42)
 col_list = figure_config.color_cycle_shuffled.by_key()["color"]
+ESCAPE_VEL = 1800
 
 bgs.plotting.check_backend()
 
@@ -86,15 +87,16 @@ if args.extract:
                 fit_files=csv_files,
                 figname_base=figname_base,
             )
-        except:  # noqa
-            SL.warning(f"Unable to load data from directory: {subdir}. Skipping")
+        except ValueError as e:
+            SL.error(f"Unable to load data from directory: {subdir}: {e}. Skipping")
             continue
         SL.info(f"Loaded model from csv files {csv_files[0]}")
 
         graham_model.extract_data(analysis_params, None, binary=False)
         graham_model.set_stan_data()
         graham_model.sample_model(
-            sample_kwargs=analysis_params["stan"]["density_sample_kwargs"]
+            sample_kwargs=analysis_params["stan"]["density_sample_kwargs"],
+            diagnose=False
         )
         gid = graham_model.merger_id.split("-")[-1][1:]
         for k in data.keys():
@@ -131,7 +133,7 @@ def _helper(param_name, ax):
         positions=kick_vels,
         showfliers=False,
         whis=0,
-        widths=40,
+        widths=50,
         manage_ticks=False,
         patch_artist=True,
         showcaps=False,
@@ -141,44 +143,12 @@ def _helper(param_name, ax):
         p.set_edgecolor(p.get_facecolor())
         p.set_alpha(0.3)
     for m in bp["medians"]:
-        m.set_color(p.get_facecolor())
+        m.set_color("#003A74")
         m.set_linewidth(2)
         m.set_alpha(1)
     for w in bp["whiskers"]:
         w.set_alpha(0)
-    return np.nanmedian(normalisation)
-
-
-def core_radius_relation(v):
-    """
-    Core radius relation, as determined by `core-dists.py`, and just plotted
-    here. Note that parameter values need to be set by hand!
-
-    Parameters
-    ----------
-    v : array-like
-        kick velocities normalised to the escape velocity
-
-    Returns
-    -------
-    : array-like
-        core radius
-    """
-    nu = 21.5
-    mu = 0.182
-    sigma = 0.601
-    k = 0.894
-    b = -34.5
-    c = 1.64
-    x = v / 1800
-    term1 = np.sqrt((nu - 2) / nu) * (
-        1 + ((x - mu) / (sigma * np.sqrt((nu - 2) / nu))) ** 2
-    ) ** (-(nu + 1) / 2)
-    term2 = np.sqrt(nu / (nu - 2)) * (
-        1 + ((x - mu) / (sigma * np.sqrt(nu / (nu - 2)))) ** 2
-    ) ** (-(nu + 1) / 2)
-    sigmoidfun = k / (1 + np.exp(-b * (x - mu)))
-    return (term1 + term2) / (2 * np.pi * sigma) - sigmoidfun + c
+    return np.nanmedian(normalisation), kick_vels
 
 
 xlabel = r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$"
@@ -221,7 +191,7 @@ elif args.param == "OOS":
     for k, v in data["R_OOS"].items():
         if k == "__githash" or k == "__script":
             continue
-        if k not in ("0000", "0480", "0720", "0900", "1680"):
+        if k not in ("0000", "0480", "0600", "1020"):
             continue
         SL.info(f"Determining density for model {k}")
         c = next(cgen)
@@ -256,16 +226,20 @@ elif args.param == "OOS":
 else:
     fig, ax = plt.subplots(1, 1)
     ax.set_xlabel(xlabel)
-    norm_val = _helper(args.param, ax)
+    norm_val, sampled_kicks = _helper(args.param, ax)
     if args.param == "rb":
         ax.tick_params(axis="y", which="both", right=False)
         ax2 = ax.secondary_yaxis(
             "right", functions=(lambda x: x * norm_val, lambda x: x / norm_val)
         )
+        vkick = np.linspace(min(sampled_kicks), max(sampled_kicks), 500)
+        # add best fit relations
+        ax.plot(vkick, 2.9 * (vkick/ESCAPE_VEL)**0.782 + 1, label="Exponential", c=col_list[1])
+        ax.plot(vkick, 3.26 * vkick/ESCAPE_VEL + 1.1, label="Linear", c=col_list[2])
+        ax.plot(vkick, 2.47 * (1-np.exp(-2.62 * vkick/ESCAPE_VEL)) + 0.873, label="Sigmoid", c=col_list[3])
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
-        x = np.linspace(0, 2000, 500)
-        ax.plot(x, core_radius_relation(x), c=col_list[1])
+        ax.legend()
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":

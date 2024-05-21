@@ -1080,7 +1080,7 @@ class _StanModel(ABC):
         ax=None,
         xlabels=None,
         save=True,
-        plot_kwargs={},
+        **kwargs,
     ):
         """
         Plot the 1-D distribution of an arbitrary variable in the generated quantities block of a stan model.
@@ -1098,8 +1098,8 @@ class _StanModel(ABC):
             labels for the x-axis, by default None
         save : bool, optional
             save the plot, by default True
-        plot_kwargs : dict
-            plot parameters parsed to arviz.plot_dist()
+        **kwargs : 
+            other parameters parsed to arviz.plot_dist()
 
         Returns
         -------
@@ -1118,7 +1118,11 @@ class _StanModel(ABC):
             ax = np.array(ax)
             ax_shape = (1,)
         ax = ax.flatten()
-        assert isinstance(gq, list)
+        try:
+            assert isinstance(gq, list)
+        except AssertionError:
+            _logger.exception(f"Input `gq` must be of type <list>, not {type(gq)}!")
+            raise
         if bounds is not None:
             try:
                 assert len(bounds) == len(gq)
@@ -1162,7 +1166,7 @@ class _StanModel(ABC):
                     exc_info=True,
                 )
                 raise
-            az.plot_dist(ys, ax=ax[i], plot_kwargs=plot_kwargs)
+            az.plot_dist(ys, ax=ax[i], **kwargs)
             ax[i].set_xlabel(l)
             ax[i].set_ylabel("PDF")
         ax.reshape(ax_shape)
@@ -1213,6 +1217,11 @@ class _StanModel(ABC):
         ----------
         stan_log_lik : str, optional
             name of log-likelihood variable in stan code, by default "log_lik"
+
+        Returns
+        -------
+        loo : arviz.ELPDData
+            elpd data object from arviz
         """
         if self.generated_quantities is None:
             self.sample_generated_quantity(stan_log_lik, state="pred")
@@ -1223,6 +1232,7 @@ class _StanModel(ABC):
             )
         loo = az.loo(self._fit_for_az)
         print(loo)
+        return loo
 
     def rename_dimensions(self, dim_map):
         """
