@@ -96,7 +96,7 @@ if args.extract:
         graham_model.set_stan_data()
         graham_model.sample_model(
             sample_kwargs=analysis_params["stan"]["density_sample_kwargs"],
-            diagnose=False
+            diagnose=False,
         )
         gid = graham_model.merger_id.split("-")[-1][1:]
         for k in data.keys():
@@ -234,9 +234,19 @@ else:
         )
         vkick = np.linspace(min(sampled_kicks), max(sampled_kicks), 500)
         # add best fit relations
-        ax.plot(vkick, 2.9 * (vkick/ESCAPE_VEL)**0.782 + 1, label="Exponential", c=col_list[1])
-        ax.plot(vkick, 3.26 * vkick/ESCAPE_VEL + 1.1, label="Linear", c=col_list[2])
-        ax.plot(vkick, 2.47 * (1-np.exp(-2.62 * vkick/ESCAPE_VEL)) + 0.873, label="Sigmoid", c=col_list[3])
+        ax.plot(
+            vkick,
+            2.9 * (vkick / ESCAPE_VEL) ** 0.782 + 1,
+            label="Exponential",
+            c=col_list[1],
+        )
+        ax.plot(vkick, 3.26 * vkick / ESCAPE_VEL + 1.1, label="Linear", c=col_list[2])
+        ax.plot(
+            vkick,
+            2.47 * (1 - np.exp(-2.62 * vkick / ESCAPE_VEL)) + 0.873,
+            label="Sigmoid",
+            c=col_list[3],
+        )
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         ax.legend()

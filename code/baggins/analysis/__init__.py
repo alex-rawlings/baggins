@@ -28,5 +28,5 @@ from .analysis_classes import (  # noqa
     VkickCoreradiusGP,
     CoreKickExp,
     CoreKickLinear,
-    CoreKickSigmoid
+    CoreKickSigmoid,
 )

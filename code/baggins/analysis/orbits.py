@@ -55,6 +55,7 @@ mergemask = [
           6 | unclass.
 """
 
+
 def radial_frequency(
     orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False, mergemask=mergemask
 ):
@@ -137,7 +138,14 @@ def radial_frequency(
         return meanrads, classfrequency, rad_len
 
 
-def determine_box_tube_ratio(meanrads, classfrequency, rad_len, within, box_class_ids=[0, 1], tube_class_ids=[2,3,4]):
+def determine_box_tube_ratio(
+    meanrads,
+    classfrequency,
+    rad_len,
+    within,
+    box_class_ids=[0, 1],
+    tube_class_ids=[2, 3, 4],
+):
     """
     Calculate the ratio of box to tube orbits within some radii.
 
@@ -165,8 +173,7 @@ def determine_box_tube_ratio(meanrads, classfrequency, rad_len, within, box_clas
     boxes = 0
     tubes = 0
     for cid in box_class_ids:
-        boxes += np.nansum(classfrequency[mask,cid] * rad_len[mask])
+        boxes += np.nansum(classfrequency[mask, cid] * rad_len[mask])
     for cid in tube_class_ids:
-        tubes += np.nansum(classfrequency[mask,cid] * rad_len[mask])
+        tubes += np.nansum(classfrequency[mask, cid] * rad_len[mask])
     return boxes / tubes
-

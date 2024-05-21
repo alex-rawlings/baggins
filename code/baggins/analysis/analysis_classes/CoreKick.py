@@ -75,7 +75,9 @@ class _CoreKickBase(HierarchicalModel_2D):
 
     @property
     def _labeller_latent_posterior(self):
-        return MapLabeller(dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs)))
+        return MapLabeller(
+            dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
+        )
 
     @property
     def rb0(self):
@@ -381,8 +383,18 @@ class _CoreKickBase(HierarchicalModel_2D):
 
 
 class CoreKickExp(_CoreKickBase):
-    def __init__(self, model_file, prior_file, figname_base, escape_vel=None, premerger_ketjufile=None, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng)
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
 
     @property
     def latent_qtys(self):
@@ -394,8 +406,18 @@ class CoreKickExp(_CoreKickBase):
 
 
 class CoreKickLinear(_CoreKickBase):
-    def __init__(self, model_file, prior_file, figname_base, escape_vel=None, premerger_ketjufile=None, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng)
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
 
     @property
     def latent_qtys(self):
@@ -407,8 +429,18 @@ class CoreKickLinear(_CoreKickBase):
 
 
 class CoreKickSigmoid(_CoreKickBase):
-    def __init__(self, model_file, prior_file, figname_base, escape_vel=None, premerger_ketjufile=None, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng)
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
 
     @property
     def latent_qtys(self):
@@ -417,4 +449,3 @@ class CoreKickSigmoid(_CoreKickBase):
     @property
     def _latent_qtys_labs(self):
         return [r"$K$", r"$\beta$", r"$c$", r"$\tau$"]
-

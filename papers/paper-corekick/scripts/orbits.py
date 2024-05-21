@@ -82,7 +82,7 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
     except:  # noqa
         # ongoing analysis
         SL.error(f"Unable to read {orbitfilebase}: skipping")
-        #continue
+        # continue
     vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
     cfi = 0
     for i, axi in enumerate(ax.flat):
@@ -124,13 +124,13 @@ for i in range(ax2.shape[0]):
     ax2[i, 0].set_ylabel(r"$f_\mathrm{orbit}$")
 for i in range(ax2.shape[1]):
     ax2[-1, i].set_xlabel(r"$r/\mathrm{kpc}$")
-bbox = ax2[-1,-1].get_position()
+bbox = ax2[-1, -1].get_position()
 fig2.legend(
-    *ax2[0,0].get_legend_handles_labels(),
+    *ax2[0, 0].get_legend_handles_labels(),
     loc="center left",
-    bbox_to_anchor=(bbox.x0 + bbox.width/4, bbox.y0 + bbox.height/4)
+    bbox_to_anchor=(bbox.x0 + bbox.width / 4, bbox.y0 + bbox.height / 4),
 )
-ax2[-1,-1].axis("off")
+ax2[-1, -1].axis("off")
 
 bgs.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
 bgs.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)

@@ -85,6 +85,7 @@ args = parser.parse_args()
 SL = bgs.setup_logger("script", args.verbose)
 bgs.plotting.check_backend()
 
+
 @dask.delayed
 def dask_helper(s, r):
     """Helper function to parallelise axis ratio calculation over radial values"""

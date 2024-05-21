@@ -1098,7 +1098,7 @@ class _StanModel(ABC):
             labels for the x-axis, by default None
         save : bool, optional
             save the plot, by default True
-        **kwargs : 
+        **kwargs :
             other parameters parsed to arviz.plot_dist()
 
         Returns

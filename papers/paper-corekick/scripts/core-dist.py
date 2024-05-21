@@ -12,10 +12,19 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
-    type=str, help="new sample or load previous", choices=["new", "loaded", "comp"], dest="type"
+    type=str,
+    help="new sample or load previous",
+    choices=["new", "loaded", "comp"],
+    dest="type",
 )
 parser.add_argument(
-    "-m", "--model", type=str, help="model type", choices=["exp", "lin", "sigmoid"], dest="model", default="exp"
+    "-m",
+    "--model",
+    type=str,
+    help="model type",
+    choices=["exp", "lin", "sigmoid"],
+    dest="model",
+    default="exp",
 )
 parser.add_argument(
     "-n", "--nodiag", action="store_false", help="prevent Stan diagnosis", dest="diag"
@@ -59,7 +68,7 @@ if args.type == "new" or args.type == "loaded":
             "figname_base": figname_base,
             "escape_vel": ESCAPE_VEL,
             "premerger_ketjufile": ketju_file,
-            "rng": rng
+            "rng": rng,
         }
         if args.model == "exp":
             ck = bgs.analysis.CoreKickExp(**stan_new_kwargs)
@@ -68,14 +77,16 @@ if args.type == "new" or args.type == "loaded":
         else:
             ck = bgs.analysis.CoreKickSigmoid(**stan_new_kwargs)
     else:
-        csv_files = bgs.utils.get_files_in_dir(os.path.join(bgs.DATADIR, stan_output), ext=".csv")[-4:]
+        csv_files = bgs.utils.get_files_in_dir(
+            os.path.join(bgs.DATADIR, stan_output), ext=".csv"
+        )[-4:]
         stan_load_kwargs = {
             "model_file": stan_file,
             "fit_files": csv_files,
             "figname_base": figname_base,
             "escape_vel": ESCAPE_VEL,
             "premerger_ketjufile": ketju_file,
-            "rng": rng
+            "rng": rng,
         }
         if args.model == "exp":
             ck = bgs.analysis.CoreKickExp.load_fit(**stan_load_kwargs)
@@ -113,34 +124,55 @@ else:
         "figname_base": f"core-study/rb-kick-models/comparison/comp",
         "escape_vel": ESCAPE_VEL,
         "premerger_ketjufile": ketju_file,
-        "rng": rng
+        "rng": rng,
     }
     models = [
         bgs.analysis.CoreKickExp.load_fit(
             model_file=os.path.join(stan_file_base, f"core-kick-exp.stan"),
-            fit_files=bgs.utils.get_files_in_dir(os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/exp-model"), ext=".csv")[-4:],
-            **stan_load_kwargs
+            fit_files=bgs.utils.get_files_in_dir(
+                os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/exp-model"),
+                ext=".csv",
+            )[-4:],
+            **stan_load_kwargs,
         ),
         bgs.analysis.CoreKickLinear.load_fit(
             model_file=os.path.join(stan_file_base, f"core-kick-lin.stan"),
-            fit_files=bgs.utils.get_files_in_dir(os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/lin-model"), ext=".csv")[-4:],
-            **stan_load_kwargs
+            fit_files=bgs.utils.get_files_in_dir(
+                os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/lin-model"),
+                ext=".csv",
+            )[-4:],
+            **stan_load_kwargs,
         ),
         bgs.analysis.CoreKickSigmoid.load_fit(
             model_file=os.path.join(stan_file_base, f"core-kick-sigmoid.stan"),
-            fit_files=bgs.utils.get_files_in_dir(os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/sigmoid-model"), ext=".csv")[-4:],
-            **stan_load_kwargs
-        )
+            fit_files=bgs.utils.get_files_in_dir(
+                os.path.join(
+                    bgs.DATADIR, "stan_files/core-kick-relation/sigmoid-model"
+                ),
+                ext=".csv",
+            )[-4:],
+            **stan_load_kwargs,
+        ),
     ]
-    loo_dict = {"Exponential":None, "Linear":None, "Sigmoid":None}
-    for n, m, c in zip(loo_dict.keys(), models, figure_config.custom_colors_shuffled[1:]):
+    loo_dict = {"Exponential": None, "Linear": None, "Sigmoid": None}
+    for n, m, c in zip(
+        loo_dict.keys(), models, figure_config.custom_colors_shuffled[1:]
+    ):
         SL.info(f"Doing model: {n}")
         m.extract_data(d=datafile)
         m.set_stan_data()
         m.sample_model(diagnose=False)
         loo_dict[n] = m.determine_loo()
         # plot rb distribution for different models
-        m.plot_generated_quantity_dist(["rb_posterior"], state="OOS", xlabels=m._folded_qtys_labs, save=False, ax=ax, label=n, color=c)
+        m.plot_generated_quantity_dist(
+            ["rb_posterior"],
+            state="OOS",
+            xlabels=m._folded_qtys_labs,
+            save=False,
+            ax=ax,
+            label=n,
+            color=c,
+        )
         m.print_parameter_percentiles(m.latent_qtys)
     ax.legend()
     # set xlimits by hand

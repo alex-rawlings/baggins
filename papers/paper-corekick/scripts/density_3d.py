@@ -8,7 +8,8 @@ import figure_config
 
 
 parser = argparse.ArgumentParser(
-    description="Plot 3D density", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    description="Plot 3D density",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
     "-v",
