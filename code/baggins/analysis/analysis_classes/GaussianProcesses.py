@@ -209,7 +209,6 @@ class VkickCoreradiusGP(_GPBase):
             rb0 = data["rb"]["0000"][mask]
             obs["vkick"].append([float(k) / self.escape_vel])
             obs["rb"].append([np.nanmedian(v.flatten() / rb0.flatten())])
-            rb = v.flatten() / rb0.flatten()
         self._rb0 = np.nanmean(rb0)
         self.obs = obs
         if not self._loaded_from_file:

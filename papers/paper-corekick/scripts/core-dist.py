@@ -50,7 +50,7 @@ datafile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_da
 # simulation output data at the moment just before merger
 ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0000/output"
 # set the stan model file base path
-stan_file_base = f"/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/core_kick_relation"
+stan_file_base = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/core_kick_relation"
 # set the escape velocity in km/s
 ESCAPE_VEL = 1800
 rng = np.random.default_rng(99918082)
@@ -121,14 +121,14 @@ else:
     # usage 2: run model comparison of most recently fit models
     fig, ax = plt.subplots()
     stan_load_kwargs = {
-        "figname_base": f"core-study/rb-kick-models/comparison/comp",
+        "figname_base": "core-study/rb-kick-models/comparison/comp",
         "escape_vel": ESCAPE_VEL,
         "premerger_ketjufile": ketju_file,
         "rng": rng,
     }
     models = [
         bgs.analysis.CoreKickExp.load_fit(
-            model_file=os.path.join(stan_file_base, f"core-kick-exp.stan"),
+            model_file=os.path.join(stan_file_base, "core-kick-exp.stan"),
             fit_files=bgs.utils.get_files_in_dir(
                 os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/exp-model"),
                 ext=".csv",
@@ -136,7 +136,7 @@ else:
             **stan_load_kwargs,
         ),
         bgs.analysis.CoreKickLinear.load_fit(
-            model_file=os.path.join(stan_file_base, f"core-kick-lin.stan"),
+            model_file=os.path.join(stan_file_base, "core-kick-lin.stan"),
             fit_files=bgs.utils.get_files_in_dir(
                 os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/lin-model"),
                 ext=".csv",
@@ -144,7 +144,7 @@ else:
             **stan_load_kwargs,
         ),
         bgs.analysis.CoreKickSigmoid.load_fit(
-            model_file=os.path.join(stan_file_base, f"core-kick-sigmoid.stan"),
+            model_file=os.path.join(stan_file_base, "core-kick-sigmoid.stan"),
             fit_files=bgs.utils.get_files_in_dir(
                 os.path.join(
                     bgs.DATADIR, "stan_files/core-kick-relation/sigmoid-model"

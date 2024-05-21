@@ -55,7 +55,6 @@ mergemask = [
           6 | unclass.
 """
 
-
 def radial_frequency(
     orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False, mergemask=mergemask
 ):
