@@ -40,20 +40,21 @@ mergemask = [
 ]
 
 """
-    XXX: A note on class IDs
-    The class IDs are a bit opaque. It's probably worth checking this in the 
-    Fortran code, but from experience:
+XXX: A note on class IDs
+The class IDs are a bit opaque. It's probably worth checking this in the 
+Fortran code, but from experience:
 
-    ClassID | Family
-    ------------------
-          0 | pi-box
-          1 | boxlet
-          2 | x-tube
-          3 | z-tube
-          4 | rosette
-          5 | irreg.
-          6 | unclass.
+ClassID | Family
+------------------
+        0 | pi-box
+        1 | boxlet
+        2 | x-tube
+        3 | z-tube
+        4 | rosette
+        5 | irreg.
+        6 | unclass.
 """
+
 
 def radial_frequency(
     orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False, mergemask=mergemask
