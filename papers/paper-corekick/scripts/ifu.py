@@ -43,6 +43,8 @@ if args.extract:
 
     snapshots = dict()
     for k, v in snapfiles["snap_nums"].items():
+        if v is None:
+            continue
         snapshots[k] = os.path.join(
             snapfiles["parent_dir"],
             f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5",
@@ -123,7 +125,7 @@ if args.extract:
             # have to set colour limits by hand
             ax = bgs.plotting.voronoi_plot(
                 voronoi_stats,
-                clims={"V": [26], "sigma": [160, 255], "h3": [0.086], "h4": [0.042]},
+                clims={"V": [20], "sigma": [160, 260], "h3": [0.032], "h4": [0.032]},
             )
             fig = ax[0].get_figure()
 

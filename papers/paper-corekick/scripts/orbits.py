@@ -56,7 +56,7 @@ vkcols = figure_config.VkickColourMap()
 
 
 # figure 2: plots of different kick velocities
-fig2, ax2 = plt.subplots(8, 4, sharex=True, sharey=True)
+fig2, ax2 = plt.subplots(5, 4, sharex=True, sharey=True)
 fig2.set_figwidth(2 * fig2.get_figwidth())
 fig2.set_figheight(2.5 * fig2.get_figheight())
 
@@ -81,7 +81,8 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
             )
     except:  # noqa
         # ongoing analysis
-        continue
+        SL.error(f"Unable to read {orbitfilebase}: skipping")
+        # continue
     vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
     cfi = 0
     for i, axi in enumerate(ax.flat):
@@ -112,21 +113,24 @@ for i in range(ax.shape[0]):
 for i in range(ax.shape[1]):
     ax[1, i].set_xlabel(r"$r/\mathrm{kpc}$")
 for axi, label in zip(ax.flat, labels):
-    axi.text(0.95, 0.86, label, ha="right", va="center", transform=axi.transAxes)
+    axi.text(0.05, 0.86, label, ha="left", va="center", transform=axi.transAxes)
 
 # add the colour bar in the top right subplot, hiding that subplot
 vkcols.make_cbar(ax[0, -1], pad=-1.075, fraction=0.5, aspect=10)
 ax[0, 3].set_visible(False)
-
 
 # for second figure
 for i in range(ax2.shape[0]):
     ax2[i, 0].set_ylabel(r"$f_\mathrm{orbit}$")
 for i in range(ax2.shape[1]):
     ax2[-1, i].set_xlabel(r"$r/\mathrm{kpc}$")
-fig2.subplots_adjust(bottom=0.1, top=0.98)
-ax2[-1, 1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.6), ncol=len(labels))
-
+bbox = ax2[-1, -1].get_position()
+fig2.legend(
+    *ax2[0, 0].get_legend_handles_labels(),
+    loc="center left",
+    bbox_to_anchor=(bbox.x0 + bbox.width / 4, bbox.y0 + bbox.height / 4),
+)
+ax2[-1, -1].axis("off")
 
 bgs.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
 bgs.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)

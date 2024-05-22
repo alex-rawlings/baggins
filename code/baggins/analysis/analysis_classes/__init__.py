@@ -31,4 +31,4 @@ from .PQModels import PQModelSimple, PQModelHierarchy  # noqa
 
 from .GaussianProcesses import VkickCoreradiusGP  # noqa
 
-from .CoreKick import CoreKick  # noqa
+from .CoreKick import CoreKickExp, CoreKickLinear, CoreKickSigmoid  # noqa

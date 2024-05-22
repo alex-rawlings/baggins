@@ -209,13 +209,11 @@ class VkickCoreradiusGP(_GPBase):
             rb0 = data["rb"]["0000"][mask]
             obs["vkick"].append([float(k) / self.escape_vel])
             obs["rb"].append([np.nanmedian(v.flatten() / rb0.flatten())])
-            rb = v.flatten() / rb0.flatten()
-            obs["rb_all"].append(self._rng.choice(rb, size=npoints))
         self._rb0 = np.nanmean(rb0)
         self.obs = obs
         if not self._loaded_from_file:
             self._add_input_data_file(d)
-        self.collapse_observations(["vkick", "rb_all"])
+        self.collapse_observations(["vkick", "rb"])
         # extract BH data at the timestep before merger
         kfile = get_ketjubhs_in_dir(self.premerger_ketjufile)[0]
         bh1, bh2, *_ = get_bound_binary(kfile)
@@ -269,7 +267,7 @@ class VkickCoreradiusGP(_GPBase):
     def set_stan_data(self):
         super().set_stan_data()
         self.stan_data.update(
-            dict(x1=self.obs_collapsed["vkick"], y1=self.obs_collapsed["rb_all"])
+            dict(x1=self.obs_collapsed["vkick"], y1=self.obs_collapsed["rb"])
         )
 
     def all_plots(self, figsize=None):
@@ -287,7 +285,7 @@ class VkickCoreradiusGP(_GPBase):
             xmodel="x1",
             ymodel=self.folded_qtys_posterior[0],
             xobs="vkick",
-            yobs="rb_all",
+            yobs="rb",
             ax=ax,
         )
 

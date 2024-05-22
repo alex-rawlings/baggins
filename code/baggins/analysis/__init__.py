@@ -26,5 +26,7 @@ from .analysis_classes import (  # noqa
     PQModelSimple,
     PQModelHierarchy,
     VkickCoreradiusGP,
-    CoreKick,
+    CoreKickExp,
+    CoreKickLinear,
+    CoreKickSigmoid,
 )
