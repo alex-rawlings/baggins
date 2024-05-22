@@ -41,7 +41,7 @@ mergemask = [
 
 """
 XXX: A note on class IDs
-The class IDs are a bit opaque. It's probably worth checking this in the 
+The class IDs are a bit opaque. It's probably worth checking this in the
 Fortran code, but from experience:
 
 ClassID | Family
