@@ -763,13 +763,13 @@ class _StanModel(ABC):
         : float
             mode of variable
         """
-        if self._fit is None:
+        """if self._fit is None:
             _fit = self._prior_fit
             _logger.debug("Generated quantities will be taken from the prior model")
         else:
             _fit = self._fit
-            _logger.debug("Generated quantities will be taken from the posterior model")
-        x, dens = az.kde(_fit.stan_variables()[v])
+            _logger.debug("Generated quantities will be taken from the posterior model")"""
+        x, dens = az.kde(self.generated_quantities.stan_variables()[v])
         return x[np.nanargmax(dens)]
 
     def _parameter_corner_plot(
@@ -1073,7 +1073,14 @@ class _StanModel(ABC):
         pass
 
     def plot_generated_quantity_dist(
-        self, gq, state="pred", ax=None, xlabels=None, save=True, plot_kwargs={}
+        self,
+        gq,
+        state="pred",
+        bounds=None,
+        ax=None,
+        xlabels=None,
+        save=True,
+        **kwargs,
     ):
         """
         Plot the 1-D distribution of an arbitrary variable in the generated quantities block of a stan model.
@@ -1091,6 +1098,8 @@ class _StanModel(ABC):
             labels for the x-axis, by default None
         save : bool, optional
             save the plot, by default True
+        **kwargs :
+            other parameters parsed to arviz.plot_dist()
 
         Returns
         -------
@@ -1109,7 +1118,22 @@ class _StanModel(ABC):
             ax = np.array(ax)
             ax_shape = (1,)
         ax = ax.flatten()
-        assert isinstance(gq, list)
+        try:
+            assert isinstance(gq, list)
+        except AssertionError:
+            _logger.exception(f"Input `gq` must be of type <list>, not {type(gq)}!")
+            raise
+        if bounds is not None:
+            try:
+                assert len(bounds) == len(gq)
+                for b in bounds:
+                    assert len(b) == 2
+            except AssertionError:
+                _logger.exception(
+                    "Setting bounds requires the `bounds` argument to have the same length as `gq`, and each entry must be a 2-tuple",
+                    exc_info=True,
+                )
+                raise
         if xlabels is None:
             xlabels = gq
         else:
@@ -1124,6 +1148,16 @@ class _StanModel(ABC):
                 raise
         for i, (_gq, l) in enumerate(zip(gq, xlabels)):
             ys = self.sample_generated_quantity(_gq, state=state)
+            if bounds is not None:
+                if bounds[i][0] is not None:
+                    mask_lower = ys > bounds[i][0]
+                else:
+                    mask_lower = True
+                if bounds[i][1] is not None:
+                    mask_upper = ys <= bounds[i][1]
+                else:
+                    mask_upper = True
+                ys = ys[np.logical_and(mask_lower, mask_upper)]
             try:
                 assert len(ys.shape) < 3
             except AssertionError:
@@ -1132,7 +1166,7 @@ class _StanModel(ABC):
                     exc_info=True,
                 )
                 raise
-            az.plot_dist(ys, ax=ax[i], plot_kwargs=plot_kwargs)
+            az.plot_dist(ys, ax=ax[i], **kwargs)
             ax[i].set_xlabel(l)
             ax[i].set_ylabel("PDF")
         ax.reshape(ax_shape)
@@ -1183,6 +1217,11 @@ class _StanModel(ABC):
         ----------
         stan_log_lik : str, optional
             name of log-likelihood variable in stan code, by default "log_lik"
+
+        Returns
+        -------
+        loo : arviz.ELPDData
+            elpd data object from arviz
         """
         if self.generated_quantities is None:
             self.sample_generated_quantity(stan_log_lik, state="pred")
@@ -1193,6 +1232,7 @@ class _StanModel(ABC):
             )
         loo = az.loo(self._fit_for_az)
         print(loo)
+        return loo
 
     def rename_dimensions(self, dim_map):
         """

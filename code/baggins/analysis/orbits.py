@@ -3,7 +3,7 @@ import gadgetorbits as go
 from ..env_config import _cmlogger
 from ..mathematics import get_histogram_bin_centres
 
-__all__ = ["radial_frequency"]
+__all__ = ["radial_frequency", "determine_box_tube_ratio"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -38,6 +38,22 @@ mergemask = [
     0,
     4,
 ]
+
+"""
+XXX: A note on class IDs
+The class IDs are a bit opaque. It's probably worth checking this in the
+Fortran code, but from experience:
+
+ClassID | Family
+------------------
+        0 | pi-box
+        1 | boxlet
+        2 | x-tube
+        3 | z-tube
+        4 | rosette
+        5 | irreg.
+        6 | unclass.
+"""
 
 
 def radial_frequency(
@@ -104,6 +120,8 @@ def radial_frequency(
                 )
         else:
             _logger.debug("Warning: no particles in current radial bin")
+            for cl in possibleclasses:
+                classfrequency[i - 1, cl] = np.nan
     rad_len = np.array(rad_len)
 
     if returnextra:
@@ -118,3 +136,44 @@ def radial_frequency(
         )
     else:
         return meanrads, classfrequency, rad_len
+
+
+def determine_box_tube_ratio(
+    meanrads,
+    classfrequency,
+    rad_len,
+    within,
+    box_class_ids=[0, 1],
+    tube_class_ids=[2, 3, 4],
+):
+    """
+    Calculate the ratio of box to tube orbits within some radii.
+
+    Parameters
+    ----------
+    meanrads : array-like
+        centres of radial bins
+    classfrequency : array-like
+        frequency of each orbital class for each radial bin
+    rad_len : array-like
+        number of particles per radial bin
+    within : float
+        radius to determine fraction within
+    box_class_ids : list, optional
+        orbital class IDs to be listed as boxes, by default [0, 1]
+    tube_class_ids : list, optional
+        orbital class IDs to be listed as tubes, by default [2,3,4]
+
+    Returns
+    -------
+    : float
+        ratio
+    """
+    mask = meanrads <= within
+    boxes = 0
+    tubes = 0
+    for cid in box_class_ids:
+        boxes += np.nansum(classfrequency[mask, cid] * rad_len[mask])
+    for cid in tube_class_ids:
+        tubes += np.nansum(classfrequency[mask, cid] * rad_len[mask])
+    return boxes / tubes

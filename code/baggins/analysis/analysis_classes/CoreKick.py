@@ -1,3 +1,5 @@
+from abc import abstractmethod
+from tqdm import tqdm
 import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
@@ -16,12 +18,12 @@ from ...plotting import savefig
 from ...utils import load_data, get_ketjubhs_in_dir
 
 
-__all__ = ["CoreKick"]
+__all__ = ["CoreKickExp", "CoreKickLinear", "CoreKickSigmoid"]
 
 _logger = _cmlogger.getChild(__name__)
 
 
-class CoreKick(HierarchicalModel_2D):
+class _CoreKickBase(HierarchicalModel_2D):
     def __init__(
         self,
         model_file,
@@ -35,25 +37,8 @@ class CoreKick(HierarchicalModel_2D):
         self.escape_vel = escape_vel
         self.premerger_ketjufile = premerger_ketjufile
         self._folded_qtys = ["rb"]
-        self._folded_qtys_labs = [r"$r_\mathrm{b}$"]
+        self._folded_qtys_labs = [r"$r_\mathrm{b}/r_{\mathrm{b},0}$"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = ["nu", "mu", "sigma", "k", "b", "c", "err"]
-        self._latent_qtys_labs = [
-            r"$\nu$",
-            r"$\mu$",
-            r"$\sigma$",
-            r"$k$",
-            r"$b$",
-            r"$c$",
-            r"$\tau$",
-        ]
-        self._latent_qtys_posterior = self._latent_qtys
-        self._labeller_latent = MapLabeller(
-            dict(zip(self._latent_qtys, self._latent_qtys_labs))
-        )
-        self._labeller_latent_posterior = MapLabeller(
-            dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
-        )
         self.bh1 = None
         self.bh2 = None
         self._rb0 = np.nan
@@ -67,12 +52,36 @@ class CoreKick(HierarchicalModel_2D):
         return self._folded_qtys_posterior
 
     @property
+    @abstractmethod
     def latent_qtys(self):
-        return self._latent_qtys
+        pass
+
+    @property
+    @abstractmethod
+    def _latent_qtys_labs(self):
+        pass
 
     @property
     def latent_qtys_posterior(self):
         return self._latent_qtys_posterior
+
+    @property
+    def _latent_qtys_posterior(self):
+        return self.latent_qtys
+
+    @property
+    def _labeller_latent(self):
+        return MapLabeller(dict(zip(self.latent_qtys, self._latent_qtys_labs)))
+
+    @property
+    def _labeller_latent_posterior(self):
+        return MapLabeller(
+            dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
+        )
+
+    @property
+    def rb0(self):
+        return self._rb0
 
     def extract_data(self, d=None, npoints=200, pars=None):
         """
@@ -157,11 +166,7 @@ class CoreKick(HierarchicalModel_2D):
         s1 = spins[: _OOS["N_OOS"], :]
         s2 = spins[_OOS["N_OOS"] :, :]
         vkick = np.full(_OOS["N_OOS"], np.nan)
-        for i, (ss1, ss2) in enumerate(zip(s1, s2)):
-            print(
-                f"Sampling {(i+1)/_OOS['N_OOS']*100:.1f}% complete...                      ",
-                end="\r",
-            )
+        for i, (ss1, ss2) in tqdm(enumerate(zip(s1, s2)), total=len(s1)):
             remnant = ketju_calculate_bh_merger_remnant_properties(
                 m1=self.bh1.m,
                 m2=self.bh2.m,
@@ -173,7 +178,6 @@ class CoreKick(HierarchicalModel_2D):
                 v2=self.bh2.v.flatten(),
             )
             vkick[i] = np.linalg.norm(remnant["v"]) / self.escape_vel
-        print("\nSampling complete")
         _logger.debug(
             f"{np.sum(np.isnan(vkick)) / len(vkick) * 100:.2f}% of calculations from from the Zlochower Lousto relation are NaN!"
         )
@@ -192,12 +196,12 @@ class CoreKick(HierarchicalModel_2D):
         if not self._loaded_from_file:
             self._set_stan_data_OOS()
 
-    def sample_model(self, sample_kwargs=...):
+    def sample_model(self, sample_kwargs=..., diagnose=True):
         """
         Wrapper around StanModel.sample_model() to handle determining num_OOS
         from previous sample.
         """
-        super().sample_model(sample_kwargs)
+        super().sample_model(sample_kwargs, diagnose=diagnose)
         if self._loaded_from_file:
             self._determine_num_OOS(self._folded_qtys_posterior[0])
             self._set_stan_data_OOS()
@@ -322,7 +326,7 @@ class CoreKick(HierarchicalModel_2D):
         ax = self.plot_generated_quantity_dist(
             ["rb_posterior"],
             state="OOS",
-            xlabels=[r"$r_\mathrm{b}/r_{\mathrm{b},0}$"],
+            xlabels=self._folded_qtys_labs[0],
             save=False,
         )
         rb_mode = self.calculate_mode("rb_posterior")
@@ -337,6 +341,11 @@ class CoreKick(HierarchicalModel_2D):
         secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
+
+    def all_plots(self, figsize=None):
+        self.plot_latent_distributions(figsize)
+        self.all_posterior_pred_plots(figsize)
+        self.all_posterior_OOS_plots(figsize)
 
     @classmethod
     def load_fit(
@@ -371,3 +380,72 @@ class CoreKick(HierarchicalModel_2D):
         C.escape_vel = escape_vel
         C.premerger_ketjufile = premerger_ketjufile
         return C
+
+
+class CoreKickExp(_CoreKickBase):
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
+
+    @property
+    def latent_qtys(self):
+        return ["K", "b", "err"]
+
+    @property
+    def _latent_qtys_labs(self):
+        return [r"$K$", r"$\beta$", r"$\tau$"]
+
+
+class CoreKickLinear(_CoreKickBase):
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
+
+    @property
+    def latent_qtys(self):
+        return ["a", "b", "err"]
+
+    @property
+    def _latent_qtys_labs(self):
+        return [r"$a$", r"$b$", r"$\tau$"]
+
+
+class CoreKickSigmoid(_CoreKickBase):
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
+
+    @property
+    def latent_qtys(self):
+        return ["K", "b", "c", "err"]
+
+    @property
+    def _latent_qtys_labs(self):
+        return [r"$K$", r"$\beta$", r"$c$", r"$\tau$"]

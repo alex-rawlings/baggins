@@ -164,12 +164,12 @@ class _GrahamModelBase(HierarchicalModel_2D):
         if not self._loaded_from_file:
             self._set_stan_data_OOS()
 
-    def sample_model(self, sample_kwargs={}):
+    def sample_model(self, sample_kwargs={}, diagnose=True):
         """
         Wrapper around StanModel.sample_model() to handle determining num_OOS
         from previous sample.
         """
-        super().sample_model(sample_kwargs)
+        super().sample_model(sample_kwargs, diagnose=diagnose)
         if self._loaded_from_file:
             self._determine_num_OOS(self._folded_qtys_posterior[0])
             self._set_stan_data_OOS()
