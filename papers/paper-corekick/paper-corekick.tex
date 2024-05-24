@@ -264,7 +264,6 @@ For all simulations, interactions between stellar particles are softened with a 
     \label{fig:max_disp}
 \end{figure}
 
-
 \subsection{Mass density profiles in three dimensions}
 \begin{figure}
     \centering
@@ -272,8 +271,8 @@ For all simulations, interactions between stellar particles are softened with a 
     \caption{
         Three dimensional stellar mass density, with the line colour corresponding to the kick velocity of the SMBH. 
         All simulations with $\vk \geq 0.5v_\mathrm{esc}=900\,\kmps$ share the same colour, as there is little variation in the profiles for these kick velocities. \drafting{Should probably update this if max is 1020, maybe add special colour for 2000?}.
-        At radii $R\lesssim3\,\mathrm{kpc}$, the projected stellar mass density decreases smoothly with increasing kick velocity, with the exception of the $\vk=2000\,\kmps$ simulation, in which the SMBH has not returned to the centre of the merger remnant.
-        At radii $R>3\,\mathrm{kpc}$ all the density profiles are consistent with each other, indicating that a changing SMBH recoil velocity only affects the inner mass distribution of the galaxy merger remnant.
+        At radii $r\lesssim3\,\mathrm{kpc}$, the projected stellar mass density decreases smoothly with increasing kick velocity, with the exception of the $\vk=2000\,\kmps$ simulation, in which the SMBH has not returned to the centre of the merger remnant.
+        At radii $r>3\,\mathrm{kpc}$ all the density profiles are consistent with each other, indicating that a changing SMBH recoil velocity only affects the inner mass distribution of the galaxy merger remnant.
         }
     \label{fig:density3d}
 \end{figure}
@@ -284,71 +283,18 @@ To centre the data herein, we use the shrinking sphere method \citep{power2003} 
 Consequently, we are confident that our results are not a result of malign centring.}
 For the $\vk=0\,\kmps$ case, \drafting{check} we determine the SMBH influence radius to be $r_\mathrm{infl}\simeq 1.5\,\mathrm{kpc}$.
 
-In \autoref{fig:density3d}, we observe a clear dichotomy in the 3D spatial distribution of stellar mass, with mergers that had an SMBH with a kick velocity $\vk<540\,\kmps$ having more mass in the central $3\,\mathrm{kpc}$ ($2r_\mathrm{infl}$) than those mergers with $\vk>540\,\kmps$. 
-All merger remnants have a consistent mass density distribution at $r>3\,\mathrm{kpc}$. 
-Additionally, for kick velocities $\vk<540\,\kmps$, we observe a gradient in decreasing central stellar density with increasing kick velocity.
-We check the time dependence of this dichotomy by constructing the 3D stellar mass distributions at additional times $t=0.056\,\mathrm{Gyr}$, $t=0.094\,\mathrm{Gyr}$, and $t=0.12\,\mathrm{Gyr}$, and find the dichotomy persists, with the same kick velocity split.
+In \autoref{fig:density3d}, we observe a clear decrease in stellar mass density at radii $r\lesssim3\,\mathrm{kpc}$ with increasing kick velocity.
+An exception to this trend is the highest kick velocity we simulated, $\vk=2000\,\kmps$, which shows an excess of stellar mass between $0.3 \lesssim r/\mathrm{kpc} \lesssim 2$ relative to the $vk=1020\,\kmps$ simulation.
+Recalling that the time of the analysis is performed when the remnant SMBH has settled, and thus occurs at increasingly later times with increasing kick velocity, SMBHs kicked with a larger $\vk$ have undergone more oscillations to return the SMBH to an equilibrium state compared to SMBHs with a lower $\vk$.
+An increased number of oscillations presents an enhanced ability to remove stellar mass from the centre, as reflected in the density profiles in \autoref{fig:density3d}.
+Similarly, the $\vk=2000\,\kmps$ case, in which the SMBH has not undergone any oscillations in the centre of the galaxy merger remnant, has not had an opportunity to evacuate as much mass from the central regions as, for example, the $\vk=1020\,\kmps$ has.
+Conversely, the mass deficit in the $\vk=2000\,\kmps$ is greater than that exhibited by all kick velocities up to and including $\vk=480\,\kmps$.
+This observation is in agreement with \citet{nasim2021b}, in that the major contributor to a central mass deficit is the initial excursion of the recoiling SMBH, and the subsequent oscillations playing a subdominant role in the enhancement of the stellar core.
 
-The reasons for the dichotomy are discussed further in \drafting{section}, however we continue our analysis using the projected stellar density (as an observer would see) with the knowledge that there is \textit{a} dependence of the removal of central stellar mass on the SMBH kick velocity. 
-
+The primary result of the three dimensional density profile is the observation of a recoil velocity dependent impact on the stellar density structure, which we can take as a ground truth when we consider the galaxy merger remnants from a more observationally-motivated perspective. 
+We hypothesise that the difference between merger remnants in three dimensional space will manifest in other methods of observing the galaxy. 
 
 \subsection{Projected mass density profiles}\label{ssec:projdens}
-To facilitate comparisons with observations \citep[e.g.][]{graham2003,rusli2013}, we fit the six-parameter core-S\'ersic profile \citep{graham2003} to the projection of each simulated merger remnants:
-\begin{equation}\label{eq:cs}
-    \Sigma(R) = \Sigma' \left[1 + \left(\frac{\rb}{R}\right)^\alpha \right]^{\gamma/\alpha} \exp\left[-b \left(\frac{R^\alpha + \rb^\alpha}{\Reff^\alpha}\right)^{(1/\alpha n)}\right]
-\end{equation}
-where
-\begin{equation}
-    \Sigma' = \Sigma_\mathrm{b} 2^{-\gamma/\alpha} \exp\left[b\left(2^{1/a} \frac{\rb}{\Reff}\right)^{1/n}\right].
-\end{equation}
-Here $\rb$ is the core radius, $\Sigma_\mathrm{b}$ is the density at the core radius, $\gamma$ is the core slope, $\Reff$ is the effective (half-light) radius\footnote{As we assume a constant mass-to-light ratio, the half-light radius is equivalent to the projected half-mass radius.}, $n$ is the S\'ersic index, $b$ is estimated as $b\simeq 2n - 1/3 + 0.009876/n$ \citep{prugniel1997}, and $\alpha$ is the profile transition index.
-We refer to the collective vector of these parameters as $\vb{\theta}$.
-We view the simulated merger remnant from fifteen random angles, and use a Bayesian hierarchical model (HM) to fit the model parameters.
-As each of the projections are unordered and exchangeable (i.e., there is no distinguishing label for the projections), and each projection is of the same merger remnant, a HM naturally lends itself.
-The idea behind the HM is as such: for each projection, we infer the six parameters of $\vb{\theta}$, and assume that these values are draws from a common, global distribution of all possible $\vb{\theta}$ vectors.
-Hence, we are effectively inferring the global hyperparameters $\vb{\theta}^\mathrm{hyp}$ that describe the latent parameters $\vb{\theta}$ that we are interested in.
-This idea is demonstrated in the directed acyclic graph (DAG) for the model, shown in \autoref{fig:dag}.
-
-We use weakly-constrained prior distributions for each of the hyperparameters in $\vb{\theta}^\mathrm{hyp}$, where these prior distributions are chosen to reflect reasonable values that the parameters may take (e.g. distributions of a radial quantity are chosen so as to be positively-constrained).
-The distributions\footnote{Note that the normal distributions $\mathcal{N}$ are parameterised using the standard deviation $\sigma$, as opposed to the variance $\sigma^2$ as is common in many statistics references.} of the hyperparameters are given in \autoref{tab:hyper}.
-
-We fit the model with \textsc{Stan} using the No U-turn sampler (NUTS, a variant of Hamiltonian Monte Carlo (HMC) with four chains each of 4000 iterations, of which the first 2000 are discarded as warmup.
-This resulted in 2000 draws from the posterior distribution of $\vb{\theta}$, whereby we ensure the diagnostic value $\hat{R}$ (comparison of between-chain and within-chain estimates) is less than 1.05.
-We perform additional prior sensitivity tests using the power scaling method described in \citet{kallioinen21}, ensuring that the cumulative Jensen-Shannon (CJS) divergence is less than 0.05 for the latent parameters $\vb{\theta}$ of the model. 
-This recommended threshold indicates that the sampled posterior distributions of the latent parameters are not sensitive to the particular prior distributions used.
-
-Our results indicate that a kick non-zero kick velocity always serves to enlarge the core region relative to the core formed during the SMBH binary scouring phase.
-In agreement with previous studies \citep{gualandris2008,nasim2021b}, we find an increase in the core radius $\rb$ with kick velocity, however only up to a given kick velocity, in agreement with the results of \citet{boylan2004}.
-We find that unlike the results of \citet{nasim2021b}, where core radius monotonically increases with kick velocity, we observe a peak in core radius occurring at $\vk=480\,\kmps=0.27\,v_\mathrm{esc}$, with the core radii measured from simulations with kick velocities in excess of $480\,\kmps$ plateauing at $\rb\sim1.7 r_{\mathrm{b},0}$.
-We caution however that the systems in the study of \citet{nasim2021b} differ from ours in both structure, and the time of the analysis.
-Whereas we use a fixed time following the SMBH binary coalescence for our analysis, \citet{nasim2021b} wait until either the ejected SMBH settles back to the CoM, or $2\,\mathrm{Gyr}$ has passed.
-\drafting{As discussed in section \textbf{Atte}, we find relaxation increasingly dominates our merger remnants with increasing time.}
-As a result, a direct comparison between this work and that of \citet{nasim2021b} cannot be made.
-
-Complimentary to the peak in core radius at $480\,\kmps$, we observe a dip in the projected density at the core radius $\Sigma_\mathrm{b}$ at this same kick velocity in \autoref{fig:csparams}.
-The effective radius $\Reff$ and core density slope $\gamma$ are relatively robust to the SMBH recoil velocity.
-
-\begin{table}
-    \caption{Hyperparameter distributions for core-S\'ersic model. $\mathcal{N}$ indicates a normal distribution, $\mathrm{Exp}(\lambda)$ indicates an exponential distribution.}
-    \label{tab:hyper}
-    \begin{tabular}{llc}
-        \hline
-        Hyperparameter & Distribution & Truncation \\
-        \hline
-        $\mu_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(10, 2)$ & None \\
-        $\sigma_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
-        $\lambda_\gamma$ & $\mathrm{Exp}(10)$ & None \\
-        $\mu_n$ & $\mathcal{N}(8,4)$ & $0 < x \leq 15$ \\
-        $\sigma_n$ & $\mathcal{N}(0,4)$ & $x>0$ \\
-        $\sigma_\alpha$ & $\mathrm{Gamma}(2, 0.2)$ & None \\
-        $\sigma_{r_\mathrm{b}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
-        $\sigma_{R_\mathrm{e}}$ & $\mathcal{N}(0, 12)$ & $x>0$ \\
-        $\mu_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
-        $\sigma_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
-        \hline
-    \end{tabular}
-\end{table}
-
 
 \begin{figure}
     \centering
@@ -380,79 +326,160 @@ The effective radius $\Reff$ and core density slope $\gamma$ are relatively robu
     \label{fig:vkrb}
 \end{figure}
 
-
-\subsection{Predicted core size distribution}
-\drafting{Would a Gaussian process fit be better motivated here?}
-To predict the distribution of core sizes, we require a mapping from the kick velocity to the core radius. 
-Previous work by \citet{nasim2021b} fit a power law of the form:
-\begin{equation}\label{eq:vkrb_nasim}
-    \frac{\rb}{r_{\mathrm{b},0}} = K v'^\beta + 1
-\end{equation}
-where $v'=\vk/v_\mathrm{esc}$, and $K$ and $\beta$ are free parameters.
-We see immediately that \autoref{eq:vkrb_nasim} does not capture the peak in the data at $480\kmps$, and so opt for an alternative form.
-We fit a function that is the sum of a modified Student's $t$-distribution with a sigmoid function, and takes the form:
-\begin{equation}\label{eq:vkrb}
-    \frac{\rb}{r_{\mathrm{b},0}} = \frac{A(v'; \mu,\nu,\sigma)+B(v'; \mu,\nu,\sigma)}{2\pi\sigma} - S(v';k,b,\mu) + c,
+To facilitate comparisons with observations \citep[e.g.][]{graham2003,rusli2013}, we fit the six-parameter core-S\'ersic profile \citep{graham2003} to the projection of each simulated merger remnants:
+\begin{equation}\label{eq:cs}
+    \Sigma(R) = \Sigma' \left[1 + \left(\frac{\rb}{R}\right)^\alpha \right]^{\gamma/\alpha} \exp\left[-b \left(\frac{R^\alpha + \rb^\alpha}{\Reff^\alpha}\right)^{(1/\alpha n)}\right]
 \end{equation}
 where
 \begin{equation}
-    A(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu-2}{\nu}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu-2}{\nu}}} \right)^2 \right)^{-(\nu + 1)/2},
+    \Sigma' = \Sigma_\mathrm{b} 2^{-\gamma/\alpha} \exp\left[b\left(2^{1/a} \frac{\rb}{\Reff}\right)^{1/n}\right].
 \end{equation}
-and
-\begin{equation}
-    B(v'; \mu,\nu,\sigma) = \sqrt{\frac{\nu}{\nu-2}} \left(1 + \left(\frac{v' - \mu}{\sigma \sqrt{\frac{\nu}{\nu-2}}} \right)^2 \right)^{-(\nu + 1)/2},
-\end{equation}
-and
-\begin{equation}
-    S(v';k,b,\mu) = \frac{k}{1 + \exp(-b (v'-\mu))}.
-\end{equation}
-Hence \autoref{eq:vkrb} takes six free parameters ($\mu$, $\nu$, $\sigma$, $k$, $b$, $c$), which we constrain using the median trend of the $vk/v_\mathrm{esc}$--$\rb$ relation in \autoref{fig:vkrb}, and assume a normally-distributed scatter $\tau$.
-The fit is found using the same Bayesian methods as in \autoref{ssec:projdens} (including posterior checking), and is plotted with an orange line in \autoref{fig:vkrb}, with the values of the fitted parameters given in \autoref{tab:vkrb}.
+Here $\rb$ is the core radius, $\Sigma_\mathrm{b}$ is the density at the core radius, $\gamma$ is the core slope, $\Reff$ is the effective (half-light) radius\footnote{As we assume a constant mass-to-light ratio, the half-light radius is equivalent to the projected half-mass radius.}, $n$ is the S\'ersic index, $b$ is estimated as $b\simeq 2n - 1/3 + 0.009876/n$ \citep{prugniel1997}, and $\alpha$ is the profile transition index.
+We refer to the collective vector of these parameters as $\vb{\theta}\equiv[\rb, \Sigma_\mathrm{b}, \gamma, \Reff, n, \alpha]$.
+We view the simulated merger remnant from fifteen random angles, and use a Bayesian hierarchical model (HM) to fit the model parameters.
+As each of the projections are unordered and exchangeable (i.e., there is no distinguishing label for the projections), and each projection is of the same merger remnant, a HM naturally lends itself.
+The idea behind the HM is as such: for each projection, we infer the six parameters of $\vb{\theta}$, and assume that these values are draws from a common, global distribution of all possible $\vb{\theta}$ vectors.
+Hence, we are effectively inferring the global hyperparameters $\vb{\theta}^\mathrm{hyp}$ that describe the latent parameters $\vb{\theta}$ that we are interested in.
+This idea is demonstrated in the directed acyclic graph (DAG) for the model, shown in \autoref{fig:dag}.
+
+We use weakly-constrained prior distributions for each of the hyperparameters in $\vb{\theta}^\mathrm{hyp}$, where these prior distributions are chosen to reflect reasonable values that the parameters may take (e.g. distributions of a radial quantity are chosen so as to be positively-constrained).
+The distributions\footnote{Note that the normal distributions $\mathcal{N}$ are parameterised using the standard deviation $\sigma$, as opposed to the variance $\sigma^2$ as is common in many statistics references.} of the hyperparameters are given in \autoref{tab:hyper}.
+
+We fit the model with \textsc{Stan} using the No U-turn sampler (NUTS, a variant of Hamiltonian Monte Carlo (HMC) with four chains each of 4000 iterations, of which the first 2000 are discarded as warmup.
+This resulted in 2000 draws from the posterior distribution of $\vb{\theta}$, whereby we ensure the diagnostic value $\hat{R}$ (comparison of between-chain and within-chain estimates) is less than 1.05.
+We perform additional prior sensitivity tests using the power scaling method described in \citet{kallioinen21}, ensuring that the cumulative Jensen-Shannon (CJS) divergence is less than 0.05 for the latent parameters $\vb{\theta}$ of the model. 
+This recommended threshold indicates that the sampled posterior distributions of the latent parameters are not sensitive to the particular prior distributions used.
+
+In \autoref{fig:density}, we see a clear decrease in the projected stellar mass density with increasing kick velocity for four representative values of $\vk$, consistent with the results in \autoref{fig:density3d}.
+The shaded regions in \autoref{fig:density} correspond to the $25\%$ Bayesian highest density interval (HDI), where the uncertainty is a direct result of choosing different projection angles when constructing the projected densities.
+
+To discuss the difference in the evacuated core region of the merger remnants more quantitatively, we show the median (blue dashes) and interquartile range (IQR, blue boxes) of the core radius parameter $\rb$ from \autoref{eq:cs} for kick velocities $\vk\leq 1020\,\kmps$ in \autoref{fig:vkrb}.
+Our results indicate that a non-zero kick velocity always serves to enlarge the core region relative to the core formed during the SMBH binary scouring phase.
+In agreement with previous studies \citep{gualandris2008,nasim2021b}, we find a monotonic increase in the core radius $\rb$ with kick velocity.
+Additionally, we see that the IQR of $\rb$ increases with increasing $\vk$, indicating that with an increased core size, the uncertainty introduced due to projection effects also increases.
+
+As shown in the upper central panel of \autoref{fig:csparams}, the projected density at the core radius decreases with increasing kick velocity, in agreement with the decreasing core density observed in the three dimensional density profiles in \autoref{fig:density3d}.
+Similarly, the S\'ersic index also decreases with increasing kick velocity (bottom right panel of \autoref{fig:csparams}), although the overall decrease is from $n\simeq2.1$ at $\vk=0\,\kmps$ to $n\simeq1.6$ at $\vk=1020\,\kmps$.
+The other three parameters: $\Reff$, $\alpha$, and $\gamma$, all appear insensitive to the kick velocity.
+The fact that $\Reff$ and $\alpha$ are agnostic to $\vk$ is not surprising, given that these parameters control more of the larger-scale profile of \autoref{eq:cs}.
+\drafting{A constant $\gamma$ however implies that irrespective of the core size, the steepness of the core density is \dots what does it mean? Mass is iteratively removed in oscillations?}
 
 \begin{table}
-    \caption{Values of the fitted parameters in the core radius -- kick velocity relation in \autoref{eq:vkrb}.}
+    \caption{Hyperparameter distributions for core-S\'ersic model. $\mathcal{N}$ indicates a normal distribution, $\mathrm{Exp}(\lambda)$ indicates an exponential distribution.}
+    \label{tab:hyper}
+    \begin{tabular}{llc}
+        \hline
+        Hyperparameter & Distribution & Truncation \\
+        \hline
+        $\mu_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(10, 2)$ & None \\
+        $\sigma_{\log_{10}\Sigma_\mathrm{b}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
+        $\lambda_\gamma$ & $\mathrm{Exp}(10)$ & None \\
+        $\mu_n$ & $\mathcal{N}(8,4)$ & $0 < x \leq 15$ \\
+        $\sigma_n$ & $\mathcal{N}(0,4)$ & $x>0$ \\
+        $\sigma_\alpha$ & $\mathrm{Gamma}(2, 0.2)$ & None \\
+        $\sigma_{r_\mathrm{b}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
+        $\sigma_{R_\mathrm{e}}$ & $\mathcal{N}(0, 12)$ & $x>0$ \\
+        $\mu_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 1)$ & $x>0$ \\
+        $\sigma_{\tau_{\log_{10}\Sigma}}$ & $\mathcal{N}(0, 0.2)$ & $x>0$ \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\subsection{Predicted core size distribution}
+To predict the distribution of core sizes given our merger remnant of two massive ETGs, we require a mapping from the kick velocity to the core radius. 
+Let us define a scaled kick velocity $v'=\vk/v_\mathrm{esc}$, where $v_\mathrm{esc}=1800\,\kmps$.
+Previous work by \citet{nasim2021b} fit an empirical power law of the form:
+\begin{equation}\label{eq:vkrb_exp}
+    \frac{\rb}{r_{\mathrm{b},0}} = K v'^\beta + 1
+\end{equation}
+where $K$ and $\beta$ are free parameters.
+\autoref{eq:vkrb_exp} gives that the core radius monotonically increases irrespective of kick velocity, implying that as $\vk\rightarrow\infty$, $\rb\rightarrow\infty$.
+
+We test two other empirical relations between $\rb$ and $\vk$.
+The first is a simple linear relation:
+\begin{equation}\label{eq:vkrb_lin}
+    \frac{\rb}{r_{\mathrm{b},0}} = a v' + b,
+\end{equation}
+and the second takes the form of a sigmoid function:
+\begin{equation}\label{eq:vkrb_sig}
+    \frac{\rb}{r_{\mathrm{b},0}} = K \left( 1 - e^{-\beta v'} \right) + c.
+\end{equation}
+
+We fit each of these models to the median trend in \autoref{fig:vkrb}, and display the relation with its best fit parameters in the same figure.
+In the fit, we assume weakly informative positively-constrained normally distributed priors on the parameters, a normally distributed scatter $\tau$ truncated to $\tau>0$, and a Gaussian likelihood function.
+The fit is found using the same Bayesian methods as in \autoref{ssec:projdens} (including posterior checking and prior sensitivity analysis), allowing for uncertainties to be estimated for the model fits.
+The medians, IQRs, and constraints of the relation parameters in \autoref{eq:vkrb_exp}-\autoref{eq:vkrb_sig} are given in \autoref{tab:vkrb}.
+
+\begin{table}
+    \caption{Values of the fitted parameters in the three core radius -- kick velocity relations.}
     \label{tab:vkrb}
-    \begin{tabular}{lccc}
+    \begin{tabular}{llcc}
         \hline
-        Parameter & Median & IQR & Constraints \\
+        Model & Parameter & Median & IQR \\
         \hline
-        $\mu$ & 0.182 & 0.0427 & $\geq 0$ \\
-        $\nu$ & 21.5 & 11.9 & $\geq 0$ \\
-        $\sigma$ & 0.601 & 0.298 & $\geq 0$ \\
-        $k$ & 0.894 & 0.189 & $\geq 0$ \\
-        $b$ & -34.5 & 30.9 & $\leq 0$ \\
-        $c$ & 1.64 & 0.0661 & $\geq 0$ \\
-        $\tau$ & 0.170 & 0.0336 & $\geq 0$ \\
+        Exponential & $K$ & 2.90 & 0.37 \\
+        & $\beta$ & 0.78 & 0.13 \\
+        \hline
+        Linear & $a$ & 3.26 & 0.41 \\
+        & $b$ & 1.1 & 0.14 \\
+        \hline
+        Sigmoid & $K$ & 2.47 & 0.59 \\
+        & $\beta$ & 2.62 & 1.31 \\
+        & $c$ & 0.87 & 0.16 \\
         \hline
     \end{tabular}
 \end{table}
 
 
-Using \autoref{eq:vkrb}, we push through the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal spin alignment (their Fig. 15, right panel).
-The dimensionless spin parameter $\alpha_\bullet$ for the dry mergers follows a beta distribution, namely:
+Using the three $\vk$--$\rb$ relations, we wish to construct the posterior predictive distributions for new data $\tilde{\rb}$ given the observed values of $\rb$:
+\begin{equation}
+    p(\tilde{\rb}|\rb) = \int p(\tilde{\rb} | \vb{\kappa}) p(\vb{\kappa} | \rb) \dd{\vb{\kappa}},
+\end{equation}
+where the integral marginalises out the respective $\vk$--$\rb$ relation parameters, collectively referred to as $\vb{\kappa}$ \citep{gelman2015}.
+The new data $\tilde{\rb}$ is generated by transformation sampling the distribution of kick velocities from \citet{zlochower2015} for dry mergers assuming random azimuthal spin alignment (their Fig. 15, right panel), and `pushing' the values through the desired $\vk$--$\rb$ relation.
+Using transformation sampling allows us to obtain a distribution of core radii predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}, whilst simultaneously accounting for uncertainty in the fit described by the $\vk$--$\rb$ relations.
+
+For the \citet{zlochower2015} dry merger distribution, the dimensionless spin parameter $\alpha_\bullet$ follows a beta distribution, namely:
 \begin{equation}
     P_\mathrm{Zlochower}(\alpha_\bullet) \propto (1-\alpha_\bullet)^{4.66884-1} \alpha_\bullet^{10.5868-1}.
 \end{equation}
 The range of kick velocities predicted by the model varies from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$.
-Using transformation sampling allows us to obtain a distribution of core radii predicted by a given kick velocity model, as shown in \autoref{fig:rb_pdf}, whilst simultaneously accounting for uncertainty in the fit described by \autoref{eq:vkrb}.
-We find that the mode of the forward-folded core radius distribution is $1.07\,\mathrm{kpc}$ ($1.69\,r_{\mathrm{b},0}$).
-Thus, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, a large fraction massive elliptical galaxies should have a non-negligible core \citep{ferrarese1994,savorgnan2016,sahu2019}. 
+An immediately apparent caveat is that the $\vk$--$\rb$ relations are constrained using kick velocities $\vk\leq1020\,\kmps$: extrapolating from these relations introduces an inherent risk when we do not know how the $\vk$--$\rb$ relation holds for very large $\vk$, which we discuss further below.
+
+We find that the mode of the forward-folded core radius distribution is similar for the exponential and linear models, with $1.04\,\mathrm{kpc}$ ($1.84\,r_{\mathrm{b},0}$) and $0.97\,\mathrm{kpc}$ ($1.71\,r_{\mathrm{b},0}$), respectively.
+Conversely, the mode for the sigmoid relation to occur at a larger value of $\rb$, namely $1.60\,\mathrm{kpc}$ ($2.83\,r_{\mathrm{b},0}$).
+Looking at the shapes of the three distribution in \autoref{fig:rb_pdf}, we see a similarity in shapes between the exponential and linear models, which are both right-skewed. 
+This is due to the ever-increasing value of $\rb$ predicted for an increasing $\vk$: higher recoil velocities produce larger cores, but as higher recoil velocities become increasingly unlikely (assuming the \citet{zlochower2015} distribution), we observe the skew in the $\rb$ probability density function (PDF).
+Conversely, the sigmoid model has a small hump prior to the mode, arising from the high likelihood of small kick velocities being pushed through the sigmoid function (\autoref{eq:vkrb_sig}) prior to the upper plateau.
+The peak in the $\rb$ distribution from the sigmoid model is a result of a large range of kick velocities (albeit with decreasing frequency) being mapped to the upper plateau of the sigmoid function, hence the correspondence between the median of the scale factor $K=2.47$ in \autoref{eq:vkrb_sig} and the distribution mode for the model, $2.83\,r_{\mathrm{b},0}$.
+
+To determine which model of the three (exponential, linear, or sigmoid) best describes the data, we use leave one out cross validation (LOO-CV) with Pareto smoothed importance sampling \citep[PSIS][]{vehtari2017}.
+PSIS LOO-CV estimates the expected log pointwise predictive density ($\widehat{\mathrm{ELPD}}$), defined
+\begin{equation}
+    \widehat{\mathrm{ELPD}} = \sum_{i=1}^N \log \int p(y_i | \theta) p(\theta | y_{-i}) \dd{\theta},
+\end{equation}
+to determine the out-of-sample predictive accuracy of a Bayesian model, i.e., the ability to predict new data $\tilde{y}$ conditioned on the fitted data $y$. 
+A larger value of $\widehat{\mathrm{ELPD}}$ indicates better predictive ability of a given model compared to some other model \citep{vehtari2017, riha2024}.
+We report the preferred model to be the sigmoid model (\autoref{eq:vkrb_sig}), with an $\widehat{\mathrm{ELPD}}$ of 4.06, compared to 2.68 and 0.54 for the exponential and linear models, respectively. 
+
+All in all, assuming the \citet{zlochower2015} model to be a reasonable description of SMBH recoil velocities, a large fraction massive elliptical galaxies should have a non-negligible core, which is in agreement with observations \citep{ferrarese1994,savorgnan2016,sahu2019}, even if the recoil velocity is modest. 
 
 
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{rb_pdf}
     \caption{Probability density functions of transformation sampled core radius assuming a given model relation. 
-    The SMBH kick velocity is Monte Carlo sampled from the \citet{zlochower2015} relation assuming randomly-aligned azimuthal spins, and pushed through each of the three fitted model in \autoref{eq:vkrb} \drafting{add other models}. 
+    The SMBH kick velocity is Monte Carlo sampled from the \citet{zlochower2015} relation assuming randomly-aligned azimuthal spins, and pushed through each of the three fitted model in \autoref{eq:vkrb_exp}, \autoref{eq:vkrb_lin}, and \autoref{eq:vkrb_sig} 
     The sigmoid model is the preferred model, and has its mode at a larger value of $\rb$ than either the exponential or linear models, at $\rb/r_{\mathrm{b},0}\sim2.8$ ($\rb/\mathrm{kpc}\sim1.6$).
     The predicted kick velocities range from $\vk=0\,\kmps$ to $\vk\sim4000\,\kmps$.
     }
     \label{fig:rb_pdf}
 \end{figure}
 
-
 \subsection{Integral field unit kinematics}\label{ssec:ifu}
-We create mock integral field unit (IFU) observations using two different projections for the line of sight (LOS) velocity distribution: one where the LOS is along the BH kick axis (`parallel'), and another where the LOS is along an axis orthogonal to the BH kick axis (`orthogonal').
+Having established from a forward-modelling point of view that a changing SMBH recoil velocity induces a systematic affect in the mass distribution of the galaxy remnant, we turn our attention to inferring the occurrence of an SMBH that has experienced a recoil velocity, based on the snapshot when the SMBH is seen to be settled.
+
+We first create mock integral field unit (IFU) observations using two different projections for the line of sight (LOS) velocity distribution: one where the LOS is along the BH kick axis (`parallel'), and another where the LOS is along an axis orthogonal to the BH kick axis (`orthogonal').
 Testing these two special projections, we investigate the limiting cases of how the galaxy kinematics behave when all or none of the BH motion is directed along the LOS to the observer.
 
 We create our mock IFU observations following \citet{naab2014}.
@@ -476,15 +503,17 @@ Relative to a standard Gaussian (which has $h_4=0$), a positive value of $h_4$ c
 
 To quantify the radial dependence of $h_4$, we calculate the cumulative $h_4$ parameter:
 \begin{equation}\label{eq:h4}
-    \langle h_4 \rangle = \sum_i^N h_4(R_i)
+    \langle h_4 \rangle = \sum_i^N h_4(R_i),
 \end{equation}
-As shown in \autoref{fig:h4}, for the parallel projections, simulations with $\vk \geq 600\,\kmps$ tend to positive values of $\langle h_4 \rangle$, asymptotically reaching $\langle h_4 \rangle \sim 1$.
-Conversely, when the recoiling SMBH has a kick velocity $\vk < 600\,\kmps$, the final value of $\langle h_4 \rangle$ is evenly distributed about $\langle h_4 \rangle = 0$: there is no systematic preference to heaver or weaker tails in the LOS velocity distribution.
+which improves legibility of the radial trends of the $h_4$ parameter, which can oscillate about zero. 
 
-Conversely, for the orthogonal projections, we observe a dichotomy similar to that seen in \autoref{fig:density3d}, with the bifurcation occurring at a similar kick velocity, here $600\,\kmps$; both partitions tend to a positive value of $\langle h_4 \rangle$. 
-Within the two partitions of the bifurcation, there is no apparent dependence on kick velocity.
-The gradient between the two sets differs most noticeably in the radial range $2  \leq R/\mathrm{kpc} < 3$.
-This can be understood as those recoiling SMBHs with $\vk \geq 600\,\kmps$ having a larger $h_4$ magnitude per Voronoi bin than the $\vk < 600\,\kmps$ simulations.
+The radial dependence of $\langle h_4 \rangle$ is shown in \autoref{fig:h4}, where simulations with $\vk/\kmps < 600$ are terminated with a circle point, simulations with $600 \leq \vk/\kmps < 1020$ are terminated with a square point, and the $\vk=2000\,\kmps$ simulation is terminated with a diamond point.
+Aside from the $\vk=2000\,\kmps$ simulation, increasing the kick velocity results in progressively more negative $\langle h_4 \rangle$ in both the parallel and orthogonal projections. 
+The value of $\langle h_4 \rangle$ at the largest radii saturates for simulations with $\vk\gtrsim 600\,\kmps$, at a value of $\sim -0.5$ for the parallel projection, and $\sim -0.1$ for the orthogonal projection.
+The case is markedly different though for the $\vk=2000\,\kmps$ simulation, which appears more consistent with the $\vk=0\,\kmps$ simulation than the simulations with $\vk\gg0\,\kmps$.
+The value of $\langle h_4 \rangle$ increases at all radii for both projections, exceeding a maximum value of 1.0 for the parallel projection, and 1.5 for the orthogonal projection. 
+\drafting{can we relate this to the Langrangian radii perhaps?}
+
 
 \begin{figure}
     \centering
@@ -492,14 +521,13 @@ This can be understood as those recoiling SMBHs with $\vk \geq 600\,\kmps$ havin
     \caption{
         Cumulative $h_4$ parameter, as defined in \autoref{eq:h4}, for the parallel (top panel) and orthogonal (bottom panel) projections.
         Similar to \autoref{fig:density3d}, simulations with $\vk\geq 900\,\kmps$ have a consistent colour.
-        Lines terminating with a circle point indicate simulations with $\vk/\kmps < 600$, those with square points indicate simulations with $600 \leq \vk/\kmps < 1200$, and the diamond point indicates the $\vk=2000\,\kmps$ simulation.
+        Lines terminating with a circle point indicate simulations with $\vk/\kmps < 600$, those with square points indicate simulations with $600 \leq \vk/\kmps < 1020$, and the diamond point indicates the $\vk=2000\,\kmps$ simulation.
         For both the parallel and orthogonal projections, for those simulations with $\vk \leq 1020\,\kmps$ (i.e. have their SMBHs settled), there is a systematic decrease in the cumulative $h_4$ parameter with increasing $\vk$ for $\vk\lesssim600\,\kmps$.
         For $600\lesssim\vk/\kmps\leq1020$, the cumulative $h_4$ parameter is indistinguishable from each other. 
         For the $\vk=2000\,\kmps$ case, the cumulative $h_4$ is both positive and significantly larger than the $600\lesssim\vk/\kmps\leq1020$ simulations, for both parallel and orthogonal projections. 
     }
     \label{fig:h4}
 \end{figure}
-
 
 \subsection{Orbit analysis}\label{ssec:orbits}
 
@@ -554,11 +582,22 @@ The orbital resonances define the different families of orbits, as given in \cit
 \end{table}
 
 Three distinct trends are made apparent in \autoref{fig:orbits}.
-The first and most important, is the complete absence of rosette orbits for all simulations with $\vk>600\,\kmps$.
-Conversely, all simulations with $\vk<600\,\kmps$ (except for $\vk=540\,\kmps$) have more than $\sim25\%$ of the orbits in the innermost radial bin being identified as rosette. 
-The second and third trend are complimentary, and are an increase in the fraction of $\pi$-box orbits with increasing kick velocity, and a similar decrease in the fraction of $x$-tube orbits with increasing kick velocity.
-Finally, there is a weak tendency for simulations with $\vk<900\,\kmps$ to have slightly higher fractions of boxlet orbits at small radii, and higher fractions of $z$-tube orbits, than those simulations with $\vk>900\,\kmps$.
+The first is the increase in the fraction of $\pi$-box orbits with increasing recoil velocity, most notable at radii $r\lesssim5\,\mathrm{kpc}$.
+The simulation with $\vk=2000\,\kmps$ noticeably stands out, with a fraction of $\pi$-box orbits being $\sim0.6$ at the inner most radii. 
+Complimentary but converse to the first trend, increasing the SMBH recoil velocity decreases the fraction of $x$-tube orbits at inner radii from $\sim 0.4$ to $\sim 0.2$. 
+Again the $\vk=2000\,\kmps$ is a noticeable outlier to the other simulations, however remains consistent with the general trend.
+Finally, increasing the SMBH recoil velocity decreases the fraction of rosette orbits at small radii $r<1\,\mathrm{kpc}$, with no rosette orbits for the $\vk=2000\,\kmps$ simulation.
+There is evidence for a minor decrease in $z$-tube orbits with increasing recoil velocity, however this trend is not as dramatic as the three previously discussed.
 
+We can naturally explain the decrease in rosette orbits with increasing recoil velocity by considering a rosette orbit requires a point-mass like potential to orbit in.
+With increasing recoil velocity, we are displacing the SMBH increasingly further from the stellar centre of mass, thus disrupting the conditions required to maintain such an orbit.
+A consequence of disrupting these regular, rosette orbits, is the inducement of more radial orbits with increasing recoil velocity, manifested as an increase in non-resonant $\pi$-box orbits. 
+
+We show the orbit families as a function of radius organised by recoil velocity in \autoref{fig:orbits2}, instead of family class.
+At large radii ($r>10\,\mathrm{kpc}$), $x$-tube orbits dominate over all other families for all simulations, \drafting{a known result from major mergers, Naab??}.
+Interestingly, increasing the recoil velocity pushes the intersection of boxlet and $z$-tube orbits to increasingly larger radii.
+Finally, for the $\vk=2000\,\kmps$ simulation, the dominance of $\pi$-box orbits over all other families is apparent for radii $r\lesssim5\,\mathrm{kpc}$.
+This is the only recoil velocity for which $\pi$-box orbits are the dominant orbital family; in the simulations with $\vk\leq1020\,\kmps$, $\pi$-box orbits are always subdominant to boxlet orbits.
 
 % DISCUSSION
 \section{Discussion} \label{sec:discussion}
