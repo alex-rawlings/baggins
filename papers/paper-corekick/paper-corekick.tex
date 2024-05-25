@@ -210,6 +210,8 @@ At the moment of the merger, the centre of mass (CoM) velocity of the SMBH binar
 The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant, $v_\mathrm{esc}$.
 We additionally run one simulation with a recoil kick above $v_\mathrm{esc}$, with $\vk=2000\,\kmps$.
 As discussed in \drafting{section}, higher recoil velocities typically result in larger excursions of the remnant SMBH from the isophotal centre.
+\drafting{Need to edit all this, \textbf{Atte} could you do this seeing as you've chosen the snapshots?
+
 To provide a fair comparison between simulations, we choose to analyse each child simulation at a fixed time after the recoil kick, namely $t\simeq 0.075\,\mathrm{Gyr}$.
 This value is chosen so as to minimise the effects of relaxation in the central regions of the galaxy remnant.
 We estimate the relaxation time $t_\mathrm{relax}$ at a radius $r$ as \citep{binney2008}:
@@ -224,6 +226,7 @@ where $\langle v^2 \rangle$ is the mean squared particle velocity within $r$.
 The relaxation time increases quadratically with increasing $r$, and we find for a radius of $r=0.1\,\mathrm{kpc}$ the relaxation time to be $t_\mathrm{relax} \sim 0.1 \, \mathrm{Gyr}$, thus motivating our choice of $0.075\,\mathrm{Gyr}$ for the analysis time. 
 We  note that \autoref{eq:relax} does not take into account gravitational softening, and thus provides a conservative lower bound for the relaxation time.
 This is critical as the \ketju{} region does not include gravitational softening between stellar particles and the SMBH, so is a not fully-softened simulation.
+}
 
 For all simulations, interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, DM with a softening length of $\varepsilon = 300\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
 
@@ -236,8 +239,9 @@ For all simulations, interactions between stellar particles are softened with a 
     \textbf{Atte's section}. Would be good to have:
     \begin{enumerate}
         \item Plot of infall time (i.e., time for stability criterion to be reached) as a function of kick velocity
-        \item Number of oscillations before settling?
-        \item Plot of maximum displacement of kicked BH as a function of kick velocity. How does this compare to core size? Which simulations have BH kicked beyond the core?
+        \item Number of oscillations before settling, probably on the same plot but as a second y axis?
+        \item Plot of apocentre of kicked BH as a function of kick velocity. How does this compare to core size? Which simulations have BH kicked beyond the core? Can fit a function to data maybe
+        \item Langrangian radii: how is the stellar mass moving about? 
     \end{enumerate}
 }
 \drafting{
@@ -253,14 +257,14 @@ For all simulations, interactions between stellar particles are softened with a 
 }
 \begin{figure}
     \centering
-    \includegraphics[width=0.4\textwidth]{infall_time}
-    \caption{Plot of infall time (time to stability criterion) as a function of kick velocity.}
+    \includegraphics[width=0.4\textwidth]{infall_apo}
+    \caption{Plot of infall time (time to stability criterion) as a function of kick velocity, and number of oscillations. Maybe can do apocentre plot too: make this a 2x1 figure??}
     \label{fig:infall}
 \end{figure}
 \begin{figure}
     \centering
-    \includegraphics[width=0.4\textwidth]{max_disp}
-    \caption{Plot of the maximum BH displacement as a function of kick velocity. Where do the displacement (red) and core size (green) lines intersect?}
+    \includegraphics[width=0.4\textwidth]{lagrangian}
+    \caption{Plot of Lagragian radii: comment on matter movement}
     \label{fig:max_disp}
 \end{figure}
 
