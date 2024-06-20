@@ -1,18 +1,23 @@
 import argparse
-import os.path
+import os
+import sys
 import numpy as np
-from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
 import baggins as bgs
+sys.path.append(os.path.join(os.getcwd(), "../../../papers/paper-corekick/scripts"))
 import figure_config
+
 
 parser = argparse.ArgumentParser(
     description="Plot IFU maps", formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument(
     "-e", "--extract", help="extract data", action="store_true", dest="extract"
+)
+parser.add_argument(
+    "-kv", "--kickvel", type=int, help="kick velocity", dest="kv", default=600
 )
 parser.add_argument(
     "-v",
@@ -28,7 +33,7 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-h4_file = os.path.join(bgs.DATADIR, "mergers/processed_data/core-paper-data/h4.pickle")
+h4_file = os.path.join(bgs.DATADIR, f"mergers/processed_data/core-paper-data/h4_fixed_vel/h4_{args.kv}.pickle")
 
 bgs.plotting.check_backend()
 
@@ -42,29 +47,35 @@ if args.extract:
 
     seeing = {"num": 25, "sigma": 0.3}
 
-    snapshots = dict()
-    for k, v in snapfiles["snap_nums"].items():
+    i0 = snapfiles["snap_nums"][f"v{args.kv:04d}"]
+    snapfiles["snap_nums"] = np.linspace(0.2*i0, i0, 5, dtype=int)
+    snapfiles["snap_nums"] = np.concatenate((snapfiles["snap_nums"], [np.ceil(1.2*i0)]))
+    snapfiles["snap_nums"] = np.array(snapfiles["snap_nums"], dtype=int)
+
+    snapshots = {}
+    for v in snapfiles["snap_nums"]:
         if v is None:
             continue
-        snapshots[k] = os.path.join(
+        snapshots[f"snap-{v:03d}"] = os.path.join(
             snapfiles["parent_dir"],
-            f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5",
+            f"kick-vel-{args.kv:04d}/output/snap_{v:03d}.hdf5",
         )
 
     # dict to store radial h4 profiles
-    h4_vals = {"para": {}, "ortho": {}}
-
-    # determine colour limits
-    Vlim = -np.inf
-    sigmalim = [np.inf, -np.inf]
-    h3lim = -np.inf
-    h4lim = -np.inf
+    h4_vals = {"para": {}, "ortho": {}, "t":[]}
 
     for k, v in snapshots.items():
         SL.info(f"Creating IFU maps for {k}")
         tstart = datetime.now()
 
-        snap = pygad.Snapshot(v, physical=True)
+        try:
+            snap = pygad.Snapshot(v, physical=True)
+            if len(snap.bh)>1:
+                continue
+            h4_vals["t"].append(bgs.general.convert_gadget_time(snap))
+        except OSError as e:
+            SL.exception(e)
+            continue
 
         # as the BH kick direction is always along the x-axis, use
         # this axis as the LOS parallel direction
@@ -106,36 +117,6 @@ if args.extract:
 
             SL.debug(f"Completed binning in {datetime.now()-tstart}")
 
-            # determine colour limits
-            _Vlim = np.max(np.abs(voronoi_stats["img_V"]))
-            Vlim = _Vlim if _Vlim > Vlim else Vlim
-
-            _sigmalim = [
-                np.min(voronoi_stats["img_sigma"]),
-                np.max(voronoi_stats["img_sigma"]),
-            ]
-            sigmalim[0] = _sigmalim[0] if _sigmalim[0] < sigmalim[0] else sigmalim[0]
-            sigmalim[1] = _sigmalim[1] if _sigmalim[1] > sigmalim[1] else sigmalim[1]
-
-            _h3lim = np.max(np.abs(voronoi_stats["img_h3"]))
-            h3lim = _h3lim if _h3lim > h3lim else h3lim
-
-            _h4lim = np.max(np.abs(voronoi_stats["img_h4"]))
-            h4lim = _h4lim if _h4lim > h4lim else h4lim
-
-            # have to set colour limits by hand
-            ax = bgs.plotting.voronoi_plot(
-                voronoi_stats,
-                clims={"V": [20], "sigma": [160, 260], "h3": [0.032], "h4": [0.032]},
-            )
-            fig = ax[0].get_figure()
-
-            SL.info(f"Total time: {datetime.now() - tstart}")
-            bgs.plotting.savefig(
-                figure_config.fig_path(f"IFU/IFU_{orientation}_{k}.pdf"), force_ext=True
-            )
-            plt.close()
-
             h4_vals[orientation][k] = {}
             (
                 h4_vals[orientation][k]["R"],
@@ -148,51 +129,40 @@ if args.extract:
         pygad.gc_full_collect()
 
     bgs.utils.save_data(h4_vals, h4_file)
-
-    print("-------------")
-    print("Colour limits")
-    print(f"V: {Vlim}")
-    print(f"sigma: {sigmalim}")
-    print(f"h3: {h3lim}")
-    print(f"h4: {h4lim}")
-    print("-------------")
 else:
     SL.warning(
         "Reading in saved dataset for h4 analysis, IFU maps will not be recreated!"
     )
     h4_vals = bgs.utils.load_data(h4_file)
 
+time_vals = np.array(h4_vals["t"]) - h4_vals["t"][-2]
+
 # plot h4 radial profiles
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
-get_kick_val = lambda k: float(k.lstrip("v"))
-kick_vels = [get_kick_val(k) for k in h4_vals["para"].keys()]
-vkcols = figure_config.VkickColourMap()
 
-for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items()):
-    m = bgs.plotting.mplChars()[int(get_kick_val(kp)) // 600]
+cmapper, sm = bgs.plotting.create_normed_colours(min(time_vals), max(time_vals), cmap="custom_Blues")
+
+for t, (kp, vp), (ko, vo) in zip(time_vals, h4_vals["para"].items(), h4_vals["ortho"].items()):
     idx_sorted = np.argsort(vp["R"])
-    vpc = uniform_filter1d(vp["h4"][idx_sorted], 8, mode="nearest")
+    vpc = np.cumsum(vp["h4"][idx_sorted])
     ax[0].plot(
         vp["R"][idx_sorted],
         vpc,
-        c=vkcols.get_colour(get_kick_val(kp)),
+        c=cmapper(t),
         ls="-",
-        marker=m,
-        markevery=[-1],
     )
     idx_sorted = np.argsort(vo["R"])
-    voc = uniform_filter1d(vo["h4"][idx_sorted], 8, mode="nearest")
+    voc = np.cumsum(vo["h4"][idx_sorted])
     ax[1].plot(
         vo["R"][idx_sorted],
         voc,
-        c=vkcols.get_colour(get_kick_val(ko)),
+        c=cmapper(t),
         ls="-",
-        marker=m,
-        markevery=[-1],
     )
-    SL.debug(f"vk {get_kick_val(ko):.0f}: {vpc[-1]:.1f}, {voc[-1]:.1f}")
+#fig.suptitle(f"Kick velocity: {args.kv} km/s")
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
-vkcols.make_cbar(ax.flat)
-bgs.plotting.savefig(figure_config.fig_path("h4.pdf"), force_ext=True)
+plt.colorbar(sm, ax=ax.flat, label=r"$(t-t_\mathrm{settle})/\mathrm{Gyr}$")
+parent_dir = "fixed_velocity_h4"
+bgs.plotting.savefig(os.path.join(parent_dir, f"h4_{args.kv}.pdf"), force_ext=True)

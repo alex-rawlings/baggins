@@ -40,9 +40,8 @@ mergemask = [
 ]
 
 """
-XXX: A note on class IDs
-The class IDs are a bit opaque. It's probably worth checking this in the
-Fortran code, but from experience:
+The class IDs are a bit opaque, but can be found in orbit_classifier.hpp
+By default:
 
 ClassID | Family
 ------------------
