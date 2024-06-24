@@ -1,12 +1,11 @@
 import argparse
 import os
-import sys
 import numpy as np
+from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
 import baggins as bgs
-sys.path.append(os.path.join(os.getcwd(), "../../../papers/paper-corekick/scripts"))
 import figure_config
 
 
@@ -33,7 +32,10 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-h4_file = os.path.join(bgs.DATADIR, f"mergers/processed_data/core-paper-data/h4_fixed_vel/h4_{args.kv}.pickle")
+h4_file = os.path.join(
+    bgs.DATADIR,
+    f"mergers/processed_data/core-paper-data/h4_fixed_vel/h4_{args.kv}.pickle",
+)
 
 bgs.plotting.check_backend()
 
@@ -48,8 +50,10 @@ if args.extract:
     seeing = {"num": 25, "sigma": 0.3}
 
     i0 = snapfiles["snap_nums"][f"v{args.kv:04d}"]
-    snapfiles["snap_nums"] = np.linspace(0.2*i0, i0, 5, dtype=int)
-    snapfiles["snap_nums"] = np.concatenate((snapfiles["snap_nums"], [np.ceil(1.2*i0)]))
+    snapfiles["snap_nums"] = np.linspace(0.2 * i0, i0, 5, dtype=int)
+    snapfiles["snap_nums"] = np.concatenate(
+        (snapfiles["snap_nums"], [np.ceil(1.2 * i0)])
+    )
     snapfiles["snap_nums"] = np.array(snapfiles["snap_nums"], dtype=int)
 
     snapshots = {}
@@ -62,7 +66,7 @@ if args.extract:
         )
 
     # dict to store radial h4 profiles
-    h4_vals = {"para": {}, "ortho": {}, "t":[]}
+    h4_vals = {"para": {}, "ortho": {}, "t": []}
 
     for k, v in snapshots.items():
         SL.info(f"Creating IFU maps for {k}")
@@ -70,7 +74,7 @@ if args.extract:
 
         try:
             snap = pygad.Snapshot(v, physical=True)
-            if len(snap.bh)>1:
+            if len(snap.bh) > 1:
                 continue
             h4_vals["t"].append(bgs.general.convert_gadget_time(snap))
         except OSError as e:
@@ -140,11 +144,15 @@ time_vals = np.array(h4_vals["t"]) - h4_vals["t"][-2]
 # plot h4 radial profiles
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
 
-cmapper, sm = bgs.plotting.create_normed_colours(min(time_vals), max(time_vals), cmap="custom_Blues")
+cmapper, sm = bgs.plotting.create_normed_colours(
+    min(time_vals), max(time_vals), cmap="custom_Blues"
+)
 
-for t, (kp, vp), (ko, vo) in zip(time_vals, h4_vals["para"].items(), h4_vals["ortho"].items()):
+for t, (kp, vp), (ko, vo) in zip(
+    time_vals, h4_vals["para"].items(), h4_vals["ortho"].items()
+):
     idx_sorted = np.argsort(vp["R"])
-    vpc = np.cumsum(vp["h4"][idx_sorted])
+    vpc = uniform_filter1d(vp["h4"][idx_sorted], 8, mode="nearest")
     ax[0].plot(
         vp["R"][idx_sorted],
         vpc,
@@ -152,17 +160,20 @@ for t, (kp, vp), (ko, vo) in zip(time_vals, h4_vals["para"].items(), h4_vals["or
         ls="-",
     )
     idx_sorted = np.argsort(vo["R"])
-    voc = np.cumsum(vo["h4"][idx_sorted])
+    voc = uniform_filter1d(vo["h4"][idx_sorted], 8, mode="nearest")
     ax[1].plot(
         vo["R"][idx_sorted],
         voc,
         c=cmapper(t),
         ls="-",
     )
-#fig.suptitle(f"Kick velocity: {args.kv} km/s")
+# fig.suptitle(f"Kick velocity: {args.kv} km/s")
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
 plt.colorbar(sm, ax=ax.flat, label=r"$(t-t_\mathrm{settle})/\mathrm{Gyr}$")
 parent_dir = "fixed_velocity_h4"
-bgs.plotting.savefig(os.path.join(parent_dir, f"h4_{args.kv}.pdf"), force_ext=True)
+bgs.plotting.savefig(
+    figure_config.fig_path(os.path.join(parent_dir, f"h4_{args.kv}.pdf")),
+    force_ext=True,
+)
