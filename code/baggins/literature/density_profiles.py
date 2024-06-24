@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import scipy.optimize
 import pygad
@@ -129,7 +130,7 @@ def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
     a : float, optional
         steepness of transition between regions, by default 100
     mode : str, optional
-        how the function is called ("own" for general use, "fit for fitting
+        how the function is called ("own" for general use, "fit" for fitting
         methods), by default "own"
 
     Returns
@@ -161,23 +162,33 @@ def Terzic05(r, rhob, rb, n, g, Re, b=None, a=100, mode="own"):
     )
 
 
-def fit_Terzic05_profile(r, density, Re, p0=[1e2, 1, 4, 1, 1], **kwargs):
+def fit_Terzic05_profile(r, density, Re=None, p0=[1e2, 1, 4, 1, 1], **kwargs):
     """
     Fit a Terzic05 profile to some data using the scipy.optimize library.
 
     Parameters
     ----------
-    r: array of radii to fit
-    density: 3D density of galaxy as a function of radius
-    Re: effective radius of galaxy
-    p0: list of initial parameter guesses
+    r : array-like
+        radii to fit
+    density : array-like
+        3D density of galaxy as a function of radius
+    Re : flaot, optional
+        effective radius of galaxy, by default None
+    p0 : list, optional
+        initial parameter guesses, by default [1e2, 1, 4, 1, 1]
 
     Returns
     -------
     param_best: dict of best-fit parameters
     """
-    bounds = ((0, 0, 0, 0, 0), (np.inf, 5, 20, np.inf, 15))
-    f = lambda r, rhob, rb, n, g, a: Terzic05(r, rhob, rb, n, g, Re, a, mode="fit")
+    p0 = copy.copy(p0)
+    if Re is None:
+        p0.append(7)
+        bounds = ((0, 0, 0.2, 0, 0, 0), (np.inf, 10, 20, np.inf, 15, 20))
+        f = lambda r, rhob, rb, n, g, a, Re: Terzic05(r, rhob, rb, n, g, Re, a, mode="fit")
+    else:
+        bounds = ((0, 0, 0, 0, 0), (np.inf, 5, 20, np.inf, 15))
+        f = lambda r, rhob, rb, n, g, a: Terzic05(r, rhob, rb, n, g, Re, a, mode="fit")
     popt, param_cov = scipy.optimize.curve_fit(
         f, r, density, bounds=bounds, p0=p0, **kwargs
     )
@@ -186,8 +197,10 @@ def fit_Terzic05_profile(r, density, Re, p0=[1e2, 1, 4, 1, 1], **kwargs):
         "rb": popt[1],
         "n": popt[2],
         "g": popt[3],
-        "a": popt[4],
+        "a": popt[4]
     }
+    if Re is None:
+        param_best["Re"] = popt[5]
     return param_best
 
 

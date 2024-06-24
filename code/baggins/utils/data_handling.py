@@ -68,7 +68,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
     _logger.info(f"File {filename} saved")
 
 
-def load_data(filename):
+def load_data(filename, load_meta=False):
     """
     Convenience function to load pickle data
 
@@ -76,6 +76,8 @@ def load_data(filename):
     ----------
     filename : str
          file to read in
+    load_meta : bool, optional
+        return meta data of pickle file, by default False
 
     Returns
     -------
@@ -83,7 +85,13 @@ def load_data(filename):
         variable names: value pairs
     """
     with open(filename, "rb") as f:
-        return pickle.load(f)
+        d = pickle.load(f)
+    if load_meta:
+        return d
+    else:
+        for k in ["__githash", "__script"]:
+            d.pop(k)
+        return d
 
 
 def get_files_in_dir(path, ext=".hdf5", name_only=False, recursive=False):
