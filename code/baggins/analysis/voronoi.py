@@ -1,9 +1,11 @@
+from tqdm import tqdm
 import numpy as np
 import scipy.optimize
 import scipy.ndimage
 from scipy.stats import binned_statistic_2d
 from voronoi_binning import voronoi_binned_image
 from ..env_config import _cmlogger
+from ..mathematics import get_histogram_bin_centres
 from pygad import UnitArr
 
 __all__ = [
@@ -65,7 +67,7 @@ def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
     h = yedges[-1] - yedges[0]
 
     # assign particles to voronoi bin
-    pixel_vor_bin_num = voronoi_binned_image(nimg, part_per_bin, w, h)
+    pixel_vor_bin_num = voronoi_binned_image(nimg, part_per_bin, w, h, use_geometric_centroids_in_initial_binning=True)
     particle_vor_bin_num = np.full(x.shape, -1, dtype=int)
     valid_grid_bin_mask = np.logical_and(
         np.all(grid_bin_num > 0, axis=0), np.all(grid_bin_num < Npx + 1, axis=0)
@@ -77,7 +79,10 @@ def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
         extent = (*xedges[[0, -1]], *yedges[[0, -1]])
 
     # create mesh
-    X, Y = np.meshgrid((xedges[1:] + xedges[-1:]) / 2, (yedges[1:] + yedges[-1:]) / 2)
+    X, Y = np.meshgrid(
+        get_histogram_bin_centres(xedges),
+        get_histogram_bin_centres(yedges)
+        )
     index = np.unique(pixel_vor_bin_num)
     bin_sums = scipy.ndimage.sum(nimg, labels=pixel_vor_bin_num, index=index)
     x_bin = (
@@ -204,13 +209,6 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
     except AssertionError:
         _logger.exception("Input arrays must be of the same length!", exc_info=True)
         raise
-    M = np.sum(m)
-    xcom = np.sum(m * x) / M
-    ycom = np.sum(m * y) / M
-    Vcom = np.sum(m * V) / M
-    x = x - xcom
-    y = y - ycom
-    vz = V - Vcom
 
     if seeing:
         try:
@@ -228,12 +226,20 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
         y = np.array(
             [yy + rng.normal(0, seeing["sigma"], size=seeing["num"]) for yy in y]
         ).flatten()
-        vz = np.repeat(vz, seeing["num"]).flatten()
+        V = np.repeat(V, seeing["num"]).flatten()
         m = np.repeat(m, seeing["num"]).flatten()
     else:
         _logger.warning("No seeing correction will be applied!")
 
-    _logger.info(f"Binning {len(x)} particles...")
+    M = np.sum(m)
+    xcom = np.sum(m * x) / M
+    ycom = np.sum(m * y) / M
+    Vcom = np.sum(m * V) / M
+    x = x - xcom
+    y = y - ycom
+    vz = V - Vcom
+
+    _logger.info(f"Binning {len(x):.2e} particles...")
     particle_vor_bin_num, pixel_vor_bin_num, extent, xBar, yBar = voronoi_grid(
         x, y, Npx=Npx, **kwargs
     )
@@ -242,8 +248,7 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
     bin_mass = scipy.ndimage.sum(m, labels=particle_vor_bin_num, index=bin_index)
 
     fits = []
-    for i in bin_index:
-        print("Fitting bin:", i, end="\r")
+    for i in tqdm(bin_index, desc="Fitting voronoi bins"):
         fits.append(fit_gauss_hermite_distribution(vz[particle_vor_bin_num == i]))
     bin_stats = np.array(fits)
     img_stats = bin_stats[pixel_vor_bin_num]

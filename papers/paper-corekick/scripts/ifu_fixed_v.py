@@ -1,7 +1,7 @@
 import argparse
 import os
 import numpy as np
-from scipy.ndimage import uniform_filter1d
+from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
@@ -52,7 +52,7 @@ if args.extract:
     i0 = snapfiles["snap_nums"][f"v{args.kv:04d}"]
     snapfiles["snap_nums"] = np.linspace(0.2 * i0, i0, 5, dtype=int)
     snapfiles["snap_nums"] = np.concatenate(
-        (snapfiles["snap_nums"], [np.ceil(1.2 * i0)])
+        (snapfiles["snap_nums"], [np.ceil(a * i0) for a in [1.1, 1.2, 1.3, 1.5]])
     )
     snapfiles["snap_nums"] = np.array(snapfiles["snap_nums"], dtype=int)
 
@@ -66,7 +66,7 @@ if args.extract:
         )
 
     # dict to store radial h4 profiles
-    h4_vals = {"para": {}, "ortho": {}, "t": []}
+    h4_vals = {"para": {}, "ortho": {}, "t": [], "tfid":None}
 
     for k, v in snapshots.items():
         SL.info(f"Creating IFU maps for {k}")
@@ -77,12 +77,11 @@ if args.extract:
             if len(snap.bh) > 1:
                 continue
             h4_vals["t"].append(bgs.general.convert_gadget_time(snap))
+            if str(i0) in os.path.basename(v).split("_")[-1]:
+                h4_vals["tfid"] = h4_vals["t"][-1]
         except OSError as e:
             SL.exception(e)
             continue
-
-        # as the BH kick direction is always along the x-axis, use
-        # this axis as the LOS parallel direction
 
         pre_ball_mask = pygad.BallMask(
             30,
@@ -94,26 +93,28 @@ if args.extract:
         extent = 0.25 * rhalf
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
 
-        ball_mask = pygad.BallMask(
-            R=extent,
+        box_mask = pygad.BoxMask(
+            extent=2*extent,
             center=pygad.analysis.shrinking_sphere(
                 snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
+            )
         )
 
         SL.debug(f"IFU extent is {extent:.2f} kpc")
         SL.debug(f"Number of regular bins is {n_regular_bins}^2")
 
+        # as the BH kick direction is always along the x-axis, use
+        # this axis as the LOS parallel direction
         # try two orientations:
         # 1: LOS parallel with BH motion
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             SL.info(f"Doing {orientation} orientation...")
             voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
-                x=snap.stars[ball_mask]["pos"][:, x_axis],
-                y=snap.stars[ball_mask]["pos"][:, 2],
-                V=snap.stars[ball_mask]["vel"][:, LOS_axis],
-                m=snap.stars[ball_mask]["mass"],
+                x=snap.stars[box_mask]["pos"][:, x_axis],
+                y=snap.stars[box_mask]["pos"][:, 2],
+                V=snap.stars[box_mask]["vel"][:, LOS_axis],
+                m=snap.stars[box_mask]["mass"],
                 Npx=n_regular_bins,
                 part_per_bin=2000 * seeing["num"],
                 seeing=seeing,
@@ -126,6 +127,7 @@ if args.extract:
                 h4_vals[orientation][k]["R"],
                 h4_vals[orientation][k]["h4"],
             ) = bgs.analysis.radial_profile_velocity_moment(voronoi_stats, "h4")
+            SL.debug(f"Length of data: {len(h4_vals['t'])}")
 
         # conserve memory
         snap.delete_blocks()
@@ -138,8 +140,9 @@ else:
         "Reading in saved dataset for h4 analysis, IFU maps will not be recreated!"
     )
     h4_vals = bgs.utils.load_data(h4_file)
+    SL.debug(f"Times of analysis: {[h4_vals['t']]}")
 
-time_vals = np.array(h4_vals["t"]) - h4_vals["t"][-2]
+time_vals = np.array(h4_vals["t"]) - h4_vals["tfid"]
 
 # plot h4 radial profiles
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
@@ -148,25 +151,25 @@ cmapper, sm = bgs.plotting.create_normed_colours(
     min(time_vals), max(time_vals), cmap="custom_Blues"
 )
 
+# helper function for plotting
+def plot_helper(axi, t, v):
+    r = v["R"]
+    h4 = v["h4"]
+    idx_sorted = np.argsort(r)
+    h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
+    axi.plot(
+        r[idx_sorted],
+        h4_filtered,
+        c=cmapper(t),
+        ls="-"
+    )
+
 for t, (kp, vp), (ko, vo) in zip(
     time_vals, h4_vals["para"].items(), h4_vals["ortho"].items()
 ):
-    idx_sorted = np.argsort(vp["R"])
-    vpc = uniform_filter1d(vp["h4"][idx_sorted], 8, mode="nearest")
-    ax[0].plot(
-        vp["R"][idx_sorted],
-        vpc,
-        c=cmapper(t),
-        ls="-",
-    )
-    idx_sorted = np.argsort(vo["R"])
-    voc = uniform_filter1d(vo["h4"][idx_sorted], 8, mode="nearest")
-    ax[1].plot(
-        vo["R"][idx_sorted],
-        voc,
-        c=cmapper(t),
-        ls="-",
-    )
+    plot_helper(ax[0], t, vp)
+    plot_helper(ax[1], t, vo)
+
 # fig.suptitle(f"Kick velocity: {args.kv} km/s")
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")

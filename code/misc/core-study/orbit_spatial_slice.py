@@ -11,11 +11,11 @@ mainpath = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/v
 
 hist_kwargs = {
     "0060": {
-        "norm": colors.LogNorm(0.1, 650),
+        "norm": colors.Normalize(0.1, 650),
         "bins": 50
     },
     "0900": {
-        "norm": colors.LogNorm(0.1, 250),
+        "norm": colors.Normalize(0.1, 650),
         "bins": 50
     }
 }

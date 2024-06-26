@@ -5,7 +5,8 @@ import baggins as bgs
 
 
 x = np.linspace(-5, 5, 500)
-h4s = np.linspace(-0.5, 0.5, 21)
+h4_max = 0.1
+h4s = np.linspace(-h4_max, h4_max, 21)
 
 cmapper, sm = bgs.plotting.create_normed_colours(h4s[0], h4s[-1], cmap="icefire")
 

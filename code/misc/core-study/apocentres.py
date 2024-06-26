@@ -23,10 +23,11 @@ for obf in orbitfilebases:
     orbitcl = bgs.utils.get_files_in_dir(obf, ext=".cl", recursive=True)[0]
     kv = float(os.path.basename(obf).replace("kick-vel-", ""))
     res = bgs.analysis.orbits_radial_frequency(orbitcl, returnextra=True)
-    mask = np.logical_and(res["apo"] < np.nanquantile(res["apo"], 0.95), res["apo"]>0)
+    mask = np.logical_and(res["apo"] < np.nanquantile(res["apo"], 0.975), res["apo"]>0)
     az.plot_kde(res["apo"][mask], ax=ax[0], plot_kwargs={"lw":2, "color":cmapper(kv)})
     mask2 = np.logical_and(mask, res["meanposrad"]<4)
     az.plot_kde(res["apo"][mask2], ax=ax[1], plot_kwargs={"lw":2, "color":cmapper(kv)})
 plt.colorbar(sm, ax=ax, label="kick vel")
+bgs.plotting.savefig("apo.png")
 print("Showing plot")
 plt.show()

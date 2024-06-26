@@ -1,7 +1,7 @@
 import argparse
 import os.path
 import numpy as np
-from scipy.ndimage import uniform_filter1d
+from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
@@ -28,7 +28,9 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-h4_file = os.path.join(bgs.DATADIR, "mergers/processed_data/core-paper-data/h4.pickle")
+rhalf_factor = 0.25
+
+h4_file = os.path.join(bgs.DATADIR, f"mergers/processed_data/core-paper-data/h4_{str(rhalf_factor).replace('.', '')}rhalf.pickle")
 
 bgs.plotting.check_backend()
 
@@ -52,7 +54,7 @@ if args.extract:
         )
 
     # dict to store radial h4 profiles
-    h4_vals = {"para": {}, "ortho": {}}
+    h4_vals = {"para": {}, "ortho": {}, "rhalf":[]}
 
     # determine colour limits
     Vlim = -np.inf
@@ -66,9 +68,6 @@ if args.extract:
 
         snap = pygad.Snapshot(v, physical=True)
 
-        # as the BH kick direction is always along the x-axis, use
-        # this axis as the LOS parallel direction
-
         pre_ball_mask = pygad.BallMask(
             30,
             center=pygad.analysis.shrinking_sphere(
@@ -76,29 +75,38 @@ if args.extract:
             ),
         )
         rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
-        extent = 0.25 * rhalf
+        h4_vals["rhalf"].append(rhalf)
+        extent = rhalf_factor * rhalf
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
 
-        ball_mask = pygad.BallMask(
+        '''ball_mask = pygad.BallMask(
             R=extent,
             center=pygad.analysis.shrinking_sphere(
                 snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
             ),
+        )'''
+        box_mask = pygad.BoxMask(
+            extent=2*extent,
+            center=pygad.analysis.shrinking_sphere(
+                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
+            )
         )
 
         SL.debug(f"IFU extent is {extent:.2f} kpc")
         SL.debug(f"Number of regular bins is {n_regular_bins}^2")
 
+        # as the BH kick direction is always along the x-axis, use
+        # this axis as the LOS parallel direction
         # try two orientations:
         # 1: LOS parallel with BH motion
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             SL.info(f"Doing {orientation} orientation...")
             voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
-                x=snap.stars[ball_mask]["pos"][:, x_axis],
-                y=snap.stars[ball_mask]["pos"][:, 2],
-                V=snap.stars[ball_mask]["vel"][:, LOS_axis],
-                m=snap.stars[ball_mask]["mass"],
+                x=snap.stars[box_mask]["pos"][:, x_axis],
+                y=snap.stars[box_mask]["pos"][:, 2],
+                V=snap.stars[box_mask]["vel"][:, LOS_axis],
+                m=snap.stars[box_mask]["mass"],
                 Npx=n_regular_bins,
                 part_per_bin=2000 * seeing["num"],
                 seeing=seeing,
@@ -126,13 +134,16 @@ if args.extract:
             # have to set colour limits by hand
             ax = bgs.plotting.voronoi_plot(
                 voronoi_stats,
-                clims={"V": [20], "sigma": [160, 260], "h3": [0.032], "h4": [0.032]},
+                clims={"V": [39], "sigma": [160, 245], "h3": [0.041], "h4": [0.045]},
             )
+            for axi in ax.flat:
+                axi.set_xlim(-extent, extent)
+                axi.set_ylim(-extent, extent)
             fig = ax[0].get_figure()
 
             SL.info(f"Total time: {datetime.now() - tstart}")
             bgs.plotting.savefig(
-                figure_config.fig_path(f"IFU/IFU_{orientation}_{k}.pdf"), force_ext=True
+                figure_config.fig_path(f"IFU_{str(rhalf_factor).replace('.', '')}rhalf/IFU_{orientation}_{k}.pdf"), force_ext=True
             )
             plt.close()
 
@@ -165,32 +176,25 @@ else:
 # plot h4 radial profiles
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
 get_kick_val = lambda k: float(k.lstrip("v"))
-kick_vels = [get_kick_val(k) for k in h4_vals["para"].keys()]
 vkcols = figure_config.VkickColourMap()
 
-for (kp, vp), (ko, vo) in zip(h4_vals["para"].items(), h4_vals["ortho"].items()):
+# helper function for plotting
+def plot_helper(axi, k, v, rhalf):
+    r = v["R"]
+    h4 = v["h4"]
+    idx_sorted = np.argsort(r)
+    h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
+    axi.plot(
+        r[idx_sorted],
+        h4_filtered,
+        c=vkcols.get_colour(get_kick_val(k)),
+        ls="-"
+    )
+
+for rh, (kp, vp), (ko, vo) in zip(h4_vals["rhalf"], h4_vals["para"].items(), h4_vals["ortho"].items()):
     m = bgs.plotting.mplChars()[int(get_kick_val(kp)) // 600]
-    idx_sorted = np.argsort(vp["R"])
-    vpc = uniform_filter1d(vp["h4"][idx_sorted], 8, mode="nearest")
-    ax[0].plot(
-        vp["R"][idx_sorted],
-        vpc,
-        c=vkcols.get_colour(get_kick_val(kp)),
-        ls="-",
-        marker=m,
-        markevery=[-1],
-    )
-    idx_sorted = np.argsort(vo["R"])
-    voc = uniform_filter1d(vo["h4"][idx_sorted], 8, mode="nearest")
-    ax[1].plot(
-        vo["R"][idx_sorted],
-        voc,
-        c=vkcols.get_colour(get_kick_val(ko)),
-        ls="-",
-        marker=m,
-        markevery=[-1],
-    )
-    SL.debug(f"vk {get_kick_val(ko):.0f}: {vpc[-1]:.1f}, {voc[-1]:.1f}")
+    plot_helper(ax[0], kp, vp, rh)
+    plot_helper(ax[1], ko, vo, rh)
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
