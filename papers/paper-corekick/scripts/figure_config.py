@@ -10,6 +10,9 @@ figure_dir = os.path.abspath(os.path.join(this_dir, "../figures/"))
 
 # get the complete path for saving a figure
 def fig_path(fname):
+    p = os.path.join(figure_dir, fname)
+    if not os.path.isdir(os.path.dirname(p)):
+        os.makedirs(os.path.dirname(p), exist_ok=True)
     return os.path.join(figure_dir, fname)
 
 

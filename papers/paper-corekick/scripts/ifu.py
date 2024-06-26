@@ -15,6 +15,12 @@ parser.add_argument(
     "-e", "--extract", help="extract data", action="store_true", dest="extract"
 )
 parser.add_argument(
+    "-p", "--plot", help="plot IFU maps", action="store_true", dest="plot"
+)
+parser.add_argument(
+    "-sub", "--subset", help="plot subset of IFU maps", action="append", dest="sub", default=None
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -28,7 +34,9 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
+# XXX set the fraction of rhalf within which IFU maps are created for
 rhalf_factor = 0.25
+
 
 h4_file = os.path.join(bgs.DATADIR, f"mergers/processed_data/core-paper-data/h4_{str(rhalf_factor).replace('.', '')}rhalf.pickle")
 
@@ -56,12 +64,6 @@ if args.extract:
     # dict to store radial h4 profiles
     h4_vals = {"para": {}, "ortho": {}, "rhalf":[]}
 
-    # determine colour limits
-    Vlim = -np.inf
-    sigmalim = [np.inf, -np.inf]
-    h3lim = -np.inf
-    h4lim = -np.inf
-
     for k, v in snapshots.items():
         SL.info(f"Creating IFU maps for {k}")
         tstart = datetime.now()
@@ -79,12 +81,6 @@ if args.extract:
         extent = rhalf_factor * rhalf
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
 
-        '''ball_mask = pygad.BallMask(
-            R=extent,
-            center=pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
-        )'''
         box_mask = pygad.BoxMask(
             extent=2*extent,
             center=pygad.analysis.shrinking_sphere(
@@ -112,46 +108,9 @@ if args.extract:
                 seeing=seeing,
             )
 
-            SL.debug(f"Completed binning in {datetime.now()-tstart}")
+            h4_vals[orientation][k] = voronoi_stats
 
-            # determine colour limits
-            _Vlim = np.max(np.abs(voronoi_stats["img_V"]))
-            Vlim = _Vlim if _Vlim > Vlim else Vlim
-
-            _sigmalim = [
-                np.min(voronoi_stats["img_sigma"]),
-                np.max(voronoi_stats["img_sigma"]),
-            ]
-            sigmalim[0] = _sigmalim[0] if _sigmalim[0] < sigmalim[0] else sigmalim[0]
-            sigmalim[1] = _sigmalim[1] if _sigmalim[1] > sigmalim[1] else sigmalim[1]
-
-            _h3lim = np.max(np.abs(voronoi_stats["img_h3"]))
-            h3lim = _h3lim if _h3lim > h3lim else h3lim
-
-            _h4lim = np.max(np.abs(voronoi_stats["img_h4"]))
-            h4lim = _h4lim if _h4lim > h4lim else h4lim
-
-            # have to set colour limits by hand
-            ax = bgs.plotting.voronoi_plot(
-                voronoi_stats,
-                clims={"V": [39], "sigma": [160, 245], "h3": [0.041], "h4": [0.045]},
-            )
-            for axi in ax.flat:
-                axi.set_xlim(-extent, extent)
-                axi.set_ylim(-extent, extent)
-            fig = ax[0].get_figure()
-
-            SL.info(f"Total time: {datetime.now() - tstart}")
-            bgs.plotting.savefig(
-                figure_config.fig_path(f"IFU_{str(rhalf_factor).replace('.', '')}rhalf/IFU_{orientation}_{k}.pdf"), force_ext=True
-            )
-            plt.close()
-
-            h4_vals[orientation][k] = {}
-            (
-                h4_vals[orientation][k]["R"],
-                h4_vals[orientation][k]["h4"],
-            ) = bgs.analysis.radial_profile_velocity_moment(voronoi_stats, "h4")
+            SL.info(f"Completed binning in {datetime.now()-tstart}")
 
         # conserve memory
         snap.delete_blocks()
@@ -159,14 +118,6 @@ if args.extract:
         pygad.gc_full_collect()
 
     bgs.utils.save_data(h4_vals, h4_file)
-
-    print("-------------")
-    print("Colour limits")
-    print(f"V: {Vlim}")
-    print(f"sigma: {sigmalim}")
-    print(f"h3: {h3lim}")
-    print(f"h4: {h4lim}")
-    print("-------------")
 else:
     SL.warning(
         "Reading in saved dataset for h4 analysis, IFU maps will not be recreated!"
@@ -179,9 +130,8 @@ get_kick_val = lambda k: float(k.lstrip("v"))
 vkcols = figure_config.VkickColourMap()
 
 # helper function for plotting
-def plot_helper(axi, k, v, rhalf):
-    r = v["R"]
-    h4 = v["h4"]
+def plot_helper(axi, k, vs, rhalf):
+    r, h4 = bgs.analysis.radial_profile_velocity_moment(vs, "h4")
     idx_sorted = np.argsort(r)
     h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
     axi.plot(
@@ -200,3 +150,76 @@ ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
 vkcols.make_cbar(ax.flat)
 bgs.plotting.savefig(figure_config.fig_path("h4.pdf"), force_ext=True)
+
+if args.plot:
+    # plot IFU maps
+
+    def yield_data():
+        for orientation in ("para", "ortho"):
+            for rh, (k, v) in zip(h4_vals["rhalf"], h4_vals[orientation].items()):
+                if args.sub is not None:
+                    if k.lstrip("v") not in args.sub:
+                        continue
+                yield rh, k, v, orientation
+
+    # for global colour limits, set initial values
+    Vlim = -np.inf
+    sigmalim = [np.inf, -np.inf]
+    h3lim = -np.inf
+    h4lim = -np.inf
+
+    data_yielder = yield_data()
+
+    '''for orientation in ("para", "ortho"):
+        for rh, (k, v) in zip(h4_vals["rhalf"], h4_vals[orientation].items()):
+            if args.sub is not None:
+                if k.lstrip("v") not in args.sub:
+                    continue'''
+    while True:
+        try:
+            rh, k, v, orientation = next(data_yielder)
+        except StopIteration:
+            break
+        SL.debug(f"Determining colour limits for {k}-{orientation}")
+        # determine colour limits
+        _Vlim = np.max(np.abs(v["img_V"]))
+        Vlim = _Vlim if _Vlim > Vlim else Vlim
+
+        _sigmalim = [
+            np.min(v["img_sigma"]),
+            np.max(v["img_sigma"]),
+        ]
+        sigmalim[0] = _sigmalim[0] if _sigmalim[0] < sigmalim[0] else sigmalim[0]
+        sigmalim[1] = _sigmalim[1] if _sigmalim[1] > sigmalim[1] else sigmalim[1]
+
+        _h3lim = np.max(np.abs(v["img_h3"]))
+        h3lim = _h3lim if _h3lim > h3lim else h3lim
+
+        _h4lim = np.max(np.abs(v["img_h4"]))
+        h4lim = _h4lim if _h4lim > h4lim else h4lim
+
+    # print colour info
+    SL.info(f"Colour limits will be set to:\n  V: {Vlim:.2e}\n  sigma: {sigmalim[0]:.2e}, {sigmalim[1]:.2e}\n  h3: {h3lim:.2e}\n  h4: {h4lim:.2e}")
+
+    # re-iterate to get colours
+    data_yielder = yield_data()
+    while True:
+        try:
+           rh, k, v, orientation = next(data_yielder)
+        except StopIteration:
+            break
+        # plot the voronoi maps
+        ax = bgs.plotting.voronoi_plot(
+            v,
+            clims={"V": [Vlim], "sigma": sigmalim, "h3": [h3lim], "h4": [h4lim]},
+        )
+        extent = rhalf_factor * rh
+        for axi in ax.flat:
+            axi.set_xlim(-extent, extent)
+            axi.set_ylim(-extent, extent)
+        fig = ax[0].get_figure()
+        fig.set_figwidth(1.05 * fig.get_figwidth())
+        bgs.plotting.savefig(
+            figure_config.fig_path(f"IFU_{str(rhalf_factor).replace('.', '')}rhalf/IFU_{orientation}_{k}.pdf"), force_ext=True
+        )
+        plt.close()
