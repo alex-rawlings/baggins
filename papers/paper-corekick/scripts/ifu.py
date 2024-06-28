@@ -168,13 +168,9 @@ if args.plot:
     h3lim = -np.inf
     h4lim = -np.inf
 
+    # create the generator
     data_yielder = yield_data()
 
-    '''for orientation in ("para", "ortho"):
-        for rh, (k, v) in zip(h4_vals["rhalf"], h4_vals[orientation].items()):
-            if args.sub is not None:
-                if k.lstrip("v") not in args.sub:
-                    continue'''
     while True:
         try:
             rh, k, v, orientation = next(data_yielder)
@@ -214,9 +210,12 @@ if args.plot:
             clims={"V": [Vlim], "sigma": sigmalim, "h3": [h3lim], "h4": [h4lim]},
         )
         extent = rhalf_factor * rh
+        xlabel = r"$y/\mathrm{kpc}$" if orientation == "para" else r"$x/\mathrm{kpc}$"
         for axi in ax.flat:
             axi.set_xlim(-extent, extent)
             axi.set_ylim(-extent, extent)
+            axi.set_xlabel(xlabel)
+            axi.set_ylabel(r"$z/\mathrm{kpc}$")
         fig = ax[0].get_figure()
         fig.set_figwidth(1.05 * fig.get_figwidth())
         bgs.plotting.savefig(

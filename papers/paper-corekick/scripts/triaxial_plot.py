@@ -48,7 +48,17 @@ else:
     data = bgs.utils.load_data(args.path)
 
 # set up figure
-fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
+fig, ax = plt.subplot_mosaic(
+    """
+    A
+    B
+    C
+    C
+    """,
+    sharex=True
+)
+fig.set_figheight(fig.get_figheight() * 1.5)
+ax["A"].sharey(ax["B"])
 vkcols = figure_config.VkickColourMap()
 
 for k, v in data.items():
@@ -56,16 +66,23 @@ for k, v in data.items():
         continue
     vv = v["ratios"]
     c = vkcols.get_colour(float(k[1:]))
-    ax[0].plot(vv["r"][0], vv["ba"][0], c=c, ls="-")
-    ax[1].plot(vv["r"][0], vv["ca"][0], c=c, ls="-")
+    ax["A"].plot(vv["r"][0], vv["ba"][0], c=c, ls="-")
+    ax["B"].plot(vv["r"][0], vv["ca"][0], c=c, ls="-")
+    ax["C"].plot(vv["r"][0], (1 - vv["ba"][0]**2) / (1 - vv["ca"][0]**2), c=c, ls="-")
 
 # add colour bar and other labels
-vkcols.make_cbar(ax.ravel().tolist())
+vkcols.make_cbar(list(ax.values()), extend=None)
 
-for axi, lab in zip(ax, (r"$b/a$", r"$c/a$")):
-    axi.set_xscale("log")
-    axi.set_ylabel(lab)
-ax[1].set_xlabel(r"$r/\mathrm{kpc}$")
+for k, lab in zip("ABC", (r"$b/a$", r"$c/a$", r"$T$")):
+    ax[k].set_xscale("log")
+    ax[k].set_ylabel(lab)
+ax["C"].set_xlabel(r"$r/\mathrm{kpc}$")
+
+# add some text for the T plot
+ax["C"].set_ylim(0, 1)
+ax["C"].axhline(0.5, c="gray", alpha=0.4, ls=":")
+ax["C"].text(7, 0.52, "prolate")
+ax["C"].text(7, 0.25, "oblate")
 
 bgs.plotting.savefig(figure_config.fig_path("triaxiality.pdf"), force_ext=True)
 plt.show()

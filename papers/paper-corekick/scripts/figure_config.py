@@ -111,12 +111,12 @@ class VkickColourMap:
     def get_colour(self, v):
         return self.cmapv(self.norm(v))
 
-    def make_cbar(self, ax, **kwargs):
+    def make_cbar(self, ax, extend="max", **kwargs):
         cbar = mpl.pyplot.colorbar(
             self.sm,
             ax=ax,
             label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$",
-            extend="max",
+            extend=extend,
             **kwargs,
         )
         return cbar

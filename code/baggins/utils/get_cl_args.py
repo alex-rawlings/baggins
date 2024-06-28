@@ -89,14 +89,6 @@ def argparse_for_stan(description=""):
         help="use publishing format",
     )
     parser.add_argument(
-        "-N",
-        "--NumSamples",
-        type=int,
-        help="number OOS values",
-        dest="NOOS",
-        default=1000,
-    )
-    parser.add_argument(
         "-v",
         "--verbosity",
         type=str,
