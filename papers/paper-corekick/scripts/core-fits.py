@@ -118,6 +118,8 @@ def _helper(param_name, ax):
     for k, v in data[param_name].items():
         if k == "__githash" or k == "__script":
             continue
+        if k == "2000":
+            continue
         SL.info(f"Determining ratio for model {k}")
         kick_vels.append(float(k))
         v = v[~np.isnan(v)]

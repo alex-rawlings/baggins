@@ -1,24 +1,32 @@
 import numpy as np
+import scipy.stats
 import matplotlib.pyplot as plt
 import baggins as bgs
+from ketjugw.units import km_per_s
 
 
-m1 = 1e-1
-m2 = 1e-1
-s1 = [0.,0.,-1.]
-s2 = [0.,0.,1.]
-x1 = [1e-3,0.001,0]
-x2 = [-1e-3,0,0]
-v1 = [1e-3,0.01,0]
-v2 = [-1e-3,0,0]
+kfile = bgs.utils.get_ketjubhs_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0000/output")[0]
+bh1, bh2, *_ = bgs.analysis.get_bound_binary(kfile)
+# move to Gadget units: kpc, km/s, 1e10Msol
+bh1.x /= bgs.general.units.kpc
+bh2.x /= bgs.general.units.kpc
+bh1.v /= km_per_s
+bh2.v /= km_per_s
+bh1.m /= 1e10
+bh2.m /= 1e10
 
 rng = np.random.default_rng(42)
 N = 5000
 
-s1 = rng.uniform(0, 1, size=(N,3))
-s1 /= np.linalg.norm(s1, axis=0)
-s2 = rng.uniform(0, 1, size=(N,3))
-s2 /= np.linalg.norm(s2, axis=0)
+t, p = bgs.mathematics.uniform_sample_sphere(N * 2, rng=rng)
+spin_mag = scipy.stats.beta.rvs(
+    *bgs.literature.zlochower_dry_spins.values(),
+    random_state=rng,
+    size=N * 2,
+)
+spins = bgs.mathematics.convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
+s1 = spins[:N, :]
+s2 = spins[N:, :]
 
 v = np.full(N, np.nan)
 
@@ -26,10 +34,10 @@ for i, (ss1, ss2) in enumerate(zip(s1, s2)):
     print(f"Sampling {(i+1)/N*100:.1f}% complete...                      ", end="\r")
     # convert unit of spin
     remnant = bgs.literature.ketju_calculate_bh_merger_remnant_properties(
-        m1=m1, m2=m2,
+        m1=bh1.m[-1], m2=bh2.m[-1],
         s1=ss1, s2=ss2,
-        x1=x1, x2=x2,
-        v1=v1, v2=v2
+        x1=bh1.x[-1,:], x2=bh2.x[-1,:],
+        v1=bh1.v[-1,:], v2=bh2.v[-1,:]
     )
     v[i] = np.linalg.norm(remnant["v"])
 print("\nSampling complete")
