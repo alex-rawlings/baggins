@@ -83,7 +83,7 @@ class _CoreKickBase(HierarchicalModel_2D):
     def rb0(self):
         return self._rb0
 
-    def extract_data(self, d=None, npoints=200, pars=None):
+    def extract_data(self, d=None, pars=None):
         """
         Data extraction and manipulation required by the CoreKick model.
         Due to the complexity of extracting core radius, samples from the core
@@ -120,8 +120,6 @@ class _CoreKickBase(HierarchicalModel_2D):
         data = load_data(d)
         obs = {"vkick": [], "rb": []}
         for k, v in data["rb"].items():
-            if k == "__githash" or k == "__script":
-                continue
             _logger.info(f"Getting data for kick {k}")
             mask = ~np.isnan(v)
             v = v[mask]
@@ -147,15 +145,27 @@ class _CoreKickBase(HierarchicalModel_2D):
         self.bh1 = bh1[-1]
         self.bh2 = bh2[-1]
 
-    def _set_stan_data_OOS(self):
+    def _set_stan_data_OOS(self, N=10000, new_run=False, restrict_v=False):
         """
-        Set the out-of-sample Stan data variables. 10000 OOS points will be
-        used.
-        BH spins are uniformly sampled on the sphere, with magnitude from the
-        Zlochower Lousto "dry" distribution.
+        Set the out-of-sample Stan data variables. BH spins are uniformly 
+        sampled on the sphere, with magnitude from the Zlochower Lousto "dry" 
+        distribution.
+
+        Parameters
+        ----------
+        N : int, optional
+            number of points, by default 10000
+        new_run : bool, optional
+            sets the maximum number of OOS points that can be used by later 
+            samplings, by default False
+        restrict_v : bool, optional
+            restrict sampled kick velocity to the maximum value found in the 
+            StanModel observations, by default False
         """
-        _OOS = {"N_OOS": 10000}
-        self._num_OOS = _OOS["N_OOS"]
+        _OOS = {"N_OOS": N}
+        if not new_run:
+            # protect the number of OOS points used during sampling
+            self._num_OOS = _OOS["N_OOS"]
         t, p = uniform_sample_sphere(_OOS["N_OOS"] * 2, rng=self._rng)
         spin_mag = scipy.stats.beta.rvs(
             *zlochower_dry_spins.values(),
@@ -181,8 +191,21 @@ class _CoreKickBase(HierarchicalModel_2D):
         _logger.debug(
             f"{np.sum(np.isnan(vkick)) / len(vkick) * 100:.2f}% of calculations from from the Zlochower Lousto relation are NaN!"
         )
+        if restrict_v:
+            # use resampling to fill out the array with velocities < maximum
+            vmax = np.nanmax(self.obs_collapsed["vkick"])
+            bad_idxs = vkick > vmax
+            vkick[bad_idxs] = self._rng.choice(vkick[~bad_idxs], size=np.nansum(bad_idxs))
         _OOS["vkick_OOS"] = vkick[~np.isnan(vkick)]
         self.stan_data.update(_OOS)
+
+    def set_stan_data_OOS(self, N=10000, restrict_v=False):
+        try:
+            assert N <= self.num_OOS
+        except AssertionError:
+            _logger.exception(f"Generating new quantities of interest cannot include arrays longer than the original number of OOS points ({self.num_OOS})", exc_info=True)
+            raise
+        self._set_stan_data_OOS(N=N, new_run=True, restrict_v=restrict_v)
 
     def set_stan_data(self):
         """
@@ -326,7 +349,7 @@ class _CoreKickBase(HierarchicalModel_2D):
         ax = self.plot_generated_quantity_dist(
             ["rb_posterior"],
             state="OOS",
-            xlabels=self._folded_qtys_labs[0],
+            xlabels=self._folded_qtys_labs,
             save=False,
         )
         rb_mode = self.calculate_mode("rb_posterior")

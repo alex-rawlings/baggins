@@ -47,7 +47,13 @@ P = 1-np.cumsum(v)/np.sum(v)
 P = np.clip(P, 1e-7, None)
 
 if True:
-    plt.semilogy(v, P)
+    print(f"Quantile corresponding to 1020 km/s is {bgs.mathematics.empirical_cdf(v, 1020)}")
+    plt.hist(v, 30, density=True)
+    plt.xlabel(r"$v_\mathrm{kick}$")
+    plt.show()
+
+if False:
+    plt.plot(v, P)
     plt.xlabel(r"$v_\mathrm{kick}$")
     plt.show()
 

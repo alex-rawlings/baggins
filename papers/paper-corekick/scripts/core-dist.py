@@ -2,7 +2,7 @@ import argparse
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-from arviz import compare
+import arviz as az
 import baggins as bgs
 import figure_config
 
@@ -53,7 +53,7 @@ ketju_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study
 stan_file_base = "/users/arawling/projects/collisionless-merger-sample/code/analysis_scripts/core_kick_relation"
 # set the escape velocity in km/s
 ESCAPE_VEL = 1800
-rng = np.random.default_rng(99918082)
+rng = np.random.default_rng(42)
 
 if args.type == "new" or args.type == "loaded":
     # usage 1: run fit (either new or loaded) for a given model
@@ -163,7 +163,22 @@ else:
         m.set_stan_data()
         m.sample_model(diagnose=False)
         loo_dict[n] = m.determine_loo()
-        # plot rb distribution for different models
+        # plot rb distribution for different models, without kick velocity 
+        # restriction
+        m.plot_generated_quantity_dist(
+            ["rb_posterior"],
+            state="OOS",
+            xlabels=m._folded_qtys_labs,
+            save=False,
+            ax=ax,
+            color=c,
+            plot_kwargs={"ls":"--", "alpha":0.4},
+        )
+
+        # plot rb distribution for different models, with kick velocity 
+        # restriction
+        m.set_stan_data_OOS(restrict_v=True)
+        m.sample_generated_quantity("rb_posterior", force_resample=True, state="OOS")
         m.plot_generated_quantity_dist(
             ["rb_posterior"],
             state="OOS",
@@ -171,9 +186,14 @@ else:
             save=False,
             ax=ax,
             label=n,
-            color=c,
+            color=c
         )
-        m.print_parameter_percentiles(m.latent_qtys)
+
+        for lq in m.latent_qtys:
+            hdi = az.hdi(m.sample_generated_qty(lq))
+            SL.info(f"1-sigma (68%) HDI for {lq} is {hdi}")
+
+
     ax.legend()
     # set xlimits by hand
     ax.set_xlim(0, 8)
@@ -184,6 +204,6 @@ else:
     secax = ax.secondary_xaxis("top", functions=(rb02kpc, kpc2rb0))
     secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
     bgs.plotting.savefig(figure_config.fig_path("rb_pdf.pdf"), fig=fig, force_ext=True)
-    comp = compare(loo_dict, ic="loo")
+    comp = az.compare(loo_dict, ic="loo")
     print("Model comparison")
     print(comp)

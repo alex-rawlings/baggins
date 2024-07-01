@@ -12,6 +12,7 @@ __all__ = [
     "stat_interval",
     "uniform_sample_sphere",
     "vertical_RMSE",
+    "empirical_cdf"
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -338,3 +339,22 @@ def vertical_RMSE(x, y, return_linregress=False):
         return np.sqrt(np.sum((yhat - y) ** 2) / len(x)), slope, intercept
     else:
         return np.sqrt(np.sum((yhat - y) ** 2) / len(x))
+
+
+def empirical_cdf(x, t):
+    """
+    Determine the empirical cumulative distribution function of an array
+
+    Parameters
+    ----------
+    x : array-like
+        observed data
+    t : float
+        value to determine cdf of
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    return np.nanmean(x <= t)
