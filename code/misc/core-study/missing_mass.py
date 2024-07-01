@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import baggins as bgs
 
 
-datafile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick-no-2000.pickle"
+datafile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
 
 data = bgs.utils.load_data(datafile)
 
@@ -83,7 +83,7 @@ while True:
     ax.errorbar(float(kv), med, yerr=err, fmt=".", ls="", color="tab:blue")
     #ax.plot(float(kv), med, c="tab:blue", ls="", marker="o")
 
-#ax.set_yscale("log")
+ax.set_yscale("log")
 ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$")
 #ax.set_ylabel(r"$\log_{10}(M/\mathrm{M}_\odot)$")
 ax.set_ylabel(r"$M_\mathrm{def}$")

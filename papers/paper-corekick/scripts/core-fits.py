@@ -108,6 +108,7 @@ if args.extract:
                 )
     bgs.utils.save_data(data, data_file)
 else:
+    SL.debug(f"Reading {data_file}")
     data = bgs.utils.load_data(data_file)
 
 
