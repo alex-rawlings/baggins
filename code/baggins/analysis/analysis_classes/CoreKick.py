@@ -42,6 +42,8 @@ class _CoreKickBase(HierarchicalModel_2D):
         self.bh1 = None
         self.bh2 = None
         self._rb0 = np.nan
+        self._restrict_vel = False
+        self._vmax = None
 
     @property
     def folded_qtys(self):
@@ -50,6 +52,10 @@ class _CoreKickBase(HierarchicalModel_2D):
     @property
     def folded_qtys_posterior(self):
         return self._folded_qtys_posterior
+
+    @property
+    def vmax(self):
+        return self._vmax
 
     @property
     @abstractmethod
@@ -145,72 +151,58 @@ class _CoreKickBase(HierarchicalModel_2D):
         self.bh1 = bh1[-1]
         self.bh2 = bh2[-1]
 
-    def _set_stan_data_OOS(self, N=10000, new_run=False, restrict_v=False):
-        """
-        Set the out-of-sample Stan data variables. BH spins are uniformly 
-        sampled on the sphere, with magnitude from the Zlochower Lousto "dry" 
-        distribution.
-
-        Parameters
-        ----------
-        N : int, optional
-            number of points, by default 10000
-        new_run : bool, optional
-            sets the maximum number of OOS points that can be used by later 
-            samplings, by default False
-        restrict_v : bool, optional
-            restrict sampled kick velocity to the maximum value found in the 
-            StanModel observations, by default False
-        """
-        _OOS = {"N_OOS": N}
-        if not new_run:
-            # protect the number of OOS points used during sampling
-            self._num_OOS = _OOS["N_OOS"]
-        t, p = uniform_sample_sphere(_OOS["N_OOS"] * 2, rng=self._rng)
-        spin_mag = scipy.stats.beta.rvs(
-            *zlochower_dry_spins.values(),
-            random_state=self._rng,
-            size=_OOS["N_OOS"] * 2,
-        )
-        spins = convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
-        s1 = spins[: _OOS["N_OOS"], :]
-        s2 = spins[_OOS["N_OOS"] :, :]
-        vkick = np.full(_OOS["N_OOS"], np.nan)
-        for i, (ss1, ss2) in tqdm(enumerate(zip(s1, s2)), total=len(s1)):
-            remnant = ketju_calculate_bh_merger_remnant_properties(
-                m1=self.bh1.m,
-                m2=self.bh2.m,
-                s1=ss1,
-                s2=ss2,
-                x1=self.bh1.x.flatten(),
-                x2=self.bh2.x.flatten(),
-                v1=self.bh1.v.flatten(),
-                v2=self.bh2.v.flatten(),
+    def _set_stan_data_OOS(self, N=10000):
+        def _spin_setter(nn):
+            t, p = uniform_sample_sphere(nn * 2, rng=self._rng)
+            spin_mag = scipy.stats.beta.rvs(
+                *zlochower_dry_spins.values(),
+                random_state=self._rng,
+                size=nn * 2,
             )
-            vkick[i] = np.linalg.norm(remnant["v"]) / self.escape_vel
-        _logger.debug(
-            f"{np.sum(np.isnan(vkick)) / len(vkick) * 100:.2f}% of calculations from from the Zlochower Lousto relation are NaN!"
-        )
-        if restrict_v:
-            # use resampling to fill out the array with velocities < maximum
-            vmax = np.nanmax(self.obs_collapsed["vkick"])
-            bad_idxs = vkick > vmax
-            vkick[bad_idxs] = self._rng.choice(vkick[~bad_idxs], size=np.nansum(bad_idxs))
-        _OOS["vkick_OOS"] = vkick[~np.isnan(vkick)]
+            spins = convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
+            return spins[:nn, :], spins[nn:, :]
+
+        _OOS = {"N_OOS": N}
+        self._num_OOS = _OOS["N_OOS"]
+        self._vmax = np.nanmax(self.obs_collapsed["vkick"])
+        vkick = np.full(_OOS["N_OOS"], np.nan)
+        _logger.debug(f"Maximum fitted velocity is {self.vmax:.2e}")
+        remaining = np.ones(N, dtype=bool)
+        iters = 0
+        max_iters = 100
+        while np.any(remaining) and iters < max_iters:
+            # generate spins
+            s1, s2 = _spin_setter(np.sum(remaining))
+            update_idxs = np.where(remaining==1)[0]
+            for i, (ss1, ss2) in tqdm(enumerate(zip(s1, s2)), total=len(s1), desc=f"Sampling BH spins (iteration {iters})"):
+                remnant = ketju_calculate_bh_merger_remnant_properties(
+                    m1=self.bh1.m,
+                    m2=self.bh2.m,
+                    s1=ss1,
+                    s2=ss2,
+                    x1=self.bh1.x.flatten(),
+                    x2=self.bh2.x.flatten(),
+                    v1=self.bh1.v.flatten(),
+                    v2=self.bh2.v.flatten(),
+                )
+                vkick[update_idxs[i]] = np.linalg.norm(remnant["v"]) / self.escape_vel
+            remaining = np.isnan(vkick)
+            if self._restrict_vel:
+                remaining = np.logical_or(remaining, vkick>self.vmax)
+            _logger.debug(f"Completed iteration {iters}, but there are {np.sum(remaining)} kick values that need to be resampled")
+            iters += 1
+        _logger.debug(f"{np.sum(vkick > self.vmax)} kick velocities are larger than the maximum value of vkick used in model constraint")
+        if iters >= max_iters:
+            _logger.error(f"The number of iterations in sampling the BH spins has exceeded the maximum number of {max_iters} without converging!")
+        _OOS["vkick_OOS"] = vkick
+        _logger.debug(f"Length of OOS vkick: {len(_OOS['vkick_OOS'])}")
         self.stan_data.update(_OOS)
 
-    def set_stan_data_OOS(self, N=10000, restrict_v=False):
-        try:
-            assert N <= self.num_OOS
-        except AssertionError:
-            _logger.exception(f"Generating new quantities of interest cannot include arrays longer than the original number of OOS points ({self.num_OOS})", exc_info=True)
-            raise
-        self._set_stan_data_OOS(N=N, new_run=True, restrict_v=restrict_v)
-
-    def set_stan_data(self):
+    def set_stan_data(self, restrict_v=False):
         """
         Set the Stan data dictionary used for sampling.
         """
+        self._restrict_vel = restrict_v
         self.stan_data = dict(
             N_tot=self.num_obs_collapsed,
             vkick=self.obs_collapsed["vkick"],

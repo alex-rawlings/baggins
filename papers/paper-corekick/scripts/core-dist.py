@@ -2,6 +2,12 @@ import argparse
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
+'''try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    from matplotlib import use
+    use("Agg")
+    import matplotlib.pyplot as plt'''
 import arviz as az
 import baggins as bgs
 import figure_config
@@ -126,24 +132,25 @@ else:
         "premerger_ketjufile": ketju_file,
         "rng": rng,
     }
-    models = [
-        bgs.analysis.CoreKickExp.load_fit(
+
+    def yield_model():
+        yield bgs.analysis.CoreKickExp.load_fit(
             model_file=os.path.join(stan_file_base, "core-kick-exp.stan"),
             fit_files=bgs.utils.get_files_in_dir(
                 os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/exp-model"),
                 ext=".csv",
             )[-4:],
             **stan_load_kwargs,
-        ),
-        bgs.analysis.CoreKickLinear.load_fit(
+        )
+        yield bgs.analysis.CoreKickLinear.load_fit(
             model_file=os.path.join(stan_file_base, "core-kick-lin.stan"),
             fit_files=bgs.utils.get_files_in_dir(
                 os.path.join(bgs.DATADIR, "stan_files/core-kick-relation/lin-model"),
                 ext=".csv",
             )[-4:],
             **stan_load_kwargs,
-        ),
-        bgs.analysis.CoreKickSigmoid.load_fit(
+        )
+        yield bgs.analysis.CoreKickSigmoid.load_fit(
             model_file=os.path.join(stan_file_base, "core-kick-sigmoid.stan"),
             fit_files=bgs.utils.get_files_in_dir(
                 os.path.join(
@@ -152,55 +159,66 @@ else:
                 ext=".csv",
             )[-4:],
             **stan_load_kwargs,
-        ),
-    ]
-    loo_dict = {"Exponential": None, "Linear": None, "Sigmoid": None}
+        )
+
+    def calculate_mode(y):
+        # Function taken from StanModel, which follows the arviz implementation
+        x, dens = az.kde(y)
+        return x[np.nanargmax(dens)]
+
+    def restrict_vel_dist(y, m):
+        mask = m.stan_data["vkick_OOS"] < m.vmax
+        SL.info(f"Sample size reduced from {len(y)} to {np.sum(mask)}")
+        return y[:, mask]
+
+    loo_dict = { "Exponential": None, "Linear": None, "Sigmoid": None}
+    models = yield_model()
+
     for n, m, c in zip(
         loo_dict.keys(), models, figure_config.custom_colors_shuffled[1:]
     ):
         SL.info(f"Doing model: {n}")
         m.extract_data(d=datafile)
-        m.set_stan_data()
+        m.set_stan_data(restrict_v=False)
         m.sample_model(diagnose=False)
         loo_dict[n] = m.determine_loo()
-        # plot rb distribution for different models, without kick velocity 
-        # restriction
-        m.plot_generated_quantity_dist(
-            ["rb_posterior"],
-            state="OOS",
-            xlabels=m._folded_qtys_labs,
-            save=False,
-            ax=ax,
-            color=c,
-            plot_kwargs={"ls":"--", "alpha":0.4},
-        )
 
-        # plot rb distribution for different models, with kick velocity 
-        # restriction
-        m.set_stan_data_OOS(restrict_v=True)
-        m.sample_generated_quantity("rb_posterior", force_resample=True, state="OOS")
-        m.plot_generated_quantity_dist(
-            ["rb_posterior"],
-            state="OOS",
-            xlabels=m._folded_qtys_labs,
-            save=False,
-            ax=ax,
-            label=n,
-            color=c
-        )
+        rb_vals = m.sample_generated_quantity(m.folded_qtys_posterior[0], state="OOS")
+        az.plot_dist(rb_vals,
+                     color=c,
+                     kind="kde",
+                     ax=ax,
+                     plot_kwargs={"ls":"--", "alpha":0.6}
+                     )
 
+        restricted_rb_vals = restrict_vel_dist(rb_vals, m)
+        az.plot_dist(restricted_rb_vals,
+                     color=c,
+                     kind="kde",
+                     ax=ax,
+                     label=f"$\mathrm{{{n}}}$"
+                     )
+
+        for s_rb, rb in zip(
+            ("unrestricted", "restricted"),
+            (rb_vals, restricted_rb_vals)
+            ):
+                rb_mode = calculate_mode(rb)
+                SL.info(f"Mode of {s_rb} distribution is {rb_mode:.2f} rb0, or {rb_mode*m.rb0:.2f} kpc")
+        m.print_parameter_percentiles(m.latent_qtys)
         for lq in m.latent_qtys:
-            hdi = az.hdi(m.sample_generated_qty(lq))
+            hdi = az.hdi(m.sample_generated_quantity(lq))
             SL.info(f"1-sigma (68%) HDI for {lq} is {hdi}")
 
-
     ax.legend()
+    ax.set_xlabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
+    ax.set_ylabel(r"$\mathrm{PDF}$")
     # set xlimits by hand
     ax.set_xlim(0, 8)
     # add a secondary axis, turning off ticks from the top axis (if they are there)
     ax.tick_params(axis="x", which="both", top=False)
-    rb02kpc = lambda x: x * models[-1].rb0
-    kpc2rb0 = lambda x: x / models[-1].rb0
+    rb02kpc = lambda x: x * m.rb0
+    kpc2rb0 = lambda x: x / m.rb0
     secax = ax.secondary_xaxis("top", functions=(rb02kpc, kpc2rb0))
     secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
     bgs.plotting.savefig(figure_config.fig_path("rb_pdf.pdf"), fig=fig, force_ext=True)
