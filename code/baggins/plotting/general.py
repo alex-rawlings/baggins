@@ -104,7 +104,7 @@ def create_normed_colours(
     """
     Convenience wrapper for creating colour normalisation and colourbar
     requirements for pyplot.plot()
-    # TODO this doesn't work with colors.CenteredNorm() due to different 
+    # TODO this doesn't work with colors.CenteredNorm() due to different
     # argument names
 
     Parameters

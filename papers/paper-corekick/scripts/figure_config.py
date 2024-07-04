@@ -102,6 +102,7 @@ class VkickColourMap:
     """
     Simple class to ensure consistency in how kick velocity is coloured in plots
     """
+
     def __init__(self) -> None:
         self.norm = mpl.colors.Normalize(vmin=0, vmax=1020)
         self.cmapv = mpl.pyplot.get_cmap("custom_Blues")

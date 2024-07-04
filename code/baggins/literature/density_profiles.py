@@ -185,7 +185,9 @@ def fit_Terzic05_profile(r, density, Re=None, p0=[1e2, 1, 4, 1, 1], **kwargs):
     if Re is None:
         p0.append(7)
         bounds = ((0, 0, 0.2, 0, 0, 0), (np.inf, 10, 20, np.inf, 15, 20))
-        f = lambda r, rhob, rb, n, g, a, Re: Terzic05(r, rhob, rb, n, g, Re, a, mode="fit")
+        f = lambda r, rhob, rb, n, g, a, Re: Terzic05(
+            r, rhob, rb, n, g, Re, a, mode="fit"
+        )
     else:
         bounds = ((0, 0, 0, 0, 0), (np.inf, 5, 20, np.inf, 15))
         f = lambda r, rhob, rb, n, g, a: Terzic05(r, rhob, rb, n, g, Re, a, mode="fit")
@@ -197,7 +199,7 @@ def fit_Terzic05_profile(r, density, Re=None, p0=[1e2, 1, 4, 1, 1], **kwargs):
         "rb": popt[1],
         "n": popt[2],
         "g": popt[3],
-        "a": popt[4]
+        "a": popt[4],
     }
     if Re is None:
         param_best["Re"] = popt[5]

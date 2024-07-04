@@ -7,7 +7,8 @@ import arviz as az
 import figure_config
 
 parser = argparse.ArgumentParser(
-    description="Plot apocentre distribution", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    description="Plot apocentre distribution",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
     "-v",
@@ -32,7 +33,7 @@ orbitfilebases = [
 ]
 orbitfilebases.sort()
 
-fig, ax = plt.subplots(1,1)
+fig, ax = plt.subplots(1, 1)
 vkcols = figure_config.VkickColourMap()
 
 for obf in orbitfilebases:
@@ -40,10 +41,17 @@ for obf in orbitfilebases:
     orbitcl = bgs.utils.get_files_in_dir(obf, ext=".cl", recursive=True)[0]
     kv = float(os.path.basename(obf).replace("kick-vel-", ""))
     res = bgs.analysis.orbits_radial_frequency(orbitcl, returnextra=True)
-    mask = np.logical_and(res["apo"] < np.nanquantile(res["apo"], 0.975), res["apo"]>0)
+    mask = np.logical_and(
+        res["apo"] < np.nanquantile(res["apo"], 0.975), res["apo"] > 0
+    )
     # corresponds to extent of IFU maps
-    mask = np.logical_and(mask, res["meanposrad"]<3) 
-    az.plot_kde(res["apo"][mask], cumulative=True, ax=ax, plot_kwargs={"lw":2, "color":vkcols.get_colour(kv), "ls":"-"})
+    mask = np.logical_and(mask, res["meanposrad"] < 3)
+    az.plot_kde(
+        res["apo"][mask],
+        cumulative=True,
+        ax=ax,
+        plot_kwargs={"lw": 2, "color": vkcols.get_colour(kv), "ls": "-"},
+    )
 vkcols.make_cbar(ax=ax)
 ax.set_xlabel(r"$r_\mathrm{apo}/\mathrm{kpc}$")
 ax.set_ylabel("PDF")

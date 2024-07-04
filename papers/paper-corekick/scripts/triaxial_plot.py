@@ -55,7 +55,7 @@ fig, ax = plt.subplot_mosaic(
     C
     C
     """,
-    sharex=True
+    sharex=True,
 )
 fig.set_figheight(fig.get_figheight() * 1.5)
 ax["A"].sharey(ax["B"])
@@ -68,7 +68,9 @@ for k, v in data.items():
     c = vkcols.get_colour(float(k[1:]))
     ax["A"].plot(vv["r"][0], vv["ba"][0], c=c, ls="-")
     ax["B"].plot(vv["r"][0], vv["ca"][0], c=c, ls="-")
-    ax["C"].plot(vv["r"][0], (1 - vv["ba"][0]**2) / (1 - vv["ca"][0]**2), c=c, ls="-")
+    ax["C"].plot(
+        vv["r"][0], (1 - vv["ba"][0] ** 2) / (1 - vv["ca"][0] ** 2), c=c, ls="-"
+    )
 
 # add colour bar and other labels
 vkcols.make_cbar(list(ax.values()), extend=None)

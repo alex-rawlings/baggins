@@ -53,7 +53,9 @@ logger_level = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 # determine the usage mode: dev or user
 usage_mode = user_params["mode"]
 if usage_mode != "dev" and usage_mode != "user":
-    _cmlogger.warning(f"Invalid usage mode '{usage_mode}' given, reverting to mode 'user'.")
+    _cmlogger.warning(
+        f"Invalid usage mode '{usage_mode}' given, reverting to mode 'user'."
+    )
     usage_mode = "user"
 
 # ensure valid figure format

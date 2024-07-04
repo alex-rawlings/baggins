@@ -122,21 +122,19 @@ def orbits_radial_frequency(
                 classfrequency[i - 1, cl] = np.nan
     rad_len = np.array(rad_len)
 
-    res = dict(
-        meanrads = meanrads,
-        classfrequency = classfrequency,
-        rad_len = rad_len
-    )
+    res = dict(meanrads=meanrads, classfrequency=classfrequency, rad_len=rad_len)
     if returnextra:
-        res.update(dict(
-            pid = orbitids,
-            classids = classids,
-            peri = pericenter,
-            apo = apocenter,
-            minangmom = minangmom,
-            meanposrad = meanposrad,
-            rad = rad
-        ))
+        res.update(
+            dict(
+                pid=orbitids,
+                classids=classids,
+                peri=pericenter,
+                apo=apocenter,
+                minangmom=minangmom,
+                meanposrad=meanposrad,
+                rad=rad,
+            )
+        )
     return res
 
 

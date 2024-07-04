@@ -152,6 +152,15 @@ class _CoreKickBase(HierarchicalModel_2D):
         self.bh2 = bh2[-1]
 
     def _set_stan_data_OOS(self, N=10000):
+        """
+        Set the OOS data points for the Stan model
+
+        Parameters
+        ----------
+        N : int, optional
+            number of recoil velocity samples to draw, by default 10000
+        """
+
         def _spin_setter(nn):
             t, p = uniform_sample_sphere(nn * 2, rng=self._rng)
             spin_mag = scipy.stats.beta.rvs(
@@ -173,8 +182,12 @@ class _CoreKickBase(HierarchicalModel_2D):
         while np.any(remaining) and iters < max_iters:
             # generate spins
             s1, s2 = _spin_setter(np.sum(remaining))
-            update_idxs = np.where(remaining==1)[0]
-            for i, (ss1, ss2) in tqdm(enumerate(zip(s1, s2)), total=len(s1), desc=f"Sampling BH spins (iteration {iters})"):
+            update_idxs = np.where(remaining == 1)[0]
+            for i, (ss1, ss2) in tqdm(
+                enumerate(zip(s1, s2)),
+                total=len(s1),
+                desc=f"Sampling BH spins (iteration {iters})",
+            ):
                 remnant = ketju_calculate_bh_merger_remnant_properties(
                     m1=self.bh1.m,
                     m2=self.bh2.m,
@@ -188,12 +201,18 @@ class _CoreKickBase(HierarchicalModel_2D):
                 vkick[update_idxs[i]] = np.linalg.norm(remnant["v"]) / self.escape_vel
             remaining = np.isnan(vkick)
             if self._restrict_vel:
-                remaining = np.logical_or(remaining, vkick>self.vmax)
-            _logger.debug(f"Completed iteration {iters}, but there are {np.sum(remaining)} kick values that need to be resampled")
+                remaining = np.logical_or(remaining, vkick > self.vmax)
+            _logger.debug(
+                f"Completed iteration {iters}, but there are {np.sum(remaining)} kick values that need to be resampled"
+            )
             iters += 1
-        _logger.debug(f"{np.sum(vkick > self.vmax)} kick velocities are larger than the maximum value of vkick used in model constraint")
+        _logger.debug(
+            f"{np.sum(vkick > self.vmax)} kick velocities are larger than the maximum value of vkick used in model constraint"
+        )
         if iters >= max_iters:
-            _logger.error(f"The number of iterations in sampling the BH spins has exceeded the maximum number of {max_iters} without converging!")
+            _logger.error(
+                f"The number of iterations in sampling the BH spins has exceeded the maximum number of {max_iters} without converging!"
+            )
         _OOS["vkick_OOS"] = vkick
         _logger.debug(f"Length of OOS vkick: {len(_OOS['vkick_OOS'])}")
         self.stan_data.update(_OOS)
@@ -201,6 +220,12 @@ class _CoreKickBase(HierarchicalModel_2D):
     def set_stan_data(self, restrict_v=False):
         """
         Set the Stan data dictionary used for sampling.
+
+        Parameters
+        ----------
+        restrict_v : bool, optional
+            restrict the sampled recoil velocity values to less than the
+            maximum velocity used in the fitting, by default False
         """
         self._restrict_vel = restrict_v
         self.stan_data = dict(

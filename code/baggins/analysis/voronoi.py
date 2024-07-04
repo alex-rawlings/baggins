@@ -67,7 +67,9 @@ def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
     h = yedges[-1] - yedges[0]
 
     # assign particles to voronoi bin
-    pixel_vor_bin_num = voronoi_binned_image(nimg, part_per_bin, w, h, use_geometric_centroids_in_initial_binning=True)
+    pixel_vor_bin_num = voronoi_binned_image(
+        nimg, part_per_bin, w, h, use_geometric_centroids_in_initial_binning=True
+    )
     particle_vor_bin_num = np.full(x.shape, -1, dtype=int)
     valid_grid_bin_mask = np.logical_and(
         np.all(grid_bin_num > 0, axis=0), np.all(grid_bin_num < Npx + 1, axis=0)
@@ -80,9 +82,8 @@ def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
 
     # create mesh
     X, Y = np.meshgrid(
-        get_histogram_bin_centres(xedges),
-        get_histogram_bin_centres(yedges)
-        )
+        get_histogram_bin_centres(xedges), get_histogram_bin_centres(yedges)
+    )
     index = np.unique(pixel_vor_bin_num)
     bin_sums = scipy.ndimage.sum(nimg, labels=pixel_vor_bin_num, index=index)
     x_bin = (

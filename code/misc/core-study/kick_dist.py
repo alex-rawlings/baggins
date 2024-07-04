@@ -48,6 +48,7 @@ P = np.clip(P, 1e-7, None)
 
 if True:
     print(f"Quantile corresponding to 1020 km/s is {bgs.mathematics.empirical_cdf(v, 1020)}")
+    print(f"Quantile corresponding to 1800 km/s is {bgs.mathematics.empirical_cdf(v, 1800)}")
     plt.hist(v, 30, density=True)
     plt.xlabel(r"$v_\mathrm{kick}$")
     plt.show()

@@ -733,7 +733,9 @@ class _StanModel(ABC):
                     data=self.stan_data, previous_fit=_fit
                 )
             else:
-                _logger.debug("Generated quantities already exist and will not be resampled")
+                _logger.debug(
+                    "Generated quantities already exist and will not be resampled"
+                )
             self.generated_quantities.stan_variable(gq)
         except ValueError as e:
             _model, _fit = _choose_model()

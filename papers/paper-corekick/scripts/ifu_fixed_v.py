@@ -66,7 +66,7 @@ if args.extract:
         )
 
     # dict to store radial h4 profiles
-    h4_vals = {"para": {}, "ortho": {}, "t": [], "tfid":None}
+    h4_vals = {"para": {}, "ortho": {}, "t": [], "tfid": None}
 
     for k, v in snapshots.items():
         SL.info(f"Creating IFU maps for {k}")
@@ -94,10 +94,10 @@ if args.extract:
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
 
         box_mask = pygad.BoxMask(
-            extent=2*extent,
+            extent=2 * extent,
             center=pygad.analysis.shrinking_sphere(
                 snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            )
+            ),
         )
 
         SL.debug(f"IFU extent is {extent:.2f} kpc")
@@ -157,12 +157,8 @@ def plot_helper(axi, t, v):
     h4 = v["h4"]
     idx_sorted = np.argsort(r)
     h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
-    axi.plot(
-        r[idx_sorted],
-        h4_filtered,
-        c=cmapper(t),
-        ls="-"
-    )
+    axi.plot(r[idx_sorted], h4_filtered, c=cmapper(t), ls="-")
+
 
 for t, (kp, vp), (ko, vo) in zip(
     time_vals, h4_vals["para"].items(), h4_vals["ortho"].items()

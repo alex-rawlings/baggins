@@ -12,7 +12,7 @@ __all__ = [
     "stat_interval",
     "uniform_sample_sphere",
     "vertical_RMSE",
-    "empirical_cdf"
+    "empirical_cdf",
 ]
 
 _logger = _cmlogger.getChild(__name__)

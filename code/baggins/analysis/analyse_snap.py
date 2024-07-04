@@ -1205,7 +1205,7 @@ def velocity_anisotropy(
     vcom : list or array-like, optional
         velocity centre of mass, by default [0,0,0]
     qcut : float, optional
-        filter out particles above qcut quantile in velocity magnitude, by 
+        filter out particles above qcut quantile in velocity magnitude, by
         default 1.0
     eps : float, optional
         tolerance to prevent zero-division, by default 1e-16

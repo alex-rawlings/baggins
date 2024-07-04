@@ -18,7 +18,12 @@ parser.add_argument(
     "-p", "--plot", help="plot IFU maps", action="store_true", dest="plot"
 )
 parser.add_argument(
-    "-sub", "--subset", help="plot subset of IFU maps", action="append", dest="sub", default=None
+    "-sub",
+    "--subset",
+    help="plot subset of IFU maps",
+    action="append",
+    dest="sub",
+    default=None,
 )
 parser.add_argument(
     "-v",
@@ -38,7 +43,10 @@ SL = bgs.setup_logger("script", args.verbosity)
 rhalf_factor = 0.25
 
 
-h4_file = os.path.join(bgs.DATADIR, f"mergers/processed_data/core-paper-data/h4_{str(rhalf_factor).replace('.', '')}rhalf.pickle")
+h4_file = os.path.join(
+    bgs.DATADIR,
+    f"mergers/processed_data/core-paper-data/h4_{str(rhalf_factor).replace('.', '')}rhalf.pickle",
+)
 
 bgs.plotting.check_backend()
 
@@ -62,7 +70,7 @@ if args.extract:
         )
 
     # dict to store radial h4 profiles
-    h4_vals = {"para": {}, "ortho": {}, "rhalf":[]}
+    h4_vals = {"para": {}, "ortho": {}, "rhalf": []}
 
     for k, v in snapshots.items():
         SL.info(f"Creating IFU maps for {k}")
@@ -82,10 +90,10 @@ if args.extract:
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
 
         box_mask = pygad.BoxMask(
-            extent=2*extent,
+            extent=2 * extent,
             center=pygad.analysis.shrinking_sphere(
                 snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            )
+            ),
         )
 
         SL.debug(f"IFU extent is {extent:.2f} kpc")
@@ -134,14 +142,12 @@ def plot_helper(axi, k, vs, rhalf):
     r, h4 = bgs.analysis.radial_profile_velocity_moment(vs, "h4")
     idx_sorted = np.argsort(r)
     h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
-    axi.plot(
-        r[idx_sorted],
-        h4_filtered,
-        c=vkcols.get_colour(get_kick_val(k)),
-        ls="-"
-    )
+    axi.plot(r[idx_sorted], h4_filtered, c=vkcols.get_colour(get_kick_val(k)), ls="-")
 
-for rh, (kp, vp), (ko, vo) in zip(h4_vals["rhalf"], h4_vals["para"].items(), h4_vals["ortho"].items()):
+
+for rh, (kp, vp), (ko, vo) in zip(
+    h4_vals["rhalf"], h4_vals["para"].items(), h4_vals["ortho"].items()
+):
     m = bgs.plotting.mplChars()[int(get_kick_val(kp)) // 600]
     plot_helper(ax[0], kp, vp, rh)
     plot_helper(ax[1], ko, vo, rh)
@@ -195,13 +201,15 @@ if args.plot:
         h4lim = _h4lim if _h4lim > h4lim else h4lim
 
     # print colour info
-    SL.info(f"Colour limits will be set to:\n  V: {Vlim:.2e}\n  sigma: {sigmalim[0]:.2e}, {sigmalim[1]:.2e}\n  h3: {h3lim:.2e}\n  h4: {h4lim:.2e}")
+    SL.info(
+        f"Colour limits will be set to:\n  V: {Vlim:.2e}\n  sigma: {sigmalim[0]:.2e}, {sigmalim[1]:.2e}\n  h3: {h3lim:.2e}\n  h4: {h4lim:.2e}"
+    )
 
     # re-iterate to get colours
     data_yielder = yield_data()
     while True:
         try:
-           rh, k, v, orientation = next(data_yielder)
+            rh, k, v, orientation = next(data_yielder)
         except StopIteration:
             break
         # plot the voronoi maps
@@ -219,6 +227,9 @@ if args.plot:
         fig = ax[0].get_figure()
         fig.set_figwidth(1.05 * fig.get_figwidth())
         bgs.plotting.savefig(
-            figure_config.fig_path(f"IFU_{str(rhalf_factor).replace('.', '')}rhalf/IFU_{orientation}_{k}.pdf"), force_ext=True
+            figure_config.fig_path(
+                f"IFU_{str(rhalf_factor).replace('.', '')}rhalf/IFU_{orientation}_{k}.pdf"
+            ),
+            force_ext=True,
         )
         plt.close()

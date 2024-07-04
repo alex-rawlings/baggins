@@ -2,12 +2,13 @@ import argparse
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-'''try:
+
+"""try:
     import matplotlib.pyplot as plt
 except ImportError:
     from matplotlib import use
     use("Agg")
-    import matplotlib.pyplot as plt'''
+    import matplotlib.pyplot as plt"""
 import arviz as az
 import baggins as bgs
 import figure_config
@@ -166,45 +167,46 @@ else:
         x, dens = az.kde(y)
         return x[np.nanargmax(dens)]
 
-    def restrict_vel_dist(y, m):
-        mask = m.stan_data["vkick_OOS"] < m.vmax
-        SL.info(f"Sample size reduced from {len(y)} to {np.sum(mask)}")
-        return y[:, mask]
+    def restrict_vel_dist(y, _m):
+        mask = _m.stan_data["vkick_OOS"] < _m.vmax
+        SL.info(f"Sample size reduced from {len(mask)} to {np.sum(mask)}")
+        SL.debug(
+            f"Maximum velocity was {np.max(_m.stan_data['vkick_OOS']):.3e}, is now {np.max(_m.stan_data['vkick_OOS'][mask]):.3e}"
+        )
+        _y = y[:, mask]
+        SL.debug(f"Posterior draws now have shape {_y.shape}")
+        return _y
 
-    loo_dict = { "Exponential": None, "Linear": None, "Sigmoid": None}
+    loo_dict = {"Exponential": None, "Linear": None, "Sigmoid": None}
     models = yield_model()
 
     for n, m, c in zip(
         loo_dict.keys(), models, figure_config.custom_colors_shuffled[1:]
     ):
         SL.info(f"Doing model: {n}")
+        SL.debug(f"Model is {type(m)}")
         m.extract_data(d=datafile)
         m.set_stan_data(restrict_v=False)
         m.sample_model(diagnose=False)
         loo_dict[n] = m.determine_loo()
 
         rb_vals = m.sample_generated_quantity(m.folded_qtys_posterior[0], state="OOS")
-        az.plot_dist(rb_vals,
-                     color=c,
-                     kind="kde",
-                     ax=ax,
-                     plot_kwargs={"ls":"--", "alpha":0.6}
-                     )
+        az.plot_dist(
+            rb_vals, color=c, kind="kde", ax=ax, plot_kwargs={"ls": "--", "alpha": 0.6}
+        )
 
         restricted_rb_vals = restrict_vel_dist(rb_vals, m)
-        az.plot_dist(restricted_rb_vals,
-                     color=c,
-                     kind="kde",
-                     ax=ax,
-                     label=f"$\mathrm{{{n}}}$"
-                     )
+        az.plot_dist(
+            restricted_rb_vals, color=c, kind="kde", ax=ax, label=f"$\mathrm{{{n}}}$"
+        )
 
         for s_rb, rb in zip(
-            ("unrestricted", "restricted"),
-            (rb_vals, restricted_rb_vals)
-            ):
-                rb_mode = calculate_mode(rb)
-                SL.info(f"Mode of {s_rb} distribution is {rb_mode:.2f} rb0, or {rb_mode*m.rb0:.2f} kpc")
+            ("unrestricted", "restricted"), (rb_vals, restricted_rb_vals)
+        ):
+            rb_mode = calculate_mode(rb)
+            SL.info(
+                f"Mode of {s_rb} distribution is {rb_mode:.2f} rb0, or {rb_mode*m.rb0:.2f} kpc"
+            )
         m.print_parameter_percentiles(m.latent_qtys)
         for lq in m.latent_qtys:
             hdi = az.hdi(m.sample_generated_quantity(lq))
@@ -217,9 +219,9 @@ else:
     ax.set_xlim(0, 8)
     # add a secondary axis, turning off ticks from the top axis (if they are there)
     ax.tick_params(axis="x", which="both", top=False)
-    rb02kpc = lambda x: x * m.rb0
-    kpc2rb0 = lambda x: x / m.rb0
-    secax = ax.secondary_xaxis("top", functions=(rb02kpc, kpc2rb0))
+    secax = ax.secondary_xaxis(
+        "top", functions=(lambda x: x * m.rb0, lambda x: x / m.rb0)
+    )
     secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
     bgs.plotting.savefig(figure_config.fig_path("rb_pdf.pdf"), fig=fig, force_ext=True)
     comp = az.compare(loo_dict, ic="loo")
