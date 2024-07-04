@@ -65,17 +65,11 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
         orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[
             0
         ]
-        (
-            meanrads,
-            classfrequency,
-            rad_len,
-            classids,
-            peri,
-            apo,
-            minang,
-        ) = bgs.analysis.radial_frequency(orbitcl, returnextra=True)
-        rosette_mask = classids == 4
-        for dist, arr in zip(("Apocentre", "Pericentre"), (apo, peri)):
+        orbit_res = bgs.analysis.orbits_radial_frequency(orbitcl, returnextra=True)
+        rosette_mask = orbit_res["classids"] == 4
+        for dist, arr in zip(
+            ("Apocentre", "Pericentre"), (orbit_res["apo"], orbit_res["peri"])
+        ):
             SL.info(
                 f"{dist} IQR for rosettes: {np.nanquantile(arr[rosette_mask], 0.25):.2e} - {np.nanquantile(arr[rosette_mask], 0.75):.2e} (median: {np.median(arr[rosette_mask]):.2e})"
             )
@@ -89,13 +83,15 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
         if i == 3:
             continue
         axi.semilogx(
-            meanrads,
-            classfrequency[:, cfi],
+            orbit_res["meanrads"],
+            orbit_res["classfrequency"][:, cfi],
             label=vkick,
             c=vkcols.get_colour(vkick),
             ls="-",
         )
-        axj.semilogx(meanrads, classfrequency[:, cfi], label=labels[i])
+        axj.semilogx(
+            orbit_res["meanrads"], orbit_res["classfrequency"][:, cfi], label=labels[i]
+        )
         cfi += 1
     axj.text(
         0.95,

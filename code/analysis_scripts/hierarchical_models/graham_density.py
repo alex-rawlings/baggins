@@ -30,7 +30,7 @@ args = parser.parse_args()
 SL = bgs.setup_logger("script", console_level=args.verbose)
 
 full_figsize = bgs.plotting.get_figure_size(
-    args.publish, full=True, multiplier=[1.9, 1.9]
+    args.publish, full=True, multiplier=[1.3, 1.3]
 )
 
 if args.type == "new":

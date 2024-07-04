@@ -8,6 +8,8 @@ from ketjugw.units import pc, yr, km_per_s
 import baggins as bgs
 
 
+bgs.plotting.check_backend()
+
 class FrozenParticle:
     def __init__(self, mass, pos, vel, ptype) -> None:
         self.mass = mass
@@ -210,9 +212,9 @@ class StaticPotential:
 if __name__ == "__main__":
     Mgal = 1e11
     ey = 0.2
-    ez = 0.5
+    ez = 0.9
     gamma = 1.2
-    kepler_initial_e = 0.2
+    kepler_initial_e = 0.8
     perturb_crd = 0
 
     gal = StaticPotential(gamma, ey, ez, Mgal)
@@ -247,6 +249,7 @@ if __name__ == "__main__":
     figax2[0].suptitle(fig_name_base.split("/")[-1])
     #figax1[0].savefig(os.path.join(bgs.FIGDIR, f"{fig_name_base}-orbit.png"))
     #figax2[0].savefig(os.path.join(bgs.FIGDIR, f"{fig_name_base}-pars.png"))
+    bgs.plotting.savefig("orbit.png", figax1[0])
     plt.show()
 
 

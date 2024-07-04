@@ -3,7 +3,7 @@ import gadgetorbits as go
 from ..env_config import _cmlogger
 from ..mathematics import get_histogram_bin_centres
 
-__all__ = ["radial_frequency", "determine_box_tube_ratio"]
+__all__ = ["orbits_radial_frequency", "determine_box_tube_ratio"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -40,9 +40,8 @@ mergemask = [
 ]
 
 """
-XXX: A note on class IDs
-The class IDs are a bit opaque. It's probably worth checking this in the
-Fortran code, but from experience:
+The class IDs are a bit opaque, but can be found in orbit_classifier.hpp
+By default:
 
 ClassID | Family
 ------------------
@@ -56,7 +55,7 @@ ClassID | Family
 """
 
 
-def radial_frequency(
+def orbits_radial_frequency(
     orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False, mergemask=mergemask
 ):
     """
@@ -81,12 +80,11 @@ def radial_frequency(
 
     Returns
     -------
-    meanrads : array-like
-        radial bin centres
-    classfrequency : array-like
-        frequency of each orbital class per radial bin
-    rad_len : array-like
-        number of stellar particles per radial bin
+    res : dict
+        - centres of radial bins
+        - frequency of each orbital class per bin
+        - number of particles per bin
+        - other properties of returnextra is True
     """
     _logger.info(f"Reading: {orbitcl}")
     (
@@ -124,18 +122,20 @@ def radial_frequency(
                 classfrequency[i - 1, cl] = np.nan
     rad_len = np.array(rad_len)
 
+    res = dict(meanrads=meanrads, classfrequency=classfrequency, rad_len=rad_len)
     if returnextra:
-        return (
-            meanrads,
-            classfrequency,
-            rad_len,
-            classids,
-            pericenter,
-            apocenter,
-            minangmom,
+        res.update(
+            dict(
+                pid=orbitids,
+                classids=classids,
+                peri=pericenter,
+                apo=apocenter,
+                minangmom=minangmom,
+                meanposrad=meanposrad,
+                rad=rad,
+            )
         )
-    else:
-        return meanrads, classfrequency, rad_len
+    return res
 
 
 def determine_box_tube_ratio(

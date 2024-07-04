@@ -10,6 +10,9 @@ figure_dir = os.path.abspath(os.path.join(this_dir, "../figures/"))
 
 # get the complete path for saving a figure
 def fig_path(fname):
+    p = os.path.join(figure_dir, fname)
+    if not os.path.isdir(os.path.dirname(p)):
+        os.makedirs(os.path.dirname(p), exist_ok=True)
     return os.path.join(figure_dir, fname)
 
 
@@ -101,19 +104,20 @@ class VkickColourMap:
     """
 
     def __init__(self) -> None:
-        self.norm = mpl.colors.Normalize(vmin=0, vmax=900, clip=True)
+        self.norm = mpl.colors.Normalize(vmin=0, vmax=1020)
         self.cmapv = mpl.pyplot.get_cmap("custom_Blues")
+        self.cmapv.set_over(mpl.pyplot.get_cmap("Reds")(0.85))
         self.sm = mpl.pyplot.cm.ScalarMappable(norm=self.norm, cmap=self.cmapv)
 
     def get_colour(self, v):
         return self.cmapv(self.norm(v))
 
-    def make_cbar(self, ax, **kwargs):
+    def make_cbar(self, ax, extend="max", **kwargs):
         cbar = mpl.pyplot.colorbar(
             self.sm,
             ax=ax,
             label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$",
-            extend="max",
+            extend=extend,
             **kwargs,
         )
         return cbar

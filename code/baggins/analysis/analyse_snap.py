@@ -1205,8 +1205,8 @@ def velocity_anisotropy(
     vcom : list or array-like, optional
         velocity centre of mass, by default [0,0,0]
     qcut : float, optional
-        filter out particles above qcut quantile in radial distance, by default
-        1.0
+        filter out particles above qcut quantile in velocity magnitude, by
+        default 1.0
     eps : float, optional
         tolerance to prevent zero-division, by default 1e-16
 
@@ -1226,7 +1226,8 @@ def velocity_anisotropy(
     r = pygad.utils.geo.dist(snap["pos"])
     v_sphere = spherical_components(snap["pos"], snap["vel"])
     if qcut < 1:
-        mask = r < np.nanquantile(r, qcut)
+        vmag = radial_separation(snap["vel"])
+        mask = vmag < np.nanquantile(vmag, qcut)
         r = r[mask]
         v_sphere = v_sphere[mask, :]
     # bin statistics

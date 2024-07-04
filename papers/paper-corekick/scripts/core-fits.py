@@ -108,6 +108,7 @@ if args.extract:
                 )
     bgs.utils.save_data(data, data_file)
 else:
+    SL.debug(f"Reading {data_file}")
     data = bgs.utils.load_data(data_file)
 
 
@@ -117,6 +118,8 @@ def _helper(param_name, ax):
     SL.warning(f"Determining distributions for parameter: {param_name}")
     for k, v in data[param_name].items():
         if k == "__githash" or k == "__script":
+            continue
+        if k == "2000":
             continue
         SL.info(f"Determining ratio for model {k}")
         kick_vels.append(float(k))

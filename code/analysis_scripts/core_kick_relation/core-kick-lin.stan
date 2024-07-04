@@ -65,9 +65,11 @@ model {
 generated quantities {
     // generate data replication
     vector[N_GQ] rb_posterior;
-    vector[N_GQ] rel_mean = relation_lin(vkick_GQ, a, b);
-    for(i in 1:N_GQ){
-        rb_posterior[i] = lower_trunc_normal_rng(rel_mean[i], err, 0.);
+    {
+        vector[N_GQ] rel_mean = relation_lin(vkick_GQ, a, b);
+        for(i in 1:N_GQ){
+            rb_posterior[i] = lower_trunc_normal_rng(rel_mean[i], err, 0.);
+        }
     }
 
     // determine log likelihood function
