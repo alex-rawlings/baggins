@@ -151,6 +151,7 @@ cmapper, sm = bgs.plotting.create_normed_colours(
     min(time_vals), max(time_vals), cmap="custom_Blues"
 )
 
+
 # helper function for plotting
 def plot_helper(axi, t, v):
     r = v["R"]

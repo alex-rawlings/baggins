@@ -137,6 +137,7 @@ fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
 get_kick_val = lambda k: float(k.lstrip("v"))
 vkcols = figure_config.VkickColourMap()
 
+
 # helper function for plotting
 def plot_helper(axi, k, vs, rhalf):
     r, h4 = bgs.analysis.radial_profile_velocity_moment(vs, "h4")
