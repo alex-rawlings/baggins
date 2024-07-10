@@ -1,6 +1,6 @@
 import os
 import matplotlib as mpl
-from seaborn import color_palette
+from seaborn import color_palette, cubehelix_palette
 import numpy as np
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -105,7 +105,17 @@ class VkickColourMap:
 
     def __init__(self) -> None:
         self.norm = mpl.colors.Normalize(vmin=0, vmax=1020)
-        self.cmapv = mpl.pyplot.get_cmap("custom_Blues")
+        self.cmapv = cubehelix_palette(
+            n_colors=6,
+            start=2.7,
+            rot=0.0,
+            gamma=1.6,
+            hue=1.0,
+            light=0.9,
+            dark=0.3,
+            reverse=True,
+            as_cmap=True,
+        )
         self.cmapv.set_over(mpl.pyplot.get_cmap("Reds")(0.85))
         self.sm = mpl.pyplot.cm.ScalarMappable(norm=self.norm, cmap=self.cmapv)
 

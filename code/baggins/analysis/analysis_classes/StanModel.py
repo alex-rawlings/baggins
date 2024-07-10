@@ -1305,7 +1305,7 @@ class _StanModel(ABC):
         if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
             _logger.error(
-                f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
+                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
             )
             print("==========================================")
 

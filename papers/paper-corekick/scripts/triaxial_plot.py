@@ -1,5 +1,6 @@
 import argparse
 import os.path
+from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
 import baggins as bgs
 import figure_config
@@ -66,10 +67,19 @@ for k, v in data.items():
         continue
     vv = v["ratios"]
     c = vkcols.get_colour(float(k[1:]))
-    ax["A"].plot(vv["r"][0], vv["ba"][0], c=c, ls="-")
-    ax["B"].plot(vv["r"][0], vv["ca"][0], c=c, ls="-")
+    ax["A"].plot(
+        vv["r"][0], gaussian_filter1d(vv["ba"][0], 2, mode="nearest"), c=c, ls="-"
+    )
+    ax["B"].plot(
+        vv["r"][0], gaussian_filter1d(vv["ca"][0], 2, mode="nearest"), c=c, ls="-"
+    )
     ax["C"].plot(
-        vv["r"][0], (1 - vv["ba"][0] ** 2) / (1 - vv["ca"][0] ** 2), c=c, ls="-"
+        vv["r"][0],
+        gaussian_filter1d(
+            (1 - vv["ba"][0] ** 2) / (1 - vv["ca"][0] ** 2), 2, mode="nearest"
+        ),
+        c=c,
+        ls="-",
     )
 
 # add colour bar and other labels
@@ -83,8 +93,7 @@ ax["C"].set_xlabel(r"$r/\mathrm{kpc}$")
 # add some text for the T plot
 ax["C"].set_ylim(0, 1)
 ax["C"].axhline(0.5, c="gray", alpha=0.4, ls=":")
-ax["C"].text(7, 0.52, "prolate")
-ax["C"].text(7, 0.25, "oblate")
+ax["C"].text(10, 0.55, r"$\mathrm{prolate}$", va="bottom")
+ax["C"].text(10, 0.45, r"$\mathrm{oblate}$", va="top")
 
 bgs.plotting.savefig(figure_config.fig_path("triaxiality.pdf"), force_ext=True)
-plt.show()

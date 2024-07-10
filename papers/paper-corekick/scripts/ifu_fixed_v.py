@@ -16,7 +16,7 @@ parser.add_argument(
     "-e", "--extract", help="extract data", action="store_true", dest="extract"
 )
 parser.add_argument(
-    "-kv", "--kickvel", type=int, help="kick velocity", dest="kv", default=600
+    "-kv", "--kickvel", type=int, help="kick velocity", dest="kv", default=900
 )
 parser.add_argument(
     "-v",
@@ -147,8 +147,8 @@ time_vals = np.array(h4_vals["t"]) - h4_vals["tfid"]
 # plot h4 radial profiles
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
 
-cmapper, sm = bgs.plotting.create_normed_colours(
-    min(time_vals), max(time_vals), cmap="custom_Blues"
+cmapper, sm = bgs.plotting.create_offcentre_diverging(
+    vmin=min(time_vals), vmax=max(time_vals), cmap="icefire"
 )
 
 
@@ -158,7 +158,11 @@ def plot_helper(axi, t, v):
     h4 = v["h4"]
     idx_sorted = np.argsort(r)
     h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
-    axi.plot(r[idx_sorted], h4_filtered, c=cmapper(t), ls="-")
+    if np.abs(t) < 1e-10:
+        plt_kwargs = {"marker": "o", "markevery": int(len(r) * 0.2)}
+    else:
+        plt_kwargs = {}
+    axi.plot(r[idx_sorted], h4_filtered, c=cmapper(t), ls="-", **plt_kwargs)
 
 
 for t, (kp, vp), (ko, vo) in zip(
