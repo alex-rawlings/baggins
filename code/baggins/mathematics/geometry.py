@@ -12,6 +12,8 @@ __all__ = [
     "density_sphere",
     "angle_between_vectors",
     "rotate_vec1_to_vec2",
+    "fit_ellipse",
+    "ellipticity",
 ]
 
 
@@ -167,3 +169,77 @@ def rotate_vec1_to_vec2(v1, v2, tol=1e-9):
     # construct the quaternion
     q = Rotation.from_quat(arg)
     return q
+
+
+def fit_ellipse(x, y, subsample=None, rng=None):
+    """
+    Fit an ellipse to some data use SVD.
+
+    Parameters
+    ----------
+    x : array-like
+        input x coordinates
+    y : array-like
+        input y coordinates
+    subsample : int, optional
+        down sample data to this many values, by default None
+    rng : np.random._generator.Generator, optional
+        random number generator for down sampling, by default None
+        (creates a new instance)
+
+    Returns
+    -------
+    ellipse : np.ndarray
+        best fit ellipse data points as a (2,1000) array
+    a : float
+        semimajor axis of ellipse
+    b : float
+        semiminor axis of ellipse
+    """
+    if not isinstance(x, np.ndarray) or not isinstance(y, np.ndarray):
+        x = np.array(x)
+        y = np.array(y)
+    try:
+        assert x.ndim == 1 and y.ndim == 1 and len(x) == len(y)
+    except AssertionError:
+        _logger.exception(
+            "Input arrays must be 1-dimensional and of the same length!", exc_info=True
+        )
+    N = len(x)
+    x -= np.mean(x)
+    y -= np.mean(y)
+    if subsample is not None:
+        # use a subset of the given x and y values
+        if rng is None:
+            rng = np.random.default_rng()
+        rand_idxs = rng.choice(np.arange(N), size=min(subsample, N), replace=False)
+        x = x[rand_idxs]
+        y = y[rand_idxs]
+        N = len(x)
+    tt = np.linspace(0, 2 * np.pi, 1000)
+    circle = np.stack((np.cos(tt), np.sin(tt)))
+    # do the singular value decomposition
+    U, S, V = np.linalg.svd(np.stack((x, y)))
+    a, b = np.sqrt(2 / N) * S
+    # transform the circle to an ellipse
+    ellipse = np.dot(np.sqrt(2 / N) * np.dot(U, np.diag(S)), circle)
+    return ellipse, a, b
+
+
+def ellipticity(a, b):
+    """
+    Determine the ellipticity (flattening) of an ellipse.
+
+    Parameters
+    ----------
+    a : float, array-like
+        semimajor axis
+    b : float, array-like
+        semiminor axis
+
+    Returns
+    -------
+    : float, array-like
+        ellipticity
+    """
+    return (a - b) / a

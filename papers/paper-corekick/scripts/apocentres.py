@@ -1,7 +1,14 @@
 import argparse
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    from matplotlib import use
+
+    use("Agg")
+    import matplotlib.pyplot as plt
 import baggins as bgs
 import arviz as az
 import figure_config
@@ -48,7 +55,6 @@ for obf in orbitfilebases:
     mask = np.logical_and(mask, res["meanposrad"] < 3)
     az.plot_kde(
         res["apo"][mask],
-        cumulative=True,
         ax=ax,
         plot_kwargs={"lw": 2, "color": vkcols.get_colour(kv), "ls": "-"},
     )
@@ -56,4 +62,4 @@ vkcols.make_cbar(ax=ax)
 ax.set_xlabel(r"$r_\mathrm{apo}/\mathrm{kpc}$")
 ax.set_ylabel("PDF")
 
-bgs.plotting.savefig(figure_config.fig_path("apo_c.pdf"), force_ext=True)
+bgs.plotting.savefig(figure_config.fig_path("apo.pdf"), force_ext=True)

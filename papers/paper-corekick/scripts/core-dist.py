@@ -228,6 +228,3 @@ else:
     comp = az.compare(loo_dict, ic="loo")
     print("Model comparison")
     print(comp)
-
-    az.plot_compare(comp)
-    bgs.plotting.savefig(figure_config.fig_path("loo_comp.pdf"), force_ext=True, fig=plt.gcf())
