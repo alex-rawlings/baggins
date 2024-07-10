@@ -3,7 +3,6 @@ import os
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 import matplotlib.pyplot as plt
-from seaborn import diverging_palette
 from datetime import datetime
 import pygad
 import baggins as bgs
