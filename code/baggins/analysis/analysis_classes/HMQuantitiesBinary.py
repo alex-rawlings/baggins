@@ -11,7 +11,7 @@ from ..analyse_snap import (
     determine_if_merged,
     get_G_rho_per_sigma,
 )
-from ..orbit import (
+from ..analyse_ketju import (
     get_bound_binary,
     get_binary_before_bound,
     move_to_centre_of_mass,

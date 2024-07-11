@@ -19,7 +19,7 @@ __all__ = [
 _logger = _cmlogger.getChild(__name__)
 
 
-def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
+def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL, exist_ok=False):
     """
     Convenience function to save multiple objects to a pickle file, so that it
     may be read in again later.
@@ -32,6 +32,8 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
         filename to save to
     protocol : pickle.protocol, optional
         saving protocol, by default pickle.HIGHEST_PROTOCOL
+    exist_ok = bool, optional
+        allow files to be overwritten, by default False
 
     Raises
     ------
@@ -41,6 +43,8 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
         filename must have .pickle extension
 
     """
+    if os.path.exists(filename) and not exist_ok:
+        raise FileExistsError(filename)
     try:
         assert isinstance(data, (dict, managers.DictProxy))
     except AssertionError:
@@ -68,7 +72,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL):
     _logger.info(f"File {filename} saved")
 
 
-def load_data(filename):
+def load_data(filename, load_meta=False):
     """
     Convenience function to load pickle data
 
@@ -76,6 +80,8 @@ def load_data(filename):
     ----------
     filename : str
          file to read in
+    load_meta : bool, optional
+        return meta data of pickle file, by default False
 
     Returns
     -------
@@ -83,7 +89,13 @@ def load_data(filename):
         variable names: value pairs
     """
     with open(filename, "rb") as f:
-        return pickle.load(f)
+        d = pickle.load(f)
+    if load_meta:
+        return d
+    else:
+        for k in ["__githash", "__script"]:
+            d.pop(k)
+        return d
 
 
 def get_files_in_dir(path, ext=".hdf5", name_only=False, recursive=False):

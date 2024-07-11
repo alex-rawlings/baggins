@@ -38,7 +38,6 @@ TMPDIRs = TmpDirRegister(os.path.join(data_dir, user_params["tmp_dir"]))
 # set the stan path
 set_cmdstan_path(user_params["cmdstan"])
 
-
 username = home_dir.rstrip("/").split("/")[-1]
 
 # create the logger
@@ -50,6 +49,14 @@ _cmlogger = setup_logger(
 )
 # set the valid logger levels
 logger_level = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+
+# determine the usage mode: dev or user
+usage_mode = user_params["mode"]
+if usage_mode != "dev" and usage_mode != "user":
+    _cmlogger.warning(
+        f"Invalid usage mode '{usage_mode}' given, reverting to mode 'user'."
+    )
+    usage_mode = "user"
 
 # ensure valid figure format
 try:
@@ -88,7 +95,8 @@ if "collisionless-merger-sample" in os.getcwd():
             [user_params, internal_params], f, explicit_end=True, explicit_start=True
         )
 else:
-    _cmlogger.warning("Operating outside the git repo. Git hash read from file.")
+    if usage_mode == "dev":
+        _cmlogger.warning("Operating outside the git repo. Git hash read from file.")
     git_hash = internal_params["git_hash"]
 
 

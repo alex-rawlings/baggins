@@ -1,21 +1,24 @@
 import os
 import matplotlib as mpl
-from seaborn import color_palette
+from seaborn import color_palette, cubehelix_palette
 import numpy as np
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
-data_dir = os.path.abspath(os.path.join(this_dir, "data/"))
+reduced_data_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/"
 figure_dir = os.path.abspath(os.path.join(this_dir, "../figures/"))
 
 
 # get the complete path for saving a figure
 def fig_path(fname):
+    p = os.path.join(figure_dir, fname)
+    if not os.path.isdir(os.path.dirname(p)):
+        os.makedirs(os.path.dirname(p), exist_ok=True)
     return os.path.join(figure_dir, fname)
 
 
 # get the complete path to a saved data file
-def data_path(dname):
-    return os.path.join(data_dir, dname)
+def data_path(fname):
+    return os.path.join(reduced_data_dir, fname)
 
 
 # make sure were using the same settings
@@ -101,19 +104,30 @@ class VkickColourMap:
     """
 
     def __init__(self) -> None:
-        self.norm = mpl.colors.Normalize(vmin=0, vmax=900, clip=True)
-        self.cmapv = mpl.pyplot.get_cmap("custom_Blues")
+        self.norm = mpl.colors.Normalize(vmin=0, vmax=1020)
+        self.cmapv = cubehelix_palette(
+            n_colors=6,
+            start=2.7,
+            rot=0.0,
+            gamma=1.6,
+            hue=1.0,
+            light=0.9,
+            dark=0.3,
+            reverse=True,
+            as_cmap=True,
+        )
+        self.cmapv.set_over(mpl.pyplot.get_cmap("Reds")(0.85))
         self.sm = mpl.pyplot.cm.ScalarMappable(norm=self.norm, cmap=self.cmapv)
 
     def get_colour(self, v):
         return self.cmapv(self.norm(v))
 
-    def make_cbar(self, ax, **kwargs):
+    def make_cbar(self, ax, extend="max", **kwargs):
         cbar = mpl.pyplot.colorbar(
             self.sm,
             ax=ax,
             label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$",
-            extend="max",
+            extend=extend,
             **kwargs,
         )
         return cbar

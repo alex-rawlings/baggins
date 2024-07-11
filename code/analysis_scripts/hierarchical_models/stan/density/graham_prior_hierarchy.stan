@@ -23,7 +23,7 @@ generated quantities {
     // introduce hyperparameters
     real log10densb_mean = normal_rng(10, 2);
     real log10densb_std = lower_trunc_normal_rng(0, 1, 0);
-    real g_lam = exponential_rng(10);
+    real g_lam = exponential_rng(2);
     real rb_sig = lower_trunc_normal_rng(0, 1, 0);
     real n_mean = trunc_normal_rng(8, 4, 0, 15);
     real n_std = lower_trunc_normal_rng(0, 4, 0);
@@ -55,7 +55,7 @@ generated quantities {
 
         for(i in 1:N_groups){
             log10densb[i] = trunc_normal_rng(log10densb_mean, log10densb_std, -5, 15);
-            g[i] = trunc_exponential_rng(g_lam, 0, 2);
+            g[i] = trunc_exponential_rng(g_lam, 0, 1);
             rb[i] = trunc_rayleigh_rng(rb_sig, 0, 5);
             n[i] = trunc_normal_rng(n_mean, n_std, 0, 20);
             a[i] = trunc_rayleigh_rng(a_sig, 0, 15);

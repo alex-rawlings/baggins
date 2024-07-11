@@ -1,10 +1,12 @@
+from abc import abstractmethod
+from tqdm import tqdm
 import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from ketjugw.units import km_per_s
 from . import HierarchicalModel_2D
-from ..orbit import get_bound_binary
+from ..analyse_ketju import get_bound_binary
 from ...env_config import _cmlogger
 from ...general.units import kpc
 from ...literature import (
@@ -16,12 +18,12 @@ from ...plotting import savefig
 from ...utils import load_data, get_ketjubhs_in_dir
 
 
-__all__ = ["CoreKick"]
+__all__ = ["CoreKickExp", "CoreKickLinear", "CoreKickSigmoid"]
 
 _logger = _cmlogger.getChild(__name__)
 
 
-class CoreKick(HierarchicalModel_2D):
+class _CoreKickBase(HierarchicalModel_2D):
     def __init__(
         self,
         model_file,
@@ -35,28 +37,13 @@ class CoreKick(HierarchicalModel_2D):
         self.escape_vel = escape_vel
         self.premerger_ketjufile = premerger_ketjufile
         self._folded_qtys = ["rb"]
-        self._folded_qtys_labs = [r"$r_\mathrm{b}$"]
+        self._folded_qtys_labs = [r"$r_\mathrm{b}/r_{\mathrm{b},0}$"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = ["nu", "mu", "sigma", "k", "b", "c", "err"]
-        self._latent_qtys_labs = [
-            r"$\nu$",
-            r"$\mu$",
-            r"$\sigma$",
-            r"$k$",
-            r"$b$",
-            r"$c$",
-            r"$\tau$",
-        ]
-        self._latent_qtys_posterior = self._latent_qtys
-        self._labeller_latent = MapLabeller(
-            dict(zip(self._latent_qtys, self._latent_qtys_labs))
-        )
-        self._labeller_latent_posterior = MapLabeller(
-            dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
-        )
         self.bh1 = None
         self.bh2 = None
         self._rb0 = np.nan
+        self._restrict_vel = False
+        self._vmax = None
 
     @property
     def folded_qtys(self):
@@ -67,14 +54,42 @@ class CoreKick(HierarchicalModel_2D):
         return self._folded_qtys_posterior
 
     @property
+    def vmax(self):
+        return self._vmax
+
+    @property
+    @abstractmethod
     def latent_qtys(self):
-        return self._latent_qtys
+        pass
+
+    @property
+    @abstractmethod
+    def _latent_qtys_labs(self):
+        pass
 
     @property
     def latent_qtys_posterior(self):
         return self._latent_qtys_posterior
 
-    def extract_data(self, d=None, npoints=200, pars=None):
+    @property
+    def _latent_qtys_posterior(self):
+        return self.latent_qtys
+
+    @property
+    def _labeller_latent(self):
+        return MapLabeller(dict(zip(self.latent_qtys, self._latent_qtys_labs)))
+
+    @property
+    def _labeller_latent_posterior(self):
+        return MapLabeller(
+            dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
+        )
+
+    @property
+    def rb0(self):
+        return self._rb0
+
+    def extract_data(self, d=None, pars=None):
         """
         Data extraction and manipulation required by the CoreKick model.
         Due to the complexity of extracting core radius, samples from the core
@@ -111,8 +126,6 @@ class CoreKick(HierarchicalModel_2D):
         data = load_data(d)
         obs = {"vkick": [], "rb": []}
         for k, v in data["rb"].items():
-            if k == "__githash" or k == "__script":
-                continue
             _logger.info(f"Getting data for kick {k}")
             mask = ~np.isnan(v)
             v = v[mask]
@@ -138,52 +151,83 @@ class CoreKick(HierarchicalModel_2D):
         self.bh1 = bh1[-1]
         self.bh2 = bh2[-1]
 
-    def _set_stan_data_OOS(self):
+    def _set_stan_data_OOS(self, N=10000):
         """
-        Set the out-of-sample Stan data variables. 10000 OOS points will be
-        used.
-        BH spins are uniformly sampled on the sphere, with magnitude from the
-        Zlochower Lousto "dry" distribution.
+        Set the OOS data points for the Stan model
+
+        Parameters
+        ----------
+        N : int, optional
+            number of recoil velocity samples to draw, by default 10000
         """
-        _OOS = {"N_OOS": 10000}
+
+        def _spin_setter(nn):
+            t, p = uniform_sample_sphere(nn * 2, rng=self._rng)
+            spin_mag = scipy.stats.beta.rvs(
+                *zlochower_dry_spins.values(),
+                random_state=self._rng,
+                size=nn * 2,
+            )
+            spins = convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
+            return spins[:nn, :], spins[nn:, :]
+
+        _OOS = {"N_OOS": N}
         self._num_OOS = _OOS["N_OOS"]
-        t, p = uniform_sample_sphere(_OOS["N_OOS"] * 2, rng=self._rng)
-        spin_mag = scipy.stats.beta.rvs(
-            *zlochower_dry_spins.values(),
-            random_state=self._rng,
-            size=_OOS["N_OOS"] * 2,
-        )
-        spins = convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
-        s1 = spins[: _OOS["N_OOS"], :]
-        s2 = spins[_OOS["N_OOS"] :, :]
+        self._vmax = np.nanmax(self.obs_collapsed["vkick"])
         vkick = np.full(_OOS["N_OOS"], np.nan)
-        for i, (ss1, ss2) in enumerate(zip(s1, s2)):
-            print(
-                f"Sampling {(i+1)/_OOS['N_OOS']*100:.1f}% complete...                      ",
-                end="\r",
+        _logger.debug(f"Maximum fitted velocity is {self.vmax:.2e}")
+        remaining = np.ones(N, dtype=bool)
+        iters = 0
+        max_iters = 100
+        while np.any(remaining) and iters < max_iters:
+            # generate spins
+            s1, s2 = _spin_setter(np.sum(remaining))
+            update_idxs = np.where(remaining == 1)[0]
+            for i, (ss1, ss2) in tqdm(
+                enumerate(zip(s1, s2)),
+                total=len(s1),
+                desc=f"Sampling BH spins (iteration {iters})",
+            ):
+                remnant = ketju_calculate_bh_merger_remnant_properties(
+                    m1=self.bh1.m,
+                    m2=self.bh2.m,
+                    s1=ss1,
+                    s2=ss2,
+                    x1=self.bh1.x.flatten(),
+                    x2=self.bh2.x.flatten(),
+                    v1=self.bh1.v.flatten(),
+                    v2=self.bh2.v.flatten(),
+                )
+                vkick[update_idxs[i]] = np.linalg.norm(remnant["v"]) / self.escape_vel
+            remaining = np.isnan(vkick)
+            if self._restrict_vel:
+                remaining = np.logical_or(remaining, vkick > self.vmax)
+            _logger.debug(
+                f"Completed iteration {iters}, but there are {np.sum(remaining)} kick values that need to be resampled"
             )
-            remnant = ketju_calculate_bh_merger_remnant_properties(
-                m1=self.bh1.m,
-                m2=self.bh2.m,
-                s1=ss1,
-                s2=ss2,
-                x1=self.bh1.x.flatten(),
-                x2=self.bh2.x.flatten(),
-                v1=self.bh1.v.flatten(),
-                v2=self.bh2.v.flatten(),
-            )
-            vkick[i] = np.linalg.norm(remnant["v"]) / self.escape_vel
-        print("\nSampling complete")
+            iters += 1
         _logger.debug(
-            f"{np.sum(np.isnan(vkick)) / len(vkick) * 100:.2f}% of calculations from from the Zlochower Lousto relation are NaN!"
+            f"{np.sum(vkick > self.vmax)} kick velocities are larger than the maximum value of vkick used in model constraint"
         )
-        _OOS["vkick_OOS"] = vkick[~np.isnan(vkick)]
+        if iters >= max_iters:
+            _logger.error(
+                f"The number of iterations in sampling the BH spins has exceeded the maximum number of {max_iters} without converging!"
+            )
+        _OOS["vkick_OOS"] = vkick
+        _logger.debug(f"Length of OOS vkick: {len(_OOS['vkick_OOS'])}")
         self.stan_data.update(_OOS)
 
-    def set_stan_data(self):
+    def set_stan_data(self, restrict_v=False):
         """
         Set the Stan data dictionary used for sampling.
+
+        Parameters
+        ----------
+        restrict_v : bool, optional
+            restrict the sampled recoil velocity values to less than the
+            maximum velocity used in the fitting, by default False
         """
+        self._restrict_vel = restrict_v
         self.stan_data = dict(
             N_tot=self.num_obs_collapsed,
             vkick=self.obs_collapsed["vkick"],
@@ -192,12 +236,12 @@ class CoreKick(HierarchicalModel_2D):
         if not self._loaded_from_file:
             self._set_stan_data_OOS()
 
-    def sample_model(self, sample_kwargs=...):
+    def sample_model(self, sample_kwargs=..., diagnose=True):
         """
         Wrapper around StanModel.sample_model() to handle determining num_OOS
         from previous sample.
         """
-        super().sample_model(sample_kwargs)
+        super().sample_model(sample_kwargs, diagnose=diagnose)
         if self._loaded_from_file:
             self._determine_num_OOS(self._folded_qtys_posterior[0])
             self._set_stan_data_OOS()
@@ -322,7 +366,7 @@ class CoreKick(HierarchicalModel_2D):
         ax = self.plot_generated_quantity_dist(
             ["rb_posterior"],
             state="OOS",
-            xlabels=[r"$r_\mathrm{b}/r_{\mathrm{b},0}$"],
+            xlabels=self._folded_qtys_labs,
             save=False,
         )
         rb_mode = self.calculate_mode("rb_posterior")
@@ -337,6 +381,11 @@ class CoreKick(HierarchicalModel_2D):
         secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         fig = ax.flatten()[0].get_figure()
         savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
+
+    def all_plots(self, figsize=None):
+        self.plot_latent_distributions(figsize)
+        self.all_posterior_pred_plots(figsize)
+        self.all_posterior_OOS_plots(figsize)
 
     @classmethod
     def load_fit(
@@ -371,3 +420,72 @@ class CoreKick(HierarchicalModel_2D):
         C.escape_vel = escape_vel
         C.premerger_ketjufile = premerger_ketjufile
         return C
+
+
+class CoreKickExp(_CoreKickBase):
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
+
+    @property
+    def latent_qtys(self):
+        return ["K", "b", "err"]
+
+    @property
+    def _latent_qtys_labs(self):
+        return [r"$K$", r"$\beta$", r"$\tau$"]
+
+
+class CoreKickLinear(_CoreKickBase):
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
+
+    @property
+    def latent_qtys(self):
+        return ["a", "b", "err"]
+
+    @property
+    def _latent_qtys_labs(self):
+        return [r"$a$", r"$b$", r"$\tau$"]
+
+
+class CoreKickSigmoid(_CoreKickBase):
+    def __init__(
+        self,
+        model_file,
+        prior_file,
+        figname_base,
+        escape_vel=None,
+        premerger_ketjufile=None,
+        rng=None,
+    ) -> None:
+        super().__init__(
+            model_file, prior_file, figname_base, escape_vel, premerger_ketjufile, rng
+        )
+
+    @property
+    def latent_qtys(self):
+        return ["K", "b", "c", "err"]
+
+    @property
+    def _latent_qtys_labs(self):
+        return [r"$K$", r"$\beta$", r"$c$", r"$\tau$"]

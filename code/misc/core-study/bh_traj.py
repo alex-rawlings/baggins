@@ -12,27 +12,29 @@ snapfiles = bgs.utils.read_parameters(
         )
     )
 
-snapshots = dict()
+fig, ax = plt.subplots(1,3, sharex=True)
+
+cmapper, sm = bgs.plotting.create_normed_colours(0, 2000)
+plot_kwargs = {"ls":"", "marker":"o", "mec":"k", "mew":0.5}
+
 for k, v in snapfiles["snap_nums"].items():
-    snapshots[k] = os.path.join(
+    vkick = float(k.lstrip("v"))
+    snapfile = os.path.join(
         snapfiles["parent_dir"], f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5"
     )
-
-fig, ax = plt.subplots(1,2, sharex=True)
-
-for snapfile in snapshots.values():
     print(snapfile)
     snap = pygad.Snapshot(snapfile, physical=True)
-    ax[0].plot(
-        snap.bh["vel"][0,0], snap.bh["vel"][0,1], ls="", marker="o"
-    )
-    ax[1].plot(
-        snap.bh["vel"][0,0], snap.bh["vel"][0,2], ls="", marker="o"
-    )
+    for i in range(3):
+        ax[i].plot(
+            vkick, snap.bh["pos"][0,i], c=cmapper(vkick), **plot_kwargs
+        )
     # conserve memory
     snap.delete_blocks()
     del snap
     pygad.gc_full_collect()
+
+'''for axi in ax:
+    axi.set_aspect("equal")'''
 
 
 plt.show()

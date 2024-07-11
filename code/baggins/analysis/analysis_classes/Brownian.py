@@ -6,7 +6,7 @@ from .BHBinary import myr
 from ..analyse_snap import get_com_of_each_galaxy, get_com_velocity_of_each_galaxy
 from ..general import snap_num_for_time
 from ..masks import get_all_id_masks
-from ..orbit import get_bound_binary
+from ..analyse_ketju import get_bound_binary
 from ...env_config import _cmlogger
 from ...general import convert_gadget_time
 from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir

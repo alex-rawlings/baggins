@@ -46,39 +46,39 @@
 
     %%% define layer 3 %%%
     % break radius hypers
-    \factor[left=of dens_b] {dens_b_D} {below:$\mathcal{N}$} {} {};
+    \factor[left=of dens_b, xshift=-0.7em] {dens_b_D} {below:$\mathcal{N}_\mathrm{T[-5,15]}$} {} {};
     \node[hyper, left=of dens_b_D, yshift=2em] (dens_b_mu) {$\mu_{\log_{10}\Sigma_\mathrm{b}}$};
     \node[hyper, below=of dens_b_mu, yshift=2em] (dens_b_err) {$\sigma_{\log_{10}\Sigma_\mathrm{b}}$};
     \factoredge{dens_b_mu, dens_b_err} {dens_b_D} {dens_b};
 
     % inner slope hypers
-    \factor[left=of g, xshift=-1.5em] {g_D} {below:$\mathrm{Exp}_\mathrm{T}$} {} {};
+    \factor[left=of g, xshift=-1.5em] {g_D} {below:$\mathrm{Exp}_\mathrm{T[0,1]}$} {} {};
     \node[hyper, left=of g_D] (g_lam) {$\lambda_\gamma$};
     \factoredge{g_lam} {g_D} {g};
 
     % sersic index hypers
-    \factor[left=of n, xshift=-1.5em] {n_D} {below:$\mathcal{N}_\mathrm{T}$} {} {};
+    \factor[left=of n, xshift=-1.5em] {n_D} {below:$\mathcal{N}_\mathrm{T[0,20]}$} {} {};
     \node[hyper, left=of n_D, yshift=1em] (n_mu) {$\mu_{n}$};
     \node[hyper, below=of n_mu, yshift=2em] (n_err) {$\sigma_{n}$};
     \factoredge{n_mu, n_err} {n_D} {n};
 
     % transition index hypers
-    \factor[left=of a, xshift=-1.5em] {a_D} {below:$\mathrm{Ray}$} {} {};
+    \factor[left=of a, xshift=-1.5em] {a_D} {below:$\mathrm{Ray}_\mathrm{T[0,15]}$} {} {};
     \node[hyper, left=of a_D] (a_sig) {$\sigma_\alpha$};
     \factoredge{a_sig} {a_D} {a};
 
     % core radius hypers
-    \factor[left=of rb, xshift=-1.5em] {rb_D} {below:$\mathrm{Ray}_\mathrm{T}$} {} {};
+    \factor[left=of rb, xshift=-1.5em] {rb_D} {below:$\mathrm{Ray}_\mathrm{T[0,5]}$} {} {};
     \node[hyper, left=of rb_D] (rb_sig) {$\sigma_{r_\mathrm{b}}$};
     \factoredge{rb_sig} {rb_D} {rb};
 
     % effective radius hypers
-    \factor[left=of Re, xshift=-1.5em] {Re_D} {below:$\mathrm{Ray}_\mathrm{T}$} {} {};
+    \factor[left=of Re, xshift=-1.5em] {Re_D} {below:$\mathrm{Ray}_\mathrm{T[0,20]}$} {} {};
     \node[hyper, left=of Re_D] (Re_sig) {$\sigma_{R_\mathrm{e}}$};
     \factoredge{Re_sig} {Re_D} {Re};
 
     % surface density error hypers
-    \factor[above=of dens_err, yshift=4em] {dens_err_D} {right:$\mathcal{N}_\mathrm{T}$} {} {};
+    \factor[above=of dens_err, yshift=4em] {dens_err_D} {left:$\mathcal{N}_\mathrm{T[0,]}$} {} {};
     \node[hyper, above=of dens_err_D, yshift=6em] (dens_err_err) {$\sigma_{\tau_{\log_{10}\Sigma}}$};
     \node[hyper, left=of dens_err_err] (dens_err_mu) {$\mu_{\tau_{\log_{10}\Sigma}}$};
     \factoredge{dens_err_mu, dens_err_err} {dens_err_D} {dens_err};

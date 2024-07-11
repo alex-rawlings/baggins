@@ -8,7 +8,8 @@ import figure_config
 
 
 parser = argparse.ArgumentParser(
-    description="Plot IFU maps", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    description="Plot 3D density",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
     "-v",
@@ -24,6 +25,8 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
+bgs.plotting.check_backend()
+
 snapfiles = bgs.utils.read_parameters(
     os.path.join(
         bgs.HOME,
@@ -38,12 +41,12 @@ r_centres = bgs.mathematics.get_histogram_bin_centres(r_edges)
 ball_mask = pygad.BallMask(r_edges[-1])
 
 # create the colour scale
-cmapper, sm = bgs.plotting.create_normed_colours(
-    0, 900, cmap="custom_Blues", norm_kwargs={"clip": True}
-)
+vkcols = figure_config.VkickColourMap()
 
 
 for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
+    if v is None:
+        continue
     snapfile = os.path.join(
         snapfiles["parent_dir"], f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5"
     )
@@ -57,17 +60,22 @@ for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
 
     dens = pygad.analysis.profile_dens(snap.stars, "mass", r_edges=r_edges)
     mask = dens > 0
-    ax.loglog(r_centres[mask], dens[mask], color=cmapper(float(k.lstrip("v"))), ls="-")
+    ax.loglog(
+        r_centres[mask], dens[mask], ls="-", c=vkcols.get_colour(float(k.lstrip("v")))
+    )
 
     # conserve memory
     snap.delete_blocks()
     del snap
     pygad.gc_full_collect()
 
+# add the r^-1 scaling line
+xline = np.geomspace(2, 8, 4)
+yline = ax.loglog(xline, 1e10 * xline**-1, c="k")
+ax.text(5, 3e9, r"$\propto r^{-1}$", ha="left")
+
 ax.set_xlabel(r"$r/\mathrm{kpc}$")
 ax.set_ylabel(r"$\rho(r)/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$")
-plt.colorbar(
-    sm, ax=ax, label=r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$", extend="max"
-)
+vkcols.make_cbar(ax)
 bgs.plotting.savefig(figure_config.fig_path("density_3d.pdf"), fig=fig, force_ext=True)
 plt.show()

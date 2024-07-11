@@ -3,7 +3,6 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import baggins as bgs
-import gadgetorbits as go
 import figure_config
 
 
@@ -38,95 +37,16 @@ orbitfilebases = [
 orbitfilebases.sort()
 
 
-mergemask = [
-    6,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    1,
-    3,
-    2,
-    2,
-    0,
-    5,
-    6,
-    0,
-    0,
-    4,
-]
 labels = [
     r"$\pi\mathrm{-box}$",
     r"$\mathrm{boxlet}$",
     r"$x\mathrm{-tube}$",
     "",
     r"$z\mathrm{-tube}$",
-    r"$\mathrm{Keplerian}$",
+    r"$\mathrm{rosette}$",
     r"$\mathrm{irregular}$",
     r"$\mathrm{unclassified}$",
 ]
-
-
-def radial_frequency(ofb, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False):
-    orbitcl = bgs.utils.get_files_in_dir(ofb, ext=".cl", recursive=True)[0]
-    SL.info(f"Reading: {orbitcl}")
-    (
-        orbitids,
-        classids,
-        rad,
-        rot_dir,
-        energy,
-        denergy,
-        inttime,
-        b92class,
-        pericenter,
-        apocenter,
-        meanposrad,
-        minangmom,
-    ) = go.loadorbits(orbitcl, mergemask=mergemask, addextrainfo=True)
-    radbins = np.geomspace(minrad, maxrad, nbin + 1)
-    meanrads = bgs.mathematics.get_histogram_bin_centres(radbins)
-    possibleclasses = np.arange(np.max(classids) + 1).astype(int)
-    classfrequency = np.zeros((nbin, len(possibleclasses)))
-    rad_len = []
-    for i in np.arange(nbin) + 1:
-        radcond = np.logical_and(radbins[i - 1] < rad, rad < radbins[i])
-        radclassids = classids[radcond]
-        rad_len.append(float(len(radclassids)))
-
-        if rad_len[-1] > 0:
-            for cl in possibleclasses:
-                classfrequency[i - 1, cl] = (
-                    float(len(radclassids[radclassids == cl])) / rad_len[-1]
-                )
-        else:
-            SL.debug("Warning: no particles in current radial bin")
-    rad_len = np.array(rad_len)
-
-    if returnextra:
-        return (
-            meanrads,
-            classfrequency,
-            rad_len,
-            b92class,
-            pericenter,
-            apocenter,
-            minangmom,
-        )
-    else:
-        return meanrads, classfrequency, rad_len
 
 
 # figure 1: plots of different orbital families
@@ -136,30 +56,42 @@ vkcols = figure_config.VkickColourMap()
 
 
 # figure 2: plots of different kick velocities
-fig2, ax2 = plt.subplots(8, 4, sharex=True, sharey=True)
+fig2, ax2 = plt.subplots(5, 4, sharex=True, sharey=True)
 fig2.set_figwidth(2 * fig2.get_figwidth())
 fig2.set_figheight(2.5 * fig2.get_figheight())
 
 for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
-    # if j<28: continue
     try:
-        meanrads, classfrequency, rad_len = radial_frequency(orbitfilebase)
+        orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[
+            0
+        ]
+        orbit_res = bgs.analysis.orbits_radial_frequency(orbitcl, returnextra=True)
+        rosette_mask = orbit_res["classids"] == 4
+        for dist, arr in zip(
+            ("Apocentre", "Pericentre"), (orbit_res["apo"], orbit_res["peri"])
+        ):
+            SL.info(
+                f"{dist} IQR for rosettes: {np.nanquantile(arr[rosette_mask], 0.25):.2e} - {np.nanquantile(arr[rosette_mask], 0.75):.2e} (median: {np.median(arr[rosette_mask]):.2e})"
+            )
     except:  # noqa
         # ongoing analysis
-        continue
+        SL.error(f"Unable to read {orbitfilebase}: skipping")
+        # continue
     vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
     cfi = 0
     for i, axi in enumerate(ax.flat):
         if i == 3:
             continue
         axi.semilogx(
-            meanrads,
-            classfrequency[:, cfi],
+            orbit_res["meanrads"],
+            orbit_res["classfrequency"][:, cfi],
             label=vkick,
             c=vkcols.get_colour(vkick),
             ls="-",
         )
-        axj.semilogx(meanrads, classfrequency[:, cfi], label=labels[i])
+        axj.semilogx(
+            orbit_res["meanrads"], orbit_res["classfrequency"][:, cfi], label=labels[i]
+        )
         cfi += 1
     axj.text(
         0.95,
@@ -177,21 +109,24 @@ for i in range(ax.shape[0]):
 for i in range(ax.shape[1]):
     ax[1, i].set_xlabel(r"$r/\mathrm{kpc}$")
 for axi, label in zip(ax.flat, labels):
-    axi.text(0.95, 0.86, label, ha="right", va="center", transform=axi.transAxes)
+    axi.text(0.05, 0.86, label, ha="left", va="center", transform=axi.transAxes)
 
 # add the colour bar in the top right subplot, hiding that subplot
 vkcols.make_cbar(ax[0, -1], pad=-1.075, fraction=0.5, aspect=10)
 ax[0, 3].set_visible(False)
-
 
 # for second figure
 for i in range(ax2.shape[0]):
     ax2[i, 0].set_ylabel(r"$f_\mathrm{orbit}$")
 for i in range(ax2.shape[1]):
     ax2[-1, i].set_xlabel(r"$r/\mathrm{kpc}$")
-fig2.subplots_adjust(bottom=0.1, top=0.98)
-ax2[-1, 1].legend(loc="upper center", bbox_to_anchor=(1.1, -0.6), ncol=len(labels))
-
+bbox = ax2[-1, -1].get_position()
+fig2.legend(
+    *ax2[0, 0].get_legend_handles_labels(),
+    loc="center left",
+    bbox_to_anchor=(bbox.x0 + bbox.width / 4, bbox.y0 + bbox.height / 4),
+)
+ax2[-1, -1].axis("off")
 
 bgs.plotting.savefig(figure_config.fig_path("orbits.pdf"), fig=fig, force_ext=True)
 bgs.plotting.savefig(figure_config.fig_path("orbits2.pdf"), fig=fig2, force_ext=True)

@@ -1205,8 +1205,8 @@ def velocity_anisotropy(
     vcom : list or array-like, optional
         velocity centre of mass, by default [0,0,0]
     qcut : float, optional
-        filter out particles above qcut quantile in radial distance, by default
-        1.0
+        filter out particles above qcut quantile in velocity magnitude, by
+        default 1.0
     eps : float, optional
         tolerance to prevent zero-division, by default 1e-16
 
@@ -1226,7 +1226,8 @@ def velocity_anisotropy(
     r = pygad.utils.geo.dist(snap["pos"])
     v_sphere = spherical_components(snap["pos"], snap["vel"])
     if qcut < 1:
-        mask = r < np.nanquantile(r, qcut)
+        vmag = radial_separation(snap["vel"])
+        mask = vmag < np.nanquantile(vmag, qcut)
         r = r[mask]
         v_sphere = v_sphere[mask, :]
     # bin statistics
@@ -1392,7 +1393,7 @@ def find_bound_substructure(snap):
     return bound_IDs
 
 
-def find_individual_bound_particles(snap, return_frac=False):
+def find_individual_bound_particles(snap, return_extra=False):
     """
     Find individual particles bound to the most massive BH (two-body energy is
     checked).
@@ -1401,9 +1402,11 @@ def find_individual_bound_particles(snap, return_frac=False):
     ----------
     snap : pygad.Snapshot
         snapshot to analyse
-    return_frac : bool, optional
-        return the fraction of bound particles inside the influence radius, by
-        default False
+    return_extra : bool, optional
+        return extra information, including:
+            - the fraction of bound particles inside the influence radius,
+            - BH energy
+        by default False
 
     Returns
     -------
@@ -1430,8 +1433,8 @@ def find_individual_bound_particles(snap, return_frac=False):
         / pygad.UnitArr(subsnap[~bh_id_mask]["r"], snap["r"].units)
     )
     bound_IDs = subsnap[~bh_id_mask][KE - PE < 0]["ID"]
-    if return_frac:
-        return bound_IDs, len(bound_IDs) / len(subsnap)
+    if return_extra:
+        return bound_IDs, len(bound_IDs) / len(subsnap), KE - PE
     else:
         return bound_IDs
 
