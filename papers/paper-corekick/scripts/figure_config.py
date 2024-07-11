@@ -4,7 +4,7 @@ from seaborn import color_palette, cubehelix_palette
 import numpy as np
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
-data_dir = os.path.abspath(os.path.join(this_dir, "data/"))
+reduced_data_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/"
 figure_dir = os.path.abspath(os.path.join(this_dir, "../figures/"))
 
 
@@ -17,8 +17,8 @@ def fig_path(fname):
 
 
 # get the complete path to a saved data file
-def data_path(dname):
-    return os.path.join(data_dir, dname)
+def data_path(fname):
+    return os.path.join(reduced_data_dir, fname)
 
 
 # make sure were using the same settings
