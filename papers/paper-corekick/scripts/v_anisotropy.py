@@ -5,6 +5,7 @@ import pygad
 import gc
 import time
 from matplotlib import cycler, rcParams
+import pickle
 # import figure_config
 
 rcParams["axes.prop_cycle"] = (
@@ -78,14 +79,12 @@ def beta_profile(snapshot, r_min=0.1, r_max=30, r_switch=1, bins=50, bin_type="l
         r_arr0 = np.linspace(start=r_min, stop=r_max, num=bins)
     elif bin_type == "hybdrid":
         if bins < 5:
-            print("ERROR: please use >= 5 'hybdrid' bins")
-            exit()
+            raise RuntimeError("ERROR: please use >= 5 'hybdrid' bins")
         a1 = np.linspace(start=r_min, stop=r_switch, num=5)
         a2 = np.geomspace(start=r_switch, stop=r_max, num=bins-5)
         r_arr0 = np.concatenate((a1, a2[1:]), axis=0)  ## include r_switch only once
     elif bin_type != "r_core_split":
-        print("ERROR: incorrect bin_type in beta_profile()")
-        exit()
+        raise RuntimeError("ERROR: incorrect bin_type in beta_profile()")
 
     ## log, linear or hybdrid binning
     if bin_type != "r_core_split":
@@ -144,27 +143,13 @@ vels = [
     "1020",
 ]
 snaps = [2, 4, 4, 9, 9, 13, 31, 50, 70, 60, 73, 74, 100, 143, 193, 199, 240, 275]
-coreradii = [
-    0.5225785000000001,
-    0.5642145000000001,
-    0.65247,
-    0.66808,
-    0.7299105,
-    0.96869,
-    0.927019,
-    1.040925,
-    1.0412949999999999,
-    1.191115,
-    1.12596,
-    1.19127,
-    1.270385,
-    1.32713,
-    1.30975,
-    1.3308550000000001,
-    1.246245,
-    1.3778,
-]
+core_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
+with open(core_file, "rb") as f:
+    core_radii = pickle.load(f)["rb"]
+# core_radii is a dict, with keys "0000", "0060", etc. corresponding to the 
+# sampled core radii for different kick velocities
 
+# TODO create a numpy random number generator object for reproducibility
 
 ## Initialize figure
 fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
@@ -172,6 +157,30 @@ fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
 ax.set_xlabel("r/r$_b$")
 ax.set_ylabel(r"$\beta$")
 
+"""
+# TODO suggested code restructure
+# have an if-else, where we have the choice to extract data and save it, or 
+# just read in a previously extracted data set.
+# If we create a dict to hold the values, like
+
+extracted_data = dict(
+    v0000 = dict(
+        inner = beta_array_for_inner,
+        outer = beta_array_for_outer
+    ),
+    v0060 = dict(
+        inner = beta_array_for_inner,
+        outer = beta_array_for_outer
+    ),
+    ...
+)
+
+# Then this will make saving and loading the data (with pickle, instead of to a 
+# txt file) much easier.
+
+# Then we can plot the data by using the extracted_data dict, irrespective of 
+# whether it was 'freshly extracted' or read in from a previous go.
+"""
 
 ## Compute and store profiles
 if save_file == 1:
@@ -202,6 +211,16 @@ for i in range(len(vels)):
     # radii, betas, bincount = beta_profile(snap.stars, r_min=0.1 * coreradii[i], r_max=30 * coreradii[i], bins=20, bin_type="log")
     # radii, betas, bincount = beta_profile(snap.stars, r_min=0.1 * coreradii[i], r_max=30 * coreradii[i], bins=200, bin_type="linear")
     # radii, betas, bincount = beta_profile(snap.stars, r_max=coreradii[i], bin_type="r_core_split")
+
+    """
+    # TODO add a for loop here that randomly samples a core radius for a given kick velocity
+    # the core data you can access using
+    # this_core_radii = core_radii[str(vels[i])].flatten()
+    # and then pass this to the choice() function
+    # probably loop over this for 1000 times or so
+    # saving the beta value each time to build up a distribution of betas
+    """
+
     radii, betas, bincount = beta_profile(snap.stars, r_min=0.1 * coreradii[i], r_max=30 * coreradii[i], r_switch=1.0 * coreradii[i], bins=25, bin_type="hybdrid")
 
     if save_file == 1:
