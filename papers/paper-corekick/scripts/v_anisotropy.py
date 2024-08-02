@@ -203,6 +203,8 @@ ax.legend(handles=[b_in_p, b_out_p], labels=["$r \leq r_{\mathrm{b}}$", "$r > r_
 
 ## Save and show figure
 if save_fig == 1:
+    print("Saving figure...", flush=True)
+    print(fig_path + output_file + ".pdf", flush=True)
     plt.savefig(fig_path + output_file + ".pdf", dpi=300)
     # plt.savefig(figure_config.fig_path( outputfile + ".pdf"))
 print("Time taken:", time.time() - start_time, flush=True)
