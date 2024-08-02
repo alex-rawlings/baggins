@@ -17,16 +17,16 @@ start_time = time.time()
 
 ## Options
 read_betas = 0 ## read in previously computed beta profiles
-show_fig = 1
+show_fig = 0
 save_fig = 1 ## save output figure
 save_betas = 1 ## save beta profiles to output data file (only if read_betas == 0)
 sample_size = 10 ## number of core radii sampled per simulation (only if read_file == 0)
 x_axis = "v" ## whether to plot betas as a function of kick velocity ("v") or radius ("r") 
 
 input_file = "beta_profiles_vkick_test.pickle" ## file containing input beta profiles if read_file == 1
-output_file = "beta_profiles_vkick_test" ## base filename for the output figure and data file
+output_file = "beta_profiles_vkick_test1" ## base filename for the output figure and data file
 
-fig_path = "../figures/" ## directory for output figure
+fig_path = this_dir + "/../figures/" ## directory for output figure
 data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/" ## directory for input core radii, input beta profiles and output data file
 snap_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/" ## directory for input snapshots
 core_file = "core-kick.pickle" ## file containing core radii values
@@ -74,9 +74,9 @@ def spherical_velocity(snapshot):
 def beta(snapshot):
     v_r, v_t, v_p = spherical_velocity(snapshot)
     if np.std(v_r) == 0:
-        print("ERROR: divide by zero in beta()")
+        print("ERROR: divide by zero in beta()", flush=True)
     if len(v_r) == 0 or len(v_t) == 0 or len(v_p) == 0:
-        print("ERROR: empty velocity array in beta()")
+        print("ERROR: empty velocity array in beta()", flush=True)
     return 1 - (np.std(v_t) ** 2 + np.std(v_p) ** 2) / (2 * np.std(v_r) ** 2)
 
 
@@ -115,11 +115,11 @@ with open(data_path + core_file, "rb") as f:
 
 ## Compute new beta profiles...
 if read_betas == 0:
-    print("Computing beta profiles...")
+    print("Computing beta profiles...", flush=True)
     extracted_data = {vel: dict(r_in = [], r_out = [], b_in = [], b_out = []) for vel in vels}
     for i in range(len(vels)):
         run = "kick-vel-" + vels[i] + "/"
-        print("---", run, "---")
+        print("---", run, "---", flush=True)
 
         snap = pygad.Snapshot(
             snap_path
@@ -156,17 +156,17 @@ if read_betas == 0:
 
     ## Save beta profiles
     if save_betas == 1:
-        print("Saving beta profiles...")
-        print(data_path + output_file + ".pickle")
+        print("Saving beta profiles...", flush=True)
+        print(data_path + output_file + ".pickle", flush=True)
         pickle.dump(extracted_data, open(data_path + output_file + ".pickle", "wb"))
 
 ## ...or read in previously computed beta profiles
 elif read_betas == 1:
-    print("Reading beta profiles...")
+    print("Reading beta profiles...", flush=True)
     extracted_data = pickle.load(open(data_path + input_file, "rb"))
 
 else:
-    print("ERROR: incorrect read_file, select 0 or 1")
+    print("ERROR: incorrect read_file, select 0 or 1", flush=True)
     exit()
 
 
@@ -188,7 +188,7 @@ for i in range(len(vels)):
         b_in_p = ax.errorbar(int(vels[i]), med(b_in), yerr=b_err[0], fmt=".", color="tab:cyan") ## r <= r_core
         b_out_p = ax.errorbar(int(vels[i]), med(b_out), yerr=b_err[1], fmt=".", color="tab:red") ## r > r_core
     else:
-        print("ERROR: incorrect x_axis, select 'r' or 'v' ")
+        print("ERROR: incorrect x_axis, select 'r' or 'v' ", flush=True)
         exit()
 
 if x_axis == "r":
@@ -205,7 +205,7 @@ ax.legend(handles=[b_in_p, b_out_p], labels=["$r \leq r_{\mathrm{b}}$", "$r > r_
 if save_fig == 1:
     plt.savefig(fig_path + output_file + ".pdf", dpi=300)
     # plt.savefig(figure_config.fig_path( outputfile + ".pdf"))
-print("Time taken:", time.time() - start_time)
+print("Time taken:", time.time() - start_time, flush=True)
 
 if show_fig == 1:
     plt.show()
