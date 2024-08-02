@@ -24,7 +24,7 @@ sample_size = 10 ## number of core radii sampled per simulation (only if read_fi
 x_axis = "v" ## whether to plot betas as a function of kick velocity ("v") or radius ("r") 
 
 input_file = "beta_profiles_vkick_test.pickle" ## file containing input beta profiles if read_file == 1
-output_file = "beta_profiles_vkick_test1" ## base filename for the output figure and data file
+output_file = "beta_profiles_vkick_N" + str(sample_size) ## base filename for the output figure and data file
 
 fig_path = this_dir + "/../figures/" ## directory for output figure
 data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/" ## directory for input core radii, input beta profiles and output data file
@@ -67,6 +67,7 @@ def spherical_velocity(snapshot):
         np.cos(t) * np.cos(p) * vx + np.cos(t) * np.sin(p) * vy - np.sin(t) * vz
     )  ## v_theta
     v_p = -np.sin(p) * vx + np.cos(p) * vy  ## v_phi
+
     return v_r, v_t, v_p
 
 
@@ -83,24 +84,25 @@ def beta(snapshot):
 ## Compute anisotropy parameter beta profile for a given (sub)snapshot.
 ## Profile is computed in 2 bins with respect to r_split in [kpc], i.e. r <= r_split and r > r_split.
 def beta_profile(snapshot, r_split):
-    b_arr = []
-    bin_counts = []
+    b_arr = np.full(2, np.nan)
+    bin_counts = np.full(2, np.nan)
     
     ## radial masks for r <= r_split and r > r_split
     m1, m2 = pygad.ExprMask("r <= " + str(r_split)), pygad.ExprMask(
         "r > " + str(r_split)
     )
-    for m in [m1, m2]:
-        b_arr.append(beta(snapshot[m]))
-        bin_counts.append(len(snapshot[m]["r"]))
+    m = [m1, m2]
+    for i in range(2):
+        b_arr[i] = (beta(snapshot[m[i]]))
+        bin_counts[i] = (len(snapshot[m[i]]["r"]))
     ## Compute mean radii for the bins
     r_arr = np.array([np.mean(snapshot[m1]["r"]), np.mean(snapshot[m2]["r"])])
 
     ## Return bin radii and corresponding beta values and bin counts
     return (
         r_arr,
-        np.array(b_arr),
-        np.array(bin_counts),
+        b_arr,
+        bin_counts,
     )
 
 
@@ -116,8 +118,10 @@ with open(data_path + core_file, "rb") as f:
 ## Compute new beta profiles...
 if read_betas == 0:
     print("Computing beta profiles...", flush=True)
-    extracted_data = {vel: dict(r_in = [], r_out = [], b_in = [], b_out = []) for vel in vels}
+    extracted_data = {vel: dict(r_in = np.full(sample_size, np.nan), r_out = np.full(sample_size, np.nan), 
+                                b_in = np.full(sample_size, np.nan), b_out = np.full(sample_size, np.nan)) for vel in vels}
     for i in range(len(vels)):
+        step_time = time.time()
         run = "kick-vel-" + vels[i] + "/"
         print("---", run, "---", flush=True)
 
@@ -131,28 +135,35 @@ if read_betas == 0:
             physical=True,
         )
 
-        ## Find center using a shrinking sphere on the stars
+        ## Find center using shrinking sphere on the stars
+        # center = pygad.analysis.shrinking_sphere(
+        #     snap.stars,
+        #     center=[snap.boxsize / 2, snap.boxsize / 2, snap.boxsize / 2],
+        #     R=snap.boxsize,
+        # )
         center = pygad.analysis.shrinking_sphere(
             snap.stars,
-            center=[snap.boxsize / 2, snap.boxsize / 2, snap.boxsize / 2],
-            R=snap.boxsize,
+            center=pygad.analysis.center_of_mass(snap.stars),
+            R=30
         )
+
         ## Shift coordinates of all particles so that the snap is centered on the shrinking sphere result
         pygad.Translation(-center).apply(snap)
 
         this_core_radii = core_radii[vels[i]].flatten()
         core_sample = rgen.choice(this_core_radii, size=sample_size, replace=True) ## select core radius sample with rgen
-        for core_r in core_sample:
-            radii, betas, bincount = beta_profile(snap.stars, r_split=core_r)
+        for i in range(len(core_sample)):
+            radii, betas, bincount = beta_profile(snap.stars, r_split=core_sample[i])
             r_in, r_out, b_in, b_out = radii[0], radii[-1], betas[0], betas[-1]
-            extracted_data[vels[i]]["r_in"].append(radii[0])
-            extracted_data[vels[i]]["r_out"].append(radii[-1])
-            extracted_data[vels[i]]["b_in"].append(betas[0])
-            extracted_data[vels[i]]["b_out"].append(betas[-1])
+            extracted_data[vels[i]]["r_in"][i] = radii[0]
+            extracted_data[vels[i]]["r_out"][i] = radii[-1]
+            extracted_data[vels[i]]["b_in"][i] = betas[0]
+            extracted_data[vels[i]]["b_out"][i] = betas[-1]
 
         del snap
         gc.collect()
         pygad.gc_full_collect()
+        print(time.time()- step_time, "s", flush=True)
 
     ## Save beta profiles
     if save_betas == 1:
