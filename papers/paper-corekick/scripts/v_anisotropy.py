@@ -1,26 +1,40 @@
 ## For calculating the (velocity) anisotropy parameter beta as a funtion of radius
 import numpy as np
+from numpy import median as med
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pygad
 import gc
 import time
-from matplotlib import cycler, rcParams
 import pickle
+import os
 # import figure_config
-
-rcParams["axes.prop_cycle"] = (
-    cycler(ls=["-", ":", "--", "-."]) * rcParams["axes.prop_cycle"]
-)
+this_dir = os.path.dirname(os.path.realpath(__file__))
+mpl.rcdefaults()
+mpl.rc_file(os.path.join(this_dir, "matplotlibrc_publish"))
 start_time = time.time()
 
 
-## Whether to show and save the figure and save the values into a file
+## Options
+read_betas = 0 ## read in previously computed beta profiles
 show_fig = 1
-save_fig = 1
-save_file = 1
+save_fig = 1 ## save output figure
+save_betas = 1 ## save beta profiles to output data file (only if read_betas == 0)
+sample_size = 10 ## number of core radii sampled per simulation (only if read_file == 0)
+x_axis = "v" ## whether to plot betas as a function of kick velocity ("v") or radius ("r") 
 
-filename = "anisotropy_profiles" ## base filename for the output figure and value file
-filepath = "../figures/" ## where to save output figure and value file
+input_file = "beta_profiles_vkick_test.pickle" ## file containing input beta profiles if read_file == 1
+output_file = "beta_profiles_vkick_test" ## base filename for the output figure and data file
+
+fig_path = "../figures/" ## directory for output figure
+data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/" ## directory for input core radii, input beta profiles and output data file
+snap_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/" ## directory for input snapshots
+core_file = "core-kick.pickle" ## file containing core radii values
+
+
+## Kick velocities and corresponding snapshot numbers to use
+vels = ["0000", "0060", "0120", "0180", "0240", "0300", "0360", "0420", "0480", "0540", "0600", "0660", "0720", "0780", "0840", "0900", "0960", "1020"]
+snaps = [2, 4, 4, 9, 9, 13, 31, 50, 70, 60, 73, 74, 100, 143, 193, 199, 240, 275]
 
 
 ## Compute polar angle given xyz position
@@ -67,52 +81,22 @@ def beta(snapshot):
 
 
 ## Compute anisotropy parameter beta profile for a given (sub)snapshot.
-## Takes minimum and maximum radii for the radial bins in [kpc],
-## the number of bins and the method for binning ("log", "linear", "hybdrid" or "r_core_split").
-## r_switch sets the radius in [kpc] at which "hybdrid" binning is switched from linear to log.
-def beta_profile(snapshot, r_min=0.1, r_max=30, r_switch=1, bins=50, bin_type="log"):
+## Profile is computed in 2 bins with respect to r_split in [kpc], i.e. r <= r_split and r > r_split.
+def beta_profile(snapshot, r_split):
     b_arr = []
     bin_counts = []
-    if bin_type == "log":
-        r_arr0 = np.geomspace(start=r_min, stop=r_max, num=bins)
-    elif bin_type == "linear":
-        r_arr0 = np.linspace(start=r_min, stop=r_max, num=bins)
-    elif bin_type == "hybdrid":
-        if bins < 5:
-            raise RuntimeError("ERROR: please use >= 5 'hybdrid' bins")
-        a1 = np.linspace(start=r_min, stop=r_switch, num=5)
-        a2 = np.geomspace(start=r_switch, stop=r_max, num=bins-5)
-        r_arr0 = np.concatenate((a1, a2[1:]), axis=0)  ## include r_switch only once
-    elif bin_type != "r_core_split":
-        raise RuntimeError("ERROR: incorrect bin_type in beta_profile()")
+    
+    ## radial masks for r <= r_split and r > r_split
+    m1, m2 = pygad.ExprMask("r <= " + str(r_split)), pygad.ExprMask(
+        "r > " + str(r_split)
+    )
+    for m in [m1, m2]:
+        b_arr.append(beta(snapshot[m]))
+        bin_counts.append(len(snapshot[m]["r"]))
+    ## Compute mean radii for the bins
+    r_arr = np.array([np.mean(snapshot[m1]["r"]), np.mean(snapshot[m2]["r"])])
 
-    ## log, linear or hybdrid binning
-    if bin_type != "r_core_split":
-        for i in range(len(r_arr0) - 1):
-            r1, r2 = r_arr0[i], r_arr0[i + 1]  ## bin edges
-            m1, m2 = pygad.ExprMask("r >= " + str(r1)), pygad.ExprMask(
-                "r < " + str(r2)
-            )  ## radius masks for the edges, exclude outer edge
-            s = snapshot[m1 & m2]  ## take particles within the radial bin
-            if min(s["r"]) < r1 or max(s["r"]) >= r2:
-                print("ERROR: radius out of bounds")
-            b_arr.append(beta(s))
-            bin_counts.append(len(s["r"]))
-        r_arr = np.array(
-            [(r_arr0[i] + r_arr0[i + 1]) / 2 for i in range(len(r_arr0) - 1)]
-        ) ## compute bin center points
-
-    ## r_core_split binning (2 bins, r <= r_max = r_core and r > r_max = r_core)
-    else:
-        m1, m2 = pygad.ExprMask("r <= " + str(r_max)), pygad.ExprMask(
-            "r > " + str(r_max)
-        )
-        for m in [m1, m2]:
-            b_arr.append(beta(snapshot[m]))
-            bin_counts.append(len(snapshot[m]["r"]))
-        r_arr = np.array([np.mean(snapshot[m1]["r"]), np.mean(snapshot[m2]["r"])])
-
-    ## return bin center points and corresponding beta values and bin counts
+    ## Return bin radii and corresponding beta values and bin counts
     return (
         r_arr,
         np.array(b_arr),
@@ -120,138 +104,108 @@ def beta_profile(snapshot, r_min=0.1, r_max=30, r_switch=1, bins=50, bin_type="l
     )
 
 
-## Source directory and the snapshots to plot
-dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/"
-vels = [
-    "0000",
-    "0060",
-    "0120",
-    "0180",
-    "0240",
-    "0300",
-    "0360",
-    "0420",
-    "0480",
-    "0540",
-    "0600",
-    "0660",
-    "0720",
-    "0780",
-    "0840",
-    "0900",
-    "0960",
-    "1020",
-]
-snaps = [2, 4, 4, 9, 9, 13, 31, 50, 70, 60, 73, 74, 100, 143, 193, 199, 240, 275]
-core_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
-with open(core_file, "rb") as f:
-    core_radii = pickle.load(f)["rb"]
-# core_radii is a dict, with keys "0000", "0060", etc. corresponding to the 
-# sampled core radii for different kick velocities
+## Create random number generator
+rgen = np.random.default_rng(seed=88965)
 
-# TODO create a numpy random number generator object for reproducibility
+
+## Extract input core radii
+with open(data_path + core_file, "rb") as f:
+    core_radii = pickle.load(f)["rb"]
+
+
+## Compute new beta profiles...
+if read_betas == 0:
+    print("Computing beta profiles...")
+    extracted_data = {vel: dict(r_in = [], r_out = [], b_in = [], b_out = []) for vel in vels}
+    for i in range(len(vels)):
+        run = "kick-vel-" + vels[i] + "/"
+        print("---", run, "---")
+
+        snap = pygad.Snapshot(
+            snap_path
+            + run
+            + "output/snap_"
+            + "0" * (3 - len(str(snaps[i])))
+            + str(snaps[i])
+            + ".hdf5",
+            physical=True,
+        )
+
+        ## Find center using a shrinking sphere on the stars
+        center = pygad.analysis.shrinking_sphere(
+            snap.stars,
+            center=[snap.boxsize / 2, snap.boxsize / 2, snap.boxsize / 2],
+            R=snap.boxsize,
+        )
+        ## Shift coordinates of all particles so that the snap is centered on the shrinking sphere result
+        pygad.Translation(-center).apply(snap)
+
+        this_core_radii = core_radii[vels[i]].flatten()
+        core_sample = rgen.choice(this_core_radii, size=sample_size, replace=True) ## select core radius sample with rgen
+        for core_r in core_sample:
+            radii, betas, bincount = beta_profile(snap.stars, r_split=core_r)
+            r_in, r_out, b_in, b_out = radii[0], radii[-1], betas[0], betas[-1]
+            extracted_data[vels[i]]["r_in"].append(radii[0])
+            extracted_data[vels[i]]["r_out"].append(radii[-1])
+            extracted_data[vels[i]]["b_in"].append(betas[0])
+            extracted_data[vels[i]]["b_out"].append(betas[-1])
+
+        del snap
+        gc.collect()
+        pygad.gc_full_collect()
+
+    ## Save beta profiles
+    if save_betas == 1:
+        print("Saving beta profiles...")
+        print(data_path + output_file + ".pickle")
+        pickle.dump(extracted_data, open(data_path + output_file + ".pickle", "wb"))
+
+## ...or read in previously computed beta profiles
+elif read_betas == 1:
+    print("Reading beta profiles...")
+    extracted_data = pickle.load(open(data_path + input_file, "rb"))
+
+else:
+    print("ERROR: incorrect read_file, select 0 or 1")
+    exit()
+
 
 ## Initialize figure
-fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
-# ax.set_xlabel("r [kpc]")
-ax.set_xlabel("r/r$_b$")
-ax.set_ylabel(r"$\beta$")
+fig, ax = plt.subplots()
+ax.axhline(y=0, xmin=0, xmax=1, linestyle="--", color="gray", zorder=0) ## zero level on the background
 
-"""
-# TODO suggested code restructure
-# have an if-else, where we have the choice to extract data and save it, or 
-# just read in a previously extracted data set.
-# If we create a dict to hold the values, like
 
-extracted_data = dict(
-    v0000 = dict(
-        inner = beta_array_for_inner,
-        outer = beta_array_for_outer
-    ),
-    v0060 = dict(
-        inner = beta_array_for_inner,
-        outer = beta_array_for_outer
-    ),
-    ...
-)
-
-# Then this will make saving and loading the data (with pickle, instead of to a 
-# txt file) much easier.
-
-# Then we can plot the data by using the extracted_data dict, irrespective of 
-# whether it was 'freshly extracted' or read in from a previous go.
-"""
-
-## Compute and store profiles
-if save_file == 1:
-    file = open(filepath + filename + ".txt", "w")
+## Plot the profiles
 for i in range(len(vels)):
-    run = "kick-vel-" + vels[i] + "/"
-    print("---", run, "---")
-    print()
-    snap = pygad.Snapshot(
-        dir
-        + run
-        + "output/snap_"
-        + "0" * (3 - len(str(snaps[i])))
-        + str(snaps[i])
-        + ".hdf5",
-        physical=True,
-    )
+    r_in, r_out = extracted_data[vels[i]]["r_in"], extracted_data[vels[i]]["r_out"]
+    b_in, b_out = extracted_data[vels[i]]["b_in"], extracted_data[vels[i]]["b_out"]
+    r_err, b_err = [np.std(r_in), np.std(r_out)], [np.std(b_in), np.std(b_out)]
+    core_r = np.mean(core_radii[vels[i]].flatten())
 
-    ## Find center using a shrinking sphere on the stars
-    center = pygad.analysis.shrinking_sphere(
-        snap.stars,
-        center=[snap.boxsize / 2, snap.boxsize / 2, snap.boxsize / 2],
-        R=snap.boxsize,
-    )
-    ## Shift coordinates of all particles so that the snap is centered on the shrinking sphere result
-    pygad.Translation(-center).apply(snap)
+    if x_axis == "r":
+        ax.errorbar([med(r_in) / core_r, med(r_out) / core_r], [med(b_in), med(b_out)], xerr=r_err, yerr=b_err, fmt=".", label=vels[i])
+    elif x_axis == "v":
+        b_in_p = ax.errorbar(int(vels[i]), med(b_in), yerr=b_err[0], fmt=".", color="tab:cyan") ## r <= r_core
+        b_out_p = ax.errorbar(int(vels[i]), med(b_out), yerr=b_err[1], fmt=".", color="tab:red") ## r > r_core
+    else:
+        print("ERROR: incorrect x_axis, select 'r' or 'v' ")
+        exit()
 
-    # radii, betas, bincount = beta_profile(snap.stars, r_min=0.1 * coreradii[i], r_max=30 * coreradii[i], bins=20, bin_type="log")
-    # radii, betas, bincount = beta_profile(snap.stars, r_min=0.1 * coreradii[i], r_max=30 * coreradii[i], bins=200, bin_type="linear")
-    # radii, betas, bincount = beta_profile(snap.stars, r_max=coreradii[i], bin_type="r_core_split")
+if x_axis == "r":
+    ax.set_xlabel("$r/r_{\mathrm{b}}$")
+    ax.set_xscale("log")
 
-    """
-    # TODO add a for loop here that randomly samples a core radius for a given kick velocity
-    # the core data you can access using
-    # this_core_radii = core_radii[str(vels[i])].flatten()
-    # and then pass this to the choice() function
-    # probably loop over this for 1000 times or so
-    # saving the beta value each time to build up a distribution of betas
-    """
+else:
+    ax.set_xlabel("$v_{\mathrm{kick}}/\mathrm{km \ s^{-1}}$")
+ax.set_ylabel(r"$\beta$")
+ax.legend(handles=[b_in_p, b_out_p], labels=["$r \leq r_{\mathrm{b}}$", "$r > r_{\mathrm{b}}$"], loc="lower right")
 
-    radii, betas, bincount = beta_profile(snap.stars, r_min=0.1 * coreradii[i], r_max=30 * coreradii[i], r_switch=1.0 * coreradii[i], bins=25, bin_type="hybdrid")
 
-    if save_file == 1:
-        file.write(" ".join([str(val/coreradii[i]) for val in radii]) + "\n") ## write radii in [r_core]
-        file.write(" ".join([str(val) for val in betas]) + "\n") ## write betas
-        file.write("\n")
-
-    print("min and max bin count:", min(bincount), max(bincount))
-    print("min and max beta:", min(betas), max(betas))
-    print()
-
-    del snap
-    gc.collect()
-    pygad.gc_full_collect()
-
-    ax.plot(radii / coreradii[i], betas, label=run.split("-")[-1][:-1], linewidth=1)
-    # ax.scatter(radii/coreradii[i], betas, s=bincount / max(bincount) * 50, marker="s", edgecolors="black")
-
-if save_file == 1:
-    file.close()
-ax.axhline(y=0, xmin=0, xmax=1, linestyle=":", color="gray")
-ax.legend(loc="lower right", ncol=4)
-ax.set_xscale("log")
+## Save and show figure
 if save_fig == 1:
-    plt.savefig(
-        filepath
-        + filename
-        + ".pdf",
-        dpi=300,
-    )
-    # plt.savefig(figure_config.fig_path( filename + ".pdf"))
+    plt.savefig(fig_path + output_file + ".pdf", dpi=300)
+    # plt.savefig(figure_config.fig_path( outputfile + ".pdf"))
 print("Time taken:", time.time() - start_time)
+
 if show_fig == 1:
     plt.show()
