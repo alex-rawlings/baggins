@@ -17,7 +17,7 @@ start_time = time.time()
 
 ## Options
 read_betas = 0 ## read in previously computed beta profiles
-show_fig = 0
+show_fig = 1
 save_fig = 1 ## save output figure
 save_betas = 1 ## save beta profiles to output data file (only if read_betas == 0)
 sample_size = 10 ## number of core radii sampled per simulation (only if read_file == 0)
@@ -74,11 +74,7 @@ def spherical_velocity(snapshot):
 ## Compute anisotropy parameter beta for a given (sub)snapshot
 def beta(snapshot):
     v_r, v_t, v_p = spherical_velocity(snapshot)
-    if np.std(v_r) == 0:
-        print("ERROR: divide by zero in beta()", flush=True)
-    if len(v_r) == 0 or len(v_t) == 0 or len(v_p) == 0:
-        print("ERROR: empty velocity array in beta()", flush=True)
-    return 1 - (np.std(v_t) ** 2 + np.std(v_p) ** 2) / (2 * np.std(v_r) ** 2)
+    return 1 - (np.std(v_t) ** 2 + np.std(v_p) ** 2) / (2 * np.std(v_r) ** 2 + 1e-16)
 
 
 ## Compute anisotropy parameter beta profile for a given (sub)snapshot.
@@ -152,13 +148,13 @@ if read_betas == 0:
 
         this_core_radii = core_radii[vels[i]].flatten()
         core_sample = rgen.choice(this_core_radii, size=sample_size, replace=True) ## select core radius sample with rgen
-        for i in range(len(core_sample)):
-            radii, betas, bincount = beta_profile(snap.stars, r_split=core_sample[i])
+        for j in range(len(core_sample)):
+            radii, betas, bincount = beta_profile(snap.stars, r_split=core_sample[j])
             r_in, r_out, b_in, b_out = radii[0], radii[-1], betas[0], betas[-1]
-            extracted_data[vels[i]]["r_in"][i] = radii[0]
-            extracted_data[vels[i]]["r_out"][i] = radii[-1]
-            extracted_data[vels[i]]["b_in"][i] = betas[0]
-            extracted_data[vels[i]]["b_out"][i] = betas[-1]
+            extracted_data[vels[i]]["r_in"][j] = radii[0]
+            extracted_data[vels[i]]["r_out"][j] = radii[-1]
+            extracted_data[vels[i]]["b_in"][j] = betas[0]
+            extracted_data[vels[i]]["b_out"][j] = betas[-1]
 
         del snap
         gc.collect()
@@ -181,35 +177,36 @@ else:
     exit()
 
 
-## Initialize figure
-fig, ax = plt.subplots()
-ax.axhline(y=0, xmin=0, xmax=1, linestyle="--", color="gray", zorder=0) ## zero level on the background
+if show_fig == 1 or save_fig == 1:
+    ## Initialize figure
+    fig, ax = plt.subplots()
+    ax.axhline(y=0, xmin=0, xmax=1, linestyle="--", color="gray", zorder=0) ## zero level on the background
 
 
-## Plot the profiles
-for i in range(len(vels)):
-    r_in, r_out = extracted_data[vels[i]]["r_in"], extracted_data[vels[i]]["r_out"]
-    b_in, b_out = extracted_data[vels[i]]["b_in"], extracted_data[vels[i]]["b_out"]
-    r_err, b_err = [np.std(r_in), np.std(r_out)], [np.std(b_in), np.std(b_out)]
-    core_r = np.mean(core_radii[vels[i]].flatten())
+    ## Plot the profiles
+    for i in range(len(vels)):
+        r_in, r_out = extracted_data[vels[i]]["r_in"], extracted_data[vels[i]]["r_out"]
+        b_in, b_out = extracted_data[vels[i]]["b_in"], extracted_data[vels[i]]["b_out"]
+        r_err, b_err = [np.std(r_in), np.std(r_out)], [np.std(b_in), np.std(b_out)]
+        core_r = np.mean(core_radii[vels[i]].flatten())
+
+        if x_axis == "r":
+            ax.errorbar([med(r_in) / core_r, med(r_out) / core_r], [med(b_in), med(b_out)], xerr=r_err, yerr=b_err, fmt=".", label=vels[i])
+        elif x_axis == "v":
+            b_in_p = ax.errorbar(int(vels[i]), med(b_in), yerr=b_err[0], fmt=".", color="tab:cyan") ## r <= r_core
+            b_out_p = ax.errorbar(int(vels[i]), med(b_out), yerr=b_err[1], fmt=".", color="tab:red") ## r > r_core
+        else:
+            print("ERROR: incorrect x_axis, select 'r' or 'v' ", flush=True)
+            exit()
 
     if x_axis == "r":
-        ax.errorbar([med(r_in) / core_r, med(r_out) / core_r], [med(b_in), med(b_out)], xerr=r_err, yerr=b_err, fmt=".", label=vels[i])
-    elif x_axis == "v":
-        b_in_p = ax.errorbar(int(vels[i]), med(b_in), yerr=b_err[0], fmt=".", color="tab:cyan") ## r <= r_core
-        b_out_p = ax.errorbar(int(vels[i]), med(b_out), yerr=b_err[1], fmt=".", color="tab:red") ## r > r_core
+        ax.set_xlabel("$r/r_{\mathrm{b}}$")
+        ax.set_xscale("log")
+
     else:
-        print("ERROR: incorrect x_axis, select 'r' or 'v' ", flush=True)
-        exit()
-
-if x_axis == "r":
-    ax.set_xlabel("$r/r_{\mathrm{b}}$")
-    ax.set_xscale("log")
-
-else:
-    ax.set_xlabel("$v_{\mathrm{kick}}/\mathrm{km \ s^{-1}}$")
-ax.set_ylabel(r"$\beta$")
-ax.legend(handles=[b_in_p, b_out_p], labels=["$r \leq r_{\mathrm{b}}$", "$r > r_{\mathrm{b}}$"], loc="lower right")
+        ax.set_xlabel("$v_{\mathrm{kick}}/\mathrm{km \ s^{-1}}$")
+    ax.set_ylabel(r"$\beta$")
+    ax.legend(handles=[b_in_p, b_out_p], labels=["$r \leq r_{\mathrm{b}}$", "$r > r_{\mathrm{b}}$"], loc="lower right")
 
 
 ## Save and show figure
