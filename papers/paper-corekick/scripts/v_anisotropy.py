@@ -1,6 +1,6 @@
 ## For calculating the (velocity) anisotropy parameter beta as a funtion of radius
 import numpy as np
-from numpy import median as med
+from numpy import nanmedian as med
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pygad
@@ -20,10 +20,10 @@ read_betas = 0 ## read in previously computed beta profiles
 show_fig = 1
 save_fig = 1 ## save output figure
 save_betas = 1 ## save beta profiles to output data file (only if read_betas == 0)
-sample_size = 10 ## number of core radii sampled per simulation (only if read_file == 0)
+sample_size = 10000 ## number of core radii sampled per simulation (only if read_file == 0)
 x_axis = "v" ## whether to plot betas as a function of kick velocity ("v") or radius ("r") 
 
-input_file = "beta_profiles_vkick_test.pickle" ## file containing input beta profiles if read_file == 1
+input_file = "beta_profiles_vkick_N10000.pickle" ## file containing input beta profiles if read_file == 1
 output_file = "beta_profiles_vkick_N" + str(sample_size) ## base filename for the output figure and data file
 
 fig_path = this_dir + "/../figures/" ## directory for output figure
@@ -170,6 +170,7 @@ if read_betas == 0:
 ## ...or read in previously computed beta profiles
 elif read_betas == 1:
     print("Reading beta profiles...", flush=True)
+    print(data_path + input_file, flush=True)
     extracted_data = pickle.load(open(data_path + input_file, "rb"))
 
 else:
@@ -187,9 +188,10 @@ if show_fig == 1 or save_fig == 1:
     for i in range(len(vels)):
         r_in, r_out = extracted_data[vels[i]]["r_in"], extracted_data[vels[i]]["r_out"]
         b_in, b_out = extracted_data[vels[i]]["b_in"], extracted_data[vels[i]]["b_out"]
-        r_err, b_err = [np.std(r_in), np.std(r_out)], [np.std(b_in), np.std(b_out)]
+        r_err, b_err = [np.nanstd(r_in), np.nanstd(r_out)], [np.nanstd(b_in), np.nanstd(b_out)]
         core_r = np.mean(core_radii[vels[i]].flatten())
-
+        #print("v" + vels[i] + ":", "b_in", med(b_in), "b_out", med(b_out))
+        #print(sum(np.isnan(b_in)), sum(np.isnan(b_out)))
         if x_axis == "r":
             ax.errorbar([med(r_in) / core_r, med(r_out) / core_r], [med(b_in), med(b_out)], xerr=r_err, yerr=b_err, fmt=".", label=vels[i])
         elif x_axis == "v":
