@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import baggins as bgs
 import figure_config
 import arviz as az
+import missing_mass as mm
 
 parser = argparse.ArgumentParser(
     description="Plot core fits given a Stan sample",
@@ -125,13 +126,6 @@ def _helper(param_name, ax):
         SL.info(f"Determining ratio for model {k}")
         kick_vels.append(float(k))
         # determine the ratio of rb / rb_initial
-        '''v = v[~np.isnan(v)]
-        normalisation = (
-            rng.choice(data[param_name]["0000"].flatten(), size=args.num)
-            if param_name == "rb"
-            else 1
-        )
-        param.append(rng.choice(v.flatten(), size=args.num) / normalisation)'''
         val = v.flatten() / normalisation
         param.append(val[~np.isnan(val)])
     bp = ax.boxplot(
@@ -255,32 +249,37 @@ elif args.param == "OOS":
     )
     fname = "density.pdf"
 else:
-    fig, ax = plt.subplots(1, 1)
-    ax.set_xlabel(xlabel)
-    norm_val, sampled_kicks = _helper(args.param, ax)
+    fig, ax = plt.subplots(2, 1, sharex="all")
+    fig.set_figheight(1.5 * fig.get_figheight())
+    # plot the core radius boxplots
+    ax[-1].set_xlabel(xlabel)
+    norm_val, sampled_kicks = _helper(args.param, ax[0])
     if args.param == "rb":
-        ax.tick_params(axis="y", which="both", right=False)
-        ax2 = ax.secondary_yaxis(
+        ax[0].tick_params(axis="y", which="both", right=False)
+        ax2 = ax[0].secondary_yaxis(
             "right", functions=(lambda x: x * norm_val, lambda x: x / norm_val)
         )
         vkick = np.linspace(min(sampled_kicks), max(sampled_kicks), 500)
         # add best fit relations
-        ax.plot(
+        ax[0].plot(
             vkick,
             2.9 * (vkick / ESCAPE_VEL) ** 0.782 + 1,
             label=r"$\mathrm{Exponential}$",
             c=col_list[1],
         )
-        ax.plot(vkick, 3.26 * vkick / ESCAPE_VEL + 1.1, label=r"$\mathrm{Linear}$", c=col_list[2])
-        ax.plot(
+        ax[0].plot(vkick, 3.26 * vkick / ESCAPE_VEL + 1.1, label=r"$\mathrm{Linear}$", c=col_list[2])
+        ax[0].plot(
             vkick,
             2.47 * (1 - np.exp(-2.62 * vkick / ESCAPE_VEL)) + 0.873,
             label=r"$\mathrm{Sigmoid}$",
             c=col_list[3],
         )
-        ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
+        ax[0].set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
-        ax.legend()
+        ax[0].legend()
+
+        # add Sonja's missing mass plot
+        mm.missing_mass_plot(data, ax=ax[1], nro_iter=10000, min_r=0.1)
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":

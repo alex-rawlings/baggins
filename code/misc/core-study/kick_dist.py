@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 import baggins as bgs
 from ketjugw.units import km_per_s
 from tqdm import tqdm
+import arviz as az
 
 
+ESCAPE_VEL = 1800
 kfile = bgs.utils.get_ketjubhs_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0000/output")[0]
 bh1, bh2, *_ = bgs.analysis.get_bound_binary(kfile)
 # move to Gadget units: kpc, km/s, 1e10Msol
@@ -57,7 +59,7 @@ v_mass_vary = np.sort(v_mass_vary)
 P = 1-np.cumsum(v_mass_constant)/np.sum(v_mass_constant)
 P = np.clip(P, 1e-7, None)
 
-if True:
+if False:
     for v, lab in zip((v_mass_constant, v_mass_vary), ("const", "vary")):
         print(f"Quantile corresponding to 1020 km/s is {bgs.mathematics.empirical_cdf(v, 1020)}")
         print(f"Quantile corresponding to 1800 km/s is {bgs.mathematics.empirical_cdf(v, 1800)}")
@@ -76,4 +78,24 @@ if False:
     plt.hist(rb(v), 20, density=True)
     plt.axvline(rb(900), c="tab:red", lw=2)
     plt.ylabel("rb")
+    plt.show()
+
+if True:
+    cols = bgs.plotting.mplColours()
+    # test the transform sampling
+    fig, ax = plt.subplots(1,2, sharex="all")
+    for maxv, axi in zip((1e14, 1020), ax):
+        vs = v_mass_constant[v_mass_constant < maxv] / ESCAPE_VEL
+        az.plot_dist(2.9 * (vs) ** 0.782 + 1, kind="kde", ax=axi, plot_kwargs={"c":cols[0]})
+        '''axi.hist(
+            2.9 * (vs) ** 0.782 + 1, 50,
+            label=r"$\mathrm{Exponential}$", alpha=0.4
+        )'''
+        az.plot_dist(3.26 * vs + 1.1, kind="kde", ax=axi, plot_kwargs={"c":cols[1]})
+        #axi.hist(3.26 * vs + 1.1, 50, label=r"$\mathrm{Linear}$", alpha=0.4)
+        az.plot_dist(2.47 * (1 - np.exp(-2.62 * vs)) + 0.873, kind="kde", ax=axi, plot_kwargs={"c":cols[2]})
+        '''axi.hist(
+            2.47 * (1 - np.exp(-2.62 * vs)) + 0.873, 50,
+            label=r"$\mathrm{Sigmoid}$", alpha=0.4
+        )'''
     plt.show()

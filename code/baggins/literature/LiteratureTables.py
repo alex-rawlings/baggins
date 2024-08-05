@@ -150,7 +150,7 @@ class LiteratureTables:
             table instance
         """
         C = cls()
-        C.name = "Thomas 2016"
+        C.name = r"$\mathrm{Thomas\; et\; al.\; 2016}$"
         data = pd.read_csv(
             os.path.join(C._literature_dir, "thomas_16.csv"),
             header=0,
@@ -286,7 +286,7 @@ class LiteratureTables:
         ax.set_xlabel(x)
         ax.set_ylabel(y)
 
-        default_scatter_kwargs = {"marker": ".", "alpha": 0.4, "c": "k"}
+        default_scatter_kwargs = {"marker": ".", "alpha": 0.4, "c": "k", "zorder":2}
         if xerr is not None or yerr is not None:
             default_scatter_kwargs["elinewidth"] = 1
         default_scatter_kwargs.update(scatter_kwargs)
@@ -347,7 +347,7 @@ class LiteratureTables:
                 )
         return ax
 
-    def plot_lin_regress(self, x, y, itype="conf", conf_lev=0.68, xhat_method=np.linspace, ax=None, fit_in_log=False, mask=None):
+    def plot_lin_regress(self, x, y, itype="conf", conf_lev=0.68, xhat_method=np.linspace, ax=None, fit_in_log=False, mask=None, scatter_kwargs={}, fit_coeffs={}):
         """
         Convenience method to plot 2D data from a table as regression
 
@@ -370,6 +370,12 @@ class LiteratureTables:
             fit regression in log space, by default False
         mask : array-like, optional
             mask to fit regression to subset of data, by default None
+        scatter_kwargs : dict, optional
+            scatter parameters parsed to scatter() or errorbar(), by default {}
+        fit_coeffs : dict, optional
+            linear regression fit coefficients (keys must be 'slope' and 
+            'intercept') to be used instead of fitting coefficients 
+            independently, by default {}
 
         Returns
         -------
@@ -377,7 +383,7 @@ class LiteratureTables:
             plotting axes
         """
         if mask is None:
-            mask = True
+            mask = np.ones(len(self.table), dtype=bool)
         if fit_in_log:
             _x = self.table.loc[mask, f"log_{x}"]
             _y = self.table.loc[mask, f"log_{y}"]
@@ -385,10 +391,15 @@ class LiteratureTables:
             _x = self.table.loc[mask, x]
             _y = self.table.loc[mask, y]
         stat_fun = stat_interval(_x, _y, itype=itype, conf_lev=conf_lev)
-        rmse, slope, intercept = vertical_RMSE(_x, _y, return_linregress=True)
+        if fit_coeffs is None:
+            rmse, slope, intercept = vertical_RMSE(_x, _y, return_linregress=True)
+            _logger.info(f"Slope is {slope:.3e} and intercept is {intercept:.3e} for linear regression fit")
+        else:
+            slope = fit_coeffs["slope"]
+            intercept = fit_coeffs["intercept"]
 
         # add scatter plot of data
-        ax = self.scatter(x, y, ax=ax, scatter_kwargs={"c":None})
+        ax = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
         xhat = xhat_method(self.table.loc[mask, x].min(), self.table.loc[mask, x].max(), 1000)
 
         if fit_in_log:
@@ -401,6 +412,6 @@ class LiteratureTables:
             y1 = 10**y1
             y2 = 10**y2
             xhat = 10**xhat
-        line1 = ax.plot(xhat, yhat)
-        ax.fill_between(xhat, y1=y1, y2=y2, fc=line1[-1].get_color(), alpha=0.3)
+        line1 = ax.plot(xhat, yhat, zorder=1)
+        ax.fill_between(xhat, y1=y1, y2=y2, fc=line1[-1].get_color(), alpha=0.3, zorder=1, label=(r"$1\sigma\mathrm{-confidence}$" if itype=="conf" else r"$1\sigma\mathrm{-predictive}$"))
         return ax
