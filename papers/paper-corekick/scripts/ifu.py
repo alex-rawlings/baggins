@@ -1,7 +1,7 @@
 import argparse
 import os.path
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
@@ -142,14 +142,13 @@ vkcols = figure_config.VkickColourMap()
 def plot_helper(axi, k, vs, rhalf):
     r, h4 = bgs.analysis.radial_profile_velocity_moment(vs, "h4")
     idx_sorted = np.argsort(r)
-    h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
+    h4_filtered = uniform_filter1d(h4[idx_sorted], 8, mode="nearest")
     axi.plot(r[idx_sorted], h4_filtered, c=vkcols.get_colour(get_kick_val(k)), ls="-")
 
 
 for rh, (kp, vp), (ko, vo) in zip(
     h4_vals["rhalf"], h4_vals["para"].items(), h4_vals["ortho"].items()
 ):
-    m = bgs.plotting.mplChars()[int(get_kick_val(kp)) // 600]
     plot_helper(ax[0], kp, vp, rh)
     plot_helper(ax[1], ko, vo, rh)
 ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")

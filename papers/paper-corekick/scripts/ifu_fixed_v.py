@@ -1,7 +1,7 @@
 import argparse
 import os
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import uniform_filter1d
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
@@ -157,7 +157,7 @@ def plot_helper(axi, t, v):
     r = v["R"]
     h4 = v["h4"]
     idx_sorted = np.argsort(r)
-    h4_filtered = gaussian_filter1d(h4[idx_sorted], 5, mode="nearest")
+    h4_filtered = uniform_filter1d(h4[idx_sorted], 8, mode="nearest")
     if np.abs(t) < 1e-10:
         plt_kwargs = {"marker": "o", "markevery": int(len(r) * 0.2)}
     else:
@@ -176,8 +176,7 @@ ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
 plt.colorbar(sm, ax=ax.flat, label=r"$(t-t_\mathrm{settle})/\mathrm{Gyr}$")
-parent_dir = "fixed_velocity_h4"
 bgs.plotting.savefig(
-    figure_config.fig_path(os.path.join(parent_dir, f"h4_{args.kv}.pdf")),
+    figure_config.fig_path(f"h4_{args.kv}.pdf"),
     force_ext=True,
 )

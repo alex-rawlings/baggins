@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from ..env_config import _cmlogger, this_dir
+from ..mathematics import stat_interval, vertical_RMSE
 from ..utils import create_error_col
 
 __all__ = ["LiteratureTables"]
@@ -39,8 +40,8 @@ class LiteratureTables:
 
         Returns
         -------
-        pd.DataFrame
-            table
+        : LiteratureTables
+            table instance
         """
         C = cls()
         C.name = "Sahu+20"
@@ -68,8 +69,8 @@ class LiteratureTables:
 
         Returns
         -------
-        pd.DataFrame
-            table
+        : LiteratureTables
+            table instance
         """
         C = cls()
         C.name = "SDSS"
@@ -119,8 +120,8 @@ class LiteratureTables:
 
         Returns
         -------
-        pd.DataFrame
-            table
+        : LiteratureTables
+            table instance
         """
         C = cls()
         C.name = "van den Bosch 16"
@@ -136,6 +137,51 @@ class LiteratureTables:
         ] = np.nan
         data.loc[data.loc[:, "logBHMass"] < 1, "logBHMass"] = np.nan
         C.table = data
+        return C
+
+    @classmethod
+    def load_thomas_2016_data(cls):
+        """
+        Load core radius, BH mass data from Thomas et al. 2016
+
+        Returns
+        -------
+        : LiteratureTables
+            table instance
+        """
+        C = cls()
+        C.name = r"$\mathrm{Thomas\; et\; al.\; 2016}$"
+        data = pd.read_csv(
+            os.path.join(C._literature_dir, "thomas_16.csv"),
+            header=0,
+            skipinitialspace=True,
+        )
+        C.table = data
+        C.table["log_BH_mass"] = np.log10(C.table.loc[:, "BH_mass"])
+        C.table["log_core_radius_kpc"] = np.log10(C.table.loc[:, "core_radius_kpc"])
+        return C
+
+    @classmethod
+    def load_dullo_2019_data(cls):
+        """
+        Load core radius, BH mass data from Thomas et al. 2016
+
+        Returns
+        -------
+        : LiteratureTables
+            table instance
+        """
+        C = cls()
+        C.name = "Dullo 2019"
+        data = pd.read_csv(
+            os.path.join(C._literature_dir, "dullo_19.csv"),
+            header=0,
+            skipinitialspace=True,
+        )
+        C.table = data
+        C.table["core_radius_kpc"] = C.table.loc[:, "core_radius_pc"] / 1e3
+        C.table["log_BH_mass"] = np.log10(C.table.loc[:, "BH_mass"])
+        C.table["log_core_radius_kpc"] = np.log10(C.table.loc[:, "core_radius_kpc"])
         return C
 
     def hist(self, var, ax=None, hist_kwargs={}):
@@ -240,7 +286,7 @@ class LiteratureTables:
         ax.set_xlabel(x)
         ax.set_ylabel(y)
 
-        default_scatter_kwargs = {"marker": ".", "alpha": 0.4, "c": "k"}
+        default_scatter_kwargs = {"marker": ".", "alpha": 0.4, "c": "k", "zorder": 2}
         if xerr is not None or yerr is not None:
             default_scatter_kwargs["elinewidth"] = 1
         default_scatter_kwargs.update(scatter_kwargs)
@@ -299,4 +345,101 @@ class LiteratureTables:
                     label=self.name,
                     **default_scatter_kwargs,
                 )
+        return ax
+
+    def plot_lin_regress(
+        self,
+        x,
+        y,
+        itype="conf",
+        conf_lev=0.68,
+        xhat_method=np.linspace,
+        ax=None,
+        fit_in_log=False,
+        mask=None,
+        scatter_kwargs={},
+        fit_coeffs={},
+    ):
+        """
+        Convenience method to plot 2D data from a table as regression
+
+        Parameters
+        ----------
+        x : str, array-like
+            data key for independent variable, or data directly
+        y : str, array-like
+            data key for dependent variable, or data directly
+        itype : str, optional
+            type of statistic interval, by default "conf"
+        conf_lev : float, optional
+            level of statistic interval, by default 0.68
+        xhat_method : callable, optional
+            method to generate evenly spaced independent variables, by default
+            np.linspace
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        fit_in_log : bool, optional
+            fit regression in log space, by default False
+        mask : array-like, optional
+            mask to fit regression to subset of data, by default None
+        scatter_kwargs : dict, optional
+            scatter parameters parsed to scatter() or errorbar(), by default {}
+        fit_coeffs : dict, optional
+            linear regression fit coefficients (keys must be 'slope' and
+            'intercept') to be used instead of fitting coefficients
+            independently, by default {}
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axes
+        """
+        if mask is None:
+            mask = np.ones(len(self.table), dtype=bool)
+        if fit_in_log:
+            _x = self.table.loc[mask, f"log_{x}"]
+            _y = self.table.loc[mask, f"log_{y}"]
+        else:
+            _x = self.table.loc[mask, x]
+            _y = self.table.loc[mask, y]
+        stat_fun = stat_interval(_x, _y, itype=itype, conf_lev=conf_lev)
+        if fit_coeffs is None:
+            rmse, slope, intercept = vertical_RMSE(_x, _y, return_linregress=True)
+            _logger.info(
+                f"Slope is {slope:.3e} and intercept is {intercept:.3e} for linear regression fit"
+            )
+        else:
+            slope = fit_coeffs["slope"]
+            intercept = fit_coeffs["intercept"]
+
+        # add scatter plot of data
+        ax = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
+        xhat = xhat_method(
+            self.table.loc[mask, x].min(), self.table.loc[mask, x].max(), 1000
+        )
+
+        if fit_in_log:
+            xhat = np.log10(xhat)
+        yhat = slope * xhat + intercept
+        y1 = yhat - stat_fun(xhat)
+        y2 = yhat + stat_fun(xhat)
+        if fit_in_log:
+            yhat = 10**yhat
+            y1 = 10**y1
+            y2 = 10**y2
+            xhat = 10**xhat
+        line1 = ax.plot(xhat, yhat, zorder=1)
+        ax.fill_between(
+            xhat,
+            y1=y1,
+            y2=y2,
+            fc=line1[-1].get_color(),
+            alpha=0.3,
+            zorder=1,
+            label=(
+                r"$1\sigma\mathrm{-confidence}$"
+                if itype == "conf"
+                else r"$1\sigma\mathrm{-predictive}$"
+            ),
+        )
         return ax

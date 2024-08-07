@@ -213,6 +213,8 @@ class _CoreKickBase(HierarchicalModel_2D):
             _logger.error(
                 f"The number of iterations in sampling the BH spins has exceeded the maximum number of {max_iters} without converging!"
             )
+        vkick.sort()
+        assert np.all(np.sign(np.diff(vkick)) > 0)
         _OOS["vkick_OOS"] = vkick
         _logger.debug(f"Length of OOS vkick: {len(_OOS['vkick_OOS'])}")
         self.stan_data.update(_OOS)
