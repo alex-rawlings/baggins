@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import baggins as bgs
 import figure_config
 
