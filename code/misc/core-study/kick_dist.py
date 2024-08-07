@@ -92,6 +92,7 @@ if True:
             label=r"$\mathrm{Exponential}$", alpha=0.4
         )'''
         az.plot_dist(3.26 * vs + 1.1, kind="kde", ax=axi, plot_kwargs={"c":cols[1]})
+        #az.plot_dist(scipy.stats.norm.rvs(loc=3.26, scale=0.2, random_state=rng, size=len(vs)) * vs + scipy.stats.norm.rvs(loc=1.1, scale=0.07, random_state=rng, size=len(vs)), kind="kde", ax=axi, plot_kwargs={"c":cols[1]})
         #axi.hist(3.26 * vs + 1.1, 50, label=r"$\mathrm{Linear}$", alpha=0.4)
         az.plot_dist(2.47 * (1 - np.exp(-2.62 * vs)) + 0.873, kind="kde", ax=axi, plot_kwargs={"c":cols[2]})
         '''axi.hist(

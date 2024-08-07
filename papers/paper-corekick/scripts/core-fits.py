@@ -27,7 +27,7 @@ parser.add_argument(
     "--diff",
     help="distribution difference plot",
     action="store_true",
-    dest="diffplot"
+    dest="diffplot",
 )
 parser.add_argument(
     "-v",
@@ -116,7 +116,9 @@ else:
 def _helper(param_name, ax):
     kick_vels = []
     param = []
-    normalisation = rng.permutation(data[param_name]["0000"].flatten()) if args.param == "rb" else 1
+    normalisation = (
+        rng.permutation(data[param_name]["0000"].flatten()) if args.param == "rb" else 1
+    )
     SL.warning(f"Determining distributions for parameter: {param_name}")
     for k, v in data[param_name].items():
         if k == "__githash" or k == "__script":
@@ -155,22 +157,26 @@ def distribution_diff_plot(param_name, bins=20):
     SL.warning(f"Determining distribution difference for parameter: {param_name}")
     dset = data[param_name]["1020"].flatten() - data[param_name]["0000"].flatten()
     dset = np.sort(dset)
-    fig, ax  = plt.subplots(1, 2, sharex="all")
+    fig, ax = plt.subplots(1, 2, sharex="all")
     ax[0].hist(dset, bins=bins, density=True)
     t = np.linspace(np.min(dset), np.max(dset), 100)
     ecdf = list(map(lambda tt: bgs.mathematics.empirical_cdf(dset, tt), t))
-    ax[1].plot(t,ecdf)
-    SL.info(f"From the ECDF, 0 corresponds to the {bgs.mathematics.empirical_cdf(dset, 0):.2f} quantile")
+    ax[1].plot(t, ecdf)
+    SL.info(
+        f"From the ECDF, 0 corresponds to the {bgs.mathematics.empirical_cdf(dset, 0):.2f} quantile"
+    )
     label_dict = dict(
-        Re = r"$R_\mathrm{e}$",
-        rb = r"$r_\mathrm{b}$",
-        g = r"$\gamma$",
-        a = r"$\alpha$",
-        log10densb = r"$\log_{10} \Sigma_\mathrm{b}$",
-        n = r"$n"
+        Re=r"$R_\mathrm{e}$",
+        rb=r"$r_\mathrm{b}$",
+        g=r"$\gamma$",
+        a=r"$\alpha$",
+        log10densb=r"$\log_{10} \Sigma_\mathrm{b}$",
+        n=r"$n",
     )
     for axi in ax:
-        axi.set_xlabel(f"{label_dict[param_name]}$(1020)$ - {label_dict[param_name]}$(0)$")
+        axi.set_xlabel(
+            f"{label_dict[param_name]}$(1020)$ - {label_dict[param_name]}$(0)$"
+        )
     ax[0].set_ylabel(r"$\mathrm{PDF}$")
     ax[1].set_ylabel(r"$\mathrm{ECDF}$")
     return ax
@@ -267,7 +273,12 @@ else:
             label=r"$\mathrm{Exponential}$",
             c=col_list[1],
         )
-        ax[0].plot(vkick, 3.26 * vkick / ESCAPE_VEL + 1.1, label=r"$\mathrm{Linear}$", c=col_list[2])
+        ax[0].plot(
+            vkick,
+            3.26 * vkick / ESCAPE_VEL + 1.1,
+            label=r"$\mathrm{Linear}$",
+            c=col_list[2],
+        )
         ax[0].plot(
             vkick,
             2.47 * (1 - np.exp(-2.62 * vkick / ESCAPE_VEL)) + 0.873,

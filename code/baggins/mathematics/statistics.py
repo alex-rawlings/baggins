@@ -241,7 +241,7 @@ def stat_interval(x, y, itype="conf", conf_lev=0.68):
     itype : str, optional
         confidence interval for mean or prediction interval, by default "conf"
     conf_lev : float, optional
-        confidence level, corresponding to the area 1-alpha of the 
+        confidence level, corresponding to the area 1-alpha of the
         t-distribution, (thus alpha is 1-conf_lev), by default 0.68
 
     Returns
@@ -260,7 +260,8 @@ def stat_interval(x, y, itype="conf", conf_lev=0.68):
         assert itype in ("conf", "pred")
     except AssertionError:
         _logger.exception(
-            f"Type {itype} is not valid! Must be one of 'conf' or 'pred'!", exc_info=True
+            f"Type {itype} is not valid! Must be one of 'conf' or 'pred'!",
+            exc_info=True,
         )
         raise
     # clean data
