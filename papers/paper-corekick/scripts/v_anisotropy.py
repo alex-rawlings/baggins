@@ -1,39 +1,60 @@
 ## For calculating the (velocity) anisotropy parameter beta as a funtion of radius
 import numpy as np
 from numpy import nanmedian as med
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import pygad
 import gc
 import time
 import pickle
-import os
-# import figure_config
-this_dir = os.path.dirname(os.path.realpath(__file__))
-mpl.rcdefaults()
-mpl.rc_file(os.path.join(this_dir, "matplotlibrc_publish"))
+import figure_config
+
 start_time = time.time()
 
 
 ## Options
-read_betas = 0 ## read in previously computed beta profiles
+read_betas = 1  ## read in previously computed beta profiles
 show_fig = 1
-save_fig = 1 ## save output figure
-save_betas = 1 ## save beta profiles to output data file (only if read_betas == 0)
-sample_size = 10000 ## number of core radii sampled per simulation (only if read_file == 0)
-x_axis = "v" ## whether to plot betas as a function of kick velocity ("v") or radius ("r") 
+save_fig = 1  ## save output figure
+save_betas = 1  ## save beta profiles to output data file (only if read_betas == 0)
+sample_size = (
+    10000  ## number of core radii sampled per simulation (only if read_file == 0)
+)
+x_axis = (
+    "v"  ## whether to plot betas as a function of kick velocity ("v") or radius ("r")
+)
 
-input_file = "beta_profiles_vkick_N10000.pickle" ## file containing input beta profiles if read_file == 1
-output_file = "beta_profiles_vkick_N" + str(sample_size) ## base filename for the output figure and data file
+input_file = "beta_profiles_vkick_N10000.pickle"  ## file containing input beta profiles if read_file == 1
+output_file = (
+    "beta_profiles_vkick.pdf"  ## base filename for the output figure and data file
+)
 
-fig_path = this_dir + "/../figures/" ## directory for output figure
-data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/" ## directory for input core radii, input beta profiles and output data file
-snap_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/" ## directory for input snapshots
-core_file = "core-kick.pickle" ## file containing core radii values
+# fig_path = this_dir + "/../figures/" ## directory for output figure
+data_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/"  ## directory for input core radii, input beta profiles and output data file
+snap_path = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/"  ## directory for input snapshots
+core_file = "core-kick.pickle"  ## file containing core radii values
 
 
 ## Kick velocities and corresponding snapshot numbers to use
-vels = ["0000", "0060", "0120", "0180", "0240", "0300", "0360", "0420", "0480", "0540", "0600", "0660", "0720", "0780", "0840", "0900", "0960", "1020"]
+vels = [
+    "0000",
+    "0060",
+    "0120",
+    "0180",
+    "0240",
+    "0300",
+    "0360",
+    "0420",
+    "0480",
+    "0540",
+    "0600",
+    "0660",
+    "0720",
+    "0780",
+    "0840",
+    "0900",
+    "0960",
+    "1020",
+]
 snaps = [2, 4, 4, 9, 9, 13, 31, 50, 70, 60, 73, 74, 100, 143, 193, 199, 240, 275]
 
 
@@ -82,15 +103,15 @@ def beta(snapshot):
 def beta_profile(snapshot, r_split):
     b_arr = np.full(2, np.nan)
     bin_counts = np.full(2, np.nan)
-    
+
     ## radial masks for r <= r_split and r > r_split
     m1, m2 = pygad.ExprMask("r <= " + str(r_split)), pygad.ExprMask(
         "r > " + str(r_split)
     )
     m = [m1, m2]
     for i in range(2):
-        b_arr[i] = (beta(snapshot[m[i]]))
-        bin_counts[i] = (len(snapshot[m[i]]["r"]))
+        b_arr[i] = beta(snapshot[m[i]])
+        bin_counts[i] = len(snapshot[m[i]]["r"])
     ## Compute mean radii for the bins
     r_arr = np.array([np.mean(snapshot[m1]["r"]), np.mean(snapshot[m2]["r"])])
 
@@ -114,8 +135,15 @@ with open(data_path + core_file, "rb") as f:
 ## Compute new beta profiles...
 if read_betas == 0:
     print("Computing beta profiles...", flush=True)
-    extracted_data = {vel: dict(r_in = np.full(sample_size, np.nan), r_out = np.full(sample_size, np.nan), 
-                                b_in = np.full(sample_size, np.nan), b_out = np.full(sample_size, np.nan)) for vel in vels}
+    extracted_data = {
+        vel: dict(
+            r_in=np.full(sample_size, np.nan),
+            r_out=np.full(sample_size, np.nan),
+            b_in=np.full(sample_size, np.nan),
+            b_out=np.full(sample_size, np.nan),
+        )
+        for vel in vels
+    }
     for i in range(len(vels)):
         step_time = time.time()
         run = "kick-vel-" + vels[i] + "/"
@@ -132,22 +160,18 @@ if read_betas == 0:
         )
 
         ## Find center using shrinking sphere on the stars
-        # center = pygad.analysis.shrinking_sphere(
-        #     snap.stars,
-        #     center=[snap.boxsize / 2, snap.boxsize / 2, snap.boxsize / 2],
-        #     R=snap.boxsize,
-        # )
         center = pygad.analysis.shrinking_sphere(
-            snap.stars,
-            center=pygad.analysis.center_of_mass(snap.stars),
-            R=30
+            snap.stars, center=pygad.analysis.center_of_mass(snap.stars), R=30
         )
 
-        ## Shift coordinates of all particles so that the snap is centered on the shrinking sphere result
+        ## Shift coordinates of all particles so that the snap is centered on 
+        # the shrinking sphere result
         pygad.Translation(-center).apply(snap)
 
         this_core_radii = core_radii[vels[i]].flatten()
-        core_sample = rgen.choice(this_core_radii, size=sample_size, replace=True) ## select core radius sample with rgen
+        core_sample = rgen.choice(
+            this_core_radii, size=sample_size, replace=True
+        )  ## select core radius sample with rgen
         for j in range(len(core_sample)):
             radii, betas, bincount = beta_profile(snap.stars, r_split=core_sample[j])
             r_in, r_out, b_in, b_out = radii[0], radii[-1], betas[0], betas[-1]
@@ -159,7 +183,7 @@ if read_betas == 0:
         del snap
         gc.collect()
         pygad.gc_full_collect()
-        print(time.time()- step_time, "s", flush=True)
+        print(time.time() - step_time, "s", flush=True)
 
     ## Save beta profiles
     if save_betas == 1:
@@ -174,49 +198,97 @@ elif read_betas == 1:
     extracted_data = pickle.load(open(data_path + input_file, "rb"))
 
 else:
-    print("ERROR: incorrect read_file, select 0 or 1", flush=True)
-    exit()
+    raise RuntimeError("ERROR: incorrect read_file, select 0 or 1")
 
 
 if show_fig == 1 or save_fig == 1:
     ## Initialize figure
     fig, ax = plt.subplots()
-    ax.axhline(y=0, xmin=0, xmax=1, linestyle="--", color="gray", zorder=0) ## zero level on the background
-
+    ax.axhline(
+        y=0, xmin=0, xmax=1, linestyle=":", color="k", zorder=0, lw=1
+    )  ## zero level on the background
 
     ## Plot the profiles
+    cols = figure_config.color_cycle_shuffled.by_key()["color"][:2]
     for i in range(len(vels)):
         r_in, r_out = extracted_data[vels[i]]["r_in"], extracted_data[vels[i]]["r_out"]
         b_in, b_out = extracted_data[vels[i]]["b_in"], extracted_data[vels[i]]["b_out"]
-        r_err, b_err = [np.nanstd(r_in), np.nanstd(r_out)], [np.nanstd(b_in), np.nanstd(b_out)]
+        r_err, b_err = [np.nanstd(r_in), np.nanstd(r_out)], [
+            np.nanstd(b_in),
+            np.nanstd(b_out),
+        ]
         core_r = np.mean(core_radii[vels[i]].flatten())
-        #print("v" + vels[i] + ":", "b_in", med(b_in), "b_out", med(b_out))
-        #print(sum(np.isnan(b_in)), sum(np.isnan(b_out)))
         if x_axis == "r":
-            ax.errorbar([med(r_in) / core_r, med(r_out) / core_r], [med(b_in), med(b_out)], xerr=r_err, yerr=b_err, fmt=".", label=vels[i])
+            ax.errorbar(
+                [med(r_in) / core_r, med(r_out) / core_r],
+                [med(b_in), med(b_out)],
+                xerr=r_err,
+                yerr=b_err,
+                fmt=".",
+                label=vels[i],
+            )
         elif x_axis == "v":
-            b_in_p = ax.errorbar(int(vels[i]), med(b_in), yerr=b_err[0], fmt=".", color="tab:cyan") ## r <= r_core
-            b_out_p = ax.errorbar(int(vels[i]), med(b_out), yerr=b_err[1], fmt=".", color="tab:red") ## r > r_core
+            med_b_in = med(b_in)
+            med_b_out = med(b_out)
+            yerr_in = np.atleast_2d(
+                np.array(
+                    [
+                        med_b_in - np.nanquantile(b_in, 0.25),
+                        np.nanquantile(b_in, 0.75) - med_b_in,
+                    ]
+                )
+            ).T
+            yerr_out = np.atleast_2d(
+                np.array(
+                    [
+                        med_b_out - np.nanquantile(b_out, 0.25),
+                        np.nanquantile(b_out, 0.75) - med_b_out,
+                    ]
+                )
+            ).T
+            # r <= r_core
+            b_in_p = ax.errorbar(
+                int(vels[i]),
+                med_b_in,
+                yerr=yerr_in,
+                fmt="o",
+                capthick=1,
+                ecolor=cols[0],
+                mfc=cols[0],
+                mec="k",
+            )
+            # r > r_core
+            b_out_p = ax.errorbar(
+                int(vels[i]),
+                med_b_out,
+                yerr=yerr_out,
+                fmt="o",
+                capthick=1,
+                ecolor=cols[1],
+                mfc=cols[1],
+                mec="k",
+            )
         else:
-            print("ERROR: incorrect x_axis, select 'r' or 'v' ", flush=True)
-            exit()
+            raise RuntimeError("ERROR: incorrect x_axis, select 'r' or 'v' ")
 
     if x_axis == "r":
         ax.set_xlabel("$r/r_{\mathrm{b}}$")
         ax.set_xscale("log")
 
     else:
-        ax.set_xlabel("$v_{\mathrm{kick}}/\mathrm{km \ s^{-1}}$")
+        ax.set_xlabel("$v_{\mathrm{kick}}/\mathrm{km \, s^{-1}}$")
     ax.set_ylabel(r"$\beta$")
-    ax.legend(handles=[b_in_p, b_out_p], labels=["$r \leq r_{\mathrm{b}}$", "$r > r_{\mathrm{b}}$"], loc="lower right")
+    ax.legend(
+        handles=[b_in_p, b_out_p],
+        labels=["$r \leq r_{\mathrm{b}}$", "$r > r_{\mathrm{b}}$"],
+        loc="lower right",
+    )
 
 
 ## Save and show figure
 if save_fig == 1:
     print("Saving figure...", flush=True)
-    print(fig_path + output_file + ".pdf", flush=True)
-    plt.savefig(fig_path + output_file + ".pdf", dpi=300)
-    # plt.savefig(figure_config.fig_path( outputfile + ".pdf"))
+    plt.savefig(figure_config.fig_path(output_file))
 print("Time taken:", time.time() - start_time, flush=True)
 
 if show_fig == 1:
