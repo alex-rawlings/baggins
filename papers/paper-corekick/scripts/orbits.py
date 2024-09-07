@@ -106,8 +106,7 @@ for axi, label in zip(ax.flat, mergemask.labels):
     axi.text(0.05, 0.86, label, ha="left", va="center", transform=axi.transAxes)
 
 # add the colour bar in the top right subplot, hiding that subplot
-vkcols.make_cbar(ax[:, -1].flat)#, pad=-1.075, fraction=0.5, aspect=10)
-#ax[0, 3].set_visible(False)
+vkcols.make_cbar(ax[:, -1].flat)
 
 # for second figure
 for i in range(ax2.shape[0]):

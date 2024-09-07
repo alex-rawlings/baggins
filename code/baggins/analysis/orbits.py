@@ -99,7 +99,7 @@ class MergeMask:
         -------
         C : MergeMask
             class instance
-        """ 
+        """
         C = cls()
         C.add_family("pi-box", [21, 24, 25], r"$\pi\mathrm{-box}$")
         C.add_family("boxlet", [1, 5, 9, 13, 17], r"$\mathrm{boxlet}$")
