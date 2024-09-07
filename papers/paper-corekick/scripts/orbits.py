@@ -36,18 +36,16 @@ orbitfilebases = [
 ]
 orbitfilebases.sort()
 
-
-labels = [
-    r"$\pi\mathrm{-box}$",
-    r"$\mathrm{boxlet}$",
-    r"$x\mathrm{-tube}$",
-    "",
-    r"$z\mathrm{-tube}$",
-    r"$\mathrm{rosette}$",
-    r"$\mathrm{irregular}$",
-    r"$\mathrm{unclassified}$",
-]
-
+# create the merge mask
+mergemask = bgs.analysis.MergeMask()
+mergemask.add_family("pi-box", [21, 24, 25], r"$\pi\mathrm{-box}$")
+mergemask.add_family("boxlet", [1, 5, 9, 13, 17], r"$\mathrm{boxlet}$")
+mergemask.add_family("x-tube-in", [4, 8, 12, 16, 20], r"$\mathrm{inner\,}x\mathrm{-tube}$")
+mergemask.add_family("x-tube-out", [3, 7, 11, 15, 19], r"$\mathrm{outer\,}x\mathrm{-tube}$")
+mergemask.add_family("z-tube", [2, 6, 10, 14, 18], r"$z\mathrm{-tube}$")
+mergemask.add_family("rosette", [26], r"$\mathrm{rosette}$")
+mergemask.add_family("irreg", [22], r"$\mathrm{irregular}$")
+mergemask.add_family("unclass", [0, 23], r"$\mathrm{unclassified}$")
 
 # figure 1: plots of different orbital families
 fig, ax = plt.subplots(2, 4, sharex=True, sharey=True)
@@ -65,34 +63,30 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
         orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[
             0
         ]
-        orbit_res = bgs.analysis.orbits_radial_frequency(orbitcl, returnextra=True)
-        rosette_mask = orbit_res["classids"] == 4
+        orbit_res = bgs.analysis.orbits_radial_frequency(orbitcl, returnextra=True, mergemask=mergemask)
+        rosette_mask = orbit_res["classids"] == mergemask.get_family("rosette")
         for dist, arr in zip(
             ("Apocentre", "Pericentre"), (orbit_res["apo"], orbit_res["peri"])
         ):
             SL.info(
                 f"{dist} IQR for rosettes: {np.nanquantile(arr[rosette_mask], 0.25):.2e} - {np.nanquantile(arr[rosette_mask], 0.75):.2e} (median: {np.median(arr[rosette_mask]):.2e})"
             )
-    except:  # noqa
+    except ValueError:
         # ongoing analysis
         SL.error(f"Unable to read {orbitfilebase}: skipping")
         # continue
     vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
-    cfi = 0
     for i, axi in enumerate(ax.flat):
-        if i == 3:
-            continue
         axi.semilogx(
             orbit_res["meanrads"],
-            orbit_res["classfrequency"][:, cfi],
+            orbit_res["classfrequency"][:, i],
             label=vkick,
             c=vkcols.get_colour(vkick),
             ls="-",
         )
         axj.semilogx(
-            orbit_res["meanrads"], orbit_res["classfrequency"][:, cfi], label=labels[i]
+            orbit_res["meanrads"], orbit_res["classfrequency"][:, i], label=mergemask.labels[i]
         )
-        cfi += 1
     axj.text(
         0.95,
         0.9,
@@ -108,12 +102,11 @@ for i in range(ax.shape[0]):
     ax[i, 0].set_ylabel(r"$f_\mathrm{orbit}$")
 for i in range(ax.shape[1]):
     ax[1, i].set_xlabel(r"$r/\mathrm{kpc}$")
-for axi, label in zip(ax.flat, labels):
+for axi, label in zip(ax.flat, mergemask.labels):
     axi.text(0.05, 0.86, label, ha="left", va="center", transform=axi.transAxes)
 
 # add the colour bar in the top right subplot, hiding that subplot
-vkcols.make_cbar(ax[0, -1], pad=-1.075, fraction=0.5, aspect=10)
-ax[0, 3].set_visible(False)
+vkcols.make_cbar(ax[:, -1].flat)
 
 # for second figure
 for i in range(ax2.shape[0]):

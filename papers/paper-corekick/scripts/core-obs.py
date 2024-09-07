@@ -8,39 +8,10 @@ data1 = bgs.literature.LiteratureTables.load_thomas_2016_data()
 
 vkcols = figure_config.VkickColourMap()
 
-obs_scatter_kwargs = {"alpha": 1, "c": None, "marker": "o"}
+obs_scatter_kwargs = {"alpha": 1, "c": None, "marker": "."}
 obs_scatter_kwargs.update(figure_config.marker_kwargs)
 
 ax = data1.scatter("BH_mass", "core_radius_kpc", scatter_kwargs=obs_scatter_kwargs)
-
-# add an inset axis
-axins = ax.inset_axes(
-    [0.07, 0.65, 0.4, 0.3],
-    xlim=(5.75e9, 6.3e9),
-    ylim=(0.5, 0.95),
-    xticklabels=[],
-    yticklabels=[],
-    xticks=[],
-    yticks=[],
-)
-
-data1.scatter("BH_mass", "core_radius_kpc", scatter_kwargs=obs_scatter_kwargs, ax=axins)
-axins.set_xlabel("")
-axins.set_ylabel("")
-
-# add indicator for M87
-m87_mask = np.logical_and(
-    data1.table.loc[:, "BH_mass"] > 6e9, data1.table.loc[:, "BH_mass"] < 6.2e9
-)
-axins.annotate(
-    r"$\mathrm{M87}$",
-    (
-        data1.table.loc[m87_mask, "BH_mass"],
-        data1.table.loc[m87_mask, "core_radius_kpc"] + 0.02,
-    ),
-    (6.1e9, 0.85),
-    arrowprops={"arrowstyle": "wedge", "fc": "k"},
-)
 
 # add the intrinsic scatter area from Thomas et al. 2016
 # note that the relation is given for core radius as the dependent variable,
@@ -53,15 +24,14 @@ intercept = 10.27
 mean_relation = -intercept / slope + 1 / slope * np.log10(xhat)
 intrinsic_scatter = -0.29 / slope
 line1 = ax.plot(xhat, 10**mean_relation, c=figure_config.col_list[1], zorder=1)
-for axi in (ax, axins):
-    axi.fill_between(
-        xhat,
-        10 ** (mean_relation - intrinsic_scatter),
-        10 ** (mean_relation + intrinsic_scatter),
-        alpha=0.3,
-        fc=line1[-1].get_color(),
-        zorder=1,
-    )
+ax.fill_between(
+    xhat,
+    10 ** (mean_relation - intrinsic_scatter),
+    10 ** (mean_relation + intrinsic_scatter),
+    alpha=0.3,
+    fc=line1[-1].get_color(),
+    zorder=1,
+)
 
 # add mergers
 kicks = dict(
@@ -86,17 +56,16 @@ kicks = dict(
 )
 my_BH_mass = 5.86e9
 
-for axi in (ax, axins):
-    for i, (vk, rb) in enumerate(kicks.items()):
-        axi.scatter(
-            my_BH_mass,
-            rb,
-            marker="s",
-            color=vkcols.get_colour(float(vk.lstrip("v"))),
-            label=(r"$\mathrm{Simulation}$" if i == 0 else ""),
-            zorder=2.5,
-            **figure_config.marker_kwargs,
-        )
+for i, (vk, rb) in enumerate(kicks.items()):
+    ax.scatter(
+        my_BH_mass,
+        rb,
+        marker="s",
+        color=vkcols.get_colour(float(vk.lstrip("v"))),
+        label=(r"$\mathrm{Simulation}$" if i == 0 else ""),
+        zorder=2.5,
+        **figure_config.marker_kwargs,
+    )
 
 ax.set_xlabel(r"$M_\bullet/\mathrm{M}_\odot$")
 ax.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
@@ -104,6 +73,5 @@ ax.set_xscale("log")
 ax.set_yscale("log")
 vkcols.make_cbar(ax=ax, extend=None)
 ax.legend(fontsize=7)
-ax.indicate_inset_zoom(axins, edgecolor="k")
 
 bgs.plotting.savefig(figure_config.fig_path("core-obs.pdf"), force_ext=True)
