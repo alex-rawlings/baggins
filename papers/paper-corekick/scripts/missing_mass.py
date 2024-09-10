@@ -135,7 +135,8 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
                     rb_new,
                     args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new),
                 )
-            mdef_dict[v][i] = 2 * np.pi * m
+            # 3.5 is the mass to light ratio from Bonfini 2016
+            mdef_dict[v][i] = 2 * np.pi * m * 3.5
 
     # Creating the figure
     new_figure = False
@@ -168,7 +169,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
 
     ax.tick_params(axis="y", which="both", right=False)
     # let's normalise by norm_val / 1e9
-    norm_exponent = int(np.ceil(np.log10(norm_val))) + 1
+    norm_exponent = int(np.ceil(np.log10(norm_val)))
     new_norm_val = norm_val / 10**norm_exponent
     print(f"We will normalise mass by {norm_val:.2e} Msol")
     ax2 = ax.secondary_yaxis(
