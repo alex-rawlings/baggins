@@ -3,7 +3,7 @@ import gadgetorbits as go
 from ..env_config import _cmlogger
 from ..mathematics import get_histogram_bin_centres
 
-__all__ = ["MergeMask", "orbits_radial_frequency", "determine_box_tube_ratio"]
+__all__ = ["MergeMask", "OrbitClassifier", "orbits_radial_frequency", "determine_box_tube_ratio"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -111,8 +111,104 @@ class MergeMask:
         return C
 
 
+class OrbitClassifier:
+    def __init__(self, orbitcl, mergemask=None) -> None:
+        """
+        Class for orbit classification routines.
+
+        Parameters
+        ----------
+        orbitcl : str, path-like
+            orbit classification file
+        mergemask : MergeMask, optional
+            how sub-groups of orbital families should be merged, by default None
+        """
+        self.orbitcl = orbitcl
+        if mergemask is None:
+            _logger.info("Using the default merge mask for orbit families")
+            self.mergemask = MergeMask.make_default_mask()
+        else:
+            self.mergemask = mergemask
+        (
+            self.orbitids,
+            self.classids,
+            self.rad,
+            self.rot_dir,
+            self.energy,
+            self.denergy,
+            self.inttime,
+            self.b92class,
+            self.pericenter,
+            self.apocenter,
+            self.meanposrad,
+            self.minangmom,
+        ) = go.loadorbits(orbitcl, mergemask=self.mergemask.mask, addextrainfo=True)
+        self.meanrads = None
+        self.classfrequency = None
+        self.radbincount = None
+
+
+    def radial_frequency(self, radbins=None):
+        """
+        Determine frequency of orbital classes in radial bins. Sets the 
+        attributes 'meanrads', 'classfrequency', 'radbincount'.
+
+        Parameters
+        ----------
+        radbins : array-like, optional
+            radial bin edges, by default None
+        """
+        if radbins is None:
+            radbins = np.geomspace(0.2, 30, 11)
+        radbins = np.atleast_1d(radbins)
+        nbin = len(radbins) - 1
+        radbins = np.asarray(radbins)
+        meanrads = get_histogram_bin_centres(radbins)
+        possibleclasses = np.arange(np.max(self.classids) + 1).astype(int)
+        pc_bins = np.arange(np.max(possibleclasses) + 1.5) - 0.5
+        classfrequency = np.zeros((nbin, len(possibleclasses)))
+
+        radbincount, _ = np.histogram(self.rad, bins=radbins)
+        bin_ids = np.digitize(self.rad, bins=radbins) - 1
+
+        for bi in np.arange(np.max(bin_ids) + 1):
+            classfrequency[bi, :] = np.histogram(self.classids[bin_ids==bi], bins=pc_bins)[0] / radbincount[bi]
+        self.meanrads = meanrads
+        self.classfrequency = classfrequency
+        self.radbincount = radbincount
+
+
+    def box_tube_ratio(self, radbins=None, box_names=["pi-box", "boxlet"], tube_names=["x-tube", "z-tube", "rosette"]):
+        """
+        Determine the ratio of box orbits to tube orbits in radial bins.
+
+        Parameters
+        ----------
+        radbins : array-like, optional
+            radial bin edges, by default None
+        box_names : list, optional
+            MergeMask families to be classed as boxes, by default ["pi-box", 
+            "boxlet"]
+        tube_names : list, optional
+            MergeMask families to be classed as tubes, by default ["x-tube", 
+            "z-tube", "rosette"]
+
+        Returns
+        -------
+        ratio : array-like
+            ratio for each radial bin
+        """
+        self.radial_frequency(radbins=radbins)
+        # get the numeric indentifiers for the classes
+        box_class_ids = [self.mergemask.get_family(n) for n in box_names]
+        tube_class_ids = [self.mergemask.get_family(n) for n in tube_names]
+        ratio = np.nansum(np.einsum("ij,i->ij", self.classfrequency[:, box_class_ids], self.radbincount), axis=-1) / np.nansum(np.einsum("ij,i->ij", self.classfrequency[:, tube_class_ids], self.radbincount), axis=-1)
+        return ratio
+
+
+
 def orbits_radial_frequency(
-    orbitcl, minrad=0.2, maxrad=30.0, nbin=10, returnextra=False, mergemask=None
+    orbitcl, radbins=np.geomspace(0.2, 30, 11), returnextra=False, mergemask=None
 ):
     """
     Determine radial frequency of orbit families. The total fraction of orbits
@@ -122,12 +218,8 @@ def orbits_radial_frequency(
     ----------
     orbitcl : str, path-like
         orbit classification file
-    minrad : float, optional
-        minimum radial bin edge, by default 0.2
-    maxrad : float, optional
-        maximum radial bin edge, by default 30.0
-    nbin : int, optional
-        number of radial bins, by default 10
+    radbins : array-like, optional
+        radial bin edges, by default np.geomspace(0.2, 30, 11)
     returnextra : bool, optional
         return extra information, by default False
     mergemask : MergeMask, optional
@@ -139,7 +231,7 @@ def orbits_radial_frequency(
         - centres of radial bins
         - frequency of each orbital class per bin
         - number of particles per bin
-        - other properties of returnextra is True
+        - other properties if returnextra is True
     """
     _logger.info(f"Reading: {orbitcl}")
     if mergemask is None:
@@ -159,7 +251,8 @@ def orbits_radial_frequency(
         meanposrad,
         minangmom,
     ) = go.loadorbits(orbitcl, mergemask=mergemask.mask, addextrainfo=True)
-    radbins = np.geomspace(minrad, maxrad, nbin + 1)
+    nbin = len(radbins) - 1
+    radbins = np.asarray(radbins)
     meanrads = get_histogram_bin_centres(radbins)
     possibleclasses = np.arange(np.max(classids) + 1).astype(int)
     classfrequency = np.zeros((nbin, len(possibleclasses)))
@@ -197,41 +290,57 @@ def orbits_radial_frequency(
 
 
 def determine_box_tube_ratio(
-    meanrads,
-    classfrequency,
-    rad_len,
-    within,
-    box_class_ids=[0, 1],
-    tube_class_ids=[2, 3, 4],
+    orbit_res,
+    mergemask,
+    within=None,
+    box_class_names = ["pi-box", "boxlet"],
+    tube_class_names = ["x-tube", "z-tube", "rosette"],
 ):
     """
-    Calculate the ratio of box to tube orbits within some radii.
+    Determine the ratio of box orbits to tube orbits
 
     Parameters
     ----------
-    meanrads : array-like
-        centres of radial bins
-    classfrequency : array-like
-        frequency of each orbital class for each radial bin
-    rad_len : array-like
-        number of particles per radial bin
-    within : float
-        radius to determine fraction within
-    box_class_ids : list, optional
-        orbital class IDs to be listed as boxes, by default [0, 1]
-    tube_class_ids : list, optional
-        orbital class IDs to be listed as tubes, by default [2,3,4]
+    orbit_res : dict
+        output from orbits_radial_frequency()
+    mergemask : MergeMask
+        how orbit families are grouped
+    within : float, optional
+        determine ratio within some radius, by default None
+    box_class_names : list, optional
+        orbits to be classed as 'boxes', by default ["pi-box", "boxlet"]
+    tube_class_names : list, optional
+        orbits to be classed as 'tubes', by default ["x-tube", "z-tube", 
+        "rosette"]
 
     Returns
     -------
-    : float
-        ratio
+    ratio : np.array
+        box / tube ratio
     """
-    mask = meanrads <= within
-    boxes = 0
-    tubes = 0
-    for cid in box_class_ids:
-        boxes += np.nansum(classfrequency[mask, cid] * rad_len[mask])
-    for cid in tube_class_ids:
-        tubes += np.nansum(classfrequency[mask, cid] * rad_len[mask])
-    return boxes / tubes
+    # get the numeric indentifiers for the classes
+    box_class_ids = [mergemask.get_family(n) for n in box_class_names]
+    tube_class_ids = [mergemask.get_family(n) for n in tube_class_names]
+
+    if within is not None:
+        # allow determining ratio within a given radius
+        try:
+            mask = np.logical_and(orbit_res["meanrads"] > within[0], 
+                                  orbit_res["meanrads"] <= within[1])
+        except IndexError as e:
+            _logger.exception(f"'within' must contain a lower and upper bound: {e}", exc_info=True)
+            raise
+        ratio = np.nansum(
+            orbit_res["classfrequency"][mask][box_class_ids]
+            ) / np.nansum(
+                orbit_res["classfrequency"][mask][tube_class_ids]
+            )
+    else:
+        # determine ratio per radial bin
+        ratio = np.nansum(
+            orbit_res["classfrequency"][:, box_class_ids] * orbit_res["rad_len"][box_class_ids], axis=1
+            ) / np.nansum(
+                orbit_res["classfrequency"][:, tube_class_ids] * orbit_res["rad_len"][tube_class_ids], axis=1
+            )
+    return np.atleast_1d(ratio)
+
