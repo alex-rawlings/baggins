@@ -182,7 +182,7 @@ def distribution_diff_plot(param_name, bins=20):
     return ax
 
 
-xlabel = r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$"
+xlabel = r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$"
 if args.param == "all":
     ylabs = dict(
         Re=r"$R_\mathrm{e}/\mathrm{kpc}$",
@@ -275,13 +275,13 @@ else:
         )
         ax[0].plot(
             vkick,
-            3.26 * vkick / ESCAPE_VEL + 1.1,
+            3.03 * vkick / ESCAPE_VEL + 1,
             label=r"$\mathrm{Linear}$",
             c=col_list[2],
         )
         ax[0].plot(
             vkick,
-            2.47 * (1 - np.exp(-2.62 * vkick / ESCAPE_VEL)) + 0.873,
+            3.04 * (1 - np.exp(-1.56 * vkick / ESCAPE_VEL)) + 1,
             label=r"$\mathrm{Sigmoid}$",
             c=col_list[3],
         )

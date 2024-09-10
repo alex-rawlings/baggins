@@ -463,11 +463,11 @@ class CoreKickLinear(_CoreKickBase):
 
     @property
     def latent_qtys(self):
-        return ["a", "b", "err"]
+        return ["a", "err"]
 
     @property
     def _latent_qtys_labs(self):
-        return [r"$a$", r"$b$", r"$\tau$"]
+        return [r"$a$", r"$\tau$"]
 
 
 class CoreKickSigmoid(_CoreKickBase):
@@ -486,8 +486,8 @@ class CoreKickSigmoid(_CoreKickBase):
 
     @property
     def latent_qtys(self):
-        return ["K", "b", "c", "err"]
+        return ["K", "b", "err"]
 
     @property
     def _latent_qtys_labs(self):
-        return [r"$K$", r"$\beta$", r"$c$", r"$\tau$"]
+        return [r"$K$", r"$\beta$", r"$\tau$"]

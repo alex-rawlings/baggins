@@ -186,6 +186,7 @@ else:
     figH, axH = plt.subplots()
     rb_data = dict.fromkeys(loo_dict)
     rb_data["rb0"] = None
+    rb_data["loo"] = None
 
     if args.new:
         for i in range(3):
@@ -216,10 +217,7 @@ else:
                 hdi = az.hdi(m.sample_generated_quantity(lq))
                 SL.info(f"1-sigma (68%) HDI for {lq} is {hdi}")
 
-        # do LOO model comparison
-        comp = az.compare(loo_dict, ic="loo")
-        print("Model comparison")
-        print(comp)
+        rb_data["loo"] = loo_dict
 
         bgs.utils.save_data(
             rb_data, figure_config.data_path(sampled_data), exist_ok=True
@@ -228,6 +226,7 @@ else:
         rb_data = bgs.utils.load_data(sampled_data)
 
     rb0 = rb_data.pop("rb0")
+    loo_dict = rb_data.pop("loo")
     rb_data.pop("__githash", None)
     rb_data.pop("__script", None)
 
@@ -281,3 +280,8 @@ else:
     secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
     bgs.plotting.savefig(figure_config.fig_path("rb_pdf.pdf"), fig=fig, force_ext=True)
     plt.close()
+
+    # do LOO model comparison
+    comp = az.compare(loo_dict, ic="loo")
+    print("Model comparison")
+    print(comp)
