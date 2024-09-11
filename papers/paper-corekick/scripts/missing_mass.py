@@ -36,7 +36,7 @@ def core_sersic_fit(r, rb, Re, n, mub, g, a):
     # Based on work in Nasim et al. 2021, Graham et al. 2003, and Trujillo et al. 2004.
 
     b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
-    mudot = mub * 2 ** (-g / a) * np.exp(b * 2 * (1 / (a * n)) * (rb / Re) ** (1 / n))
+    mudot = mub * 2 ** (-g / a) * np.exp(b * 2 ** (1 / (a * n)) * (rb / Re) ** (1 / n))
     mu = (
         mudot
         * (1 + (rb / r) ** a) ** (g / a)
@@ -169,16 +169,16 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
 
     ax.tick_params(axis="y", which="both", right=False)
     # let's normalise by norm_val / 1e9
-    norm_exponent = int(np.ceil(np.log10(norm_val)))
-    new_norm_val = norm_val / 10**norm_exponent
+    new_norm_val = norm_val / 1e9
     print(f"We will normalise mass by {norm_val:.2e} Msol")
+    print(f"The 0 km/s case has IQR spanning {np.nanquantile(mdef_dict['0000'], 0.25):.2e} - {np.nanquantile(mdef_dict['0000'], 0.75):.2e} Msol")
     ax2 = ax.secondary_yaxis(
         "right", functions=(lambda x: x * new_norm_val, lambda x: x / new_norm_val)
     )
     ax2.ticklabel_format(style="sci", useMathText=True)
     # axis labels
     ax.set_ylabel(r"$M_\mathrm{def} / M_\mathrm{def,0}$")
-    ax2.set_ylabel(f"$M_\mathrm{{def}}/ (10^{{{norm_exponent:d}}}\mathrm{{M}}_\odot)$")
+    ax2.set_ylabel(f"$M_\mathrm{{def}}/ (10^9\mathrm{{M}}_\odot)$")
     if new_figure:
         ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$")
         plt.show()

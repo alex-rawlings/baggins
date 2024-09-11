@@ -117,7 +117,7 @@ def _helper(param_name, ax):
     kick_vels = []
     param = []
     normalisation = (
-        rng.permutation(data[param_name]["0000"].flatten()) if args.param == "rb" else 1
+        rng.permutation(data[param_name]["0000"].flatten()) if param_name == "rb" else 1
     )
     SL.warning(f"Determining distributions for parameter: {param_name}")
     for k, v in data[param_name].items():
