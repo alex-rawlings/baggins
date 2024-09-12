@@ -104,7 +104,8 @@ class VkickColourMap:
     """
 
     def __init__(self) -> None:
-        self.norm = mpl.colors.Normalize(vmin=0, vmax=1020)
+        self._vmax = 1020
+        self.norm = mpl.colors.Normalize(vmin=0, vmax=self._vmax)
         self.cmapv = cubehelix_palette(
             n_colors=6,
             start=2.7,
@@ -118,11 +119,15 @@ class VkickColourMap:
         )
         self.cmapv.set_over(mpl.pyplot.get_cmap("Reds")(0.85))
         self.sm = mpl.pyplot.cm.ScalarMappable(norm=self.norm, cmap=self.cmapv)
+        self._max_value = -99
 
     def get_colour(self, v):
+        if v > self._max_value:
+            self._max_value = v
         return self.cmapv(self.norm(v))
 
-    def make_cbar(self, ax, extend="max", **kwargs):
+    def make_cbar(self, ax, **kwargs):
+        extend = "max" if self._max_value > self._vmax else "neither"
         cbar = mpl.pyplot.colorbar(
             self.sm,
             ax=ax,

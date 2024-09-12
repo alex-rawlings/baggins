@@ -166,6 +166,7 @@ if args.plot:
                 if args.sub is not None:
                     if k.lstrip("v") not in args.sub:
                         continue
+                SL.debug(f"Doing key {k}")
                 yield rh, k, v, orientation
 
     # for global colour limits, set initial values
@@ -224,7 +225,7 @@ if args.plot:
             axi.set_ylim(-extent, extent)
             axi.set_xlabel(xlabel)
             axi.set_ylabel(r"$z/\mathrm{kpc}$")
-        fig = ax[0].get_figure()
+        fig = ax[0,0].get_figure()
         fig.set_figwidth(1.05 * fig.get_figwidth())
         bgs.plotting.savefig(
             figure_config.fig_path(

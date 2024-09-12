@@ -3,6 +3,7 @@ from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.ticker import StrMethodFormatter
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
 import copy
 import pygad
@@ -211,7 +212,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
     return ax2
 
 
-def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
+def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}):
     """
     Plot the voronoi maps for a system.
 
@@ -219,8 +220,12 @@ def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
     ----------
     vdat : dict
         voronoi values from analysis.voronoi_binned_los_V_statistics()
+    ax : np.ndarray, optional
+        numpy array of pyplot.Axes objects for plotting, by default None
     figsize : tuple, optional
         figure size, by default (7,4.7)
+    clims : dict, optional
+        colour scale limits, by default None
 
     Returns
     -------
@@ -250,22 +255,23 @@ def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
         _clims[k] = v
 
     # set up the figure
-    fig, ax = plt.subplots(2, 2, sharex="all", sharey="all", figsize=figsize)
-    for i in range(2):
-        ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
-        ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
-    ax = np.concatenate(ax).flatten()
+    if ax is None:
+        fig, ax = plt.subplots(2, 2, sharex="all", sharey="all", figsize=figsize)
+        for i in range(2):
+            ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
+            ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
     div_cols = sns.color_palette("vlag", as_cmap=True)
     asc_cols = sns.color_palette("flare_r", as_cmap=True)
-    for i, (statkey, cmap, label) in enumerate(
+    for i, (statkey, axi, cmap, label) in enumerate(
         zip(
             ("V", "sigma", "h3", "h4"),
+            ax.flat,
             (div_cols, asc_cols, div_cols, div_cols),
             (
                 r"$V/\mathrm{km}\,\mathrm{s}^{-1}$",
                 r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$",
-                r"$h_3/\mathrm{km}\,\mathrm{s}^{-1}$",
-                r"$h_4/\mathrm{km}\,\mathrm{s}^{-1}$",
+                r"$h_3$",
+                r"$h_4$",
             ),
         )
     ):
@@ -279,8 +285,8 @@ def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
                 norm = colors.Normalize(*_clims["sigma"])
             else:
                 norm = colors.Normalize(stat.min(), stat.max())
-        ax[i].set_aspect("equal")
-        p1 = ax[i].imshow(
+        axi.set_aspect("equal")
+        p1 = axi.imshow(
             stat,
             interpolation="nearest",
             origin="lower",
@@ -288,7 +294,9 @@ def voronoi_plot(vdat, figsize=(7, 4.7), clims={}):
             cmap=cmap,
             norm=norm,
         )
-        cbar = plt.colorbar(p1, ax=ax[i])
+        divider = make_axes_locatable(axi)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        cbar = plt.colorbar(p1, cax=cax)
         cbar.ax.set_ylabel(label)
     return ax
 
