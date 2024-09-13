@@ -22,6 +22,11 @@ parser.add_argument(
     dest="vel",
     help="Velocity to plot"
 )
+parser.add_argument("-I",
+                    "--Inertia",
+                    action="store_true",
+                    help="align with inertia",
+                    dest="inertia")
 parser.add_argument(
     "-v",
     "--verbosity",
@@ -55,15 +60,20 @@ for k, v in snapfiles["snap_nums"].items():
         f"kick-vel-{k.lstrip('v')}/output/snap_{v:03d}.hdf5",
     )
 snap = pygad.Snapshot(snapshots[f"v{args.vel}"], physical=True)
+centre = pygad.analysis.shrinking_sphere(
+        snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
+    )
 pre_ball_mask = pygad.BallMask(
     30,
-    center=pygad.analysis.shrinking_sphere(
-        snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-    ),
+    center=centre,
 )
 rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
 extent = rhalf_factor * rhalf
 n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
+
+if args.inertia:
+    pygad.Translation(-centre).apply(snap, total=True)
+    pygad.analysis.orientate_at(snap.stars[pre_ball_mask], "red I", total=True)
 
 box_mask = pygad.BoxMask(
     extent=2 * extent,
@@ -109,7 +119,11 @@ for axi in ax[:,0]:
 ax[0,0].set_xlim(-2.6, 2.6)
 ax[0,0].set_ylim(-2.6, 2.6)
 # set colour limits manually
-clims = {"V":[16.1], "sigma":[225, 275], "h3":[0.028], "h4":[0.028]}
+if args.inertia:
+    clims = {"V":[15], "sigma":[210, 320], "h3":[0.02], "h4":[0.065]}
+else:
+    clims = {"V":[16.1], "sigma":[225, 275], "h3":[0.028], "h4":[0.028]}
+
 
 # all orbits
 voronoi_stats_all = bgs.analysis.voronoi_binned_los_V_statistics(
@@ -155,7 +169,8 @@ for i, axi in enumerate(ax.flat):
     axi.add_artist(core_circle)
 
 plt.subplots_adjust(left=0.03, right=0.95, top=0.97)
-bgs.plotting.savefig(figure_config.fig_path(f"IFU_bt_{args.vel}.pdf"), force_ext=True)
+suffix = "_I" if args.inertia else ""
+bgs.plotting.savefig(figure_config.fig_path(f"IFU_bt_{args.vel}{suffix}.pdf"), force_ext=True)
 
 # print colour information
 SL.info(f"Max V is {np.max([np.max(np.abs(v['img_V'])) for v in [voronoi_stats_all, voronoi_stats_box, voronoi_stats_tube]]):.2e}")
