@@ -36,7 +36,7 @@ def core_sersic_fit(r, rb,Re, n, mub, g, a):
     # Based on work in Nasim et al. 2021, Graham et al. 2003, and Trujillo et al. 2004.
 
     b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
-    mudot = mub * 2**(-g/a)*np.exp(b*2*(1/(a*n))*(rb/Re)**(1/n))
+    mudot = mub * 2**(-g/a)*np.exp(b*2**(1/(a*n))*(rb/Re)**(1/n)) #the mistake was here
     mu = mudot*(1+(rb/r)**a)**(g/a)*np.exp(-b*((r**a+rb**a)/Re**a)**(1/(n*a)))
     return mu
 
@@ -97,7 +97,14 @@ def missing_mass_plot(filename):
 
         for i in range(nro_iter):
             rb_new, Re_new, n_new, log10densb_new, g_new, a_new = rng.choice(rb), rng.choice(Re), rng.choice(n), rng.choice(log10densb), rng.choice(g), rng.choice(a)
+            print(rb_new,Re_new, n_new)
 
+            print()
+            print("THIS:")
+            print(log10densb_new)
+            print(g_new,a_new)
+            print()
+            return
             m, abserr = integrate.quad(mass_deficit,1e-3, rb_new, args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new))
             if np.isnan(m)==True:
                 rb_new, Re_new, n_new, log10densb_new, g_new, a_new = rng.choice(rb), rng.choice(Re), rng.choice(
@@ -105,8 +112,8 @@ def missing_mass_plot(filename):
 
                 m, abserr = integrate.quad(mass_deficit, 0, rb_new,
                                            args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new))
-            mdef_dict[v][i] = 2*np.pi*m
-            mdf_vkick[i] = 2*np.pi*m
+            mdef_dict[v][i] = 2*np.pi*3.5*m
+            mdf_vkick[i] = 2*np.pi*3.5*m
             # There is one nan -value in the 820 case
 
         all_mdefs[j] = mdf_vkick
