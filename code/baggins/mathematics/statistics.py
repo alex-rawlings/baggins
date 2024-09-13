@@ -12,6 +12,7 @@ __all__ = [
     "stat_interval",
     "uniform_sample_sphere",
     "vertical_RMSE",
+    "empirical_cdf",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -227,9 +228,9 @@ def permutation_sample_test(data1, data2, number_resamples=1e4, rng=None):
     )
 
 
-def stat_interval(x, y, type="conf", conf_lev=0.68):
+def stat_interval(x, y, itype="conf", conf_lev=0.68):
     """
-    _summary_
+    Determine the confidence or predictive interval of regression data
 
     Parameters
     ----------
@@ -237,11 +238,11 @@ def stat_interval(x, y, type="conf", conf_lev=0.68):
         observed independent data
     y : array-like
         observed dependent data
-    type : str, optional
+    itype : str, optional
         confidence interval for mean or prediction interval, by default "conf"
     conf_lev : float, optional
-        confidence level, where the value (1-conf_lev) is the the integral area
-        for the t-distribution, by default 0.68
+        confidence level, corresponding to the area 1-alpha of the
+        t-distribution, (thus alpha is 1-conf_lev), by default 0.68
 
     Returns
     -------
@@ -256,10 +257,11 @@ def stat_interval(x, y, type="conf", conf_lev=0.68):
         )
         raise
     try:
-        assert type in ("conf", "pred")
+        assert itype in ("conf", "pred")
     except AssertionError:
         _logger.exception(
-            f"Type {type} is not valid! Must be one of 'conf' or 'pred'!", exc_info=True
+            f"Type {itype} is not valid! Must be one of 'conf' or 'pred'!",
+            exc_info=True,
         )
         raise
     # clean data
@@ -272,7 +274,7 @@ def stat_interval(x, y, type="conf", conf_lev=0.68):
     # determine the t_{alpha/2} statistic
     tstat = scipy.stats.t.ppf((1 - conf_lev) / 2, n - 2)
     # and below this is the part from the error estimate
-    if type == "conf":
+    if itype == "conf":
         return lambda u: tstat * np.std(y) * np.sqrt(1 / n + (u - x_avg) ** 2 / Sxx)
     else:
         return lambda u: tstat * np.std(y) * np.sqrt(1 + 1 / n + (u - x_avg) ** 2 / Sxx)
@@ -338,3 +340,22 @@ def vertical_RMSE(x, y, return_linregress=False):
         return np.sqrt(np.sum((yhat - y) ** 2) / len(x)), slope, intercept
     else:
         return np.sqrt(np.sum((yhat - y) ** 2) / len(x))
+
+
+def empirical_cdf(x, t):
+    """
+    Determine the empirical cumulative distribution function of an array
+
+    Parameters
+    ----------
+    x : array-like
+        observed data
+    t : float
+        value to determine cdf of
+
+    Returns
+    -------
+    : float
+        ECDF value at point
+    """
+    return np.nanmean(x <= t)

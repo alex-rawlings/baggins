@@ -84,7 +84,7 @@ lines.linewidth   : 2.0     # line width in points
 #lines.color       : C0      # has no affect on plot(); see axes.prop_cycle
 #lines.marker      : None    # the default marker
 lines.markeredgewidth  : 0.5     # the line width around the marker symbol
-lines.markeredgecolor  : black
+#lines.markeredgecolor  : black
 #lines.markersize  : 6            # markersize, in points
 #lines.dash_joinstyle : miter        # miter|round|bevel
 #lines.dash_capstyle : butt          # butt|round|projecting
@@ -206,7 +206,7 @@ font.family         : serif
 # relative to font.size, using the following values: xx-small, x-small,
 # small, medium, large, x-large, xx-large, larger, or smaller
 font.size           : 8.0
-#font.serif          : DejaVu Serif, Bitstream Vera Serif, New Century Schoolbook, Century Schoolbook L, Utopia, ITC Bookman, Bookman, Nimbus Roman No9 L, Times New Roman, Times, Palatino, Charter, serif
+#font.serif          : Times New Roman, Times, Computer Modern Roman
 #font.sans-serif     : DejaVu Sans, Bitstream Vera Sans, Lucida Grande, Verdana, Geneva, Lucid, Arial, Helvetica, Avant Garde, sans-serif
 #font.cursive        : Apple Chancery, Textile, Zapf Chancery, Sand, Script MT, Felipa, cursive
 #font.fantasy        : Comic Sans MS, Chicago, Charcoal, Impact, Western, Humor Sans, xkcd, fantasy
@@ -279,7 +279,7 @@ text.usetex         : False  # use latex for all text handling. The following fo
 #mathtext.it  : serif:italic
 #mathtext.bf  : serif:bold
 #mathtext.sf  : sans
-mathtext.fontset : cm # Should be 'dejavusans' (default),
+mathtext.fontset : stix # Should be 'dejavusans' (default),
                                # 'dejavuserif', 'cm' (Computer Modern), 'stix',
                                # 'stixsans' or 'custom'
 #mathtext.fallback_to_cm : True  # When True, use symbols from the Computer Modern

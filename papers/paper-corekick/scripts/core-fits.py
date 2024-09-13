@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import baggins as bgs
 import figure_config
 import arviz as az
+import missing_mass as mm
 
 parser = argparse.ArgumentParser(
     description="Plot core fits given a Stan sample",
@@ -14,19 +15,19 @@ parser.add_argument(
     "-e", "--extract", help="extract data", action="store_true", dest="extract"
 )
 parser.add_argument(
-    "-n",
-    "--number",
-    help="number of drawn samples (with replacement)",
-    dest="num",
-    default=10000,
-)
-parser.add_argument(
     "-p",
     "--parameter",
     help="parameter to plot",
     choices=["Re", "rb", "n", "a", "log10densb", "g", "all", "OOS"],
     default="rb",
     dest="param",
+)
+parser.add_argument(
+    "-d",
+    "--diff",
+    help="distribution difference plot",
+    action="store_true",
+    dest="diffplot",
 )
 parser.add_argument(
     "-v",
@@ -108,26 +109,27 @@ if args.extract:
                 )
     bgs.utils.save_data(data, data_file)
 else:
+    SL.debug(f"Reading {data_file}")
     data = bgs.utils.load_data(data_file)
 
 
 def _helper(param_name, ax):
     kick_vels = []
     param = []
+    normalisation = (
+        rng.permutation(data[param_name]["0000"].flatten()) if args.param == "rb" else 1
+    )
     SL.warning(f"Determining distributions for parameter: {param_name}")
     for k, v in data[param_name].items():
         if k == "__githash" or k == "__script":
             continue
+        if k == "2000":
+            continue
         SL.info(f"Determining ratio for model {k}")
         kick_vels.append(float(k))
-        v = v[~np.isnan(v)]
         # determine the ratio of rb / rb_initial
-        normalisation = (
-            rng.choice(data[param_name]["0000"].flatten(), size=args.num)
-            if param_name == "rb"
-            else 1
-        )
-        param.append(rng.choice(v.flatten(), size=args.num) / normalisation)
+        val = v.flatten() / normalisation
+        param.append(val[~np.isnan(val)])
     bp = ax.boxplot(
         param,
         positions=kick_vels,
@@ -151,6 +153,35 @@ def _helper(param_name, ax):
     return np.nanmedian(normalisation), kick_vels
 
 
+def distribution_diff_plot(param_name, bins=20):
+    SL.warning(f"Determining distribution difference for parameter: {param_name}")
+    dset = data[param_name]["1020"].flatten() - data[param_name]["0000"].flatten()
+    dset = np.sort(dset)
+    fig, ax = plt.subplots(1, 2, sharex="all")
+    ax[0].hist(dset, bins=bins, density=True)
+    t = np.linspace(np.min(dset), np.max(dset), 100)
+    ecdf = list(map(lambda tt: bgs.mathematics.empirical_cdf(dset, tt), t))
+    ax[1].plot(t, ecdf)
+    SL.info(
+        f"From the ECDF, 0 corresponds to the {bgs.mathematics.empirical_cdf(dset, 0):.2f} quantile"
+    )
+    label_dict = dict(
+        Re=r"$R_\mathrm{e}$",
+        rb=r"$r_\mathrm{b}$",
+        g=r"$\gamma$",
+        a=r"$\alpha$",
+        log10densb=r"$\log_{10} \Sigma_\mathrm{b}$",
+        n=r"$n",
+    )
+    for axi in ax:
+        axi.set_xlabel(
+            f"{label_dict[param_name]}$(1020)$ - {label_dict[param_name]}$(0)$"
+        )
+    ax[0].set_ylabel(r"$\mathrm{PDF}$")
+    ax[1].set_ylabel(r"$\mathrm{ECDF}$")
+    return ax
+
+
 xlabel = r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$"
 if args.param == "all":
     ylabs = dict(
@@ -161,9 +192,9 @@ if args.param == "all":
         log10densb=r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$",
         g=r"$\gamma$",
     )
-    fig, ax = plt.subplots(2, 3, sharex="all")
-    fig.set_figwidth(3 * fig.get_figwidth())
-    fig.set_figheight(1.2 * fig.get_figheight())
+    fig, ax = plt.subplots(3, 2, sharex="all")
+    fig.set_figwidth(1.2 * fig.get_figwidth())
+    fig.set_figheight(1.5 * fig.get_figheight())
     for axi in ax[-1, :]:
         axi.set_xlabel(xlabel)
     for i, pname in enumerate(("rb", "log10densb", "g", "Re", "a", "n")):
@@ -224,32 +255,42 @@ elif args.param == "OOS":
     )
     fname = "density.pdf"
 else:
-    fig, ax = plt.subplots(1, 1)
-    ax.set_xlabel(xlabel)
-    norm_val, sampled_kicks = _helper(args.param, ax)
+    fig, ax = plt.subplots(2, 1, sharex="all")
+    fig.set_figheight(1.5 * fig.get_figheight())
+    # plot the core radius boxplots
+    ax[-1].set_xlabel(xlabel)
+    norm_val, sampled_kicks = _helper(args.param, ax[0])
     if args.param == "rb":
-        ax.tick_params(axis="y", which="both", right=False)
-        ax2 = ax.secondary_yaxis(
+        ax[0].tick_params(axis="y", which="both", right=False)
+        ax2 = ax[0].secondary_yaxis(
             "right", functions=(lambda x: x * norm_val, lambda x: x / norm_val)
         )
         vkick = np.linspace(min(sampled_kicks), max(sampled_kicks), 500)
         # add best fit relations
-        ax.plot(
+        ax[0].plot(
             vkick,
             2.9 * (vkick / ESCAPE_VEL) ** 0.782 + 1,
-            label="Exponential",
+            label=r"$\mathrm{Exponential}$",
             c=col_list[1],
         )
-        ax.plot(vkick, 3.26 * vkick / ESCAPE_VEL + 1.1, label="Linear", c=col_list[2])
-        ax.plot(
+        ax[0].plot(
+            vkick,
+            3.26 * vkick / ESCAPE_VEL + 1.1,
+            label=r"$\mathrm{Linear}$",
+            c=col_list[2],
+        )
+        ax[0].plot(
             vkick,
             2.47 * (1 - np.exp(-2.62 * vkick / ESCAPE_VEL)) + 0.873,
-            label="Sigmoid",
+            label=r"$\mathrm{Sigmoid}$",
             c=col_list[3],
         )
-        ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
+        ax[0].set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
-        ax.legend()
+        ax[0].legend()
+
+        # add Sonja's missing mass plot
+        mm.missing_mass_plot(data, ax=ax[1], nro_iter=10000, min_r=0.1)
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":
@@ -263,3 +304,7 @@ else:
     fname = f"{args.param}-kick.pdf"
 
 bgs.plotting.savefig(figure_config.fig_path(fname), force_ext=True)
+
+if args.diffplot:
+    axd = distribution_diff_plot(args.param)
+    plt.show()

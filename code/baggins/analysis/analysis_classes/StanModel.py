@@ -718,28 +718,29 @@ class _StanModel(ABC):
             # determine if we should use the prior or posterior model
             if self._model is None:
                 _logger.debug("Generated quantities will be taken from the prior model")
-                _model = self._prior_model
-                _fit = self._prior_fit
+                return self._prior_model, self._prior_fit
             else:
                 _logger.debug(
                     "Generated quantities will be taken from the posterior model"
                 )
-                _model = self._model
-                _fit = self._fit
-            return _model, _fit
+                return self._model, self._fit
 
-        if self.generated_quantities is None or force_resample:
-            _model, _fit = _choose_model()
-            self._generated_quantities = _model.generate_quantities(
-                data=self.stan_data, previous_fit=_fit
-            )
         try:
+            if self.generated_quantities is None or force_resample:
+                _model, _fit = _choose_model()
+                self._generated_quantities = _model.generate_quantities(
+                    data=self.stan_data, previous_fit=_fit
+                )
+            else:
+                _logger.debug(
+                    "Generated quantities already exist and will not be resampled"
+                )
             self.generated_quantities.stan_variable(gq)
-        except ValueError:
+        except ValueError as e:
             _model, _fit = _choose_model()
             TMPDIRs.make_new_dir()
             _logger.error(
-                f"Value error trying to read generated quantities data: creating temporary directory {TMPDIRs.register[-1]}"
+                f"{e}\n > Value error trying to read generated quantities data: creating temporary directory {TMPDIRs.register[-1]}"
             )
             self._generated_quantities = _model.generate_quantities(
                 data=self.stan_data,
@@ -1304,7 +1305,7 @@ class _StanModel(ABC):
         if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
             _logger.error(
-                f"Stan executable has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
+                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
             )
             print("==========================================")
 

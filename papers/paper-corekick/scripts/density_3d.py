@@ -69,6 +69,11 @@ for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
     del snap
     pygad.gc_full_collect()
 
+# add the r^-1 scaling line
+xline = np.geomspace(2, 8, 4)
+yline = ax.loglog(xline, 1e10 * xline**-1, c="k")
+ax.text(5, 3e9, r"$\propto r^{-1}$", ha="left")
+
 ax.set_xlabel(r"$r/\mathrm{kpc}$")
 ax.set_ylabel(r"$\rho(r)/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$")
 vkcols.make_cbar(ax)

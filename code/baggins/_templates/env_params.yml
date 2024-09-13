@@ -8,6 +8,7 @@ logging:
   console_level: INFO
   file: logs/cm_funcs.log
   file_level: WARNING
+mode: dev
 tmp_dir: tmp_dir
 ...
 

@@ -8,7 +8,6 @@ import pygad
 import dask
 
 from . import masks as masks
-from ..C.lib import bagginsCXX
 from ..mathematics import radial_separation, density_sphere, spherical_components
 from .general import snap_num_for_time
 from ..general import convert_gadget_time, set_seed_time
@@ -43,7 +42,6 @@ __all__ = [
     "softened_inverse_r",
     "softened_acceleration",
     "add_to_loss_cone_refill",
-    "find_bound_substructure",
     "find_individual_bound_particles",
     "relax_time",
 ]
@@ -1205,8 +1203,8 @@ def velocity_anisotropy(
     vcom : list or array-like, optional
         velocity centre of mass, by default [0,0,0]
     qcut : float, optional
-        filter out particles above qcut quantile in radial distance, by default
-        1.0
+        filter out particles above qcut quantile in velocity magnitude, by
+        default 1.0
     eps : float, optional
         tolerance to prevent zero-division, by default 1e-16
 
@@ -1226,7 +1224,8 @@ def velocity_anisotropy(
     r = pygad.utils.geo.dist(snap["pos"])
     v_sphere = spherical_components(snap["pos"], snap["vel"])
     if qcut < 1:
-        mask = r < np.nanquantile(r, qcut)
+        vmag = radial_separation(snap["vel"])
+        mask = vmag < np.nanquantile(vmag, qcut)
         r = r[mask]
         v_sphere = v_sphere[mask, :]
     # bin statistics
@@ -1363,33 +1362,6 @@ def _set_bound_search_rad(snap):
     bh_id = get_massive_bh_ID(snap)
     ball_mask = pygad.BallMask(rinf[bh_id], snap.bh[snap.bh["ID"] == bh_id]["pos"])
     return snap[pygad.IDMask(snap.bh["ID"]) | pygad.IDMask(snap.stars["ID"])][ball_mask]
-
-
-def find_bound_substructure(snap):
-    """
-    Simple structure finder restricted to the influence radius of the BH.
-
-    Parameters
-    ----------
-    snap : pygad.Snapshot
-        snapshot to analyse
-
-    Returns
-    -------
-    bound_IDs : list
-        list of bound particle IDs
-    """
-    subsnap = _set_bound_search_rad(snap)
-    particle_types = [5 for _ in range(len(subsnap.bh["mass"]))]
-    particle_types.extend([4 for _ in range(len(subsnap.stars["mass"]))])
-    bound_IDs = bagginsCXX.find_bound_particles(
-        particle_types,
-        subsnap["ID"].view(np.ndarray).tolist(),
-        subsnap["mass"].view(np.ndarray).tolist(),
-        subsnap["pos"].view(np.ndarray).tolist(),
-        subsnap["vel"].view(np.ndarray).tolist(),
-    )
-    return bound_IDs
 
 
 def find_individual_bound_particles(snap, return_extra=False):

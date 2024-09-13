@@ -10,6 +10,7 @@ from ..env_config import _cmlogger
 __all__ = [
     "draw_sizebar",
     "create_normed_colours",
+    "create_offcentre_diverging",
     "mplColours",
     "mplLines",
     "mplChars",
@@ -104,6 +105,8 @@ def create_normed_colours(
     """
     Convenience wrapper for creating colour normalisation and colourbar
     requirements for pyplot.plot()
+    # TODO this doesn't work with colors.CenteredNorm() due to different
+    # argument names
 
     Parameters
     ----------
@@ -125,7 +128,7 @@ def create_normed_colours(
     mapcols : function
         takes an argument in the range [vmin, vmax] and returns the scaled
         colour
-    sm matplotlib.cm.ScalarMappable
+    sm : matplotlib.cm.ScalarMappable
         object that is required for creating a colour bar
     """
     try:
@@ -156,6 +159,46 @@ def create_normed_colours(
         )
     sm = plt.cm.ScalarMappable(norm=norm, cmap=cmapv)
     return mapcols, sm
+
+
+def create_offcentre_diverging(vmin, vmax, vcentre=0, cmap="seismic"):
+    """
+    Create a diverging colourmap centred about some value. The colours are mapped to the extent that has the larger magnitude, and then truncated to just those values given by the desired colour limits.
+
+    Parameters
+    ----------
+    vmin : float
+        minimum value of colour variable
+    vmax : float
+        maximum value of colour variable
+    vcentre : float, optional
+        value of central colour variable, by default 0
+    cmap : str or matplotlib.colors.ListedColormap, optional
+        colour map to use, by default "seismic"
+
+    Returns
+    -------
+    : function
+        takes an argument in the range [vmin, vmax] and returns the scaled
+        colour
+    sm : matplotlib.cm.ScalarMappable
+        object that is required for creating a colour bar
+    """
+    # first create the diverging colour scheme
+    if isinstance(cmap, str):
+        _cmapv = plt.get_cmap(cmap)
+    else:
+        _cmapv = cmap
+    _norm = colors.CenteredNorm(
+        vcenter=vcentre, halfrange=max(np.abs(vmax), np.abs(vmin))
+    )
+    # now get the values we wish to restrict to
+    u = np.linspace(vmin, vmax, 256)
+    col_list = _cmapv(_norm(u))
+    cmapv = colors.LinearSegmentedColormap.from_list("custom", col_list)
+    norm = colors.Normalize(vmin=vmin, vmax=vmax)
+    sm = plt.cm.ScalarMappable(norm, cmap=cmapv)
+    return lambda x: cmapv(norm(x)), sm
 
 
 def mplColours():

@@ -63,7 +63,7 @@ parameters {
     vector<lower=0, upper=5>[N_groups] rb;
     vector<lower=0, upper=20>[N_groups] Re;
     vector<lower=0, upper=20>[N_groups] n;
-    vector<lower=0, upper=2>[N_groups] g;
+    vector<lower=0, upper=1>[N_groups] g;
     vector<lower=-5, upper=15>[N_groups] log10densb;
     vector<lower=0, upper=15>[N_groups] a;
 }
@@ -74,7 +74,7 @@ transformed parameters {
     array[10] real lprior;
     lprior[1] = normal_lpdf(log10densb_mean | 10, 2);
     lprior[2] = normal_lpdf(log10densb_std | 0, 1);
-    lprior[3] = exponential_lpdf(g_lam | 10);
+    lprior[3] = exponential_lpdf(g_lam | 2);
     lprior[4] = normal_lpdf(rb_sig | 0, 1);
     lprior[5] = normal_lpdf(n_mean | 8, 4);
     lprior[6] = normal_lpdf(n_std | 0, 4);
@@ -125,7 +125,7 @@ generated quantities {
         vector[N_groups_GQ] b_param;
         for(i in 1:N_groups_GQ){
             log10densb_posterior[i] = trunc_normal_rng(log10densb_mean, log10densb_std, -5, 15);
-            g_posterior[i] = trunc_exponential_rng(g_lam, 0, 2);
+            g_posterior[i] = trunc_exponential_rng(g_lam, 0, 1);
             rb_posterior[i] = trunc_rayleigh_rng(rb_sig, 0, 5);
             n_posterior[i] = trunc_normal_rng(n_mean, n_std, 0, 20);
             a_posterior[i] = trunc_rayleigh_rng(a_sig, 0, 15);

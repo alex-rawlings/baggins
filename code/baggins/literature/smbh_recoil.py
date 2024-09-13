@@ -100,8 +100,8 @@ def ketju_calculate_bh_merger_remnant_properties(m1, m2, s1, s2, x1, x2, v1, v2)
     Jhat = J / np.linalg.norm(J)
 
     # the paper uses spins in units of M^2
-    s1 *= m1**2
-    s2 *= m2**2
+    s1 = s1 * m1**2
+    s2 = s2 * m2**2
 
     delta_m = (m1 - m2) / m
     eta = (1 - delta_m * delta_m) / 4.0
