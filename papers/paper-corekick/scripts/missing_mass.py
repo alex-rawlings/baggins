@@ -3,39 +3,23 @@ import figure_config
 import pickle
 from scipy import integrate
 import matplotlib.pyplot as plt
+from matplotlib import colors
 from tqdm import tqdm
 
 
 col_list = figure_config.color_cycle_shuffled.by_key()["color"]
 
 
-def sersic_fit(r, Re, n):
-    """
-    :param r: radius
-    :param Re: effective radius
-    :param n: Sersic index
-    :return: projected surface mass density
-    """
+def idot(rb, re, n, gamma, alpha, log10densb):
+    mub = 10**log10densb
     b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
-    mu = np.exp(-b * ((r / Re) ** (1 / n) - 1))
-    return mu
+
+    return mub*2**(-gamma/alpha)*np.exp(b*(2**(1/alpha)*rb/re)**(1/n))
 
 
-def core_sersic_fit(r, rb, Re, n, mub, g, a):
-    """
-    :param r: radius
-    :param rb: break radius
-    :param Re: effective radius
-    :param n: Sersic index
-    :param mub: normalisation factor Sigma_b
-    :param g: gamma, inner profile slope index
-    :param a: alpha, transition index
-    :return: projected surface mass density
-    """
-
-    # Based on work in Nasim et al. 2021, Graham et al. 2003, and Trujillo et al. 2004.
-
+def i_ser(r, rb, re, n, gamma, alpha, i):
     b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
+<<<<<<< HEAD
     mudot = mub * 2 ** (-g / a) * np.exp(b * 2 ** (1 / (a * n)) * (rb / Re) ** (1 / n))
     mu = (
         mudot
@@ -43,6 +27,9 @@ def core_sersic_fit(r, rb, Re, n, mub, g, a):
         * np.exp(-b * ((r**a + rb**a) / Re**a) ** (1 / (n * a)))
     )
     return mu
+=======
+    return i*(1+(rb/r)**alpha)**(gamma/alpha)*np.exp(-b*((r**alpha+rb**alpha)/re**alpha)**(1/(alpha*n)))
+>>>>>>> master
 
 
 def mass_deficit(r, rb, re, n, log10densb, g, a):
@@ -56,19 +43,14 @@ def mass_deficit(r, rb, re, n, log10densb, g, a):
     :param a: alpha, transition index
     :return: The integrand of the mass deficit equation
     """
-    mub = 10**log10densb
 
-    # As we don't have Ie, we need to find the correct shift for the sersic fit based on the core-sersic
-    # Calculating mu_cs and mu_c at the break radius
-    mu_cs_rb = core_sersic_fit(rb, rb, re, n, mub, g, a)
-    mu_s_rb = sersic_fit(rb, re, n)
-    shift = np.log10(mu_cs_rb) - np.log10(mu_s_rb)
-    return (
-        10**shift * sersic_fit(r, re, n) - core_sersic_fit(r, rb, re, n, mub, g, a)
-    ) * r
+    i_cs = idot(rb, re, n, g, a, log10densb)
+    core_ser = i_ser(r, rb, re, n, g, a, i_cs)
+    ser = i_ser(r, 0, re, n, g, a, i_cs)
+    return (ser-core_ser)*r
 
 
-def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
+def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=False):
     """
     :param filename: The path and dictionary file of the data. Dictionary should include break radius,
     effective radius, sersic index, normalistion factor sigma_b, inner profile slope index and the transition index.
@@ -89,6 +71,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
 
     # An empty dictionry to save the data
     mdef_dict = dict()
+    n_dict = dict()
 
     # Defining the random seed to get reproducible results
     rng = np.random.default_rng(seed=42)
@@ -102,6 +85,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
         a = data["a"][v].flatten()
 
         mdef_dict[v] = np.zeros(nro_iter)
+        n_dict[v] = np.zeros(nro_iter)
 
         for i in tqdm(range(nro_iter), desc=f"Missing mass for case {v}"):
             rb_new, Re_new, n_new, log10densb_new, g_new, a_new = (
@@ -116,7 +100,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
             m, abserr = integrate.quad(
                 mass_deficit,
                 min_r,
-                rb_new,
+                5*Re_new,
                 args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new),
             )
             while np.isnan(m):
@@ -132,11 +116,16 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
                 m, abserr = integrate.quad(
                     mass_deficit,
                     min_r,
-                    rb_new,
+                    5*Re_new,
                     args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new),
                 )
+<<<<<<< HEAD
             # 3.5 is the mass to light ratio from Bonfini 2016
             mdef_dict[v][i] = 2 * np.pi * m * 3.5
+=======
+            mdef_dict[v][i] = 2 * np.pi * 3.5 * m
+            n_dict[v][i] = rb_new
+>>>>>>> master
 
     # Creating the figure
     new_figure = False
@@ -182,10 +171,34 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None):
     if new_figure:
         ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$")
         plt.show()
+
+    if debug_mode:
+        fig3, ax3 = plt.subplots(1, 3, sharex='all', sharey='all')
+
+        vk = ["0180", "0480", "0840"]
+        for j in range(len(vk)):
+            ax3[j].set_title(vk[j])
+            positivemask = mdef_dict[vk[j]] > 0
+            ntemp = n_dict[vk[j]][positivemask]
+            mtemp = np.log10(mdef_dict[vk[j]][positivemask])
+
+            nmask = np.logical_and(ntemp > np.quantile(ntemp, 0.25), ntemp < np.quantile(ntemp, 1 - 0.25))
+            mmask = np.logical_and(mtemp > np.quantile(mtemp, 0.25), mtemp < np.quantile(mtemp, 1 - 0.25))
+
+            bigmask = np.logical_and(nmask, mmask)
+
+            h = ax3[j].hist2d(ntemp[bigmask], mtemp[bigmask], norm=colors.LogNorm(1e-1, 100), bins=10)
+
+            ax3[j].set_ylabel(r"$M_\mathrm{def}$")
+            ax3[j].set_xlabel(r"$r_\mathrm{b}$")
+
+            fig3.colorbar(h[3], ax=ax3[j])
+        plt.show()
+
     return ax
 
 
 if __name__ == "__main__":
     # run the program independently
     data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
-    missing_mass_plot(data_file, nro_iter=1000)
+    missing_mass_plot(data_file, nro_iter=1000, debug_mode=True)
