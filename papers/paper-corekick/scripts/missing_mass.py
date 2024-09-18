@@ -12,16 +12,13 @@ col_list = figure_config.color_cycle_shuffled.by_key()["color"]
 
 def idot(rb, re, n, gamma, alpha, log10densb):
     mub = 10**log10densb
-    b =  2.0 * n - 0.33333333 + 0.009876 * (1 / n)
+    b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
 
     return mub*2**(-gamma/alpha)*np.exp(b*(2**(1/alpha)*rb/re)**(1/n))
 
-
 def i_ser(r, rb, re, n, gamma, alpha, i):
-    b =  2.0 * n - 0.33333333 + 0.009876 * (1 / n)
+    b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
     return i*(1+(rb/r)**alpha)**(gamma/alpha)*np.exp(-b*((r**alpha+rb**alpha)/re**alpha)**(1/(alpha*n)))
-
-
 
 def mass_deficit(r, rb, re, n, log10densb, g, a):
     """
@@ -39,8 +36,6 @@ def mass_deficit(r, rb, re, n, log10densb, g, a):
     core_ser = i_ser(r, rb, re, n, g, a, i_cs)
     ser = i_ser(r, 0, re, n, g, a, i_cs)
     return (ser-core_ser)*r
-
-
 
 def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=False):
     """
@@ -160,22 +155,21 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
         plt.show()
 
     if debug_mode:
-        fig3, ax3 = plt.subplots(1,3, sharex='all',sharey='all')
+        fig3, ax3 = plt.subplots(1, 3, sharex='all', sharey='all')
 
-
-        vk = ["0180","0480","0840"]
+        vk = ["0180", "0480", "0840"]
         for j in range(len(vk)):
             ax3[j].set_title(vk[j])
-            positivemask = mdef_dict[vk[j]]>0
+            positivemask = mdef_dict[vk[j]] > 0
             ntemp = n_dict[vk[j]][positivemask]
             mtemp = np.log10(mdef_dict[vk[j]][positivemask])
 
-            nmask = np.logical_and(ntemp > np.quantile(ntemp,0.25), ntemp < np.quantile(ntemp,1-0.25))
-            mmask = np.logical_and(mtemp > np.quantile(mtemp,0.25), mtemp < np.quantile(mtemp,1-0.25))
+            nmask = np.logical_and(ntemp > np.quantile(ntemp, 0.25), ntemp < np.quantile(ntemp, 1 - 0.25))
+            mmask = np.logical_and(mtemp > np.quantile(mtemp, 0.25), mtemp < np.quantile(mtemp, 1 - 0.25))
 
             bigmask = np.logical_and(nmask, mmask)
 
-            h = ax3[j].hist2d(ntemp[bigmask], mtemp[bigmask], norm=colors.LogNorm(1e-1,100), bins=10)
+            h = ax3[j].hist2d(ntemp[bigmask], mtemp[bigmask], norm=colors.LogNorm(1e-1, 100), bins=10)
 
             ax3[j].set_ylabel(r"$M_\mathrm{def}$")
             ax3[j].set_xlabel(r"$r_\mathrm{b}$")
@@ -189,3 +183,4 @@ if __name__ == "__main__":
     # run the program independently
     data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
     missing_mass_plot(data_file, nro_iter=1000, debug_mode=True)
+
