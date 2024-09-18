@@ -16,9 +16,11 @@ def idot(rb, re, n, gamma, alpha, log10densb):
 
     return mub*2**(-gamma/alpha)*np.exp(b*(2**(1/alpha)*rb/re)**(1/n))
 
+
 def i_ser(r, rb, re, n, gamma, alpha, i):
     b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
     return i*(1+(rb/r)**alpha)**(gamma/alpha)*np.exp(-b*((r**alpha+rb**alpha)/re**alpha)**(1/(alpha*n)))
+
 
 def mass_deficit(r, rb, re, n, log10densb, g, a):
     """
@@ -36,6 +38,7 @@ def mass_deficit(r, rb, re, n, log10densb, g, a):
     core_ser = i_ser(r, rb, re, n, g, a, i_cs)
     ser = i_ser(r, 0, re, n, g, a, i_cs)
     return (ser-core_ser)*r
+
 
 def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=False):
     """
@@ -179,8 +182,8 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
 
     return ax
 
+
 if __name__ == "__main__":
     # run the program independently
     data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
     missing_mass_plot(data_file, nro_iter=1000, debug_mode=True)
-
