@@ -20,11 +20,13 @@ snapdirs.sort()
 
 data = {}
 
+MAX_SNAP_IDX = 10
+
 if extract_data:
     for snapdir in snapdirs:
         print(f"In {snapdir}")
         key = f"v{snapdir.split('/')[-1].split('-')[-1]}"
-        snapfiles = bgs.utils.get_snapshots_in_dir(os.path.join(snapdir, "output"))[:4]
+        snapfiles = bgs.utils.get_snapshots_in_dir(os.path.join(snapdir, "output"))[:MAX_SNAP_IDX]
         num_bound_stars = np.zeros_like(snapfiles, dtype=int)
         times = np.full_like(num_bound_stars, np.nan, dtype=float)
         sep = np.full_like(num_bound_stars, np.nan, dtype=float)
@@ -47,15 +49,35 @@ if extract_data:
             sep = sep,
             num_bound_stars = num_bound_stars
         )
-    bgs.utils.save_data(data, "bound_snap_up_to_4.pickle")
+    bgs.utils.save_data(data, f"bound_snap_up_to_{MAX_SNAP_IDX}.pickle", exist_ok=True)
 else:
-    data = bgs.utils.load_data("bound_snap_up_to_4.pickle")
+    data = bgs.utils.load_data(f"bound_snap_up_to_{MAX_SNAP_IDX}.pickle")
 
-# PARAMETERS TO EDIT
-# TODO: should read these from snapshot and save
-stellar_mass = 5e4
-binary_mass = 2 * 2.93e9
-total_stellar_mass = 1.38e11
+# PARAMETERS taken from 0 km/s snapshot
+snap = pygad.Snapshot(os.path.join(
+    snapdirs[0], "output/snap_002.hdf5"
+), physical=True)
+pygad.Translation(-pygad.analysis.shrinking_sphere(snap.stars, snap.bh["pos"], 30)).apply(snap, total=True)
+stellar_mass = snap.stars["mass"][0]
+binary_mass = snap.bh["mass"][0]
+total_stellar_mass = np.sum(snap.stars["mass"])
+core_mass = np.sum(snap.stars[pygad.BallMask(0.58)]["mass"])
+
+core_dens_avg = core_mass/stellar_mass/(4/3*np.pi*0.58**3)
+print(f"Number core density: {core_dens_avg:.3e}")
+print(f"Mean free path: {1/(4 * np.pi * core_dens_avg * (2.5e-3)**2):.3e} kpc")
+
+if False:
+    idx_r_ordered = np.argsort(snap.stars["r"])
+    plt.loglog(snap.stars["r"][idx_r_ordered], np.cumsum(snap.stars["mass"][idx_r_ordered]))
+    plt.axhline(binary_mass, c="tab:blue", ls="--", label="binary mass")
+    plt.axhline(core_mass, c="tab:orange", ls="--", label="core mass")
+    plt.axvline(0.58, c="k", ls=":", label="core radius")
+    plt.legend()
+    bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "core-study/cumul_mass.png"))
+    quit()
+
+print(f"Core mass is {core_mass:.1e} Msol, or {core_mass/binary_mass:.1e} Mbh")
 
 # plot
 fig, ax = plt.subplots(1,1)
@@ -64,7 +86,7 @@ ax.set_xlabel("vkick")
 ax.set_ylabel("Displacement/kpc")
 cmapper, sm = bgs.plotting.create_normed_colours(0, np.nanmax([np.nanmax(v["times"]) for v in data.values()]))
 
-idxs_use = (0,1,2,3,4,)
+idxs_use = np.arange(10)
 
 marker_lims = [np.inf, -np.inf]
 for k, v in data.items():
@@ -75,7 +97,6 @@ for k, v in data.items():
     for j, idx_use in enumerate(idxs_use):
         try:
             ax.scatter(vk, v["sep"][idx_use], marker="o", s=v["num_bound_stars"][idx_use]/2e2, ec="k", lw=0.5, zorder=2, color=cmapper(v["times"][idx_use]))
-            #ax.plot(v["times"], v["sep"], color=cmapper(vk), zorder=0)
             min_s = np.log10(np.min(v["num_bound_stars"])+1)
             max_s = np.log10(np.max(v["num_bound_stars"]))
             if min_s < marker_lims[0]:
@@ -83,7 +104,7 @@ for k, v in data.items():
             if max_s > marker_lims[1]:
                 marker_lims[1] = np.ceil(max_s)
             if still_binary and v["num_bound_stars"][idx_use] > 0:
-                print(f"{vk:04.0f}: {v['num_bound_stars'][idx_use]*stellar_mass/binary_mass:.2e} MBH - {v['num_bound_stars'][idx_use]*stellar_mass:.2e} Msol - {v['num_bound_stars'][idx_use]*stellar_mass/total_stellar_mass:.2e} MStar")
+                print(f"{vk:04.0f}: {v['num_bound_stars'][idx_use]*stellar_mass/binary_mass:.2e} MBH - {v['num_bound_stars'][idx_use]*stellar_mass:.2e} Msol - {v['num_bound_stars'][idx_use]*stellar_mass/total_stellar_mass:.2e} MStar - {v['num_bound_stars'][idx_use]*stellar_mass/core_mass:.2e} Mcore")
                 still_binary = False
         except IndexError:
             continue
@@ -95,6 +116,6 @@ for msize in np.arange(*marker_lims):
 #ax.set_xlim(0, 0.25)
 ax.legend(title="Number bound stars")
 plt.colorbar(sm, ax=ax)
-bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "core-study/bound_stars_snap_16.png"))
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "core-study/bound_stars_new.png"))
 #plt.show()
 

@@ -64,7 +64,7 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
             0
         ]
         classifier = bgs.analysis.OrbitClassifier(orbitcl, mergemask=mergemask)
-        classifier.radial_frequency()
+        classifier.radial_frequency(radbins=np.geomspace(0.2, 11, 11))
         rosette_mask = classifier.classids == mergemask.get_family("rosette")
         for dist, arr in zip(
             ("Apocentre", "Pericentre"), (classifier.apocenter, classifier.pericenter)
@@ -85,6 +85,9 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
             c=vkcols.get_colour(vkick),
             ls="-",
         )
+        if mergemask.families[i] == "unclass":
+            SL.debug(f"Skipping family '{mergemask.families[i]}' kick-vel stratified plot...")
+            continue
         axj.semilogx(
             classifier.meanrads, classifier.classfrequency[:, i], label=mergemask.labels[i]
         )

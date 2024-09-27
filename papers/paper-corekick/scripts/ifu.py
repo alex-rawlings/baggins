@@ -1,7 +1,6 @@
 import argparse
 import os.path
 import numpy as np
-from scipy.ndimage import uniform_filter1d
 import scipy.stats
 import matplotlib.pyplot as plt
 from datetime import datetime
@@ -151,11 +150,6 @@ def plot_helper(axi, k, vs, rb0):
     axi.plot(bgs.mathematics.get_histogram_bin_centres(r_bins)/rb0, h4_med, c=vkcols.get_colour(get_kick_val(k)), ls="-")
 
 
-    '''idx_sorted = np.argsort(r)
-    h4_filtered = uniform_filter1d(h4[idx_sorted], 8, mode="nearest")
-    axi.plot(r[idx_sorted], h4_filtered, c=vkcols.get_colour(get_kick_val(k)), ls="-")'''
-
-
 for rh, (kp, vp), (ko, vo) in zip(
     h4_vals["rhalf"], h4_vals["para"].items(), h4_vals["ortho"].items()
 ):
@@ -242,7 +236,7 @@ if args.plot:
             axi.set_xlabel(xlabel)
             axi.set_ylabel(r"$z/\mathrm{kpc}$")
         fig = ax[0,0].get_figure()
-        fig.set_figwidth(1.05 * fig.get_figwidth())
+        fig.set_figwidth(1.25 * fig.get_figwidth())
         bgs.plotting.savefig(
             figure_config.fig_path(
                 f"IFU_{str(rhalf_factor).replace('.', '')}rhalf/IFU_{orientation}_{k}.pdf"

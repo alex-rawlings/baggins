@@ -107,7 +107,7 @@ classifier = bgs.analysis.OrbitClassifier(orbitcl, mergemask=mergemask)
 
 # now we will create three sets of IFU maps: one for all, one for tubes, one for boxes
 fig, ax = plt.subplots(3, 4, sharex="all", sharey="all")
-fig.set_figwidth(2.8 * fig.get_figwidth())
+fig.set_figwidth(3 * fig.get_figwidth())
 fig.set_figheight(1.5 * fig.get_figheight())
 ax[0, 0].text(0.1, 0.9, "all", ha="left", va="center", transform=ax[0,0].transAxes)
 ax[1,0].text(0.1, 0.9, "box", ha="left", va="center", transform=ax[1,0].transAxes)
@@ -118,7 +118,7 @@ for axi in ax[:,0]:
     axi.set_ylabel(r"$z/\mathrm{kpc}$")
 ax[0,0].set_xlim(-2.6, 2.6)
 ax[0,0].set_ylim(-2.6, 2.6)
-# set colour limits manually
+# XXX set colour limits manually
 if args.inertia:
     clims = {"V":[15], "sigma":[210, 320], "h3":[0.02], "h4":[0.065]}
 else:

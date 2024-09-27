@@ -236,6 +236,24 @@ class OrbitClassifier:
         return ratio
 
 
+    def make_class_mask(self, fam):
+        """
+        Return a mask that can be used on properties to get the subset for a 
+        family.
+
+        Parameters
+        ----------
+        fam : str
+            family name
+
+        Returns
+        -------
+        : np.array
+            boolean mask corresponding to family
+        """
+        return self.classids == self.mergemask.get_family(fam)
+
+
     def get_particle_ids_for_family(self, fam):
         """
         Return the particle IDs corresponding to an orbital class.
@@ -250,10 +268,61 @@ class OrbitClassifier:
         : np.array
             particle IDs
         """
-        return self.particleids[self.classids == self.mergemask.get_family(fam)]
+        return self.particleids[self.make_class_mask(fam)]
 
 
     def family_size_in_radius(self, fam, r):
         self.radial_frequency(radbins=np.array([0, r]))
         class_count = np.einsum("ij,i->ij", self.classfrequency, self.radbincount)
         return class_count[0, self.mergemask.get_family(fam)]
+
+
+    def compare_class_change(self, other, fam, other_is_earlier=True):
+        """
+        Compare the change of particles of one class to what they were at a different classification time.
+        The notion of whether or not the particles "were" a different type or 
+        "will become" a different type is left to the discretion of the user, 
+        depending on if the 'other' parameter is a past or future time, 
+        respectively.
+
+        Parameters
+        ----------
+        other : OrbitClassifier
+            other classifier object to compare to
+        fam : str
+            the family in 'this' classifier to determine the change for
+        other_is_earlier : bool, optional
+            if 'other' corresponds to an earlier snapshot than this instance of 
+            OrbitClassifier (for printing messages), by default True
+
+        Returns
+        -------
+        other_classids : np.array
+            class IDs of particles in the 'other' classifier
+        """
+        # check that we have a consistent merge mask
+        try:
+            assert self.mergemask.num_fams == other.mergemask.num_fams
+            assert len(set(self.mergemask.families).difference(set(other.mergemask.families))) == 0
+        except AssertionError:
+            _logger.exception("Merge masks are not consistent for orbit comparison!", exc_info=True)
+            raise
+        mask = np.isin(other.particleids, self.get_particle_ids_for_family(fam))
+        other_classids = other.classids[mask]
+        N = np.sum(mask)
+        if other_is_earlier:
+            print(f"Families that became {fam}:")
+        else:
+            print(f"{fam} will become:")
+        count_check = 0
+        for i, c in enumerate(self.mergemask.families):
+            n = np.sum(other_classids==i)
+            count_check += n
+            N2 = np.sum(other.classids==i)
+            print(f"  {c}: {n} ({n/N*100:.2e}% of 'this' {fam}), ({n/N2*100:.2e}% of 'other' {c})")
+        try:
+            assert N == count_check
+        except AssertionError:
+            _logger.exception(f"Not all particles accounted for! Total should be {N}, but is {count_check}", exc_info=True)
+            raise
+        return other_classids

@@ -1,7 +1,7 @@
 import argparse
 import os
 import numpy as np
-from scipy.ndimage import uniform_filter1d
+import scipy.stats
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
@@ -156,13 +156,13 @@ cmapper, sm = bgs.plotting.create_offcentre_diverging(
 def plot_helper(axi, t, v):
     r = v["R"]
     h4 = v["h4"]
-    idx_sorted = np.argsort(r)
-    h4_filtered = uniform_filter1d(h4[idx_sorted], 8, mode="nearest")
+    r_bins = np.linspace(0, 3, 11)
+    h4_med, *_ = scipy.stats.binned_statistic(r, h4, statistic="median", bins=r_bins)
     if np.abs(t) < 1e-10:
-        plt_kwargs = {"marker": "o", "markevery": int(len(r) * 0.2)}
+        plt_kwargs = {"marker": "o", "markevery": 2}
     else:
         plt_kwargs = {}
-    axi.plot(r[idx_sorted], h4_filtered, c=cmapper(t), ls="-", **plt_kwargs)
+    axi.plot(bgs.mathematics.get_histogram_bin_centres(r_bins), h4_med, c=cmapper(t), ls="-", **plt_kwargs)
 
 
 for t, (kp, vp), (ko, vo) in zip(

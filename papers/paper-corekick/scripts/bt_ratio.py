@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import dask
 from tqdm.dask import TqdmCallback
 import baggins as bgs
-from v_anisotropy import main
 import figure_config
 
 
@@ -59,7 +58,10 @@ def dask_extractor(orbitcl, vkey, mergemask):
     rb = np.nanmedian(core_data["rb"][vkey].flatten())
     Nbox = classifier.family_size_in_radius("box", rb)
     Ntube = classifier.family_size_in_radius("tube", rb)
-    return rb, Nbox, Ntube
+    inner_box_mask = np.logical_and(classifier.make_class_mask("box"), classifier.rad < rb)
+    box_apo_med, box_apo_err = bgs.mathematics.quantiles_relative_to_median(classifier.apocenter[inner_box_mask])
+    box_r_med, box_r_err = bgs.mathematics.quantiles_relative_to_median(classifier.rad[inner_box_mask])
+    return rb, Nbox, Ntube, box_apo_med, box_apo_err, box_r_med, box_r_err
 
 orbitfilebases = [
     d.path
@@ -70,7 +72,7 @@ orbitfilebases = [
 ]
 orbitfilebases.sort()
 core_data = bgs.utils.load_data("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle")
-data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/box_tube_ratio.pickle"
+data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/box_tube_ratio_APO.pickle"
 
 mergemask = bgs.analysis.MergeMask.make_box_tube_mask()
 
@@ -98,12 +100,13 @@ if args.extract:
         dask_res = dask.compute(dask_res)
 
     # store data
-    for i, dkey in enumerate(("rb", "Nbox", "Ntube")):
+    for i, dkey in enumerate(("rb", "Nbox", "Ntube", "box_apo_med", "box_apo_err", "box_r_med", "box_r_err")):
         data[dkey] = [r[i] for r in dask_res[0]]
     bgs.utils.save_data(data, data_file)
 else:
     data = bgs.utils.load_data(data_file)
 
+# plot 1: mass in boxes and tubes within core
 stellar_mass = 5e4
 norm_factor = 1e8
 fig, ax = plt.subplots()
@@ -118,19 +121,19 @@ xlims = ax.get_xlim()
 ylims = ax.get_ylim()
 
 # plot guidelines
-guide_alpha = 0.4
+guide_kwargs = {"alpha":0.4, "ls":":", "zorder":0.5, "lw":1, "c":"k"}
 x = stellar_mass * np.array([1e2, 1e6]) / norm_factor
 labels = []
 rotation = []
 for i, grad in enumerate((0.5, 1, 2), start=1):
-    ax.plot(x, grad * x, ls=":", zorder=0.5, lw=1, alpha=guide_alpha, c="k")
+    ax.plot(x, grad * x, **guide_kwargs)
     labels.append(
         f"$M_{{\star,\mathrm{{tube}}}}={grad} M_{{\star,\mathrm{{box}}}}$"
     )
     rotation.append(
         np.arctan(grad)*180/np.pi
     )
-fkwargs = {"fontsize":"small", "color":"k", "alpha":guide_alpha, "va":"center", "ha":"center", "rotation_mode":"anchor", "transform_rotates_text":True}
+fkwargs = {"fontsize":"small", "color":"k", "alpha":guide_kwargs["alpha"], "va":"center", "ha":"center", "rotation_mode":"anchor", "transform_rotates_text":True}
 ax.text(7.5, 3.5, labels[0], rotation=rotation[0], **fkwargs)
 ax.text(4.6, 5, labels[1], rotation=rotation[1], **fkwargs)
 ax.text(2.1, 5, labels[2], rotation=rotation[2], **fkwargs)
@@ -139,3 +142,23 @@ ax.set_ylim(ylims)
 vkcols.make_cbar(ax=ax)
 
 bgs.plotting.savefig(figure_config.fig_path("orbit_bt.pdf"), force_ext=True)
+
+plt.close()
+
+# plot 2: apocentre distributions
+fig, ax = plt.subplots()
+ax.set_xlabel(r"$r_\mathrm{box}/\mathrm{kpc}$")
+ax.set_ylabel(r"$r_\mathrm{apo,box}/\mathrm{kpc}$")
+
+# plot data
+for vk, am, aerr, rm, rerr in zip(data["vkick"], data["box_apo_med"], data["box_apo_err"], data["box_r_med"], data["box_r_err"]):
+    ax.errorbar(rm, am, xerr=rerr, yerr=aerr, fmt="o", c=vkcols.get_colour(vk), capthick=1, mec="k")
+guide_kwargs["alpha"] = 1
+ax.axvline(data["rb"][0], **guide_kwargs)
+fkwargs["va"] = "top"
+fkwargs["alpha"] = 1
+ax.text(data["rb"][0], 10, r"$r_\mathrm{b,0}$", rotation="vertical", **fkwargs)
+vkcols.make_cbar(ax=ax)
+
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "core-study/apo_bt.png"))
+

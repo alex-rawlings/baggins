@@ -265,6 +265,7 @@ else:
         ax2 = ax[0].secondary_yaxis(
             "right", functions=(lambda x: x * norm_val, lambda x: x / norm_val)
         )
+        ax[1].set_yscale("log")
         vkick = np.linspace(min(sampled_kicks), max(sampled_kicks), 500)
         # add best fit relations
         ax[0].plot(
@@ -290,7 +291,7 @@ else:
         ax[0].legend()
 
         # add Sonja's missing mass plot
-        mm.missing_mass_plot(data, ax=ax[1], nro_iter=10000, min_r=0.1)
+        mm.missing_mass_plot(data, ax=ax[1], nro_iter=10000)
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":
