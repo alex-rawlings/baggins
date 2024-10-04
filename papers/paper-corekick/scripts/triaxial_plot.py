@@ -10,7 +10,6 @@ parser = argparse.ArgumentParser(
     description="Plot triaxiality of merger remnants given triaxial data",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
-parser.add_argument(dest="path", type=str, help="path to data")
 parser.add_argument(
     "-c", "--combine", action="store_true", dest="combine", help="combine datasets"
 )
@@ -29,8 +28,10 @@ SL = bgs.setup_logger("script", args.verbosity)
 
 bgs.plotting.check_backend()
 
+data_path = figure_config.data_path("triaxiality")
+
 if args.combine:
-    pickle_files = bgs.utils.get_files_in_dir(args.path, ext=".pickle")
+    pickle_files = bgs.utils.get_files_in_dir(data_path, ext=".pickle")
     pickle_files = [p for p in pickle_files if "triax_v" in p]
     try:
         assert pickle_files
@@ -43,10 +44,9 @@ if args.combine:
     for p in pickle_files:
         k = os.path.splitext(os.path.basename(p))[0].replace("triax_", "")
         data[k] = bgs.utils.load_data(p)
-    bgs.utils.save_data(data, os.path.join(args.path, "triax_core-study.pickle"))
+    bgs.utils.save_data(data, os.path.join(data_path, "triax_core-study.pickle"))
 else:
-    assert os.path.isfile(args.path)
-    data = bgs.utils.load_data(args.path)
+    data = bgs.utils.load_data(os.path.join(data_path, "triax_core-study.pickle"))
 
 # set up figure
 fig, ax = plt.subplot_mosaic(
@@ -83,7 +83,7 @@ for k, v in data.items():
     )
 
 # add colour bar and other labels
-vkcols.make_cbar(list(ax.values()), extend=None)
+vkcols.make_cbar(list(ax.values()))
 
 for k, lab in zip("ABC", (r"$b/a$", r"$c/a$", r"$T$")):
     ax[k].set_xscale("log")
@@ -92,7 +92,7 @@ ax["C"].set_xlabel(r"$r/\mathrm{kpc}$")
 
 # add some text for the T plot
 ax["C"].set_ylim(0, 1)
-ax["C"].axhline(0.5, c="gray", alpha=0.4, ls=":")
+ax["C"].axhline(0.5, c="k", lw=1, ls=":", zorder=0.5)
 ax["C"].text(10, 0.55, r"$\mathrm{prolate}$", va="bottom")
 ax["C"].text(10, 0.45, r"$\mathrm{oblate}$", va="top")
 

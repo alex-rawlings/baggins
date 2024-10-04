@@ -190,20 +190,20 @@ else:
     os.makedirs(args.savedir, exist_ok=True)
     bgs.utils.save_data(data, os.path.join(args.savedir, f"{figname}.pickle"))
 
+if args.save:
+    fig, ax = plt.subplots(1, 2, sharex="all", sharey="all")
+    for axi in ax:
+        axi.set_xlabel(r"$r/\mathrm{kpc}$")
+    ax[0].set_ylabel(r"$b/a$")
+    ax[1].set_ylabel(r"$c/a$")
 
-fig, ax = plt.subplots(1, 2, sharex="all", sharey="all")
-for axi in ax:
-    axi.set_xlabel(r"$r/\mathrm{kpc}$")
-ax[0].set_ylabel(r"$b/a$")
-ax[1].set_ylabel(r"$c/a$")
+    # create a colour scale
+    cmapper, sm = bgs.plotting.create_normed_colours(min(times), max(times))
 
-# create a colour scale
-cmapper, sm = bgs.plotting.create_normed_colours(min(times), max(times))
-
-for i, t in enumerate(times):
-    ax[0].semilogx(ratios["r"][i, :], ratios["ba"][i, :], c=cmapper(t))
-    ax[1].semilogx(ratios["r"][i, :], ratios["ca"][i, :], c=cmapper(t))
-ax[0].set_ylim(0, 1)
-cbar = plt.colorbar(sm, ax=ax[-1], label=r"$t/\mathrm{Gyr}$")
-bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "triaxiality", figname))
-plt.show()
+    for i, t in enumerate(times):
+        ax[0].semilogx(ratios["r"][i, :], ratios["ba"][i, :], c=cmapper(t))
+        ax[1].semilogx(ratios["r"][i, :], ratios["ca"][i, :], c=cmapper(t))
+    ax[0].set_ylim(0, 1)
+    cbar = plt.colorbar(sm, ax=ax[-1], label=r"$t/\mathrm{Gyr}$")
+    bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "triaxiality", figname))
+    plt.show()

@@ -288,8 +288,6 @@ else:
         )
         ax[0].set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
-        ax[0].legend()
-
         # add Sonja's missing mass plot
         mm.missing_mass_plot(data, ax=ax[1], nro_iter=10000)
     elif args.param == "Re":

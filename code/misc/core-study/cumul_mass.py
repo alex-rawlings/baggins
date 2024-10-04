@@ -12,7 +12,7 @@ files = []
 with open("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml", "r") as f:
     data = yaml.load(f, yaml.SafeLoader)
 for k, v in data["snap_nums"].items():
-    if v > 0:
+    if v is not None and v > 0:
         files.append(os.path.join(data["parent_dir"], f'kick-vel-{k.lstrip("v")}/output/snap_{v:03d}.hdf5'))
 
 cmapper, sm = bgs.plotting.create_normed_colours(1, 1200)
