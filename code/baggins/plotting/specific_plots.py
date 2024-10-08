@@ -1,7 +1,8 @@
 import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
-import matplotlib.colors as colors
+from matplotlib import colors
+from matplotlib import colormaps
 from matplotlib.ticker import StrMethodFormatter
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
@@ -212,7 +213,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
     return ax2
 
 
-def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}):
+def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}, desat=False):
     """
     Plot the voronoi maps for a system.
 
@@ -226,6 +227,8 @@ def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}):
         figure size, by default (7,4.7)
     clims : dict, optional
         colour scale limits, by default None
+    desat : bool, optional
+        use a desaturated colour scheme, by default False
 
     Returns
     -------
@@ -260,8 +263,12 @@ def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}):
         for i in range(2):
             ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
             ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
-    div_cols = sns.color_palette("vlag", as_cmap=True)
-    asc_cols = sns.color_palette("flare_r", as_cmap=True)
+    if desat:
+        div_cols = colormaps.get("voronoi_div_desat")
+        asc_cols = colormaps.get("voronoi_seq_desat")
+    else:
+        div_cols = colormaps.get("voronoi_div")
+        asc_cols = colormaps.get("voronoi_seq")
     for i, (statkey, axi, cmap, label) in enumerate(
         zip(
             ("V", "sigma", "h3", "h4"),

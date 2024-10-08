@@ -58,10 +58,7 @@ def dask_extractor(orbitcl, vkey, mergemask):
     rb = np.nanmedian(core_data["rb"][vkey].flatten())
     Nbox = classifier.family_size_in_radius("box", rb)
     Ntube = classifier.family_size_in_radius("tube", rb)
-    inner_box_mask = np.logical_and(classifier.make_class_mask("box"), classifier.rad < rb)
-    box_apo_med, box_apo_err = bgs.mathematics.quantiles_relative_to_median(classifier.apocenter[inner_box_mask])
-    box_r_med, box_r_err = bgs.mathematics.quantiles_relative_to_median(classifier.rad[inner_box_mask])
-    return rb, Nbox, Ntube, box_apo_med, box_apo_err, box_r_med, box_r_err
+    return rb, Nbox, Ntube
 
 orbitfilebases = [
     d.path
@@ -72,7 +69,7 @@ orbitfilebases = [
 ]
 orbitfilebases.sort()
 core_data = bgs.utils.load_data("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle")
-data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/box_tube_ratio_APO.pickle"
+data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/box_tube_ratio.pickle"
 
 mergemask = bgs.analysis.MergeMask.make_box_tube_mask()
 
@@ -100,9 +97,9 @@ if args.extract:
         dask_res = dask.compute(dask_res)
 
     # store data
-    for i, dkey in enumerate(("rb", "Nbox", "Ntube", "box_apo_med", "box_apo_err", "box_r_med", "box_r_err")):
+    for i, dkey in enumerate(("rb", "Nbox", "Ntube")):
         data[dkey] = [r[i] for r in dask_res[0]]
-    bgs.utils.save_data(data, data_file)
+    bgs.utils.save_data(data, data_file, exist_ok=True)
 else:
     data = bgs.utils.load_data(data_file)
 
@@ -117,6 +114,7 @@ vkcols = figure_config.VkickColourMap()
 # plot data
 for vk, Nb, Nt in zip(data["vkick"], data["Nbox"], data["Ntube"]):
     ax.scatter(stellar_mass*Nb/norm_factor, stellar_mass*Nt/norm_factor, color=vkcols.get_colour(vk), **figure_config.marker_kwargs)
+    SL.debug(f"{int(vk):04d} has {stellar_mass*Nb:.2e} Msol in boxes and {stellar_mass*Nt:.2e} Msol in tubes.")
 xlims = ax.get_xlim()
 ylims = ax.get_ylim()
 
@@ -142,23 +140,3 @@ ax.set_ylim(ylims)
 vkcols.make_cbar(ax=ax)
 
 bgs.plotting.savefig(figure_config.fig_path("orbit_bt.pdf"), force_ext=True)
-
-plt.close()
-
-# plot 2: apocentre distributions
-fig, ax = plt.subplots()
-ax.set_xlabel(r"$r_\mathrm{box}/\mathrm{kpc}$")
-ax.set_ylabel(r"$r_\mathrm{apo,box}/\mathrm{kpc}$")
-
-# plot data
-for vk, am, aerr, rm, rerr in zip(data["vkick"], data["box_apo_med"], data["box_apo_err"], data["box_r_med"], data["box_r_err"]):
-    ax.errorbar(rm, am, xerr=rerr, yerr=aerr, fmt="o", c=vkcols.get_colour(vk), capthick=1, mec="k")
-guide_kwargs["alpha"] = 1
-ax.axvline(data["rb"][0], **guide_kwargs)
-fkwargs["va"] = "top"
-fkwargs["alpha"] = 1
-ax.text(data["rb"][0], 10, r"$r_\mathrm{b,0}$", rotation="vertical", **fkwargs)
-vkcols.make_cbar(ax=ax)
-
-bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "core-study/apo_bt.png"))
-

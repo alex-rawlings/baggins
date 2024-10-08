@@ -2,7 +2,12 @@ import argparse
 import os.path
 import numpy as np
 import scipy.stats
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    from matplotlib import use
+    use("Agg")
+    import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
 import baggins as bgs
@@ -78,23 +83,19 @@ if args.extract:
 
         snap = pygad.Snapshot(v, physical=True)
 
-        pre_ball_mask = pygad.BallMask(
-            30,
-            center=pygad.analysis.shrinking_sphere(
+        centre = pygad.analysis.shrinking_sphere(
                 snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
-        )
+            )
+        # move to CoM frame
+        pygad.Translation(-centre).apply(snap, total=True)
+        pre_ball_mask = pygad.BallMask(30)
+        vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
+        pygad.Boost(-vcom).apply(snap, total=True)
+
         rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
         h4_vals["rhalf"].append(rhalf)
         extent = rhalf_factor * rhalf
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
-
-        box_mask = pygad.BoxMask(
-            extent=2 * extent,
-            center=pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
-        )
 
         SL.debug(f"IFU extent is {extent:.2f} kpc")
         SL.debug(f"Number of regular bins is {n_regular_bins}^2")
@@ -106,6 +107,7 @@ if args.extract:
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             SL.info(f"Doing {orientation} orientation...")
+            box_mask = pygad.ExprMask(f"abs(pos[:,{x_axis}]) <= {extent}") & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
             voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
                 x=snap.stars[box_mask]["pos"][:, x_axis],
                 y=snap.stars[box_mask]["pos"][:, 2],
