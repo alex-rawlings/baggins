@@ -14,12 +14,20 @@ def idot(rb, re, n, gamma, alpha, log10densb):
     mub = 10**log10densb
     b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
 
-    return mub*2**(-gamma/alpha)*np.exp(b*(2**(1/alpha)*rb/re)**(1/n))
+    return (
+        mub
+        * 2 ** (-gamma / alpha)
+        * np.exp(b * (2 ** (1 / alpha) * rb / re) ** (1 / n))
+    )
 
 
 def i_ser(r, rb, re, n, gamma, alpha, i):
     b = 2.0 * n - 0.33333333 + 0.009876 * (1 / n)
-    return i*(1+(rb/r)**alpha)**(gamma/alpha)*np.exp(-b*((r**alpha+rb**alpha)/re**alpha)**(1/(alpha*n)))
+    return (
+        i
+        * (1 + (rb / r) ** alpha) ** (gamma / alpha)
+        * np.exp(-b * ((r**alpha + rb**alpha) / re**alpha) ** (1 / (alpha * n)))
+    )
 
 
 def mass_deficit(r, rb, re, n, log10densb, g, a):
@@ -37,7 +45,7 @@ def mass_deficit(r, rb, re, n, log10densb, g, a):
     i_cs = idot(rb, re, n, g, a, log10densb)
     core_ser = i_ser(r, rb, re, n, g, a, i_cs)
     ser = i_ser(r, 0, re, n, g, a, i_cs)
-    return (ser-core_ser)*r
+    return (ser - core_ser) * r
 
 
 def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=False):
@@ -90,7 +98,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
             m, abserr = integrate.quad(
                 mass_deficit,
                 min_r,
-                5*Re_new,
+                5 * Re_new,
                 args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new),
             )
             while np.isnan(m):
@@ -106,7 +114,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
                 m, abserr = integrate.quad(
                     mass_deficit,
                     min_r,
-                    5*Re_new,
+                    5 * Re_new,
                     args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new),
                 )
             mdef_dict[v][i] = 2 * np.pi * 3.5 * m
@@ -143,22 +151,28 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
 
     ax.tick_params(axis="y", which="both", right=False)
     # let's normalise by norm_val / 1e9
-    norm_exponent = int(np.ceil(np.log10(norm_val))) + 1
-    new_norm_val = norm_val / 10**norm_exponent
+    new_norm_val = norm_val / 1e9
     print(f"We will normalise mass by {norm_val:.2e} Msol")
+    print(
+        f"The 0 km/s case has IQR spanning {np.nanquantile(mdef_dict['0000'], 0.25):.2e} - {np.nanquantile(mdef_dict['0000'], 0.75):.2e} Msol"
+    )
     ax2 = ax.secondary_yaxis(
         "right", functions=(lambda x: x * new_norm_val, lambda x: x / new_norm_val)
     )
-    ax2.ticklabel_format(style="sci", useMathText=True)
+    try:
+        ax2.ticklabel_format(style="sci", useMathText=True)
+    except AttributeError:
+        # we are using a log-scale, so no need for scientific format
+        pass
     # axis labels
     ax.set_ylabel(r"$M_\mathrm{def} / M_\mathrm{def,0}$")
-    ax2.set_ylabel(f"$M_\mathrm{{def}}/ (10^{{{norm_exponent:d}}}\mathrm{{M}}_\odot)$")
+    ax2.set_ylabel(r"$M_\mathrm{def}/ (10^9\mathrm{M}_\odot)$")
     if new_figure:
         ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$")
         plt.show()
 
     if debug_mode:
-        fig3, ax3 = plt.subplots(1, 3, sharex='all', sharey='all')
+        fig3, ax3 = plt.subplots(1, 3, sharex="all", sharey="all")
 
         vk = ["0180", "0480", "0840"]
         for j in range(len(vk)):
@@ -167,12 +181,18 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
             ntemp = n_dict[vk[j]][positivemask]
             mtemp = np.log10(mdef_dict[vk[j]][positivemask])
 
-            nmask = np.logical_and(ntemp > np.quantile(ntemp, 0.25), ntemp < np.quantile(ntemp, 1 - 0.25))
-            mmask = np.logical_and(mtemp > np.quantile(mtemp, 0.25), mtemp < np.quantile(mtemp, 1 - 0.25))
+            nmask = np.logical_and(
+                ntemp > np.quantile(ntemp, 0.25), ntemp < np.quantile(ntemp, 1 - 0.25)
+            )
+            mmask = np.logical_and(
+                mtemp > np.quantile(mtemp, 0.25), mtemp < np.quantile(mtemp, 1 - 0.25)
+            )
 
             bigmask = np.logical_and(nmask, mmask)
 
-            h = ax3[j].hist2d(ntemp[bigmask], mtemp[bigmask], norm=colors.LogNorm(1e-1, 100), bins=10)
+            h = ax3[j].hist2d(
+                ntemp[bigmask], mtemp[bigmask], norm=colors.LogNorm(1e-1, 100), bins=10
+            )
 
             ax3[j].set_ylabel(r"$M_\mathrm{def}$")
             ax3[j].set_xlabel(r"$r_\mathrm{b}$")

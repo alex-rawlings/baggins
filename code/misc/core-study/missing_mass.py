@@ -7,7 +7,7 @@ import baggins as bgs
 
 datafile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
 
-data = bgs.utils.load_data(datafile)
+'''data = bgs.utils.load_data(datafile)
 
 
 def data_yielder():
@@ -20,23 +20,69 @@ def data_yielder():
             "g": data["g"][k].flatten(),
             "a": data["a"][k].flatten()
         }
-        yield k, d
+        yield k, d'''
 
 def sersic_b(n):
     return 2.0 * n - 0.33333333 + 0.009876 / n
 
-def core_sersic(r, rb, Re, n, log10densb, g, a):
+def sersic_fit(r, Re, n):
+    """
+    :param r: radius
+    :param Re: effective radius
+    :param n: Sersic index
+    :return: projected surface mass density
+    """
+    b = sersic_b(n)
+    mu = np.exp(-b * ((r / Re) ** (1 / n) - 1))
+    return mu
+
+def core_sersic(r, rb, Re, n, log10densb, g, a, edit=False):
     b = sersic_b(n)
     preterm = - g / a * np.log(2.0) + b * pow((pow(2.0, 1/a) * rb / Re), 1/n)
+    if edit:
+        rb=0
     dens = log10densb + (preterm + g / a * np.log(pow(r, a) + pow(rb, a)) - g * np.log(r) - b * pow(Re, -1/n) * pow((pow(r, a) + pow(rb, a)), (1/(a*n)))) / np.log(10.0)
-    return dens.flatten()
+    return 10**dens.flatten()
 
 
-yield_data = data_yielder()
+#yield_data = data_yielder()
 rng = np.random.default_rng(87899)
 N_samples = 2000
 min_r = 1e-1
 
+if True:
+    fig, ax = plt.subplot_mosaic(
+    """
+    A
+    A
+    B
+    """
+    )
+    ax["B"].sharex(ax["A"])
+    r = np.geomspace(0.2, 30, 31)
+    rb = 1.3
+    Re = 6
+    n = 3
+    log10densb = 9
+    gamma = 0.5
+    alpha = 2
+    mu_cs = core_sersic(r, rb, Re, n, log10densb, gamma, alpha)
+    mu_s = core_sersic(r, rb, Re, n, log10densb, gamma, alpha, edit=True)
+    ax["A"].loglog(r, mu_cs)
+    ax["A"].loglog(r, mu_s)
+    ax["B"].loglog(r, np.abs(mu_cs-mu_s)/mu_cs*100)
+    for i in range(1, 5):
+        for k in "AB":
+            ax[k].axvline(i * rb, c="k", ls=":", label=(r"$n \times r_\mathrm{b}$" if i==1 else ""))
+            ax[k].axvline(i * Re, c="k", ls="--", label=(r"$n \times R_\mathrm{e}$" if i==1 else ""))
+    ax["B"].axhline(1, c="k", ls="-")
+    ax["A"].set_ylabel("Surface density")
+    ax["B"].set_xlabel("r/kpc")
+    ax["B"].set_ylabel("|CS - S| / CS * 100 (Rel. Err.)")
+    ax["A"].legend()
+    plt.savefig("mass_240913.pdf")
+    plt.show()
+    quit()
 
 fig, ax = plt.subplots(1,1)
 

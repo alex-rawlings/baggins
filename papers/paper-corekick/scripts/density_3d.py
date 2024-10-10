@@ -70,8 +70,8 @@ for i, (k, v) in enumerate(snapfiles["snap_nums"].items()):
     pygad.gc_full_collect()
 
 # add the r^-1 scaling line
-xline = np.geomspace(2, 8, 4)
-yline = ax.loglog(xline, 1e10 * xline**-1, c="k")
+xline = np.geomspace(2, 12, 4)
+yline = ax.loglog(xline, 1e10 * xline**-1, c="k", lw=1)
 ax.text(5, 3e9, r"$\propto r^{-1}$", ha="left")
 
 ax.set_xlabel(r"$r/\mathrm{kpc}$")

@@ -1,3 +1,4 @@
+from abc import ABC
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -11,7 +12,7 @@ __all__ = ["GradientLinePlot", "GradientScatterPlot"]
 _logger = _cmlogger.getChild(__name__)
 
 
-class _GradientPlot:
+class _GradientPlot(ABC):
     """ """
 
     def __init__(self, ax, cmap="cividis"):
@@ -25,8 +26,8 @@ class _GradientPlot:
         ----------
         ax : matplotlib.axes.Axes
             axis to plot to
-        cmap : str, optional
-            pyplot colour map name, by default "cividis"
+        cmap : str, ListedColorMap, optional
+            pyplot colour map name or instance, by default "cividis"
         plot_kwargs : dict, optional
             arguments to be parsed to either plt.plot() or plt.scatter(), by
             default {}
@@ -37,18 +38,23 @@ class _GradientPlot:
         self.all_y = []
         self.all_c = []
         self.all_label = []
-        try:
-            self.cmap = getattr(plt.cm, cmap)
-        except AttributeError:
+        if isinstance(cmap, colors.ListedColormap):
+            self.cmap = cmap
+        else:
             try:
-                assert cmap in [cm for cm in plt.colormaps() if cm not in dir(plt.cm)]
-                self.cmap = plt.colormaps[cmap]
-            except AssertionError:
-                _logger.exception(
-                    f"cmap `{cmap}` not present in matplotlib defaults, nor is registered as a custom map!",
-                    exc_info=True,
-                )
-                raise
+                self.cmap = getattr(plt.cm, cmap)
+            except AttributeError:
+                try:
+                    assert cmap in [
+                        cm for cm in plt.colormaps() if cm not in dir(plt.cm)
+                    ]
+                    self.cmap = plt.colormaps[cmap]
+                except AssertionError:
+                    _logger.exception(
+                        f"cmap `{cmap}` not present in matplotlib defaults, nor is registered as a custom map!",
+                        exc_info=True,
+                    )
+                    raise
         self.all_marker = []
         self.norm = [0, 1]
         self.marker_kwargs = {"ec": "k", "lw": 0.5}
@@ -77,7 +83,7 @@ class _GradientPlot:
             y data
         c : np.ndarray
             data to map colours to
-        label : _type_, optional
+        label : str, optional
             label of plot, by default None
         marker : str, optional
             end marker, by default "o"
@@ -106,6 +112,10 @@ class _GradientPlot:
         ----------
         log : bool, optional
             colours in logscale?, by default False
+        vmin : float, optional
+            enforce a minimum colour value, by default None
+        vmax : float, optional
+            enforce a maximum colour value, by default None
         """
         if vmin is None:
             vmin = min([np.nanmin(ci) for ci in self.all_c])

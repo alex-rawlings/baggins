@@ -123,87 +123,88 @@ def beta_profile(snapshot, r_split):
     )
 
 
-# Create random number generator
-rgen = np.random.default_rng(seed=88965)
+# wrap main functionality into a function so we can call it elsewhere
+def main(ax=None, read_betas=1):
+    # Create random number generator
+    rgen = np.random.default_rng(seed=88965)
 
+    # Extract input core radii
+    with open(data_path + core_file, "rb") as f:
+        core_radii = pickle.load(f)["rb"]
 
-# Extract input core radii
-with open(data_path + core_file, "rb") as f:
-    core_radii = pickle.load(f)["rb"]
+    # Compute new beta profiles...
+    if read_betas == 0:
+        print("Computing beta profiles...", flush=True)
+        extracted_data = {
+            vel: dict(
+                r_in=np.full(sample_size, np.nan),
+                r_out=np.full(sample_size, np.nan),
+                b_in=np.full(sample_size, np.nan),
+                b_out=np.full(sample_size, np.nan),
+            )
+            for vel in vels
+        }
+        for i in range(len(vels)):
+            step_time = time.time()
+            run = "kick-vel-" + vels[i] + "/"
+            print("---", run, "---", flush=True)
 
+            snap = pygad.Snapshot(
+                snap_path
+                + run
+                + "output/snap_"
+                + "0" * (3 - len(str(snaps[i])))
+                + str(snaps[i])
+                + ".hdf5",
+                physical=True,
+            )
 
-# Compute new beta profiles...
-if read_betas == 0:
-    print("Computing beta profiles...", flush=True)
-    extracted_data = {
-        vel: dict(
-            r_in=np.full(sample_size, np.nan),
-            r_out=np.full(sample_size, np.nan),
-            b_in=np.full(sample_size, np.nan),
-            b_out=np.full(sample_size, np.nan),
-        )
-        for vel in vels
-    }
-    for i in range(len(vels)):
-        step_time = time.time()
-        run = "kick-vel-" + vels[i] + "/"
-        print("---", run, "---", flush=True)
+            # Find center using shrinking sphere on the stars
+            center = pygad.analysis.shrinking_sphere(
+                snap.stars, center=pygad.analysis.center_of_mass(snap.stars), R=30
+            )
 
-        snap = pygad.Snapshot(
-            snap_path
-            + run
-            + "output/snap_"
-            + "0" * (3 - len(str(snaps[i])))
-            + str(snaps[i])
-            + ".hdf5",
-            physical=True,
-        )
+            # Shift coordinates of all particles so that the snap is centered on
+            # the shrinking sphere result
+            pygad.Translation(-center).apply(snap)
 
-        # Find center using shrinking sphere on the stars
-        center = pygad.analysis.shrinking_sphere(
-            snap.stars, center=pygad.analysis.center_of_mass(snap.stars), R=30
-        )
+            this_core_radii = core_radii[vels[i]].flatten()
+            core_sample = rgen.choice(
+                this_core_radii, size=sample_size, replace=True
+            )  # select core radius sample with rgen
+            for j in range(len(core_sample)):
+                radii, betas, bincount = beta_profile(
+                    snap.stars, r_split=core_sample[j]
+                )
+                r_in, r_out, b_in, b_out = radii[0], radii[-1], betas[0], betas[-1]
+                extracted_data[vels[i]]["r_in"][j] = radii[0]
+                extracted_data[vels[i]]["r_out"][j] = radii[-1]
+                extracted_data[vels[i]]["b_in"][j] = betas[0]
+                extracted_data[vels[i]]["b_out"][j] = betas[-1]
 
-        # Shift coordinates of all particles so that the snap is centered on
-        # the shrinking sphere result
-        pygad.Translation(-center).apply(snap)
+            del snap
+            gc.collect()
+            pygad.gc_full_collect()
+            print(time.time() - step_time, "s", flush=True)
 
-        this_core_radii = core_radii[vels[i]].flatten()
-        core_sample = rgen.choice(
-            this_core_radii, size=sample_size, replace=True
-        )  # select core radius sample with rgen
-        for j in range(len(core_sample)):
-            radii, betas, bincount = beta_profile(snap.stars, r_split=core_sample[j])
-            r_in, r_out, b_in, b_out = radii[0], radii[-1], betas[0], betas[-1]
-            extracted_data[vels[i]]["r_in"][j] = radii[0]
-            extracted_data[vels[i]]["r_out"][j] = radii[-1]
-            extracted_data[vels[i]]["b_in"][j] = betas[0]
-            extracted_data[vels[i]]["b_out"][j] = betas[-1]
+        # Save beta profiles
+        if save_betas == 1:
+            print("Saving beta profiles...", flush=True)
+            print(data_path + output_file + ".pickle", flush=True)
+            pickle.dump(extracted_data, open(data_path + output_file + ".pickle", "wb"))
 
-        del snap
-        gc.collect()
-        pygad.gc_full_collect()
-        print(time.time() - step_time, "s", flush=True)
+    # ...or read in previously computed beta profiles
+    elif read_betas == 1:
+        print("Reading beta profiles...", flush=True)
+        print(data_path + input_file, flush=True)
+        extracted_data = pickle.load(open(data_path + input_file, "rb"))
 
-    # Save beta profiles
-    if save_betas == 1:
-        print("Saving beta profiles...", flush=True)
-        print(data_path + output_file + ".pickle", flush=True)
-        pickle.dump(extracted_data, open(data_path + output_file + ".pickle", "wb"))
+    else:
+        raise RuntimeError("ERROR: incorrect read_file, select 0 or 1")
 
-# ...or read in previously computed beta profiles
-elif read_betas == 1:
-    print("Reading beta profiles...", flush=True)
-    print(data_path + input_file, flush=True)
-    extracted_data = pickle.load(open(data_path + input_file, "rb"))
-
-else:
-    raise RuntimeError("ERROR: incorrect read_file, select 0 or 1")
-
-
-if show_fig == 1 or save_fig == 1:
-    # Initialize figure
-    fig, ax = plt.subplots()
+    if ax is None:
+        # Initialize figure
+        fig, ax = plt.subplots()
     ax.axhline(
         y=0, xmin=0, xmax=1, linestyle=":", color="k", zorder=0, lw=1
     )  # zero level on the background
@@ -276,20 +277,23 @@ if show_fig == 1 or save_fig == 1:
         ax.set_xscale("log")
 
     else:
-        ax.set_xlabel("$v_{\mathrm{kick}}/\mathrm{km \, s^{-1}}$")
+        ax.set_xlabel(r"$v_{\mathrm{kick}}/\mathrm{km \, s^{-1}}$")
     ax.set_ylabel(r"$\beta$")
     ax.legend(
         handles=[b_in_p, b_out_p],
         labels=["$r \leq r_{\mathrm{b}}$", "$r > r_{\mathrm{b}}$"],
         loc="lower right",
     )
+    return ax
 
 
-# Save and show figure
-if save_fig == 1:
-    print("Saving figure...", flush=True)
-    plt.savefig(figure_config.fig_path(output_file))
-print("Time taken:", time.time() - start_time, flush=True)
+if __name__ == "__main__":
+    main()
+    # Save and show figure
+    if save_fig == 1:
+        print("Saving figure...", flush=True)
+        plt.savefig(figure_config.fig_path(output_file))
+    print("Time taken:", time.time() - start_time, flush=True)
 
-if show_fig == 1:
-    plt.show()
+    if show_fig == 1:
+        plt.show()

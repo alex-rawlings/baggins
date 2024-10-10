@@ -1,14 +1,14 @@
 functions {
-    vector relation_sigmoid(vector x, real K, real b, real c){
-        return K .* (1 - exp(-b .* x)) + c;
+    vector relation_sigmoid(vector x, real K, real b){
+        return K .* (1 - exp(-b .* x)) + 1.;
     }
 
-    real relation_sigmoid(real x, real K, real b, real c){
-        return K * (1 - exp(-b * x)) + c;
+    real relation_sigmoid(real x, real K, real b){
+        return K * (1 - exp(-b * x)) + 1.;
     }
 
-    real partial_sum(array[] real y_slice, int start, int end, vector vk, real K, real b, real c, real err){
-        return normal_lpdf( y_slice | relation_sigmoid(vk[start:end], K, b, c), err);
+    real partial_sum(array[] real y_slice, int start, int end, vector vk, real K, real b, real err){
+        return normal_lpdf( y_slice | relation_sigmoid(vk[start:end], K, b), err);
     }
 
     #include "../hierarchical_models/stan/custom_rngs.stan"
@@ -41,17 +41,15 @@ transformed data {
 parameters {
     real<lower=0.> K;
     real<lower=0.> b;
-    real<lower=0.> c;
     real<lower=0.> err;
 }
 
 
 transformed parameters {
-    array[4] real lprior;
+    array[3] real lprior;
     lprior[1] = normal_lpdf(K | 2., 3.);
     lprior[2] = normal_lpdf(b | 1, 4);
-    lprior[3] = normal_lpdf(c | 1, 4);
-    lprior[4] = normal_lpdf(err | 0, 9);
+    lprior[3] = normal_lpdf(err | 0, 9);
 }
 
 
@@ -59,7 +57,7 @@ model {
     // density at priors
     target += sum(lprior);
 
-    target += reduce_sum(partial_sum, to_array_1d(rb), 1, vkick, K, b, c, err);
+    target += reduce_sum(partial_sum, to_array_1d(rb), 1, vkick, K, b, err);
 
 }
 
@@ -68,7 +66,7 @@ generated quantities {
     // generate data replication
     vector[N_GQ] rb_posterior;
     {
-        vector[N_GQ] rel_mean = relation_sigmoid(vkick_GQ, K, b, c);
+        vector[N_GQ] rel_mean = relation_sigmoid(vkick_GQ, K, b);
         for(i in 1:N_GQ){
             rb_posterior[i] = lower_trunc_normal_rng(rel_mean[i], err, 0.);
         }
@@ -77,6 +75,6 @@ generated quantities {
     // determine log likelihood function
     vector[N_tot] log_lik;
     for(i in 1:N_tot){
-        log_lik[i] = normal_lpdf(rb[i] | relation_sigmoid(vkick[i], K, b, c), err);
+        log_lik[i] = normal_lpdf(rb[i] | relation_sigmoid(vkick[i], K, b), err);
     }
 }

@@ -294,7 +294,7 @@ def _get_R(vs):
     return R[inds], inds
 
 
-def lambda_R(vorstat, re):
+def lambda_R(vorstat):
     """
     Determine the lambda(R) spin parameter.
     Original form by Matias Mannerkoski
@@ -303,23 +303,20 @@ def lambda_R(vorstat, re):
     ----------
     vorstat : dict
         output of voronoi_binned_los_V_statistics() method
-    re : float
-        projected half mass (or half light) radius
 
     Returns
     -------
-    : np.ndarray
-        radial values in units of Re
-    : np.ndarray
-        lambda(R) value
+    : callable
+        interpolation function to get spin value at a particular radius
     """
     R, inds = _get_R(vorstat)
     F = vorstat["bin_mass"][inds]
     V = vorstat["bin_V"][inds]
     s = vorstat["bin_sigma"][inds]
-    return R / re, np.nancumsum(F * R * np.abs(V)) / np.nancumsum(
+    lam = np.nancumsum(F * R * np.abs(V)) / np.nancumsum(
         F * R * np.sqrt(V**2 + s**2)
     )
+    return lambda x: np.interp(x, R, lam)
 
 
 def radial_profile_velocity_moment(vorstat, stat):

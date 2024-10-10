@@ -75,7 +75,7 @@ def draw_sizebar(
         "kilo2base": 1e3,
         "mega2base": 1e6,
     }
-    label = f"{length*factors[unitconvert]:{fmt}} {units}"
+    label = f"$\mathrm{{{length*factors[unitconvert]:{fmt}}\,{units}}}$"
     asb = AnchoredSizeBar(
         ax.transData,
         length,

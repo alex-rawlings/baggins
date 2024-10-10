@@ -10,7 +10,7 @@ snapdir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/va
 
 snapnums = [0, 10, 37, 38, 39, 40, 41, 42, 43, 44, 45, 73]
 xaxis = 0
-yaxis = 1
+yaxis = 2
 dt = pygad.UnitScalar("0.1 Myr")
 
 snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
@@ -35,7 +35,7 @@ for i, (axi, sn) in enumerate(zip(ax.flat, snapnums)):
         print(f"  rinfl is {rinfl:.2f}")
         rinfl_mask = pygad.BallMask(rinfl)
         id_mask = pygad.IDMask(snap.stars[rinfl_mask]["ID"])
-    mask = pygad.masks.ExprMask("abs(pos[:,2])<0.5") & id_mask
+    mask = pygad.masks.ExprMask("abs(pos[:,1])<0.5") & id_mask
     pygad.plotting.image(snap.stars[mask], "mass", xaxis=xaxis, yaxis=yaxis, zero_is_white=False, ax=axi, vlim=(1e7, 1e9))
     axi.set_title(f"Snap {sn:03d}")
     axi.scatter(snap.bh["pos"][:,xaxis], snap.bh["pos"][:,yaxis], color="tab:red", marker="o")

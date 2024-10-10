@@ -117,7 +117,7 @@ def _helper(param_name, ax):
     kick_vels = []
     param = []
     normalisation = (
-        rng.permutation(data[param_name]["0000"].flatten()) if args.param == "rb" else 1
+        rng.permutation(data[param_name]["0000"].flatten()) if param_name == "rb" else 1
     )
     SL.warning(f"Determining distributions for parameter: {param_name}")
     for k, v in data[param_name].items():
@@ -182,7 +182,7 @@ def distribution_diff_plot(param_name, bins=20):
     return ax
 
 
-xlabel = r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$"
+xlabel = r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$"
 if args.param == "all":
     ylabs = dict(
         Re=r"$R_\mathrm{e}/\mathrm{kpc}$",
@@ -265,6 +265,7 @@ else:
         ax2 = ax[0].secondary_yaxis(
             "right", functions=(lambda x: x * norm_val, lambda x: x / norm_val)
         )
+        ax[1].set_yscale("log")
         vkick = np.linspace(min(sampled_kicks), max(sampled_kicks), 500)
         # add best fit relations
         ax[0].plot(
@@ -275,22 +276,20 @@ else:
         )
         ax[0].plot(
             vkick,
-            3.26 * vkick / ESCAPE_VEL + 1.1,
+            3.03 * vkick / ESCAPE_VEL + 1,
             label=r"$\mathrm{Linear}$",
             c=col_list[2],
         )
         ax[0].plot(
             vkick,
-            2.47 * (1 - np.exp(-2.62 * vkick / ESCAPE_VEL)) + 0.873,
+            3.04 * (1 - np.exp(-1.56 * vkick / ESCAPE_VEL)) + 1,
             label=r"$\mathrm{Sigmoid}$",
             c=col_list[3],
         )
         ax[0].set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
         ax2.set_ylabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
-        ax[0].legend()
-
         # add Sonja's missing mass plot
-        mm.missing_mass_plot(data, ax=ax[1], nro_iter=10000, min_r=0.1)
+        mm.missing_mass_plot(data, ax=ax[1], nro_iter=10000)
     elif args.param == "Re":
         ax.set_ylabel(r"$R_\mathrm{e}/\mathrm{kpc}$")
     elif args.param == "n":

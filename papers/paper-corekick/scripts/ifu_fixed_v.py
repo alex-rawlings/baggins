@@ -1,7 +1,7 @@
 import argparse
 import os
 import numpy as np
-from scipy.ndimage import uniform_filter1d
+import scipy.stats
 import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
@@ -83,22 +83,18 @@ if args.extract:
             SL.exception(e)
             continue
 
-        pre_ball_mask = pygad.BallMask(
-            30,
-            center=pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
+        centre = pygad.analysis.shrinking_sphere(
+            snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
         )
+        # move to CoM frame
+        pygad.Translation(-centre).apply(snap, total=True)
+        pre_ball_mask = pygad.BallMask(30)
+        vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
+        pygad.Boost(-vcom).apply(snap, total=True)
+
         rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
         extent = 0.25 * rhalf
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
-
-        box_mask = pygad.BoxMask(
-            extent=2 * extent,
-            center=pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
-        )
 
         SL.debug(f"IFU extent is {extent:.2f} kpc")
         SL.debug(f"Number of regular bins is {n_regular_bins}^2")
@@ -110,6 +106,9 @@ if args.extract:
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             SL.info(f"Doing {orientation} orientation...")
+            box_mask = pygad.ExprMask(
+                f"abs(pos[:,{x_axis}]) <= {extent}"
+            ) & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
             voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
                 x=snap.stars[box_mask]["pos"][:, x_axis],
                 y=snap.stars[box_mask]["pos"][:, 2],
@@ -156,13 +155,19 @@ cmapper, sm = bgs.plotting.create_offcentre_diverging(
 def plot_helper(axi, t, v):
     r = v["R"]
     h4 = v["h4"]
-    idx_sorted = np.argsort(r)
-    h4_filtered = uniform_filter1d(h4[idx_sorted], 8, mode="nearest")
+    r_bins = np.linspace(0, 3, 11)
+    h4_med, *_ = scipy.stats.binned_statistic(r, h4, statistic="median", bins=r_bins)
     if np.abs(t) < 1e-10:
-        plt_kwargs = {"marker": "o", "markevery": int(len(r) * 0.2)}
+        plt_kwargs = {"marker": "o", "markevery": 2}
     else:
         plt_kwargs = {}
-    axi.plot(r[idx_sorted], h4_filtered, c=cmapper(t), ls="-", **plt_kwargs)
+    axi.plot(
+        bgs.mathematics.get_histogram_bin_centres(r_bins),
+        h4_med,
+        c=cmapper(t),
+        ls="-",
+        **plt_kwargs,
+    )
 
 
 for t, (kp, vp), (ko, vo) in zip(

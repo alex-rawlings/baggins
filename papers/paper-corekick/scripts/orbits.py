@@ -40,8 +40,12 @@ orbitfilebases.sort()
 mergemask = bgs.analysis.MergeMask()
 mergemask.add_family("pi-box", [21, 24, 25], r"$\pi\mathrm{-box}$")
 mergemask.add_family("boxlet", [1, 5, 9, 13, 17], r"$\mathrm{boxlet}$")
-mergemask.add_family("x-tube-in", [4, 8, 12, 16, 20], r"$\mathrm{inner\,}x\mathrm{-tube}$")
-mergemask.add_family("x-tube-out", [3, 7, 11, 15, 19], r"$\mathrm{outer\,}x\mathrm{-tube}$")
+mergemask.add_family(
+    "x-tube-in", [4, 8, 12, 16, 20], r"$\mathrm{inner\,}x\mathrm{-tube}$"
+)
+mergemask.add_family(
+    "x-tube-out", [3, 7, 11, 15, 19], r"$\mathrm{outer\,}x\mathrm{-tube}$"
+)
 mergemask.add_family("z-tube", [2, 6, 10, 14, 18], r"$z\mathrm{-tube}$")
 mergemask.add_family("rosette", [26], r"$\mathrm{rosette}$")
 mergemask.add_family("irreg", [22], r"$\mathrm{irregular}$")
@@ -63,10 +67,11 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
         orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[
             0
         ]
-        orbit_res = bgs.analysis.orbits_radial_frequency(orbitcl, returnextra=True, mergemask=mergemask)
-        rosette_mask = orbit_res["classids"] == mergemask.get_family("rosette")
+        classifier = bgs.analysis.OrbitClassifier(orbitcl, mergemask=mergemask)
+        classifier.radial_frequency(radbins=np.geomspace(0.2, 11, 11))
+        rosette_mask = classifier.classids == mergemask.get_family("rosette")
         for dist, arr in zip(
-            ("Apocentre", "Pericentre"), (orbit_res["apo"], orbit_res["peri"])
+            ("Apocentre", "Pericentre"), (classifier.apocenter, classifier.pericenter)
         ):
             SL.info(
                 f"{dist} IQR for rosettes: {np.nanquantile(arr[rosette_mask], 0.25):.2e} - {np.nanquantile(arr[rosette_mask], 0.75):.2e} (median: {np.median(arr[rosette_mask]):.2e})"
@@ -78,14 +83,21 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
     vkick = float(orbitfilebase.split("/")[-1].split("-")[-1])
     for i, axi in enumerate(ax.flat):
         axi.semilogx(
-            orbit_res["meanrads"],
-            orbit_res["classfrequency"][:, i],
+            classifier.meanrads,
+            classifier.classfrequency[:, i],
             label=vkick,
             c=vkcols.get_colour(vkick),
             ls="-",
         )
+        if mergemask.families[i] == "unclass":
+            SL.debug(
+                f"Skipping family '{mergemask.families[i]}' kick-vel stratified plot..."
+            )
+            continue
         axj.semilogx(
-            orbit_res["meanrads"], orbit_res["classfrequency"][:, i], label=mergemask.labels[i]
+            classifier.meanrads,
+            classifier.classfrequency[:, i],
+            label=mergemask.labels[i],
         )
     axj.text(
         0.95,

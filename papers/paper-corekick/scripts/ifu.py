@@ -1,8 +1,15 @@
 import argparse
 import os.path
 import numpy as np
-from scipy.ndimage import uniform_filter1d
-import matplotlib.pyplot as plt
+import scipy.stats
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    from matplotlib import use
+
+    use("Agg")
+    import matplotlib.pyplot as plt
 from datetime import datetime
 import pygad
 import baggins as bgs
@@ -78,23 +85,19 @@ if args.extract:
 
         snap = pygad.Snapshot(v, physical=True)
 
-        pre_ball_mask = pygad.BallMask(
-            30,
-            center=pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
+        centre = pygad.analysis.shrinking_sphere(
+            snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
         )
+        # move to CoM frame
+        pygad.Translation(-centre).apply(snap, total=True)
+        pre_ball_mask = pygad.BallMask(30)
+        vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
+        pygad.Boost(-vcom).apply(snap, total=True)
+
         rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
         h4_vals["rhalf"].append(rhalf)
         extent = rhalf_factor * rhalf
         n_regular_bins = int(2 * extent / pygad.UnitScalar(0.04, "kpc"))
-
-        box_mask = pygad.BoxMask(
-            extent=2 * extent,
-            center=pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            ),
-        )
 
         SL.debug(f"IFU extent is {extent:.2f} kpc")
         SL.debug(f"Number of regular bins is {n_regular_bins}^2")
@@ -106,6 +109,9 @@ if args.extract:
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             SL.info(f"Doing {orientation} orientation...")
+            box_mask = pygad.ExprMask(
+                f"abs(pos[:,{x_axis}]) <= {extent}"
+            ) & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
             voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
                 x=snap.stars[box_mask]["pos"][:, x_axis],
                 y=snap.stars[box_mask]["pos"][:, 2],
@@ -132,6 +138,14 @@ else:
     )
     h4_vals = bgs.utils.load_data(h4_file)
 
+# core data
+rb_bin = np.nanmedian(
+    bgs.utils.load_data(
+        "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
+    )["rb"]["0000"].flatten()
+)
+
+
 # plot h4 radial profiles
 fig, ax = plt.subplots(2, 1, sharex="all", sharey="all")
 get_kick_val = lambda k: float(k.lstrip("v"))
@@ -139,22 +153,33 @@ vkcols = figure_config.VkickColourMap()
 
 
 # helper function for plotting
-def plot_helper(axi, k, vs, rhalf):
+def plot_helper(axi, k, vs, rb0):
     r, h4 = bgs.analysis.radial_profile_velocity_moment(vs, "h4")
-    idx_sorted = np.argsort(r)
-    h4_filtered = uniform_filter1d(h4[idx_sorted], 8, mode="nearest")
-    axi.plot(r[idx_sorted], h4_filtered, c=vkcols.get_colour(get_kick_val(k)), ls="-")
+    r_bins = np.linspace(0, 5, 11) * rb0
+    h4_med, *_ = scipy.stats.binned_statistic(r, h4, statistic="median", bins=r_bins)
+    axi.plot(
+        bgs.mathematics.get_histogram_bin_centres(r_bins) / rb0,
+        h4_med,
+        c=vkcols.get_colour(get_kick_val(k)),
+        ls="-",
+    )
 
 
 for rh, (kp, vp), (ko, vo) in zip(
     h4_vals["rhalf"], h4_vals["para"].items(), h4_vals["ortho"].items()
 ):
-    plot_helper(ax[0], kp, vp, rh)
-    plot_helper(ax[1], ko, vo, rh)
-ax[-1].set_xlabel(r"$R/\mathrm{kpc}$")
+    plot_helper(ax[0], kp, vp, rb_bin)
+    plot_helper(ax[1], ko, vo, rb_bin)
+
+for axi in ax:
+    axi.axvline(1, ls=":", lw=1, c="k", zorder=0.5)
+    axi.text(1, 0.01, r"$r_\mathrm{b,0}$", rotation="vertical")
+
+ax[-1].set_xlabel(r"$R/r_\mathrm{b,0}$")
 ax[0].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(parallel)}$")
 ax[1].set_ylabel(r"$\langle h_4 \rangle\;\mathrm{(orthogonal)}$")
 vkcols.make_cbar(ax.flat)
+
 bgs.plotting.savefig(figure_config.fig_path("h4.pdf"), force_ext=True)
 
 if args.plot:
@@ -166,6 +191,7 @@ if args.plot:
                 if args.sub is not None:
                     if k.lstrip("v") not in args.sub:
                         continue
+                SL.debug(f"Doing key {k}")
                 yield rh, k, v, orientation
 
     # for global colour limits, set initial values
@@ -224,8 +250,8 @@ if args.plot:
             axi.set_ylim(-extent, extent)
             axi.set_xlabel(xlabel)
             axi.set_ylabel(r"$z/\mathrm{kpc}$")
-        fig = ax[0].get_figure()
-        fig.set_figwidth(1.05 * fig.get_figwidth())
+        fig = ax[0, 0].get_figure()
+        fig.set_figwidth(1.25 * fig.get_figwidth())
         bgs.plotting.savefig(
             figure_config.fig_path(
                 f"IFU_{str(rhalf_factor).replace('.', '')}rhalf/IFU_{orientation}_{k}.pdf"
