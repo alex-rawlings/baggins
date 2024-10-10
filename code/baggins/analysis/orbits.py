@@ -38,13 +38,14 @@ class MergeMask:
         try:
             assert np.all(self._mask) >= 0
         except AssertionError:
-            _logger.warning("Not all members of the merge mask have been assigned a family!")
+            _logger.warning(
+                "Not all members of the merge mask have been assigned a family!"
+            )
         return self._mask
 
     @property
     def num_fams(self):
         return self._num_fams
-
 
     def add_family(self, fam, idxs, label):
         """
@@ -64,7 +65,6 @@ class MergeMask:
         self.labels.append(label)
         self._mask[idxs] = self._num_fams
 
-
     def get_family(self, fam):
         """
         Determine the numeric identifier for a family.
@@ -82,9 +82,11 @@ class MergeMask:
         try:
             return self.families.index(fam)
         except ValueError:
-            _logger.exception(f"Family {fam} is not present for this mask! Available familes are {self.families}", exc_info=True)
+            _logger.exception(
+                f"Family {fam} is not present for this mask! Available familes are {self.families}",
+                exc_info=True,
+            )
             raise
-
 
     @classmethod
     def make_default_mask(cls):
@@ -106,13 +108,14 @@ class MergeMask:
         C = cls()
         C.add_family("pi-box", [21, 24, 25], r"$\pi\mathrm{-box}$")
         C.add_family("boxlet", [1, 5, 9, 13, 17], r"$\mathrm{boxlet}$")
-        C.add_family("x-tube", [3, 4, 7, 8, 11, 12, 15, 16, 19, 20], r"$x\mathrm{-tube}$")
+        C.add_family(
+            "x-tube", [3, 4, 7, 8, 11, 12, 15, 16, 19, 20], r"$x\mathrm{-tube}$"
+        )
         C.add_family("z-tube", [2, 6, 10, 14, 18], r"$z\mathrm{-tube}$")
         C.add_family("rosette", [26], r"$\mathrm{rosette}$")
         C.add_family("irreg", [22], r"$\mathrm{irregular}$")
         C.add_family("unclass", [0, 23], r"$\mathrm{unclassified}$")
         return C
-
 
     @classmethod
     def make_box_tube_mask(cls):
@@ -125,8 +128,12 @@ class MergeMask:
             class instance
         """
         C = cls()
-        C.add_family("box", [1,5,9,13,17,21,24,25], r"$\mathrm{box}$")
-        C.add_family("tube", [4,8,12,16,20,3,7,11,15,19,2,6,10,14,18,26], r"$\mathrm{tube}$")
+        C.add_family("box", [1, 5, 9, 13, 17, 21, 24, 25], r"$\mathrm{box}$")
+        C.add_family(
+            "tube",
+            [4, 8, 12, 16, 20, 3, 7, 11, 15, 19, 2, 6, 10, 14, 18, 26],
+            r"$\mathrm{tube}$",
+        )
         return C
 
 
@@ -167,10 +174,9 @@ class OrbitClassifier:
         self.classfrequency = None
         self.radbincount = None
 
-
     def radial_frequency(self, radbins=None, supress_warnings=False):
         """
-        Determine frequency of orbital classes in radial bins. Sets the 
+        Determine frequency of orbital classes in radial bins. Sets the
         attributes 'meanrads', 'classfrequency', 'radbincount'.
 
         Parameters
@@ -198,17 +204,26 @@ class OrbitClassifier:
         for bi in bin_id_list:
             try:
                 # can't use bincount as we have some negative IDs
-                classfrequency[bi, :] = np.histogram(self.classids[bin_ids==bi], bins=pc_bins)[0] / radbincount[bi]
+                classfrequency[bi, :] = (
+                    np.histogram(self.classids[bin_ids == bi], bins=pc_bins)[0]
+                    / radbincount[bi]
+                )
             except IndexError:
                 if not supress_warnings:
-                    _logger.warning(f"Particle found beyond maximal radial edge of {np.nanmax(radbins):.1e}: skipping")
+                    _logger.warning(
+                        f"Particle found beyond maximal radial edge of {np.nanmax(radbins):.1e}: skipping"
+                    )
                 continue
         self.meanrads = meanrads
         self.classfrequency = classfrequency
         self.radbincount = radbincount
 
-
-    def box_tube_ratio(self, radbins=None, box_names=["pi-box", "boxlet"], tube_names=["x-tube", "z-tube", "rosette"]):
+    def box_tube_ratio(
+        self,
+        radbins=None,
+        box_names=["pi-box", "boxlet"],
+        tube_names=["x-tube", "z-tube", "rosette"],
+    ):
         """
         Determine the ratio of box orbits to tube orbits in radial bins.
 
@@ -217,10 +232,10 @@ class OrbitClassifier:
         radbins : array-like, optional
             radial bin edges, by default None
         box_names : list, optional
-            MergeMask families to be classed as boxes, by default ["pi-box", 
+            MergeMask families to be classed as boxes, by default ["pi-box",
             "boxlet"]
         tube_names : list, optional
-            MergeMask families to be classed as tubes, by default ["x-tube", 
+            MergeMask families to be classed as tubes, by default ["x-tube",
             "z-tube", "rosette"]
 
         Returns
@@ -232,13 +247,22 @@ class OrbitClassifier:
         # get the numeric indentifiers for the classes
         box_class_ids = [self.mergemask.get_family(n) for n in box_names]
         tube_class_ids = [self.mergemask.get_family(n) for n in tube_names]
-        ratio = np.nansum(np.einsum("ij,i->ij", self.classfrequency[:, box_class_ids], self.radbincount), axis=-1) / np.nansum(np.einsum("ij,i->ij", self.classfrequency[:, tube_class_ids], self.radbincount), axis=-1)
+        ratio = np.nansum(
+            np.einsum(
+                "ij,i->ij", self.classfrequency[:, box_class_ids], self.radbincount
+            ),
+            axis=-1,
+        ) / np.nansum(
+            np.einsum(
+                "ij,i->ij", self.classfrequency[:, tube_class_ids], self.radbincount
+            ),
+            axis=-1,
+        )
         return ratio
-
 
     def make_class_mask(self, fam):
         """
-        Return a mask that can be used on properties to get the subset for a 
+        Return a mask that can be used on properties to get the subset for a
         family.
 
         Parameters
@@ -252,7 +276,6 @@ class OrbitClassifier:
             boolean mask corresponding to family
         """
         return self.classids == self.mergemask.get_family(fam)
-
 
     def get_particle_ids_for_family(self, fam):
         """
@@ -270,19 +293,17 @@ class OrbitClassifier:
         """
         return self.particleids[self.make_class_mask(fam)]
 
-
     def family_size_in_radius(self, fam, r):
         self.radial_frequency(radbins=np.array([0, r]))
         class_count = np.einsum("ij,i->ij", self.classfrequency, self.radbincount)
         return class_count[0, self.mergemask.get_family(fam)]
 
-
     def compare_class_change(self, other, fam, other_is_earlier=True):
         """
         Compare the change of particles of one class to what they were at a different classification time.
-        The notion of whether or not the particles "were" a different type or 
-        "will become" a different type is left to the discretion of the user, 
-        depending on if the 'other' parameter is a past or future time, 
+        The notion of whether or not the particles "were" a different type or
+        "will become" a different type is left to the discretion of the user,
+        depending on if the 'other' parameter is a past or future time,
         respectively.
 
         Parameters
@@ -292,7 +313,7 @@ class OrbitClassifier:
         fam : str
             the family in 'this' classifier to determine the change for
         other_is_earlier : bool, optional
-            if 'other' corresponds to an earlier snapshot than this instance of 
+            if 'other' corresponds to an earlier snapshot than this instance of
             OrbitClassifier (for printing messages), by default True
 
         Returns
@@ -303,9 +324,18 @@ class OrbitClassifier:
         # check that we have a consistent merge mask
         try:
             assert self.mergemask.num_fams == other.mergemask.num_fams
-            assert len(set(self.mergemask.families).difference(set(other.mergemask.families))) == 0
+            assert (
+                len(
+                    set(self.mergemask.families).difference(
+                        set(other.mergemask.families)
+                    )
+                )
+                == 0
+            )
         except AssertionError:
-            _logger.exception("Merge masks are not consistent for orbit comparison!", exc_info=True)
+            _logger.exception(
+                "Merge masks are not consistent for orbit comparison!", exc_info=True
+            )
             raise
         mask = np.isin(other.particleids, self.get_particle_ids_for_family(fam))
         other_classids = other.classids[mask]
@@ -316,13 +346,18 @@ class OrbitClassifier:
             print(f"{fam} will become:")
         count_check = 0
         for i, c in enumerate(self.mergemask.families):
-            n = np.sum(other_classids==i)
+            n = np.sum(other_classids == i)
             count_check += n
-            N2 = np.sum(other.classids==i)
-            print(f"  {c}: {n} ({n/N*100:.2e}% of 'this' {fam}), ({n/N2*100:.2e}% of 'other' {c})")
+            N2 = np.sum(other.classids == i)
+            print(
+                f"  {c}: {n} ({n/N*100:.2e}% of 'this' {fam}), ({n/N2*100:.2e}% of 'other' {c})"
+            )
         try:
             assert N == count_check
         except AssertionError:
-            _logger.exception(f"Not all particles accounted for! Total should be {N}, but is {count_check}", exc_info=True)
+            _logger.exception(
+                f"Not all particles accounted for! Total should be {N}, but is {count_check}",
+                exc_info=True,
+            )
             raise
         return other_classids

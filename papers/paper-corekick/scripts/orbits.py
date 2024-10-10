@@ -40,8 +40,12 @@ orbitfilebases.sort()
 mergemask = bgs.analysis.MergeMask()
 mergemask.add_family("pi-box", [21, 24, 25], r"$\pi\mathrm{-box}$")
 mergemask.add_family("boxlet", [1, 5, 9, 13, 17], r"$\mathrm{boxlet}$")
-mergemask.add_family("x-tube-in", [4, 8, 12, 16, 20], r"$\mathrm{inner\,}x\mathrm{-tube}$")
-mergemask.add_family("x-tube-out", [3, 7, 11, 15, 19], r"$\mathrm{outer\,}x\mathrm{-tube}$")
+mergemask.add_family(
+    "x-tube-in", [4, 8, 12, 16, 20], r"$\mathrm{inner\,}x\mathrm{-tube}$"
+)
+mergemask.add_family(
+    "x-tube-out", [3, 7, 11, 15, 19], r"$\mathrm{outer\,}x\mathrm{-tube}$"
+)
 mergemask.add_family("z-tube", [2, 6, 10, 14, 18], r"$z\mathrm{-tube}$")
 mergemask.add_family("rosette", [26], r"$\mathrm{rosette}$")
 mergemask.add_family("irreg", [22], r"$\mathrm{irregular}$")
@@ -86,10 +90,14 @@ for j, (axj, orbitfilebase) in enumerate(zip(ax2.flat, orbitfilebases)):
             ls="-",
         )
         if mergemask.families[i] == "unclass":
-            SL.debug(f"Skipping family '{mergemask.families[i]}' kick-vel stratified plot...")
+            SL.debug(
+                f"Skipping family '{mergemask.families[i]}' kick-vel stratified plot..."
+            )
             continue
         axj.semilogx(
-            classifier.meanrads, classifier.classfrequency[:, i], label=mergemask.labels[i]
+            classifier.meanrads,
+            classifier.classfrequency[:, i],
+            label=mergemask.labels[i],
         )
     axj.text(
         0.95,

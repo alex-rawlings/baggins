@@ -2,10 +2,12 @@ import argparse
 import os.path
 import numpy as np
 import scipy.stats
+
 try:
     import matplotlib.pyplot as plt
 except ImportError:
     from matplotlib import use
+
     use("Agg")
     import matplotlib.pyplot as plt
 from datetime import datetime
@@ -84,8 +86,8 @@ if args.extract:
         snap = pygad.Snapshot(v, physical=True)
 
         centre = pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            )
+            snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
+        )
         # move to CoM frame
         pygad.Translation(-centre).apply(snap, total=True)
         pre_ball_mask = pygad.BallMask(30)
@@ -107,7 +109,9 @@ if args.extract:
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             SL.info(f"Doing {orientation} orientation...")
-            box_mask = pygad.ExprMask(f"abs(pos[:,{x_axis}]) <= {extent}") & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
+            box_mask = pygad.ExprMask(
+                f"abs(pos[:,{x_axis}]) <= {extent}"
+            ) & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
             voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
                 x=snap.stars[box_mask]["pos"][:, x_axis],
                 y=snap.stars[box_mask]["pos"][:, 2],
@@ -135,7 +139,11 @@ else:
     h4_vals = bgs.utils.load_data(h4_file)
 
 # core data
-rb_bin = np.nanmedian(bgs.utils.load_data("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle")["rb"]["0000"].flatten())
+rb_bin = np.nanmedian(
+    bgs.utils.load_data(
+        "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
+    )["rb"]["0000"].flatten()
+)
 
 
 # plot h4 radial profiles
@@ -149,7 +157,12 @@ def plot_helper(axi, k, vs, rb0):
     r, h4 = bgs.analysis.radial_profile_velocity_moment(vs, "h4")
     r_bins = np.linspace(0, 5, 11) * rb0
     h4_med, *_ = scipy.stats.binned_statistic(r, h4, statistic="median", bins=r_bins)
-    axi.plot(bgs.mathematics.get_histogram_bin_centres(r_bins)/rb0, h4_med, c=vkcols.get_colour(get_kick_val(k)), ls="-")
+    axi.plot(
+        bgs.mathematics.get_histogram_bin_centres(r_bins) / rb0,
+        h4_med,
+        c=vkcols.get_colour(get_kick_val(k)),
+        ls="-",
+    )
 
 
 for rh, (kp, vp), (ko, vo) in zip(
@@ -237,7 +250,7 @@ if args.plot:
             axi.set_ylim(-extent, extent)
             axi.set_xlabel(xlabel)
             axi.set_ylabel(r"$z/\mathrm{kpc}$")
-        fig = ax[0,0].get_figure()
+        fig = ax[0, 0].get_figure()
         fig.set_figwidth(1.25 * fig.get_figwidth())
         bgs.plotting.savefig(
             figure_config.fig_path(

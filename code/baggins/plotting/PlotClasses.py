@@ -45,7 +45,9 @@ class _GradientPlot(ABC):
                 self.cmap = getattr(plt.cm, cmap)
             except AttributeError:
                 try:
-                    assert cmap in [cm for cm in plt.colormaps() if cm not in dir(plt.cm)]
+                    assert cmap in [
+                        cm for cm in plt.colormaps() if cm not in dir(plt.cm)
+                    ]
                     self.cmap = plt.colormaps[cmap]
                 except AssertionError:
                     _logger.exception(

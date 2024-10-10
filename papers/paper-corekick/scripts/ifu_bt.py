@@ -2,12 +2,6 @@ import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-'''try:
-    import matplotlib.pyplot as plt
-except ImportError:
-    from matplotlib import use
-    use("Agg")
-    import matplotlib.pyplot as plt'''
 from matplotlib.patches import Circle
 import baggins as bgs
 import pygad
@@ -19,18 +13,13 @@ bgs.plotting.check_backend()
 parser = argparse.ArgumentParser(
     description="Plot IFU maps", formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
-parser.add_argument(
-    dest="vel",
-    help="Velocity to plot"
-)
+parser.add_argument(dest="vel", help="Velocity to plot")
 parser.add_argument(
     "-e", "--extract", help="extract data", action="store_true", dest="extract"
 )
-parser.add_argument("-I",
-                    "--Inertia",
-                    action="store_true",
-                    help="align with inertia",
-                    dest="inertia")
+parser.add_argument(
+    "-I", "--Inertia", action="store_true", help="align with inertia", dest="inertia"
+)
 parser.add_argument(
     "-v",
     "--verbosity",
@@ -45,7 +34,9 @@ args = parser.parse_args()
 SL = bgs.setup_logger("script", args.verbosity)
 
 suffix = "_I" if args.inertia else ""
-data_file = os.path.join(figure_config.reduced_data_dir, f"IFU_bt/ifu_bt_{args.vel}{suffix}.pickle")
+data_file = os.path.join(
+    figure_config.reduced_data_dir, f"IFU_bt/ifu_bt_{args.vel}{suffix}.pickle"
+)
 
 if args.extract:
     # XXX set the fraction of rhalf within which IFU maps are created for
@@ -56,7 +47,7 @@ if args.extract:
     snapfiles = bgs.utils.read_parameters(
         os.path.join(
             bgs.HOME,
-            "projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml"
+            "projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml",
         )
     )
     snapshots = dict()
@@ -69,8 +60,8 @@ if args.extract:
         )
     snap = pygad.Snapshot(snapshots[f"v{args.vel}"], physical=True)
     centre = pygad.analysis.shrinking_sphere(
-            snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-        )
+        snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
+    )
     # move to CoM frame
     pygad.Translation(-centre).apply(snap, total=True)
     pre_ball_mask = pygad.BallMask(30)
@@ -85,7 +76,9 @@ if args.extract:
         pygad.Translation(-centre).apply(snap, total=True)
         pygad.analysis.orientate_at(snap.stars[pre_ball_mask], "red I", total=True)
 
-    box_mask = pygad.ExprMask(f"abs(pos[:,1]) <= {extent}") & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
+    box_mask = pygad.ExprMask(f"abs(pos[:,1]) <= {extent}") & pygad.ExprMask(
+        f"abs(pos[:,2]) <= {extent}"
+    )
 
     # determine the correct orbit file
     orbitfilebase = [
@@ -138,9 +131,9 @@ if args.extract:
     )
 
     data = dict(
-        voronoi_stats_all = voronoi_stats_all,
-        voronoi_stats_box = voronoi_stats_box,
-        voronoi_stats_tube = voronoi_stats_tube
+        voronoi_stats_all=voronoi_stats_all,
+        voronoi_stats_box=voronoi_stats_box,
+        voronoi_stats_tube=voronoi_stats_tube,
     )
     bgs.utils.save_data(data, data_file)
 else:
@@ -153,40 +146,49 @@ fig.set_figwidth(3 * fig.get_figwidth())
 fig.set_figheight(1.5 * fig.get_figheight())
 
 # set the second row to be invisible to get the right spacing
-for axi in ax[1,:]:
+for axi in ax[1, :]:
     axi.set_visible(False)
 
-ax[0, 0].text(0.1, 0.1, "all", ha="left", va="center", transform=ax[0,0].transAxes)
-ax[2,0].text(0.1, 0.1, "box", ha="left", va="center", transform=ax[2,0].transAxes)
-ax[3,0].text(0.1, 0.1, "tube", ha="left", va="center", transform=ax[3,0].transAxes)
-for axi in ax[-1,:]:
+ax[0, 0].text(0.1, 0.1, "all", ha="left", va="center", transform=ax[0, 0].transAxes)
+ax[2, 0].text(0.1, 0.1, "box", ha="left", va="center", transform=ax[2, 0].transAxes)
+ax[3, 0].text(0.1, 0.1, "tube", ha="left", va="center", transform=ax[3, 0].transAxes)
+for axi in ax[-1, :]:
     axi.set_xlabel(r"$y/\mathrm{kpc}$")
-for axi in ax[:,0]:
+for axi in ax[:, 0]:
     axi.set_ylabel(r"$z/\mathrm{kpc}$")
-ax[0,0].set_xlim(-2.6, 2.6)
-ax[0,0].set_ylim(-2.6, 2.6)
+ax[0, 0].set_xlim(-2.6, 2.6)
+ax[0, 0].set_ylim(-2.6, 2.6)
 
-bgs.plotting.voronoi_plot(data["voronoi_stats_all"], ax=ax[0,:])
+bgs.plotting.voronoi_plot(data["voronoi_stats_all"], ax=ax[0, :])
 
 # determine the colour limits to use: consistent between box and tube plots
 def _extreme_finder(k):
-    vals = [np.max(np.abs(data[v][k])) for v in ["voronoi_stats_box", "voronoi_stats_tube"]]
+    vals = [
+        np.max(np.abs(data[v][k])) for v in ["voronoi_stats_box", "voronoi_stats_tube"]
+    ]
     return [np.min(vals), np.max(vals)]
 
+
 clims = dict(
-    V = [_extreme_finder("img_V")[1]],
-    sigma = _extreme_finder("img_sigma"),
-    h3 = [_extreme_finder("img_h3")[1]],
-    h4 = [_extreme_finder("img_h4")[1]],
+    V=[_extreme_finder("img_V")[1]],
+    sigma=_extreme_finder("img_sigma"),
+    h3=[_extreme_finder("img_h3")[1]],
+    h4=[_extreme_finder("img_h4")[1]],
 )
 
-bgs.plotting.voronoi_plot(data["voronoi_stats_box"], ax=ax[2,:], clims=clims, desat=True)
+bgs.plotting.voronoi_plot(
+    data["voronoi_stats_box"], ax=ax[2, :], clims=clims, desat=True
+)
 
-bgs.plotting.voronoi_plot(data["voronoi_stats_tube"], ax=ax[3,:], clims=clims, desat=True)
+bgs.plotting.voronoi_plot(
+    data["voronoi_stats_tube"], ax=ax[3, :], clims=clims, desat=True
+)
 
 # get the core radius
 core_radius = np.nanmedian(
-    bgs.utils.load_data("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle")["rb"][args.vel].flatten()
+    bgs.utils.load_data(
+        "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
+    )["rb"][args.vel].flatten()
 )
 SL.debug(f"Using a core radius of {core_radius:.2e}")
 # spin parameter
@@ -201,5 +203,6 @@ for i, axi in enumerate(ax.flat):
     axi.add_artist(core_circle)
 
 plt.subplots_adjust(left=0.03, right=0.95, top=0.97)
-bgs.plotting.savefig(figure_config.fig_path(f"IFU_bt_{args.vel}{suffix}.pdf"), force_ext=True)
-
+bgs.plotting.savefig(
+    figure_config.fig_path(f"IFU_bt_{args.vel}{suffix}.pdf"), force_ext=True
+)

@@ -84,8 +84,8 @@ if args.extract:
             continue
 
         centre = pygad.analysis.shrinking_sphere(
-                snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-            )
+            snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
+        )
         # move to CoM frame
         pygad.Translation(-centre).apply(snap, total=True)
         pre_ball_mask = pygad.BallMask(30)
@@ -106,7 +106,9 @@ if args.extract:
         # 2: LOS perpendicular to BH motion
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             SL.info(f"Doing {orientation} orientation...")
-            box_mask = pygad.ExprMask(f"abs(pos[:,{x_axis}]) <= {extent}") & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
+            box_mask = pygad.ExprMask(
+                f"abs(pos[:,{x_axis}]) <= {extent}"
+            ) & pygad.ExprMask(f"abs(pos[:,2]) <= {extent}")
             voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
                 x=snap.stars[box_mask]["pos"][:, x_axis],
                 y=snap.stars[box_mask]["pos"][:, 2],
@@ -159,7 +161,13 @@ def plot_helper(axi, t, v):
         plt_kwargs = {"marker": "o", "markevery": 2}
     else:
         plt_kwargs = {}
-    axi.plot(bgs.mathematics.get_histogram_bin_centres(r_bins), h4_med, c=cmapper(t), ls="-", **plt_kwargs)
+    axi.plot(
+        bgs.mathematics.get_histogram_bin_centres(r_bins),
+        h4_med,
+        c=cmapper(t),
+        ls="-",
+        **plt_kwargs,
+    )
 
 
 for t, (kp, vp), (ko, vo) in zip(

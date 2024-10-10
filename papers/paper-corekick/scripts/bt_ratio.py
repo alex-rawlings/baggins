@@ -31,6 +31,7 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
+
 @dask.delayed
 def dask_extractor(orbitcl, vkey, mergemask):
     """
@@ -60,6 +61,7 @@ def dask_extractor(orbitcl, vkey, mergemask):
     Ntube = classifier.family_size_in_radius("tube", rb)
     return rb, Nbox, Ntube
 
+
 orbitfilebases = [
     d.path
     for d in os.scandir(
@@ -68,16 +70,20 @@ orbitfilebases = [
     if d.is_dir() and "kick" in d.name
 ]
 orbitfilebases.sort()
-core_data = bgs.utils.load_data("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle")
+core_data = bgs.utils.load_data(
+    "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle"
+)
 data_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/box_tube_ratio.pickle"
 
 mergemask = bgs.analysis.MergeMask.make_box_tube_mask()
 
 if args.extract:
-    data = {"vkick":[], "rb":[], "Nbox":[], "Ntube":[]}
+    data = {"vkick": [], "rb": [], "Nbox": [], "Ntube": []}
     dask_res = []
     for j, orbitfilebase in enumerate(orbitfilebases):
-        orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[0]
+        orbitcl = bgs.utils.get_files_in_dir(orbitfilebase, ext=".cl", recursive=True)[
+            0
+        ]
         try:
             vkey = f"{orbitfilebase.split('/')[-1].split('-')[-1]}"
             # test that we have a valid key
@@ -107,31 +113,46 @@ else:
 stellar_mass = 5e4
 norm_factor = 1e8
 fig, ax = plt.subplots()
-ax.set_xlabel(f"$M_{{\star,\mathrm{{box}}}}/(10^{int(np.log10(norm_factor))} \mathrm{{M}}_\odot)$")
-ax.set_ylabel(f"$M_{{\star,\mathrm{{tube}}}}/(10^{int(np.log10(norm_factor))} \mathrm{{M}}_\odot)$")
+ax.set_xlabel(
+    f"$M_{{\star,\mathrm{{box}}}}/(10^{int(np.log10(norm_factor))} \mathrm{{M}}_\odot)$"
+)
+ax.set_ylabel(
+    f"$M_{{\star,\mathrm{{tube}}}}/(10^{int(np.log10(norm_factor))} \mathrm{{M}}_\odot)$"
+)
 vkcols = figure_config.VkickColourMap()
 
 # plot data
 for vk, Nb, Nt in zip(data["vkick"], data["Nbox"], data["Ntube"]):
-    ax.scatter(stellar_mass*Nb/norm_factor, stellar_mass*Nt/norm_factor, color=vkcols.get_colour(vk), **figure_config.marker_kwargs)
-    SL.debug(f"{int(vk):04d} has {stellar_mass*Nb:.2e} Msol in boxes and {stellar_mass*Nt:.2e} Msol in tubes.")
+    ax.scatter(
+        stellar_mass * Nb / norm_factor,
+        stellar_mass * Nt / norm_factor,
+        color=vkcols.get_colour(vk),
+        **figure_config.marker_kwargs,
+    )
+    SL.debug(
+        f"{int(vk):04d} has {stellar_mass*Nb:.2e} Msol in boxes and {stellar_mass*Nt:.2e} Msol in tubes."
+    )
 xlims = ax.get_xlim()
 ylims = ax.get_ylim()
 
 # plot guidelines
-guide_kwargs = {"alpha":0.4, "ls":":", "zorder":0.5, "lw":1, "c":"k"}
+guide_kwargs = {"alpha": 0.4, "ls": ":", "zorder": 0.5, "lw": 1, "c": "k"}
 x = stellar_mass * np.array([1e2, 1e6]) / norm_factor
 labels = []
 rotation = []
 for i, grad in enumerate((0.5, 1, 2), start=1):
     ax.plot(x, grad * x, **guide_kwargs)
-    labels.append(
-        f"$M_{{\star,\mathrm{{tube}}}}={grad} M_{{\star,\mathrm{{box}}}}$"
-    )
-    rotation.append(
-        np.arctan(grad)*180/np.pi
-    )
-fkwargs = {"fontsize":"small", "color":"k", "alpha":guide_kwargs["alpha"], "va":"center", "ha":"center", "rotation_mode":"anchor", "transform_rotates_text":True}
+    labels.append(f"$M_{{\star,\mathrm{{tube}}}}={grad} M_{{\star,\mathrm{{box}}}}$")
+    rotation.append(np.arctan(grad) * 180 / np.pi)
+fkwargs = {
+    "fontsize": "small",
+    "color": "k",
+    "alpha": guide_kwargs["alpha"],
+    "va": "center",
+    "ha": "center",
+    "rotation_mode": "anchor",
+    "transform_rotates_text": True,
+}
 ax.text(7.5, 3.5, labels[0], rotation=rotation[0], **fkwargs)
 ax.text(4.6, 5, labels[1], rotation=rotation[1], **fkwargs)
 ax.text(2.1, 5, labels[2], rotation=rotation[2], **fkwargs)

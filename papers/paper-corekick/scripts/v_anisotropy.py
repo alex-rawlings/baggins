@@ -128,11 +128,9 @@ def main(ax=None, read_betas=1):
     # Create random number generator
     rgen = np.random.default_rng(seed=88965)
 
-
     # Extract input core radii
     with open(data_path + core_file, "rb") as f:
         core_radii = pickle.load(f)["rb"]
-
 
     # Compute new beta profiles...
     if read_betas == 0:
@@ -175,7 +173,9 @@ def main(ax=None, read_betas=1):
                 this_core_radii, size=sample_size, replace=True
             )  # select core radius sample with rgen
             for j in range(len(core_sample)):
-                radii, betas, bincount = beta_profile(snap.stars, r_split=core_sample[j])
+                radii, betas, bincount = beta_profile(
+                    snap.stars, r_split=core_sample[j]
+                )
                 r_in, r_out, b_in, b_out = radii[0], radii[-1], betas[0], betas[-1]
                 extracted_data[vels[i]]["r_in"][j] = radii[0]
                 extracted_data[vels[i]]["r_out"][j] = radii[-1]
@@ -201,7 +201,6 @@ def main(ax=None, read_betas=1):
 
     else:
         raise RuntimeError("ERROR: incorrect read_file, select 0 or 1")
-
 
     if ax is None:
         # Initialize figure
@@ -286,6 +285,7 @@ def main(ax=None, read_betas=1):
         loc="lower right",
     )
     return ax
+
 
 if __name__ == "__main__":
     main()
