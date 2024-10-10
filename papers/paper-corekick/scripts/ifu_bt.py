@@ -161,6 +161,7 @@ ax[0, 0].set_ylim(-2.6, 2.6)
 
 bgs.plotting.voronoi_plot(data["voronoi_stats_all"], ax=ax[0, :])
 
+
 # determine the colour limits to use: consistent between box and tube plots
 def _extreme_finder(k):
     vals = [

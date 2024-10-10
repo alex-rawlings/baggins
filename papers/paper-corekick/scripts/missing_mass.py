@@ -166,7 +166,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
         pass
     # axis labels
     ax.set_ylabel(r"$M_\mathrm{def} / M_\mathrm{def,0}$")
-    ax2.set_ylabel(f"$M_\mathrm{{def}}/ (10^9\mathrm{{M}}_\odot)$")
+    ax2.set_ylabel(r"$M_\mathrm{def}/ (10^9\mathrm{M}_\odot)$")
     if new_figure:
         ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$")
         plt.show()

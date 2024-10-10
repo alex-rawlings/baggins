@@ -1,5 +1,4 @@
 import argparse
-from baggins.literature.smbh_recoil import G
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
