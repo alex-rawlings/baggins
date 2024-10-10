@@ -1,8 +1,5 @@
 from matplotlib import colors
 from matplotlib import colormaps
-from ..env_config import _cmlogger
-
-_logger = _cmlogger.getChild(__name__)
 
 
 # create the default diverging Voronoi colour map

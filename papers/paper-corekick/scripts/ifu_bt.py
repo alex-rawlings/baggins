@@ -147,35 +147,53 @@ else:
     data = bgs.utils.load_data(data_file)
 
 # now we will create three sets of IFU maps: one for all, one for tubes, one for boxes
-fig, ax = plt.subplots(3, 4, sharex="all", sharey="all")
+gs_kwargs = {"height_ratios": [1, 0.1, 1, 1]}
+fig, ax = plt.subplots(4, 4, sharex="all", sharey="all", gridspec_kw=gs_kwargs)
 fig.set_figwidth(3 * fig.get_figwidth())
 fig.set_figheight(1.5 * fig.get_figheight())
+
+# set the second row to be invisible to get the right spacing
+for axi in ax[1,:]:
+    axi.set_visible(False)
+
 ax[0, 0].text(0.1, 0.1, "all", ha="left", va="center", transform=ax[0,0].transAxes)
-ax[1,0].text(0.1, 0.1, "box", ha="left", va="center", transform=ax[1,0].transAxes)
-ax[2,0].text(0.1, 0.1, "tube", ha="left", va="center", transform=ax[2,0].transAxes)
+ax[2,0].text(0.1, 0.1, "box", ha="left", va="center", transform=ax[2,0].transAxes)
+ax[3,0].text(0.1, 0.1, "tube", ha="left", va="center", transform=ax[3,0].transAxes)
 for axi in ax[-1,:]:
     axi.set_xlabel(r"$y/\mathrm{kpc}$")
 for axi in ax[:,0]:
     axi.set_ylabel(r"$z/\mathrm{kpc}$")
 ax[0,0].set_xlim(-2.6, 2.6)
 ax[0,0].set_ylim(-2.6, 2.6)
-# XXX set colour limits manually
-if args.inertia:
-    clims = {"V":[15], "sigma":[210, 320], "h3":[0.02], "h4":[0.065]}
-else:
-    clims = {"V":[15], "sigma":[215, 300], "h3":[2.0e-2], "h4":[2.6e-2]}
 
 bgs.plotting.voronoi_plot(data["voronoi_stats_all"], ax=ax[0,:])
 
-bgs.plotting.voronoi_plot(data["voronoi_stats_box"], ax=ax[1,:], clims=clims, desat=True)
+# determine the colour limits to use: consistent between box and tube plots
+def _extreme_finder(k):
+    vals = [np.max(np.abs(data[v][k])) for v in ["voronoi_stats_box", "voronoi_stats_tube"]]
+    return [np.min(vals), np.max(vals)]
 
-bgs.plotting.voronoi_plot(data["voronoi_stats_tube"], ax=ax[2,:], clims=clims, desat=True)
+clims = dict(
+    V = [_extreme_finder("img_V")[1]],
+    sigma = _extreme_finder("img_sigma"),
+    h3 = [_extreme_finder("img_h3")[1]],
+    h4 = [_extreme_finder("img_h4")[1]],
+)
+
+bgs.plotting.voronoi_plot(data["voronoi_stats_box"], ax=ax[2,:], clims=clims, desat=True)
+
+bgs.plotting.voronoi_plot(data["voronoi_stats_tube"], ax=ax[3,:], clims=clims, desat=True)
 
 # get the core radius
 core_radius = np.nanmedian(
     bgs.utils.load_data("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/core-kick.pickle")["rb"][args.vel].flatten()
 )
 SL.debug(f"Using a core radius of {core_radius:.2e}")
+# spin parameter
+spin_func = bgs.analysis.lambda_R(data["voronoi_stats_all"])
+for r in (1, 2):
+    SL.info(f"Spin parameter at {r} core radii is {spin_func(r*core_radius):.2e}")
+SL.info(f"Spin parameter at 2kpc is {spin_func(2):.2e}")
 
 # add the core radius to all plots
 for i, axi in enumerate(ax.flat):
@@ -185,9 +203,3 @@ for i, axi in enumerate(ax.flat):
 plt.subplots_adjust(left=0.03, right=0.95, top=0.97)
 bgs.plotting.savefig(figure_config.fig_path(f"IFU_bt_{args.vel}{suffix}.pdf"), force_ext=True)
 
-# print colour information
-SL.info(f"Max V is {np.max([np.max(np.abs(v['img_V'])) for v in [voronoi_stats_box, voronoi_stats_tube]]):.2e}")
-SL.info(f"Min sigma is {np.min([np.max(v['img_sigma']) for v in [voronoi_stats_box, voronoi_stats_tube]]):.2e}")
-SL.info(f"Max sigma is {np.max([np.max(v['img_sigma']) for v in [voronoi_stats_box, voronoi_stats_tube]]):.2e}")
-SL.info(f"Max h3 is {np.max([np.max(np.abs(v['img_h3'])) for v in [voronoi_stats_box, voronoi_stats_tube]]):.2e}")
-SL.info(f"Max h4 is {np.max([np.max(np.abs(v['img_h4'])) for v in [voronoi_stats_box, voronoi_stats_tube]]):.2e}")
