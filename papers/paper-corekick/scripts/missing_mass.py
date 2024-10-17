@@ -117,7 +117,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
                     5 * Re_new,
                     args=(rb_new, Re_new, n_new, log10densb_new, g_new, a_new),
                 )
-            mdef_dict[v][i] = 2 * np.pi * 3.5 * m
+            mdef_dict[v][i] = 2 * np.pi * m
             n_dict[v][i] = rb_new
 
     # Creating the figure
@@ -166,7 +166,7 @@ def missing_mass_plot(filename, nro_iter=10000, min_r=1e-2, ax=None, debug_mode=
         pass
     # axis labels
     ax.set_ylabel(r"$M_\mathrm{def} / M_\mathrm{def,0}$")
-    ax2.set_ylabel(r"$M_\mathrm{def}/ (10^9\mathrm{M}_\odot)$")
+    ax2.set_ylabel(r"$M_\mathrm{def}/ (10^9\,\mathrm{M}_\odot)$")
     if new_figure:
         ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{kms}^{-1}$")
         plt.show()
