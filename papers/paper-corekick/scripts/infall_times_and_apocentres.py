@@ -17,7 +17,6 @@ def get_infall_time(v_kick):
 
     for i in range(2, len(t) - 1):
         t0 = t[i]
-        t_used = t[(t - t0 < 0.1) & (t >= t0)]
         v_used = v[(t - t0 < 0.1) & (t >= t0)]
         r_used = r[(t - t0 < 0.1) & (t >= t0)]
         if not any(r_used > 0.1):
@@ -35,9 +34,7 @@ def get_apocenter_distance(v_kick, infall_index):
     gad_t_fac = 0.978
     data_file = get_data_file(v_kick)
     data = np.loadtxt(data_file, skiprows=1)
-    t = data[:, 0] * gad_t_fac
     r = data[:, 1]
-    v = data[:, 2]  # velocities are w.r.t CoM velocity
 
     # the kick seems to happen between second and third snapshots (001 and 002)
     dists = r[2 : infall_index + 1]

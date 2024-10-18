@@ -2,7 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import figure_config
 from scipy.ndimage import median_filter
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.patches import ConnectionPatch
 
 
@@ -19,7 +18,6 @@ def get_infall_time(v_kick):
 
     for i in range(2, len(t) - 1):
         t0 = t[i]
-        t_used = t[(t - t0 < 0.1) & (t >= t0)]
         v_used = v[(t - t0 < 0.1) & (t >= t0)]
         r_used = r[(t - t0 < 0.1) & (t >= t0)]
         if not any(r_used > 0.1):
@@ -38,13 +36,9 @@ def get_lagrangian_radii_evolution(v_kick):
     data_file = get_data_file(v_kick)
     data = np.loadtxt(data_file, skiprows=1)
     t = data[:, 0] * gad_t_fac
-    r = data[:, 1]  # bh distance from the centre
-    v = data[:, 2]  # velocities are w.r.t the central velocity
-    r_10 = data[:, 3]  # radius enclosing 10% of stellar mass
     r_mBH = data[
         :, 4
     ]  # radius enclosing stellar particles with mass equal to the BH mass
-    sigma = data[:, 5]
 
     return t, r_mBH
 
