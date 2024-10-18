@@ -31,7 +31,6 @@ def get_infall_time(v_kick):
 
 
 def get_apocenter_distance(v_kick, infall_index):
-    gad_t_fac = 0.978
     data_file = get_data_file(v_kick)
     data = np.loadtxt(data_file, skiprows=1)
     r = data[:, 1]
