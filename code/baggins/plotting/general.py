@@ -67,6 +67,11 @@ def draw_sizebar(
         formatter for numeric part of label, by default ".1f"
     kwargs :
         other keyword arguments for AnchoredSizeBar()
+
+    Returns
+    -------
+    asb : matplotlib.Artist
+        anchor bar artist
     """
     factors = {
         "mill2base": 1e-3,
@@ -91,6 +96,7 @@ def draw_sizebar(
     if remove_ticks:
         ax.axes.xaxis.set_visible(False)
         ax.axes.yaxis.set_visible(False)
+    return asb
 
 
 def create_normed_colours(

@@ -114,10 +114,10 @@ stellar_mass = 5e4
 norm_factor = 1e8
 fig, ax = plt.subplots()
 ax.set_xlabel(
-    f"$M_{{\star,\mathrm{{box}}}}/(10^{int(np.log10(norm_factor))} \mathrm{{M}}_\odot)$"
+    f"$M_{{\star,\mathrm{{box}}}}/(10^{int(np.log10(norm_factor))}\, \mathrm{{M}}_\odot)$"
 )
 ax.set_ylabel(
-    f"$M_{{\star,\mathrm{{tube}}}}/(10^{int(np.log10(norm_factor))} \mathrm{{M}}_\odot)$"
+    f"$M_{{\star,\mathrm{{tube}}}}/(10^{int(np.log10(norm_factor))}\, \mathrm{{M}}_\odot)$"
 )
 vkcols = figure_config.VkickColourMap()
 
