@@ -125,7 +125,7 @@ $^{2}$
 International Centre for Radio Astronomy Research (ICRAR), University of Western Australia, Crawley, WA 6009, Australia
 \\
 $^{3}$
-Department of Computer Science, Aalto University, Espoo, Finland
+Department of Computer Science, Konemiehentie 2, 02150, Aalto University, Espoo, Finland
 \\
 $^{4}$
 Key Laboratory for Computational Astrophysics, National Astronomical Observatories, Chinese Academy of Sciences, Beijing 100101, China
@@ -134,7 +134,7 @@ $^{5}$
 Max-Planck-Institut f\"ur Astrophysik, Karl-Schwarzchild-Str 1, D-85748 Garching, Germany
 \\
 $^{6}$
-The Institute of Cancer Research, London SW7 3RP, UK
+The Institute of Cancer Research, 123 Old Brompton Road, London SW7 3RP, United Kingdom
 \\
 }
 
@@ -152,15 +152,14 @@ The Institute of Cancer Research, London SW7 3RP, UK
 
 % Abstract of the paper
 \begin{abstract}
-\alex{We have 250 words to use here. Currently 247 excluding the 3 math inlines.}
-
-We study the contribution to stellar core growth in simulations of merging massive ($M_\star>10^9\,\Msun$) elliptical galaxies by a coalesced supermassive black hole (SMBH) displaced by gravitational wave (GW) induced recoil velocity.
-With controlled, dense sampling of the SMBH recoil velocity, we find the stellar core originally formed by SMBH binary scouring can grow by a factor of 2-3 with increasing recoil velocity, and a similar growth in the central mass deficit.
+We study stellar core growth in simulations of merging massive ($M_\star>10^{11}\,\Msun$) elliptical galaxies by a supermassive black hole (SMBH) displaced by gravitational wave induced recoil velocity.
+With controlled, dense sampling of the SMBH recoil velocity, we find the core radius originally formed by SMBH binary scouring can grow by a factor of 2-3 when the recoil velocity exceeds $\sim50$ per cent of the central escape velocity, and the mass deficit grows by up to a factor of $\sim4$.
 Using Bayesian inference we predict the distribution of stellar core sizes formed through this process to peak at $\sim1\,\mathrm{kpc}$.
-An orbital decomposition of stellar particles within the core reveals that when the recoil velocity exceeds the velocity dispersion of the core, radial orbits dominate over tube orbits, providing a mass 10\% of the coalesced SMBH mass, whereas tube orbits dominate for the lowest recoil kicks.
-A change in orbital structure is reflected in the anisotropy parameter, with a tangential bias present only for kick velocities less than the local stellar velocity dispersion.
-With mock integral field unit observations of the stellar line of sight velocity distribution emulating the capabilities of current detectors, we observe a distinct signature in the Gauss-Hermite symmetric deviation coefficient $h_4$ that allows for an estimate of the core size due to binary scouring, irrespective of later evolution due to SMBH recoil.
-Our results provide a method to estimate the SMBH recoil magnitude from observations of local elliptical galaxies, and implies these galaxies primarily experienced recoil velocities less than the stellar velocity dispersion of the core.
+An orbital decomposition of stellar particles within the core reveals that radial orbits dominate over tube orbits when the recoil velocity exceeds the velocity dispersion of the core, whereas tube orbits dominate for the lowest recoil kicks.
+A change in orbital structure is reflected in the anisotropy parameter, with a central tangential bias present only for recoil velocities less than the local stellar velocity dispersion.
+Emulating current integral field unit observations of the stellar line-of-sight velocity distribution, we uncover a distinct signature in the Gauss-Hermite symmetric deviation coefficient $h_4$ that uniquely constrains the core size due to binary scouring.
+This signature is insensitive to the later evolution of the stellar mass distribution due to SMBH recoil.
+Our results provide a novel method to estimate the SMBH recoil magnitude from observations of local elliptical galaxies, and implies these galaxies primarily experienced recoil velocities less than the stellar velocity dispersion of the core.
 \end{abstract}
 
 % Select between one and six entries from the list of approved keywords.
@@ -176,17 +175,15 @@ black hole physics -- galaxies: kinematics and dynamics -- methods: numerical --
 
 % INTRODUCTION
 \section{Introduction}
-%There is much evidence for the presence of supermassive black holes (SMBHs) at the centres of massive galaxies, with the shadow of one such SMBH being directly imaged \citep{eht2019}.
-%As two galaxies dynamically interact during a galaxy merger, so too is it expected that the residing SMBHs will dynamically interact.
-Observations have revealed a clear bimodality in the properties of massive elliptical galaxies, with brighter ellipticals $(M_{B}\lesssim -20.5)$ typically having `cored' flat central surface brightness profiles, boxy isophotes and showing little or no rotation (slow rotators). Fainter intermediate-mass ellipticals $(-20.5 \lesssim M_{B} \lesssim -18.5)$ on the other hand typically show steeper `cuspy' central brightness profiles, more disc-like isophotes and evidence for more rotational support (fast rotators) (e.g \citealt{Kormendy1996,Faber1997,emsellem2007,Kormendy2009,Thomas2014,dullo2014,dullo2019,Quenneville2024}).
+Observations have revealed a clear bimodality in the properties of massive elliptical galaxies, with brighter ellipticals $(M_{B}\lesssim -20.5)$ typically having `cored' flat central surface brightness profiles, boxy isophotes and showing little or no rotation (slow rotators). Fainter intermediate-mass ellipticals $(-20.5 \lesssim M_{B} \lesssim -18.5)$ on the other hand typically show steeper `cuspy' central brightness profiles, more disc-like isophotes and evidence for more rotational support (fast rotators) (e.g. \citealt{Kormendy1996,Faber1997,emsellem2007,Kormendy2009,Thomas2014,dullo2014,dullo2019,Quenneville2024}).
 
 The observed bimodality can be linked to the distinct formation paths of elliptical galaxies. Intermediate-mass ellipticals have likely formed predominantly through in-situ star formation and in mergers of gas-rich disc-dominated galaxies accompanied by merger-induced starbursts resulting in cuspy central stellar profiles (e.g. \citealt{Barnes1996,Cappellari2007,hopkins2009a,hopkins2009b,Johansson2009,Krajnovic2011,Cappellari2016,Lahen2018,Forster2020}). 
 More massive elliptical galaxies are on the other hand believed to have assembled in a two-stage process, in which the early assembly at redshifts of $z \gtrsim 1.5$ is dominated by in-situ star formation fuelled by cold gas flows in massive dark matter (DM) haloes, and the accretion of multiple star-bursting progenitors. The later evolution of the galaxies then proceeds mainly through gas-poor (dry) merging in which the galaxy predominantly accretes stars formed  outside the main galaxy (e.g. \citealt{Naab2009,Bezanson2009,Oser2010,Johansson2012,Wellons2015,Rodriguez-Gomez2016,Qu2017,lagos2022,Cannarozzo2023}, see also \citealt{naab2017} for a review). However, if massive galaxies have formed by merging of fainter cuspy galaxies they should also possess central cusps, as simulations have shown that mergers tend to preserve the density cusps of merging galaxies \citep{boylan2004,Dehnen2005}.          
 
 In the case of two massive elliptical galaxies undergoing a dry merger, the leading mechanism for stellar core formation is through the interaction of binary supermassive black holes (SMBHs) in the galaxy merger remnant. The merging of SMBHs 
-is generally understood in the context of a three stage process \citep{begelman1980}. First, the dynamical friction from the mass overdensity in the wakes of the SMBHs provides a restoring force which brings the SMBHs to the centre of the two interacting galaxies \citep{chandrasekhar1943}, generally torquing the SMBHs to highly radial orbits in the process. Second, after the mass enclosed within the orbit of the two SMBHs is comparable to the sum of the SMBH masses, the SMBHs form a bound binary \citep{merritt2005}. Iterative interactions of the SMBHs with surrounding stars on low angular momentum orbits ejects these stars with high velocity \citep[e.g.][]{hills1980,hills1983,quinlan1996}, thus removing orbital energy and angular momentum from the SMBH binary orbit.
+is generally understood in the context of a three stage process \citep{begelman1980}. First, the dynamical friction from the mass overdensity in the wakes of the SMBHs provides a restoring force which brings the SMBHs to the centre of the two interacting galaxies \citep{chandrasekhar1943}, generally torquing the SMBHs to highly radial orbits in the process. Second, after the mass enclosed within the orbit of the two SMBHs is comparable to the sum of the SMBH masses, the SMBHs form a bound binary \citep{merritt2005}. Iterative interactions of the SMBHs with surrounding stars on low angular momentum orbits eject these stars with high velocity \citep[e.g.][]{hills1980,hills1983,quinlan1996}, thus removing orbital energy and angular momentum from the SMBH binary orbit.
 The removal of stars from the central regions by this slingshot mechanism produces a `core' \citep[e.g.][]{lauer1983,lauer1985,kormendy1984}, or depletion, in the luminosity profile of the remnant galaxy \citep[e.g.][]{begelman1980,hills1983,quinlan1996,rantala2018,rantala2024,nasim2021b,khonji2024,partmann2024}, that can in extreme cases extend up to $3\,\mathrm{kpc}$ \citep{postman2012}.
-Finally, at very small, sub-parsec separations the SMBH binary loses its remaining orbital energy and angular momentum through gravitational wave (GW) emission, driving the SMBH binary to coalescence \citep{peters1963,peters1964}. The GW emission from such SMBH coalescence events are prime observational targets for ongoing pulsar timing array (PTA) detectors for SMBHs with masses of $M_\bullet \gtrsim 10^9\,\Msun$ \citep{agazie2023, 2023Antoniadis, 2023Xu, zic2023}, and also the forthcoming Laser Interferometer Space Antenna (LISA) mission for SMBHs with slightly lower masses of $M_\bullet \lesssim 10^8\,\Msun$ \citep{amaro-seoane2023}.
+Finally, at very small, sub-parsec separations the SMBH binary loses its remaining orbital energy and angular momentum through gravitational wave (GW) emission, driving the SMBH binary to coalescence \citep{peters1963,peters1964}. The GW emission from such SMBH coalescence events are prime observational targets for ongoing pulsar timing array (PTA) detectors for SMBHs with masses of $M_\bullet \gtrsim 10^9\,\Msun$ \citep{agazie2023, antoniadis2024, 2023Xu, zic2023}, and also the forthcoming Laser Interferometer Space Antenna (LISA) mission for SMBHs with slightly lower masses of $M_\bullet \lesssim 10^8\,\Msun$ \citep{amaro-seoane2023}.
 
 The final GW emission from the coalescing SMBH binary occurs anisotropically, and carries with it linear momentum from the system \citep[e.g.][]{gonzalez2007}.
 This results in the remnant SMBH recoiling with some velocity directed opposite to the linear momentum of the GW emission \citep{bekenstein1973}, and is termed the kick, or recoil, velocity\footnote{We use the terms `kick' and `recoil' interchangeably in this work.}. 
@@ -195,7 +192,6 @@ As reported by \citet{campanelli2007}, symmetries in the masses or spins of the 
 In particular, it is found that asymmetry in the spins of the SMBHs has a larger impact on the magnitude of the recoil kick than asymmetry in the masses \citep{campanelli2007}, with spins which are anti-aligned in the orbital plane and maximal producing the largest recoil kick velocities \citep{gonzalez2007b,tichy2007}.
 Numerical relativity studies indicate that while the majority of recoil kicks are of the order of a few hundred kilometres per second, in special configurations the SMBH may be imparted a kick velocity in excess of $2000\,\kmps$, even up to $4000\,\kmps$ \citep{campanelli2007,gonzalez2007b,tichy2007}.
 Taking the central escape velocity of a typical massive elliptical galaxy as $\sim2000\,\kmps$, there may be a non-negligible fraction of elliptical galaxies with an SMBH that has escaped the galaxy (e.g. \citealt{madau2004,mannerkoski2022}), though not so many so as to introduce considerable scatter into the observed relation between SMBH mass and stellar velocity dispersion \citep{volonteri2007}.
-This is in clear tension with all current observations indicating that no massive elliptical galaxy in the local Universe is without an SMBH, and demands further investigation.
 
 Numerous observational studies have also hinted at the existence of recoiling SMBHs, generally through either an offset from the centre of the host galaxy in velocity, in position, or both. One of the earliest observations that pointed to a recoiling SMBH was of the quasar SDSSJ0927+2943, reported by \citet{komossa2008}, where an observed velocity offset suggested a recoil kick in excess of $2600\,\kmps$.
 Another recoiling SMBH candidate was identified by an offset in velocity by \citet{steinhardt2012}, with an estimated recoil velocity greater than $4000\,\kmps$.
@@ -213,42 +209,7 @@ In \citet{gualandris2008} the motion of a settling SMBH in a stellar potential r
 Next, both the SMBH and stellar core oscillate about their common centre of mass when the radial excursion of the SMBH is less than the core radius of the stellar system.
 Finally, the SMBH settles into thermal equilibrium with the surrounding stars.
 During these three stages, the stellar density core is enhanced by the motion of the SMBH, producing a mass deficit in some cases up to five times the SMBH mass (see also \citealt{merritt2004,boylan2004,partmann2024}).
-However, a more recent study by \citet{nasim2021b} on the contribution to stellar core expansion through GW recoil of an SMBH found intriguingly that the greatest contribution to the stellar mass deficit is due to the first excursion of the SMBH following its ejection, with subsequent oscillations only providing a minor contribution to the growth of the stellar core. 
-%This result is in tension with the work of \citet{gualandris2008}.
-
-%The effect of recoiling SMBHs have been studied previously, with some of the first explorations presented in \citet{boylan2004} and \citet{merritt2004}.
-%In the work of \citet{boylan2004}, a recoiling SMBH was found to induce a core in the stellar density profile, particularly when the SMBH remained bound to the bulge of the host galaxy and had a recoil velocity comparable to the bulge velocity dispersion.
-%A recoiling SMBH was also found to induce a stellar density core in the work of \citet{merritt2004}.
-%Additionally, the time for a recoiling SMBH to settle after being ejected in a spherical potential was found to be roughly one orbital period when the recoil velocity was less than the velocity dispersion of the bulge.
-%This, which are more representative of a galaxy merger remnant than the spherical case.
-
-%More recently, the contribution of stellar core expansion through GW recoil of an SMBH has been considered by \citet{nasim2021b}.
-%Intriguingly, the authors find that greatest contribution to the stellar mass deficit is due to the first excursion of the SMBH following its ejection, with subsequent oscillations only providing a minor contribution to the growth of the stellar core.
-%This result is in tension with the work of \citet{gualandris2008}.
-
-
-%The effect of recoiling SMBHs have been studied previously, with some of the first explorations presented in \citet{boylan2004} and \citet{merritt2004}.
-%In the work of \citet{boylan2004}, a recoiling SMBH was found to induce a core in the stellar density profile, particularly when the SMBH remained bound to the bulge of the host galaxy and had a recoil velocity comparable to the bulge velocity dispersion.
-%A recoiling SMBH was also found to induce a stellar density core in the work of \citet{merritt2004}.
-%Additionally, the time for a recoiling SMBH to settle after being ejected in a spherical potential was found to be roughly one orbital period when the recoil velocity was less than the velocity dispersion of the bulge.
-%This `infall time' was found to increase when considering triaxial potentials, which are more representative of a galaxy merger remnant than the spherical case.
-
-%In \citet{gualandris2008}, a stellar potential representative of a galaxy merger remnant with SMBH binary core scouring is used to investigate the motion of an SMBH ejected through GW recoil.
-%The motion of a settling SMBH was found to occur in three stages: first, the SMBH oscillates with decreasing amplitude due to energy dissipation by dynamical friction.
-%Next, both the SMBH and stellar core oscillate about their common centre of mass when the radial excursion of the SMBH is less than the core radius of the stellar system.
-%Finally, the SMBH settles into thermal equilibrium with the surrounding stars.
-%During these three stages, the stellar density core is enhanced by the motion of the SMBH (in agreement with \citet{merritt2004} and \citet{boylan2004}), with the mass deficit in some cases reaching up to five times the SMBH mass being produced.
-
-%Work by \citet{blecha2008} considered the effect of recoiling SMBHs in an analytical model of an isolated galaxy comprised of a multicomponent system of a stellar bulge and gaseous disc.
-%An interesting result was the mass growth of the ejected SMBH as it settled at the centre of the potential, with the mass growth accumulating to some 10\% of the initial SMBH mass, irrespective of the recoil velocity.
-%Recoiling SMBHs in gas-rich systems was further explored in \citet{blecha2011} using hydrodynamic simulations of isolated galaxy mergers.
-%In this work, seed SMBHs were allowed to grow through gas accretion prior to merging, with the majority of final SMBH masses at the time of merger sampling the $10^7\,\Msun \lesssim M_\bullet \lesssim 10^8\,\Msun$ mass regime.
-
-
-
-%The impact of recoiling SMBHs on the growth and dynamics of SMBHs in hydrodynamical simulations have also been studied using both isolated galaxy models consisting of a stellar bulge and a gaseous disc \citep{blecha2008}, as well as in isolated gas-rich galaxy mergers \citep{blecha2011}. %The study of the isolated galaxy model found that 
-%the mass growth of the ejected SMBH as it settled at the centre of the potential, with the mass growth accumulating to some 10\% of the initial SMBH mass, irrespective of the recoil velocity. 
-%In the merger simulations, the seed SMBHs were allowed to grow through gas accretion prior to merging, with the majority of the final SMBH masses at the time of merger sampling the $10^7\,\Msun \lesssim M_\bullet \lesssim 10^8\,\Msun$ mass regime. The simulations also showed that recoil events typically reduce the lifetimes of bright active galactic nuclei (AGNs), with most kicked AGNs confined to the central few kpc of the galaxy. Whilst the results of \citet{blecha2011} provide valuable insight into the occurrence of variable AGN variability due to an oscillating SMBH plunging through a gaseous disc, we stress that the results are applicable to a different mass regime of galaxies and SMBHs than what we focus on in this work. In addition, the formation of stellar cores which is primarily driven by complex three-body interactions between the SMBHs and the stellar component remains largely unresolved in simulations that include gravitational softening. 
+However, a recent study by \citet{nasim2021b} on the contribution to stellar core expansion through GW recoil of an SMBH found intriguingly that the greatest contribution to the stellar mass deficit is due to the first excursion of the SMBH following its ejection, with subsequent oscillations only providing a minor contribution to the growth of the stellar core. 
 
 Whilst previous studies have convincingly shown that there is a clear case for a relation between SMBH recoil velocity and the final core size carved out by its motion, little attention has been devoted to understanding the statistical impact of SMBH recoil on the properties of the merger remnant galaxy. 
 Invoking large SMBH recoils as a mechanism to grow the most massive cores in elliptical galaxies \citep[e.g.][]{nasim2021b,khonji2024} has contributed an important piece to the overall puzzle of explaining current observations, however recoil velocities approaching the escape velocity of the host galaxy are unlikely to be the norm, given that all observed elliptical galaxies host a central SMBH \citep{ferrarese1994,haring2004,kormendy2013,vandenbosch2016}.
@@ -262,18 +223,10 @@ Here, we run a large set of gas-free simulations with systematically varying SMB
 The aim of this work is twofold.
 We first aim to determine how the velocity with which the SMBH is kicked affects the mass distribution of the surrounding stellar environment, and the likelihood of the magnitude of these effects. We then aim to determine if a recoiling SMBH imparts a signature on the stellar kinematics of the remnant galaxy, and if such a signature could potentially be observed with current detectors.
 
-
-%In this study, we wish to consider SMBH recoil by GW emission in massive elliptical galaxies.
-%The aim of this work is twofold.
-%We first aim to determine how the velocity with which the SMBH is kicked affects the mass distribution of the surrounding stellar environment, and the likelihood of the magnitude of these effects.
-%We then aim to determine if a recoiling SMBH imparts a signature on the stellar kinematics of the remnant galaxy, and if such a signature could be observed with current detectors.
-
-
-
 This paper is divided as follows: we present the numerical simulations used in our investigation in \autoref{sec:num_sims}.
 We discuss the motion of the recoiling SMBHs in \autoref{sec:motion}, and the resulting stellar density profiles of the remnant galaxy in \autoref{sec:density}.
 We investigate the distribution of stellar orbits as a function of the kick velocity in \autoref{sec:orbits} and construct mock stellar kinematic observations to be compared with observational data in \autoref{sec:kinematics}.
-Finally, we discuss of our results in \autoref{sec:discussion} and present 
+Finally, we discuss our results in \autoref{sec:discussion} and present 
 our conclusions in \autoref{sec:conclusions}, respectively.
 
 
@@ -283,7 +236,7 @@ our conclusions in \autoref{sec:conclusions}, respectively.
 
 \subsection{Simulation Code}
 To investigate the effect of the recoiling SMBH on the host galaxy, and potential observational signatures of this, we run a number of numerical simulations of an idealised galaxy merger setting using the new public version of the \ketju{}\footnote{\url{https://www.mv.helsinki.fi/home/phjohans/group-website/research/ketju/}} code \citep{rantala2017,rantala2020,mannerkoski2023} coupled with \gadget{} \citep{springel2021}.
-\ketju{} integrates the dynamics of SMBHs, and stellar particles in a small region thrice the stellar softening length around them (i.e. the \ketju{} region), to high accuracy using the algorithmically regularised integrator \textsc{mstar} \citep{rantala2020}.
+\ketju{} integrates the dynamics of SMBHs, and stellar particles in a small region three times the stellar softening length around them (i.e. the \ketju{} region), to high accuracy using the algorithmically regularised integrator \textsc{mstar} \citep{rantala2020}.
 The dynamics of stellar particles beyond this small region of high integration accuracy, and all DM particles, is computed with the \gadget{} fast multiple method (FMM) with second order multipoles. 
 Additionally, we use hierarchical time integration, which allows for mutually symmetric interactions and manifest momentum conservation. 
 In this study, we do not use comoving integration, as we are investigating an idealised system.
@@ -308,20 +261,19 @@ The distribution functions are then sampled with discrete particles, where the m
 The radial velocity profiles of both stellar and DM particles are ergodic. 
 
 As we are interested in the evolution of the galaxy merger \textit{remnant} following SMBH coalescence, the initial conditions are constructed such that at the time of SMBH coalescence (\autoref{ssec:mergers}) the galaxy remnant agrees with local scaling relations.
-Specifically, we ensure that our remnant agrees with the half-light -- stellar mass data presented in \citet{sahu2020}, and lies within the $1\sigma$ prediction interval of the SMBH mass -- stellar velocity dispersion data given in \citet{vandenbosch2016}.
+Specifically, we ensure that our remnant agrees with the half-light -- stellar mass data presented in \citet{sahu2020}, and lies within the $1\sigma$ prediction interval of the SMBH mass -- stellar velocity dispersion data as given in \citet{vandenbosch2016}.
 
 \subsection{Merger Simulations}\label{ssec:mergers}
-We merge two independently Monte Carlo sampled galaxy ICs, creating an equal mass galaxy merger with a near-radial orbit. 
+We merge two independently Monte Carlo sampled galaxy ICs, creating an equal-mass galaxy merger with a near-radial orbit. 
 The merger orbit has an initial separation consistent with \citet{rantala2018} of $D=30\,\mathrm{kpc}$, however the initial eccentricity is set to $e_0=0.97$, and the first pericentre distance adjusted accordingly to $r_\mathrm{peri}=D(1-e_0^2) \simeq 2\,\mathrm{kpc}$ \citep{khochfar2006,rantala2017}.
 The merger configuration results in a rapid coalescence of the SMBH binary, however we note that the merger timescale we observe is driven by stochasticity in the binary eccentricity \citep{nasim2020,rawlings2023}.
 The resulting coalesced SMBH has a mass $M_\bullet = 2M_{\bullet,0} = 5.86\times10^9\,\Msun$.
 We then select the snapshot just prior ($\sim8\,\mathrm{Myr}$) to the GW-driven SMBH merger, and generate 31 `child' simulations, where each child has a unique gravitational recoil kick velocity $\vk$ prescribed along the $x$-axis\footnote{As the $x$-axis is in the global coordinate frame, the direction of the kick is essentially random with respect to the angular momentum and inertia tensors. To test the effect of differing kick directions on the merger remnant, we test directing the recoil kick along the global $y$-axis, and find very similar evolution to the $x$-axis case.}, ranging from $0\,\kmps$ to $1800\,\kmps$ (inclusive), in $60\,\kmps$ increments.
-%At the moment of the merger, the centre of mass (CoM) velocity of the SMBH binary is $v_{\mathrm{bin},\mathrm{CoM}}\sim[4.2, 1.1, 1.6]\,\kmps$ in the global coordinate frame.
-The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant, $v_\mathrm{esc}$.
+The upper limit on $\vk$ is chosen to match the escape velocity of the centre of the merger remnant, $v_\mathrm{esc}=1800\,\kmps$.
 We additionally run one simulation with a recoil kick above $v_\mathrm{esc}$, with $\vk=2000\,\kmps$, to test the effect of rapidly removing an SMBH.
 
-For all simulations, snapshots are produced every $5\,\mathrm{Myr}$. Interactions between stellar particles are softened with a softening length of $\varepsilon = 2.5\,\mathrm{pc}$, DM with a softening length of $\varepsilon = 300\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon = 7.5\,\mathrm{pc}$.
-Within the \ketju{} region, dynamical interactions between stellar particles and SMBHs are unsoftened.
+For all simulations, snapshots are produced every $5\,\mathrm{Myr}$. Interactions between stellar particles are softened with a softening length of $\varepsilon_\star = 2.5\,\mathrm{pc}$, DM is softened with a softening length of $\varepsilon_\mathrm{DM} = 300\,\mathrm{pc}$, and the \ketju{} region radius is set to $r_{\rm ketju}=3\varepsilon_\star = 7.5\,\mathrm{pc}$.
+Within the \ketju{} region, dynamical interactions between stellar particles and SMBHs, and SMBHs-SMBHs are unsoftened.
 For the \gadget{} component of the simulation, the integration error tolerance is set to 0.002, whereas the Gragg-Bulirsch-Stoer (GBS) tolerance for \ketju{} is set to $10^{-8}$.
 
 We impose a maximum integration time on all simulations, corresponding to three dynamical times $t_\mathrm{dyn}$, defined in terms of the virial radius $r_{200}$ and virial velocity $v_{200}$ of the galaxy merger remnant as:
@@ -347,7 +299,7 @@ Thus, our simulations are run for a maximum of $3\,\mathrm{Gyr}$.
     \label{fig:trajectory}
 \end{figure}
 
-Before SMBH binary coalescence, the binary scours a stellar core with a radius of $\rbbin\sim0.58\,\mathrm{kpc}$ in the centre of the galaxy (see \autoref{ssec:projdens}). In the interior of the core, the stellar one-dimensional velocity dispersion is $\sigma_{\star,0} \equiv \sigma_\star(r<\rbbin)\sim 270\,\kmps$. 
+Before the SMBH binary coalescence, the binary scours a stellar core with a radius of $\rbbin\sim0.58\,\mathrm{kpc}$ in the centre of the galaxy (see \autoref{ssec:projdens}). In the interior of the core, the stellar one-dimensional velocity dispersion is $\sigma_{\star,0} \equiv \sigma_\star(r<\rbbin)\sim 270\,\kmps$. 
 Immediately following the coalescence of the SMBH binary and the subsequent kick, the trajectory of the remnant SMBH is predominantly radial in the direction of the GW recoil kick, as shown in \autoref{fig:trajectory}.
 We can thus estimate the crossing time of the binary-scoured core based on the 1D stellar velocity dispersion as:
 \begin{equation}
@@ -357,13 +309,13 @@ whereas the actual time the recoiling SMBH traverses the core is:
 \begin{equation}
     t_\mathrm{cross, \bullet} \simeq \frac{\rbbin}{\vk}.
 \end{equation}
-If the velocity of the recoil kick is not enough to completely eject the SMBH from the galaxy ($\vk < v_\mathrm{esc}$), the SMBH will oscillate about the centre of the galaxy. 
+If the velocity of the recoil kick is not high enough to completely eject the SMBH from the galaxy ($\vk < v_\mathrm{esc}$), the SMBH will oscillate about the centre of the galaxy. 
 The amplitude of the oscillations, termed the apocentre distance $r_\mathrm{apo}$, decreases with each oscillation due to dynamical friction, which is automatically resolved with \ketju{} \citep[e.g.][]{karl2015,rantala2017,genina2024}.
 Ultimately the SMBH `settles' to the centre of the galaxy.
 If $\vk < \sigma_{\star,0}$, the SMBH has insufficient kinetic energy to escape the stellar core and instead remains within $100\,\mathrm{pc}$ from the centre, shown in the top panel of \autoref{fig:infall}.
 Conversely, if $\vk > \sigma_{\star,0}$ the SMBH can exit the core, with $r_\mathrm{apo}$ increasing as $\vk$ is increased.
 If $r_\mathrm{apo}$ exceeds $\sim 10\,\mathrm{kpc}$, mild triaxiality in the outer regions of the galaxy merger remnant (shown in \autoref{fig:triax}) can torque the SMBH into an orbit with some degree of tangential motion, an example of which is given in \autoref{fig:trajectory} for the $\vk=780\,\kmps$ simulation.
-For the first few orbits, the SMBH may not necessarily pass through the stellar core, though it loses energy to the surrounding medium with each oscillation.
+For the first few orbits, the SMBH may thus not necessarily pass through the stellar core, though it loses energy to the surrounding medium with each oscillation.
 During the final passages however, the SMBH passes through the core, before its velocity decreases below the velocity dispersion of the core.
 The predominantly-radial motion of the SMBH rapidly degrades to a random walk as it settles to the Brownian limit from this point, and does not leave the core again (shown in the inset panel of \autoref{fig:trajectory}).
 
@@ -376,7 +328,7 @@ We determine the root mean square velocity of the massive particle as
 \begin{equation}
     V_\mathrm{RMS} = \sqrt{3 \xi} \tilde{\sigma},
 \end{equation}
-where $\tilde{\sigma}$ is the average velocity dispersion of the stellar and DM particles, and $\xi$ is the mass ratio to the SMBH, determined:
+where $\tilde{\sigma}$ is the average velocity dispersion of the stellar and DM particles, and $\xi$ is the mass ratio to the SMBH, calculated as:
 \begin{equation}
     \xi = \frac{\int n(m)m^2\dd{m}}{\int n(m)m\dd{m}} \Big / M_\bullet,
 \end{equation}
@@ -386,19 +338,19 @@ Our calculated value of $V_\mathrm{RMS}$ that we use to define a settled velocit
 Next, we go through the simulations output in `windows' of $100\,\mathrm{Myr}$. 
 If the SMBH stays within $0.1\,\mathrm{kpc}$ from the centre and has a median velocity less than $V_\mathrm{RMS}$ relative to the centre within the $100\,\mathrm{Myr}$ window, we consider the SMBH to be settled at the time when the velocity first falls below $V_\mathrm{RMS}$ within the time interval. The chosen separation from the centre is smaller than the large offsets observed by \citet{barrows2016} and slightly larger than the $\lesssim 10\,\mathrm{pc}$ offsets in \citet{lena2014}. 
 
-The settling times are shown in the lower panel of \autoref{fig:infall}. For recoil velocities $\vk \leq 240\,\kmps$ the kick is not enough to displace the SMBH beyond the binary-scoured core and the SMBH is considered settled in less than $100\,\mathrm{Myr}$ after SMBH binary coalescence. 
+The settling times are shown in the lower panel of \autoref{fig:infall}. For recoil velocities $\vk \leq 240\,\kmps$ the kick is not large enough to displace the SMBH beyond the binary-scoured core and the SMBH is considered settled in less than $100\,\mathrm{Myr}$ after SMBH binary coalescence. 
 As the kick velocity is increased further, the settling time begins to increase exponentially. 
 The slight deviations from an exponential increase are caused by numerical noise, which prevents the median velocity being below $V_\mathrm{RMS}$.
 
 The SMBHs which received a kick velocity larger than $1020\,\kmps$ did not settle back to the centre of the galaxy within the maximum simulation time of $3t_\mathrm{dyn} = 3\,\mathrm{Gyr}$, and already reach maximum displacements in excess of $>60\,\mathrm{kpc}$ during their first excursion from the centre. 
 We expect that any SMBH with such a large displacement from its host galaxy would not be observationally identified with that galaxy, and thus we do not include simulations with $\vk>1020\,\kmps$ in this analysis. The used limit for maximum displacement is a few times larger than the largest suggested offset of $19.4\,\mathrm{kpc}$ from observations \citep{barrows2016}.
-We do however analyse the $\vk=2000\,\kmps$ simulation, which is above the escape velocity of the galaxy, as a proxy for an SMBH that is instantaneously removed from the simulation.
+We do however analyse the $\vk=2000\,\kmps$ simulation, which is above the escape velocity of the galaxy, as a proxy for an SMBH that is almost instantaneously removed from the simulation.
 Importantly, an escaping SMBH never completes a single oscillation about the centre of the galaxy.
 
 \begin{figure}
     \centering
     \includegraphics[width=0.4\textwidth]{figures/infall_times_and_apocenters.pdf}
-    \caption{ \textit{Top panel}: the distance of first apocentre passage from the centre of the galaxy for each kick velocity that resulted in a settled SMBH. 
+    \caption{ \textit{Top panel}: the distance of the first apocentre passage from the centre of the galaxy for each kick velocity that resulted in a settled SMBH. 
     The horizontal dashed line, $\rbbin$, marks the size of the stellar core the SMBH binary scours before coalescence, and the vertical dashed line, $\sigma_\star(r<\rbbin)$, is the one-dimensional velocity dispersion of the stellar particles interior to the binary-scoured core radius. \textit{Bottom panel}: the settling times for each kick velocity with $\vk>0\,\kmps$. The time increases exponentially as  $\vk$ increases.
     }
     \label{fig:infall}
@@ -419,8 +371,7 @@ By $\vk=1020\,\kmps$, $M_{\star,\mathrm{bound}}$ has decreased to 0.2 per cent o
 These results are in close quantitative agreement with the findings of \citet{gualandris2008} and agree well with those of \citet{nasim2021b}, despite different initial conditions being used between our study and those in the literature.
 We hypothesise that the movement of stellar mass bound to the SMBH is not the dominant mechanism by which the stellar mass distribution changes, and investigate this further in \autoref{ssec:missmass}.
 
-The core region of the galaxy constantly evolves while the SMBH moves through the galaxy. 
-%Furthermore, it is important to ascertain that the distribution of stars does not drastically change after the times chosen as the focus of the analysis. 
+The core region of the galaxy constantly evolves while the SMBH moves through the galaxy.
 We inspect how the Lagrangian radius relative to the centre of mass and enclosing a stellar mass equal to the SMBH mass, $r(M_\star = M_\bullet)$, evolves with time in \autoref{fig:lagrangian} until the SMBH is settled. 
 In addition to kick velocities $\vk \leq1020\,\kmps$, the kick velocity $\vk=2000\,\kmps$ is included. 
 As the SMBH with $\vk=2000\,\kmps$ is completely removed from the galaxy and does not settle back to the centre, the evolution is shown for $\sim 2.0\,\mathrm{Gyr}$ following SMBH binary coalescence. 
@@ -483,7 +434,7 @@ Thus, for the analysis herein, we are confident that the results we observe are 
         Three dimensional stellar mass density, with the line colour corresponding to the kick velocity of the SMBH. 
         At radii $r\lesssim3\,\mathrm{kpc}$, the stellar mass density decreases smoothly with increasing kick velocity, with the exception of the $\vk=2000\,\kmps$ simulation, in which the SMBH has not returned to the centre of the merger remnant.
         A density cusp is apparent for all mergers where the SMBH settled at the centre.
-        At radii $r>3\,\mathrm{kpc}$ all the density profiles are consistent with each other, indicating that a changing SMBH recoil velocity has a larger impact on the inner mass distribution of the galaxy merger remnant.
+        At radii $r>2\,\mathrm{kpc}$ all the density profiles are consistent with each other, indicating that a changing SMBH recoil velocity has a larger impact on the inner mass distribution of the galaxy merger remnant.
         }
     \label{fig:density3d}
 \end{figure}
@@ -497,7 +448,7 @@ An exception to this trend is the highest kick velocity we simulated, $\vk=2000\
 This is readily explained by the evolution of the Lagrangian radii in \autoref{fig:lagrangian}.
 The final few orbits of the settling SMBH in simulations with $\vk>300\,\kmps$ take the SMBH through the stellar core, enlarging it further with each oscillation. 
 As a result, the central stellar density decreases as the number of oscillations increase. 
-The $\vk=2000\,\kmps$ simulation, in which the SMBH does not oscillate through the core, has a central stellar density that decreases only due to the initial response of the stellar particles to the suddenly-changed potential.
+The $\vk=2000\,\kmps$ simulation, in which the SMBH does not oscillate through the core, has a central stellar density that decreases only due to the initial response of the stellar particles to the sudden change of the potential.
 The simulations with a settled SMBH have a density profile within $r<1\,\mathrm{kpc}$ that follows a power law $\rho \propto r^{-\nu}$ with $0<\nu<1$.
 Conversely, the $\vk=2000\,\kmps$ simulation has a flat density profile with $\nu=0$ in the centre, in agreement with the recent work by \citet{khonji2024}.
 
@@ -531,7 +482,8 @@ In the outer regions $r\gtrsim 4\,\mathrm{kpc}$, the stellar density falls with 
         Larger kick velocities are correlated with larger core sizes. Additionally, a greater spread in the distribution of core sizes over different viewing projections of the merger remnant is associated with larger kick velocities.
         Three models, fit to the median $\rb$--$\vk$ trend, are overplotted.
         For the models, we do not show the parameter uncertainty for visual clarity.
-        \textit{Bottom panel}: Mass deficit $M_\mathrm{def}$ between S\'ersic and core-S\'ersic fits as a function of the recoil velocity scaled to the mass deficit due to SMBH binary scouring ($M_{\mathrm{def},0}$, left axis) and physical units (right axis). 
+        \textit{Bottom panel}: Box plots of the Monte Carlo sampled mass deficit $M_\mathrm{def}$ between S\'ersic and core-S\'ersic fits as a function of the recoil velocity. 
+        $M_\mathrm{def}$ is scaled to the mass deficit due to SMBH binary scouring ($M_{\mathrm{def},0}$, left axis) and shown in physical units (right axis). 
         }
     \label{fig:vkrb}
 \end{figure}
@@ -615,36 +567,31 @@ The difficulty in constraining $\gamma$ provides good motivation for determining
 
 We continue the quantitative analysis of the core region by calculating the missing stellar mass of the merger remnants. 
 As well as the core radius $\rb$, the mass deficit $M_{\mathrm{def}}$ can also be used to measure the core size. Past studies have found the mass deficit to correlate with the combined mass of the SMBH binary and the number of major `dry' mergers \citep[e.g.][]{milosavljevic2001, graham2003, merritt2006,rantala2024}.
-%Past studies have found the mass deficit to be proportional to the mass of the binary approximately $M_{\mathrm{def}}\sim 0.5 -- 5 M_{BH}$ for a single merger. 
 In order to determine the mass displaced by the gravitational interactions and recoil, we adopt an observational approach by comparing the stellar mass density profiles of the inward extrapolated S\'ersic $\Sigma_{\mathrm{s}}(R)$ \citep{Sersic1963,Sersic1968} and the core-S\'ersic $\Sigma(R)$ fits  \citep[e.g.][]{dullo2014,bonfini2016, dullo2019, nasim2021b} as:
 \begin{equation}
-    M_{\mathrm{def}}=2\pi \Upsilon \int_0^\infty \left[ \Sigma_{\mathrm{s}}(R)-\Sigma(R)\right] R \dd{R},
+    M_{\mathrm{def}}=2\pi \int_0^\infty \left[ \Sigma_{\mathrm{s}}(R)-\Sigma(R)\right] R \dd{R},
 \end{equation}
-where the mass-to-light ratio is chosen to be $\Upsilon=3.5 \, \Msun / \Lsun$ \citep{bonfini2016}. The core-S\'ersic profile is calculated using \autoref{eq:cs} and \autoref{eq:cs_prefactor}, while the S\'ersic profile can be obtained using the same set of equations with a slight modification. 
+assuming a constant mass-to-light ratio \citep{bonfini2016}. 
+The core-S\'ersic profile is calculated using \autoref{eq:cs} and \autoref{eq:cs_prefactor}, while the S\'ersic profile can be obtained using the same set of equations with a slight modification. 
 By setting $\rb = 0$ in \autoref{eq:cs}, the profile becomes the standard S\'ersic profile:
 \begin{equation}
-    \Sigma_{\mathrm{s}} = \Sigma ' \exp \left( -b_n (R/R_{\mathrm{e}})^{1/n} \right).
+    \Sigma_{\mathrm{s}} = \Sigma ' \exp \left( -b_n \left(\frac{R}{R_{\mathrm{e}}} \right)^{1/n} \right).
 \end{equation}
 To achieve the right normalisation, it is important to let $\rb$ retain its value in \autoref{eq:cs_prefactor} when constructing the S\'ersic profile \citep{graham2003}. 
 In fitting the luminosity profiles, we perform for each kick velocity $10^4$ Monte Carlo samplings of the posterior distributions of the parameters $\vb{\theta}\equiv[\rb, \Sigma_\mathrm{b}, \gamma, \Reff, n, \alpha]$ described earlier in \autoref{ssec:projdens}, hence giving us $10^4$ realisations of the quantity $M_\mathrm{def}$.
 
-The mass deficits as a function of kick velocities $\vk\leq 1020\,\kmps$ are shown in the lower panel of \autoref{fig:vkrb}. At low kick velocities, $\vk\leq 240\,\kmps$, we see a slow monotonic increase of mass deficit as a function of the kick velocity. Although the scatter grows at higher kick velocities, an increase of the median trend can be observed over the whole kick velocity range.
-For high $\vk$ we see a median trend of $M_\mathrm{def} \sim 3 M_{\mathrm{def},0}$, where $M_{\mathrm{def},0}$ corresponds to the mass deficit from binary scouring alone. We find that the median mass deficit due to SMBH binary scouring prior to the coalescence of the SMBHs is $M_{\mathrm{def},0}=5.11\times10^9\,\Msun$, roughly $0.87M_\bullet$.
-As a consequence of the mass deficit growing to $M_\mathrm{def} > M_\bullet$ for non-zero recoil velocities, as well as higher recoil velocities resulting in larger $M_\mathrm{def}$, we confirm our earlier hypothesis in \autoref{ssec:movement} that stellar mass bound to the SMBH (at most $0.37M_\bullet$) is not the primary mechanism by which the core grows.
+The resulting mass deficits as a function of kick velocities $\vk\leq 1020\,\kmps$ are shown in the lower panel of \autoref{fig:vkrb}. At low kick velocities, $\vk\leq 240\,\kmps$, we see a slow monotonic increase of mass deficit as a function of the kick velocity. Although the scatter grows at higher kick velocities, an increase of the median trend can be observed over the whole kick velocity range.
+For high $\vk$ we see a median trend of $M_\mathrm{def} \sim 4 M_{\mathrm{def},0}$, where $M_{\mathrm{def},0}$ corresponds to the mass deficit from binary scouring alone. 
+We find that the median mass deficit due to SMBH binary scouring prior to the coalescence of the SMBHs is $M_{\mathrm{def},0}=1.46\times10^9\,\Msun$, roughly $0.25M_\bullet$.
+As a consequence of the mass deficit growing to $M_\mathrm{def} \sim M_\bullet$ for non-zero recoil velocities, as well as $M_\mathrm{def}$ correlating positively with recoil velocity, we confirm our earlier hypothesis in \autoref{ssec:movement} that stellar mass bound to the SMBH (at most $0.37M_\bullet$) is not the primary mechanism by which the core grows.
 
-Although \citet{merritt2006} and \citet{nasim2021b} found smaller mass deficit values from binary scouring alone for single mergers ($M_{\mathrm{def},0}\simeq 0.5\, M_\bullet$ and $M_{\mathrm{def},0}\simeq 0.26\,M_\bullet$, respectively), our value is in agreement with other previous studies. \citet{gualandris2008} reported a $M_{\mathrm{def},0}\sim M_\bullet$ relation, which is comparable to our value. In addition, similar mass deficits have also been found by \citet{rantala2024}. Slight discrepancies can be attributed to the differences in initial conditions and to varying approaches to computing mass deficits. Additionally, \citet{gualandris2008} use 3D density profiles, while we utilise projected profiles to make our results more comparable to observational data.
-
-%\citet{merritt2006} found
-%Although slightly smaller, our value is in good agreement with 26 per cent from the first generation equal mass merger of \citet{nasim2021b} (see merger `A1' in their Table 4). Slight differences can be attributed to the differences in initial conditions.
-
-%\citet{merritt2006} and \citet{gualandris2008} found larger mass deficit values from binary scouring alone for single mergers: $M_{\mathrm{def},0}\simeq 0.5\, M_\bullet$ and $M_{\mathrm{def},0}\sim M_\bullet$, respectively) \sonja{Should I add Rantala2024 $M_{\mathrm{def},0}\sim (0.75-2)\, M_\bullet$ to this list? Their approach to Mdef is very different.}. Although differing initial conditions already cause discrepancies of the missing mass values, varying approaches to computing mass deficits may also contribute to variations. Additionally, \citet{gualandris2008} use 3D density profiles, while we utilize projected profiles to make our results more comparable to observational data. 
+There are numerous ways to calculate the mass deficit in simulations, and differences between methods along with varying initial conditions may contribute to discrepancies across studies. A common approach to calculating the mass deficit, which we also adopt, is to compare the S\'ersic and the extrapolated core-S\'ersic profiles \citep{graham2003, Dosopoulou2021, nasim2021b}. This technique has been used by \citet{dullo2014} for observations of cored galaxies, resulting in typical mass deficits of $0.5 \lesssim M_{\mathrm{def}} /M_\bullet \lesssim 4$; these mass deficits may not be due solely to SMBH binary scouring however. Other methods, including calculating the difference in densities between the initial and final states of the galaxy merger \citep[e.g.][]{merritt2006, gualandris2008}, and running the simulations with and without SMBHs \citep[e.g.][]{partmann2024, rantala2024}, typically find greater mass deficits than we do, but of the same magnitude.
 
 As for core sizes presented in \autoref{fig:vkrb}, the interquartile ranges of the missing mass broaden with increasing kick velocities. This is due to growing uncertainties in the projection effects, even though the parameters $\vb{\theta}$ from the core-S\'ersic fits are Monte Carlo sampled as discussed at the end of \autoref{ssec:projdens}. Also, we have found a positive correlation between mass deficit and the core radius. Thus, the increasingly large range of $\rb$ values introduce a wider range of mass deficits as a function of kick velocity. 
-Additionally, we note that the choice of the value of the mass-to-light ratio impacts the resulting mass deficits. For example, by using $\Upsilon=4.5 \, \Msun / \Lsun$ (instead of $\Upsilon=3.5 \, \Msun / \Lsun$) the value of the binary scouring alone increases to $\sim 112$ per cent of the total SMBH binary mass.
 
 \subsection{Predicted core size distribution}\label{ssec:predcore}
 To predict the distribution of expected stellar core sizes given our merger remnant of two massive elliptical galaxies, we require a mapping from the kick velocity to the core radius. 
-Let us define a scaled kick velocity $v'=\vk/v_\mathrm{esc}$, where $v_\mathrm{esc}=1800\,\kmps$.
+Let us define a scaled kick velocity $v'=\vk/v_\mathrm{esc}$.
 Previous work by \citet{nasim2021b} fit an empirical power law of the form:
 \begin{equation}\label{eq:vkrb_exp}
     \frac{\rb}{\rbbin} = K v'^q + 1,
@@ -709,7 +656,7 @@ Additionally, from the empirical CDF we find that approximately 10 per cent of r
 The distribution of recoil velocities becomes slightly more right-skewed if the masses of the SMBHs are allowed to vary prior to merger.
 By randomly sampling each SMBH mass as $M_{\bullet,\mathrm{new}} = 10^{\mathcal{N}(0, 0.3)} M_{\bullet,0}$, where the dispersion of 0.3 is the intrinsic scatter in the $M_\bullet$--$M_\mathrm{bulge}$ relation from \citet{haring2004}, we find that a recoil velocity of $1020\,\kmps$ corresponds to the $\sim\ordinal{76}$ percentile, and the central escape velocity of $v_\mathrm{esc}=1800\,\kmps$ corresponds to the $\sim\ordinal{95}$ percentile.
 Thus, whilst a non-equal mass SMBH binary merger results in a slightly different recoil velocity distribution, large recoil velocities are still allowed, and are frequent, within the expected SMBH mass variation.
-Herein we consider our fiducial case of equal mass SMBH binaries, but do not expect the conclusions to drastically differ in the more general case.
+Herein we consider our fiducial case of equal-mass SMBH binaries, but do not expect the conclusions to drastically differ in the more general case.
 
 As we cannot be guaranteed that the proposed $\rb$--$\vk$ relations hold beyond our fitted data range of $0\,\kmps$--$1020\,\kmps$, we discuss the distribution of core radii in two parts: the first limiting our analysis to $\vk \leq 1020\kmps$, and the second to $\vk \leq \vkmax$.
 
@@ -766,7 +713,7 @@ By construct, the sigmoid function is not as sensitive to large values of $\vk$ 
 Despite the three models mapping SMBH recoil velocities $0\leq \vk/\kmps \leq 1020$ to $\rb$ with a similar level of accuracy, as revealed by the $\widehat{\mathrm{ELPD}}$ measure, we argue that the sigmoid model is the overall preferred model when considering an unconstrained SMBH recoil velocity distribution.
 The response of the stellar system to SMBH recoil velocities greater than the escape velocity of the system should be consistent, irrespective of how much greater $\vk$ is than $v_\mathrm{esc}$.
 This behaviour is not captured with the exponential nor linear models.
-For example, in the case of the sigmoid model, a normalised recoil velocity of $v'=2 \rightarrow \rb=3.9$, whereas $v'=4 \rightarrow \rb=4.0$.
+For example, in the case of the sigmoid model, a scaled recoil velocity ($v'=v/v_\mathrm{esc}$) of $v'=2 \rightarrow \rb=3.9$, whereas $v'=4 \rightarrow \rb=4.0$.
 Conversely, for the exponential model, $v'=2 \rightarrow \rb=5.7$, whereas $v'=4 \rightarrow \rb=9.0$.
 From this argument, we suggest the sigmoid model to be the preferred model when considering the core radius produced by arbitrary SMBH recoil velocity.
 
@@ -819,11 +766,11 @@ representing the potential $\Phi(\vb{x})$ generated by the particles in the simu
 where each individual harmonic independently satisfies the Poisson equation.
 The coefficients $A_{nlm}$ describe the order $n$ the radial component of the potential is expanded to, and to which order $l$, $m$ the angular components are expanded; the angular dependence is a (somewhat complicated) function of the spherical harmonics $Y_{lm}(\theta, \phi)$, where $|m|<l$ as usual.
 The zeroth order of the potential expansion $\Phi_{000}(\vb{x})$ is the model upon which we wish to construct our expansion, and a common choice for this is the \citet{hernquist1990} profile.
-Following \citet{frigo2021}, the expansion is limited to $n_\mathrm{max}=18$ and $l_\mathrm{max}=7$, as this sufficiently captures the potential of the galactic merger remnant.
+Following \citet{frigo2021}, the expansion is limited to $n_\mathrm{max}=18$ and $l_\mathrm{max}=7$, as this captures the potential of the galactic merger remnant with sufficient accuracy.
 
 The chosen basis functions are unable to describe a point-mass potential, thus complicating the simulations for which the SMBH has settled at the centre. 
 To overcome this, we centre the snapshot on the SMBH position, but exclude the SMBH from the SCF routine.
-This provides us with a potential field without the SMBH contribution; the potential from the SMBH is added as a point-mass potential following the SCF potential construction.
+This provides us with a potential field without the SMBH contribution; the potential from the SMBH is then added as a point-mass potential following the SCF potential construction.
 In the case where the SMBH has not settled at the centre (i.e. the $\vk=2000\,\kmps$ simulation) we simply align the snapshot with the centre of mass determined using the shrinking sphere method on stellar particles, and neglect the contribution from the SMBH (as it is very far from the centre and thus no longer influences the orbits of the stellar particles).
 We now have a representation of the potential in an analytical form in which the orbits of individual stellar particles can be integrated.
 The potential of the merger remnant is checked for stability by comparing the potential from the SCF method to the potential computed from the particle data by \gadget{} during the simulation, and ensuring the ratio of the two is $\sim1$ at all radii.
@@ -857,7 +804,7 @@ The simulation with $\vk=2000\,\kmps$ noticeably stands out, with the fraction o
 Complimentary but converse to the first trend, increasing the SMBH recoil velocity marginally decreases the fraction of $z$-tube orbits from $\sim 0.2$ to $\lesssim 0.1$ within $1\,\mathrm{kpc}$.
 Again the $\vk=2000\,\kmps$ is noticeably offset from the other simulations, however remains consistent with the general trend.
 Finally, increasing the SMBH recoil velocity decreases the fraction of rosette orbits at small radii $r<1\,\mathrm{kpc}$, with no rosette orbits for the $\vk=2000\,\kmps$ simulation.
-There is evidence for a minor decrease in outer $x$-tube orbits with increasing recoil velocity at radii, however this trend is not as dramatic as the three previously discussed.
+There is evidence for a minor decrease in outer $x$-tube orbits with increasing recoil velocity at radii $r<3\,\mathrm{kpc}$, however this trend is not as dramatic as the three previously discussed.
 In particular, the $\vk=2000\,\kmps$ simulation has almost no outer $x$-tube orbits until $r=2\,\mathrm{kpc}$, and only comes to dominate the orbit fraction at $r\sim10\,\mathrm{kpc}$.
 
 We can naturally explain the decrease in rosette orbits with increasing recoil velocity by considering that a rosette orbit requires a point-mass like potential to orbit in.
@@ -884,7 +831,7 @@ This is in agreement with an SMBH binary preferentially ejecting box orbits whic
 
 Increasing the SMBH recoil velocity, there is a strong tendency for box orbits to dominate the core region, in some cases contributing more than $6.0\times10^8\,\Msun$ of stellar mass ($\sim0.1 M_\bullet$), compared to some $3.5\times10^8\,\Msun$ provided by tube orbits.
 The recoil velocity where the transition from a tube orbit-dominated core to a box orbit-dominated core occurs is around $\vk\sim240\,\kmps$, approximately the same recoil velocity that allows the kicked SMBH to exit the SMBH binary-scoured core (see \autoref{fig:infall}, upper panel).
-This suggests that as the kicked SMBH ploughs through the stellar core whilst it is settling but before its velocity falls below the velocity dispersion of the core, the rapid change in potential disrupts the conditions for angular momentum conserving orbits, altering the stellar particles to radial orbits instead.
+This suggests that as the kicked SMBH ploughs through the stellar core whilst it is settling but before its velocity falls below the velocity dispersion of the core, the rapid change in potential disrupts the conditions for angular momentum-conserving orbits, altering the stellar particles to radial orbits instead.
 For the highest kick velocities, $\vk > 900\,\kmps$, the amount of stellar mass in box orbits is almost twice that in tube orbits, as shown in \autoref{fig:orbitsbt}.
 
 In summary, a recoiling SMBH exiting the core leaves an imprint in the stellar orbits as it settles.
@@ -935,12 +882,12 @@ Consequently, the stellar kinematics are also affected by the SMBH motion.
     \label{fig:h4}
 \end{figure}
 
-We next create mock integral field unit (IFU) observations using two different projections for the line of sight (LOS) velocity distribution: one where the LOS is along the SMBH kick axis (`parallel'), and another where the LOS is along an axis orthogonal to the SMBH kick axis (`orthogonal').
+We next create mock integral field unit (IFU) observations using two different projections for the line-of-sight (LOS) velocity distribution: one where the LOS is along the SMBH kick axis (`parallel'), and another where the LOS is along an axis orthogonal to the SMBH kick axis (`orthogonal').
 Testing these two special projections, we investigate the limiting cases of how the galaxy kinematics behave when all or none of the SMBH motion is directed along the LOS to the observer.
 
 We create our mock IFU observations following \citet{naab2014}, assuming our merger remnants represent local elliptical galaxies that lie at $z=0.01$.
-Our observations encompass a square aperture of side length $0.25r_{1/2}$, where $r_{1/2}$ is the half mass radius. 
-For each particle within this aperture, we generate 25 pseudo-particles with identical LOS velocities as the original particle, but are spatially displaced from the original particle with a Gaussian distribution in the projected $x$ and $y$ direction with a standard deviation of $6.8''$ (corresponding to a physical scale\footnote{https://cosmocalc.icrar.org} of $0.3\,\mathrm{kpc}$) to mimic seeing effects.
+Our observations encompass a square aperture of side length $0.25r_{1/2}$, where $r_{1/2}$ is the 3D half mass radius. 
+For each particle within this aperture, we generate 25 pseudo-particles with identical LOS velocities as the original particle, but are spatially displaced from the original particle with a Gaussian distribution in the projected $x$ and $y$ direction with a standard deviation of $6.8''$ (corresponding to a physical scale\footnote{\url{https://cosmocalc.icrar.org} with $\Lambda\mathrm{CDM}$ cosmological parameters $H_0=70\,\kmps\,\mathrm{Mpc}^{-1}$, $\Omega_\mathrm{M}=0.3$, and $\Omega_\Lambda=0.7$.} of $0.3\,\mathrm{kpc}$ at $z=0.01$) to mimic seeing effects.
 The pseudo-particles are then binned onto a spatial grid, where the grid is assumed to have a resolution of $0.2''$, similar to the observations of \citet{neureiter2023}, which then corresponds to a physical resolution of $\sim0.04\,\mathrm{kpc}$.
 Following the method in \citet{cappellari2003}, we then group adjacent bins into larger Voronoi bins to achieve a particle number of $\sim 50000$ particles per Voronoi bin.
 
@@ -969,12 +916,12 @@ Quantitatively, the dimensionless spin parameter is a useful measure to assess t
     \lambda_R = \frac{\sum_{i=1}^N F_i R_i |V_i|}{\sum_{i=1}^N F_i R_i \sqrt{V_i^2 + \sigma_i^2}},
 \end{equation}
 where $F_i$ is the flux, $R_i$ is the radial displacement from the centre, $V_i$ is the mean velocity, and $\sigma_i$ is the velocity dispersion, each taken within the $\ordinal{i}$ Voronoi bin.
-We find that our galaxies have $\lambda_R<0.02$ within the IFU aperture, and thus we conclude very little rotation is present.
+We find that our galaxies have $\lambda_R<0.02$ within the IFU aperture, and thus we conclude that very little rotation is present.
 
 For the $\vk=0\,\kmps$ case in \autoref{fig:IFU0000}, we first note an interesting structure in the ordered rotation $V$ of all stellar particles. 
 There is a hint of rotation occurring about the $z=0$ axis, however a counter-rotating structure is present close to the $y=0$ axis (keeping in mind that as previously discussed, overall the magnitude of this rotation is very minimal).
 This feature is also seen in the mock IFU images of the tube orbits.
-Additionally, creating mock IFU maps for two other projections (one with the line of sight aligned with the major axis of the inertia tensor, and the other with the line of sight aligned with the vector normal to the merger plane), this feature is not present. 
+Additionally, creating mock IFU maps for two other projections (one with the line-of-sight aligned with the major axis of the inertia tensor, and the other with the line-of-sight aligned with the vector normal to the merger plane), this feature is not present. 
 We thus conclude that immediately following the merger of an SMBH binary, complex structure in the LOSVD may be apparent for tube orbits.
 
 The kinematic features for the second, third, and fourth moments of the LOSVD are not as sensitive to the viewing angle, with box orbits displaying a centrally-peaked velocity dispersion compared to a spatially homogeneous velocity dispersion for tube orbits.
@@ -1060,7 +1007,7 @@ As described in \autoref{sec:orbits}, SMBHs can induce a significant change in t
 where $\sigma_{\theta}$, $\sigma_{\phi}$, and $\sigma_{r}$ are the components of the stellar velocity dispersion in spherical coordinates. 
 Stellar systems with $\beta < 0$ are referred to as `tangentially-biased' systems, whereas $\beta > 0$  corresponds to `radially-biased' systems. 
 A stellar system with purely radial orbits ($\sigma_{\theta}=\sigma_{\phi}=0$) corresponds to $\beta = 1$, while purely circular orbits ($\sigma_{r}=0$) would yield $\beta = -\infty$.
-An ergodic system is one where $\sigma_{\theta}=\sigma_{\phi}=\sigma_r \iff \beta=0$, which thus describes a system where there is a balance between box and tube orbits.
+An ergodic system is one where $\sigma_{\theta}=\sigma_{\phi}=\sigma_r \iff \beta=0$, and hence corresponds to a balance between box and tube orbits.
 
 Prior to their eventual merger, SMBH binaries can interact strongly with the stellar particles in their vicinity via three-body scattering. 
 However, in order to undergo a strong interaction, the stellar particle must come sufficiently close to the SMBH binary. 
@@ -1102,21 +1049,21 @@ Instead, the radial bias is primarily induced by the (radial) merger orbit, whic
 \end{figure}
 
 In agreement with previous work \citep{boylan2004,merritt2004}, we find that an SMBH displaced due to gravitational recoil decreases the stellar density in the central regions of the merger remnant as it settles to an equilibrium state.
-Additionally, we find that this oscillatory motion, by the time the SMBH has settled, increases the stellar density core beyond that induced by the scouring of the SMBH binary prior to coalescence, confirming the results of \citet{gualandris2008}, \citet{nasim2021b}, and \citet{khonji2024}.
+Additionally, we find that this oscillatory motion, by the time the SMBH has settled, increases the size of the stellar density core beyond that induced by the scouring of the SMBH binary prior to coalescence, confirming the results of \citet{gualandris2008}, \citet{nasim2021b}, and \citet{khonji2024}.
 We assess the magnitude of this scouring with time using the Lagrangian radii presented in \autoref{fig:lagrangian}.
 We see a sharp increase in the Lagrangian radii immediately after the SMBH binary coalesces.
 If the SMBH is kicked beyond the core, the SMBH generally does not pass through the core during the next few orbits due to tangential motion induced by the stellar potential torquing the SMBH.
 When the SMBH does pass through the core region in the last orbits when the SMBH velocity $v_\bullet$ is only marginally greater than the stellar velocity dispersion within the core, the Lagrangian radius rapidly increases further. 
-\citet{gualandris2008} found that each oscillation the SMBH enlarges the core, whereas \citet{nasim2021b} found that only the initial oscillation due to the recoil kick affects the core. 
+\citet{gualandris2008} found that each oscillation of the SMBH enlarges the core, whereas \citet{nasim2021b} found that only the initial oscillation due to the recoil kick affects the core. 
 Our result suggest that differences in the torquing due to the specific distribution of stellar mass could alleviate some of the tension between the two studies. 
 
 The three-dimensional stellar density profile (\autoref{fig:density3d}) appears centrally-flat only in the instance where the SMBH escaped the galaxy entirely ($\vk=2000\,\kmps$). Conversely, a mild density cusp $\rho \propto r^{-\nu}$ with $0 < \nu < 1$ is present in simulations where the SMBH settled, $\vk<1020\,\kmps$, with the exponent $\nu$ decreasing with increasing $\vk$, in agreement with previous work \citep[e.g.][]{nasim2021b,khonji2024}.
-All simulations with $\vk<1020\,\kmps$ display a core in projection however, in alignment with previous observational and theoretical work \citep[e.g.][]{ferrarese1994,nakano1999}.
+All simulations with $\vk<1020\,\kmps$ display a core in projection however, in agreement with previous observational and theoretical work \citep[e.g.][]{ferrarese1994,nakano1999}.
 
 The presence of a core in the three-dimensional stellar density profile for $\vk=2000\,\kmps$ can be understood due to the lack of an SMBH at the centre of the remnant.
 The SMBH, which would ordinarily contribute a point-mass potential that acts as an attractor to stellar particles, is not present, and thus angular momentum-conserving rosette orbits are unable to form or be sustained, thus lowering the central stellar density.
 Instead, we observe $\pi$-box orbits to dominate at all radii for the $\vk=2000\,\kmps$ simulation, in tension with the understanding of box orbits being the dominant orbit family to interact with the SMBH binary prior to coalescence. 
-However, we find that the excess of $\pi$-box orbits in the $\vk=2000\,\kmps$ simulation primarily originate from angular momentum conserving orbits (63\%) which have reacted to a sudden change in potential due to the escaping SMBH.
+However, we find that the excess of $\pi$-box orbits in the $\vk=2000\,\kmps$ simulation primarily originate from angular momentum-conserving orbits (63 per cent) which have reacted to a sudden change in the potential due to the escaping SMBH.
 
 We caution that the claims made in \citet{nasim2021b}, that cores produced by gravitational recoil of the coalesced SMBH are present in the three-dimensional stellar density profile, has the caveat that the recoil velocity must remove the SMBH entirely from the centre of the galaxy remnant, where no oscillations passing through the core are possible.
 We find instead that arbitrary recoil kicks, which have a distribution generally peaking well below the escape velocity of the centre of the merger remnant, do not necessarily result in a truly flat three-dimensional stellar density profile, however do produce a flatter density profile compared to the density profile produced by SMBH binary scouring alone.
@@ -1128,13 +1075,12 @@ However, this information alone cannot be directly used to determine if GW recoi
 
 If the core radius of a randomly selected galaxy is significantly enhanced compared to core radii for other galaxies with a similar stellar or SMBH mass, then this galaxy would be an exciting target for assessing the history of GW recoil. 
 In \autoref{fig:core-obs} we plot, as a function of the remnant SMBH mass, the median core radii for each of our merger remnants and compare to the observational data presented in \citet{thomas2016}.
-%What we can do though is assess how our simulated core sizes compare to observed core sizes.
 The inferred median core sizes range from $\rb\sim0.5\,\mathrm{kpc}$ for the $\vk=0\,\kmps$ simulation, to $\rb\sim1.4\,\mathrm{kpc}$ for the $\vk=1020\,\kmps$ simulation.
 Comparing, in \autoref{fig:core-obs}, to the catalogue of core radii in elliptical galaxies presented in \citet{thomas2016} as a function of SMBH mass, we find that the core radii for simulations with $\vk\lesssim240\,\kmps \simeq \sigma_{\star,0}$ are consistent with the observed data to within the intrinsic scatter.
 For recoil velocities in excess of $240\,\kmps$, the core radii start to become significantly offset from the data in \citet{thomas2016}.
 A similar conclusion is reached when comparing to the core radii data presented in \citet{dullo2014}.
 
-Considering that for our initial conditions, the peak in the transformation-sampled core radius distribution is in the range of $1.0\,\mathrm{kpc}$ -- $1.5\,\mathrm{kpc}$ (\autoref{ssec:predcore}, depending on the assumed relation between recoil velocity and core radius), cores in the surface density profile in excess of $1.0\,\mathrm{kpc}$ are viable candidates for GW recoil induced core formation.
+Considering that for our initial conditions, the peak in the transformation-sampled core radius distribution is in the range of $1.0\,\mathrm{kpc}$ - $1.5\,\mathrm{kpc}$ (\autoref{ssec:predcore}, depending on the assumed relation between recoil velocity and core radius), cores in the surface density profile in excess of $1.0\,\mathrm{kpc}$ are viable candidates for GW recoil induced core formation.
 Certainly galaxies hosting cores much greater than $2.0\,\mathrm{kpc}$, as for example in the central galaxy A2261-BCG \citep{bonfini2016, dullo2019}, offer prime targets for SMBH recoil kicks to have been a contributing mechanism to the core formation.
 
 Presuming that a galaxy with a large core radius has been found, assessing the magnitude of the SMBH recoil kick can be achieved with the inclusion of IFU observations of the central regions of the galaxy.
@@ -1147,7 +1093,7 @@ Whilst orbital structure cannot be directly observed, but rather inferred throug
 
 With an estimate of $\rbbin$, we are able to ascertain the relative size of the observed core radius, $\rb/\rbbin$.
 Assuming that a major merger has taken place to produce the observed galaxy, the GW recoil velocity can be inferred by inverting the relation between core radius and recoil velocity, as in our \autoref{eq:vkrb_sig}.
-Presumably this relation between $\vk$ and $\rb$ would depend on the mass ratio of the progenitor SMBH binary, so we caution that the relations we provide are only applicable to a major merger involving two equal mass SMBHs of $M_{\bullet,0}\sim 10^9\,\Msun$.
+Presumably this relation between $\vk$ and $\rb$ would depend on the mass ratio of the progenitor SMBH binary, so we caution that the relations we provide are only applicable to a major merger involving two equal-mass SMBHs of $M_{\bullet,0}\sim 10^9\,\Msun$.
 However equivalent relations may be found through a targeted parameter scan of SMBH recoil velocities, following our methods presented in \autoref{sec:num_sims}.
 
 In the event of a non-monotonic relation between recoil velocity and core radius (unlike our case, where the relation is monotonic), distinguishing the most likely $\vk$ predicted by a single value of $\rb$ may be achieved through assessing the fraction of rosette orbits present in the Schwarzschild modelling of the observed galaxy. 
@@ -1166,7 +1112,7 @@ The spin vectors of an SMBH binary can evolve as a result of gas accretion and g
 
 In the case of gas rich mergers, \citet{miller2013} showed that the spin vectors of the SMBH binary are expected to align when gas accretion onto the SMBHs is prograde, and counteralign when the gas accretion is retrograde.
 Similar results have also been found recently by \citet{steinle2023} and \citet{bourne2024}.
-In the case of gas-poor mergers, SMBH binary spins likely remain isotropic until entering the GW-dominated hardening phase \citep[e.g.][]{spadaro2024}, with alignment later occurring through general relativistic effects, particularly in the case of unequal mass SMBHs where the more massive SMBH spin is closely aligned with the orbital angular momentum of the binary \citep{berti2012}.
+In the case of gas-poor mergers, SMBH binary spins likely remain isotropic until entering the GW-dominated hardening phase \citep[e.g.][]{spadaro2024}, with alignment later occurring through general relativistic effects, particularly in the case of unequal-mass SMBHs where the more massive SMBH spin is closely aligned with the orbital angular momentum of the binary \citep{berti2012}.
 However, \citet{sayeb2021} found that whilst general relativistic effects can cause precession of the SMBH binary spin vectors, the overall distribution of resulting recoil velocities remains relatively unaffected, owing to the dominant mechanism for SMBH binary spin alignment being the Bardeen-Peterson effect.
 The alignment of SMBH binary spin vectors remains an open challenge in modern astrophysics, both observationally and theoretically.
 
@@ -1208,9 +1154,9 @@ Specifically, we find:
 \begin{enumerate}
     \item Asymmetric torques on the recoiling SMBH can alter the SMBH trajectory, potentially delaying stellar core growth by repeated passages of the settling SMBH until the SMBH passes through the core.
     \item A core is not present in the three-dimensional stellar density profile unless the SMBH has been ejected entirely from the galaxy, corresponding to the case of zero oscillations of the kicked SMBH about the galaxy centre.
-    \item An increase in the recoil velocity induces a larger core in the projected stellar mass density of the merger remnant than low recoil velocities, with our models indicating that core radii exceeding $1\,\mathrm{kpc}$ are not only possible, but likely.
+    \item An higher recoil velocity induces a larger core in the projected stellar mass density of the merger remnant than lower recoil velocities, with our models indicating that core radii exceeding $1\,\mathrm{kpc}$ are not only possible, but likely.
     As a consequence, the mass deficit due to SMBH recoil increases with larger recoil velocity, up to $\sim90$ per cent of the coalesced SMBH mass.
-    \item For merger remnants with $\vk \lesssim \sigma_{\star,0}$, the majority of stellar mass within the core has angular momentum conserving orbits. 
+    \item For merger remnants with $\vk \lesssim \sigma_{\star,0}$, the majority of stellar mass within the core has angular momentum-conserving orbits. 
     For recoil velocities above this threshold, box orbits which do not conserve angular momentum dominate the mass budget.
     \item Similarly, merger remnants with $\vk \gtrsim \sigma_{\star,0}$ are ergodic within the core, with $\beta\sim 0$.
     Only for the lowest kick velocities are tangentially-biased cores observed, suggesting that the majority of local cored galaxies do not have an SMBH which has experienced a large recoil velocity.
@@ -1224,13 +1170,13 @@ In the future, this will allow us to quantify the recoil velocity of SMBHs in ob
 % FINAL BITS
 \section*{acknowledgments}
 We thank Jens Thomas for useful discussions on IFU observations.
-\alex{\textbf{Everyone: please add your acknowledgements here}}
 A.R. acknowledges the support by the University of Helsinki Research Foundation.
-M.M., P.H.J., and D.I. acknowledge the support by the European Research Council via ERC Consolidator Grant KETJU (no. 818930).
+A.R., A.K., M.M., R.J.W., and P.H.J. acknowledge the support by the European Research Council via ERC Consolidator Grant KETJU (no. 818930).
+M.M. and P.H.J acknowledge the support of the Academy of Finland grant 339127.
+R.J.W. acknowledges the support of the Forrest Research Foundation.
 N.K. acknowledges support of the Research Council of Finland Flagship programme: Finnish Center for Artificial Intelligence and the Finnish Foundation for Technology Promotion.
 S.L. acknowledges the supports by the National Natural Science Foundation of China (NSFC) grant (no. 12473015, 11988101) and the K. C. Wong Education Foundation.
-P.H.J acknowledges the support of the Academy of Finland grant 339127.
-TN acknowledges support from the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under Germany’s Excellence Strategy - EXC-2094 - 390783311 from the DFG Cluster of Excellence ``ORIGINS''.
+T.N. acknowledges support from the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under Germany’s Excellence Strategy - EXC-2094 - 390783311 from the DFG Cluster of Excellence ``ORIGINS''.
 
 The numerical simulations used computational resources provided by
 the CSC -- IT centre for Science, Finland.
@@ -1245,7 +1191,7 @@ We list here the roles and contributions of the authors according to the Contrib
 \textbf{NK}: methodology, writing: original.
 \textbf{SL}: conceptualisation, writing: review.
 \textbf{AR}: writing: review.
-\textbf{PHJ}: writing: original, supervision, funding acquisition.
+\textbf{PHJ}: supervision, writing: original, funding acquisition.
 \textbf{TN}: conceptualisation, writing: review.
 \textbf{DI}: writing: review.
 
@@ -1294,14 +1240,14 @@ The data underlying this article will be shared on reasonable request to the cor
 \section{Triaxiality}\label{sec:app_triax}
 To assess the impact of our (arbitrarily) chosen direction in which the SMBH recoil velocity is applied, we calculate the triaxiality of all merger remnants at the time when the SMBH has settled.
 
-We take all stellar particles within a fraction of the virial radius $R_\mathrm{vir}$, defined as the radius at which the mean density is equal to 200 times greater than the critical density; the virial radius is $\sim450\,\mathrm{kpc}$ for the merger remnants in this study.
+We take all stellar particles within a fraction of the virial radius $r_{200}$, defined as the radius at which the mean density is equal to 200 times greater than the critical density; the virial radius is $\sim450\,\mathrm{kpc}$ for the merger remnants in this study.
 
 We determine the ratios $b/a$ and $c/a$, where $a$, $b$, and $c$ are the eigenvalues of the reduced inertia tensor \citep{gerhard1983,bailin2005}:
 \begin{equation}\label{eq:inertia}
     \tilde{I}_\mathrm{red} = \sum_k \frac{r_{k,i} r_{k,j}}{r_k^2},
 \end{equation}
 and $c\leq b\leq a$. 
-The tensor $\tilde{I}_\mathrm{red}$ is determined by binning the stellar component of the remnant into 20 radial shells from $10^{-3} R_\mathrm{vir}$ to $10^{-1} R_\mathrm{vir}$: the binning of particles is not cumulative. 
+The tensor $\tilde{I}_\mathrm{red}$ is determined by binning the stellar component of the remnant into 20 radial shells from $10^{-3} r_{200}$ to $10^{-1} r_{200}$: the binning of particles is not cumulative. 
 We apply a uniform filter to reduce Poisson noise due to low particle numbers at small radii.
 The radial variations of the ratios $b/a$ and $c/a$ are plotted in \autoref{fig:triax} in the top and middle panels, respectively.
 The merger remnants display mildly triaxial cores, albeit without dependence on the recoiling SMBH velocity. 
@@ -1312,7 +1258,7 @@ To quantify the nature of the merger remnant triaxiality as a function of radius
 \begin{equation}
     T = \frac{1 - (b/a)^2}{1 - (c/a)^2}
 \end{equation}
-following \citet[][]{binney2008}.
+following \citet{franx1991}.
 Values of $T$ approaching 1 indicate a prolate system, and values of $T$ approaching 0 indicate an oblate system.
 As seen in the bottom panel of \autoref{fig:triax}, at radii $r\gtrsim 5\,\mathrm{kpc}$ all merger remnants are prolate systems. For radii $r\lesssim 5\,\mathrm{kpc}$, only the $\vk=1020\,\kmps$ merger remnant tends to an oblate system.
 
@@ -1384,7 +1330,7 @@ The joint relation between the latent parameters in \autoref{eq:cs} can be seen 
 The leading diagonal shows the marginal distributions of each latent parameter; each distribution is unimodal.
 The contours in the lower diagonal triangle show the joint posterior distribution between each of the latent parameters in \autoref{eq:cs}, with the contour colouring indicating various highest density intervals (HDIs).
 In no pairing of parameters is a strong covariance observed; the marginal distributions are orthogonal to each other.
-One case worth a special mention is the width of the 25\% HDI for the parameter $\alpha$.
+One case worth a special mention is the width of the 25 per cent HDI for the parameter $\alpha$.
 The wide HDI indicates that a large range of $\alpha$ values maximise the posterior distribution.
 However, as discussed in \citet{graham2003}, values of $\alpha\gtrsim 3$ have a similar effect to induce a sharp transition between the inner and outer surface density profiles.
 The variation of $\alpha$, particularly to large values greater than 10, are not expected to have a strong effect on the overall surface density profile.
@@ -1394,7 +1340,7 @@ The variation of $\alpha$, particularly to large values greater than 10, are not
     \includegraphics[width=\textwidth]{corner_latent_600}
     \caption{
         Corner plot of the latent parameters in the core-S\'ersic model for a representative example, here the $\vk=600\,\kmps$ instance.
-        Contours indicate, from dark to light blue, the 25\%, 50\%, 75\%, and 99\% highest density intervals (HDIs).
+        Contours indicate, from dark to light blue, the 25 per cent, 50 per cent, 75 per cent, and 99 per cent highest density intervals (HDIs).
         All distributions are unimodal with little cross-correlation between the latent variables.
     }
     \label{fig:cscorner}
