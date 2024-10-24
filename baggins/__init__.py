@@ -1,14 +1,13 @@
-from . import env_config
-from . import analysis
-from . import cosmology
-from . import general
-from . import initialise
-from . import mathematics
-from . import literature
-from . import plotting
-from . import utils
-from . import visualisation
-from ._backend import setup_logger
+import analysis
+import cosmology
+import general
+import initialise
+import mathematics
+import literature
+import plotting
+import utils
+import _backend
+import env_config
 
 __all__ = [
     "analysis",

@@ -2,9 +2,8 @@ import numpy as np
 import h5py
 import datetime
 import pygad
-
-from ...general import unit_as_str
-from ...env_config import _cmlogger, date_format
+from general import unit_as_str
+from env_config import _cmlogger, date_format
 
 __all__ = ["HDF5Base"]
 

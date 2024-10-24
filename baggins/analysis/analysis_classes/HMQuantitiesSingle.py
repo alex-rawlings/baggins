@@ -4,9 +4,8 @@ import numpy as np
 import datetime
 import h5py
 import pygad
-
-from . import HMQuantitiesSingleData
-from ..analyse_snap import (
+from analysis.analysis_classes.HMQuantitiesSingleData import HMQuantitiesSingleData
+from analysis.analyse_snap import (
     get_com_of_each_galaxy,
     get_com_velocity_of_each_galaxy,
     get_massive_bh_ID,
@@ -15,10 +14,10 @@ from ..analyse_snap import (
     velocity_anisotropy,
     escape_velocity,
 )
-from ..analyse_ketju import get_bh_particles
-from ...env_config import _cmlogger, date_format, username
-from ...general import convert_gadget_time
-from ...utils import get_ketjubhs_in_dir, get_snapshots_in_dir, read_parameters
+from analysis.analyse_ketju import get_bh_particles
+from env_config import _cmlogger, date_format, username
+from general import convert_gadget_time
+from utils import get_ketjubhs_in_dir, get_snapshots_in_dir, read_parameters
 
 
 __all__ = ["HMQuantitiesSingle"]

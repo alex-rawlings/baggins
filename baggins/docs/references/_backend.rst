@@ -1,21 +1,21 @@
-cosmology package
+\_backend package
 =================
 
 Submodules
 ----------
 
-cosmology.conversions module
-----------------------------
+\_backend.Logging module
+------------------------
 
-.. automodule:: cosmology.conversions
+.. automodule:: _backend.Logging
    :members:
    :undoc-members:
    :show-inheritance:
 
-cosmology.cosmology module
---------------------------
+\_backend.States module
+-----------------------
 
-.. automodule:: cosmology.cosmology
+.. automodule:: _backend.States
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +23,7 @@ cosmology.cosmology module
 Module contents
 ---------------
 
-.. automodule:: cosmology
+.. automodule:: _backend
    :members:
    :undoc-members:
    :show-inheritance:

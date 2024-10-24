@@ -5,20 +5,20 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from ketjugw.units import km_per_s
-from . import HierarchicalModel_2D
-from ..analyse_ketju import get_bound_binary
-from ...env_config import _cmlogger
-from ...general.units import kpc
-from ...literature import (
+from analysis.analysis_classes.StanModel import HierarchicalModel_2D
+from analysis.analyse_ketju import get_bound_binary
+from env_config import _cmlogger
+from general.units import kpc
+from literature import (
     zlochower_dry_spins,
     ketju_calculate_bh_merger_remnant_properties,
 )
-from ...mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
-from ...plotting import savefig
-from ...utils import save_data, load_data, get_ketjubhs_in_dir
+from mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
+from plotting import savefig
+from utils import save_data, load_data, get_ketjubhs_in_dir
 
 
-__all__ = ["VkickCoreradiusGP"]
+__all__ = ["_GPBase", "VkickCoreradiusGP"]
 
 _logger = _cmlogger.getChild(__name__)
 

@@ -1,7 +1,7 @@
 import os
 import shutil
 import atexit
-from ..env_config import _cmlogger, TMPDIRs
+from env_config import _cmlogger, TMPDIRs
 
 
 _logger = _cmlogger.getChild(__name__)

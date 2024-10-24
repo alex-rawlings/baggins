@@ -4,8 +4,8 @@ import scipy.optimize
 import scipy.ndimage
 from scipy.stats import binned_statistic_2d
 from voronoi_binning import voronoi_binned_image
-from ..env_config import _cmlogger
-from ..mathematics import get_histogram_bin_centres
+from env_config import _cmlogger
+from mathematics import get_histogram_bin_centres
 from pygad import UnitArr
 
 __all__ = [
@@ -313,9 +313,7 @@ def lambda_R(vorstat):
     F = vorstat["bin_mass"][inds]
     V = vorstat["bin_V"][inds]
     s = vorstat["bin_sigma"][inds]
-    lam = np.nancumsum(F * R * np.abs(V)) / np.nancumsum(
-        F * R * np.sqrt(V**2 + s**2)
-    )
+    lam = np.nancumsum(F * R * np.abs(V)) / np.nancumsum(F * R * np.sqrt(V**2 + s**2))
     return lambda x: np.interp(x, R, lam)
 
 

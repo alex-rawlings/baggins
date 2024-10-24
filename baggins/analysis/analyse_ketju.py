@@ -5,9 +5,10 @@ import scipy.optimize
 import scipy.integrate
 import scipy.interpolate
 import ketjugw
-from ..general import get_idx_in_array, units
-from ..mathematics import radial_separation, angle_between_vectors, project_orthogonal
-from ..env_config import _cmlogger
+from general.general import get_idx_in_array
+from general import units
+from mathematics import radial_separation, angle_between_vectors, project_orthogonal
+from env_config import _cmlogger
 
 __all__ = [
     "find_pericentre_time",
@@ -100,12 +101,12 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False):
     """
     Return the bh particles in the (usually-named) ketju_bhs.hdf5 file.
     This is really just a wrapper that ensures:
-        - the BHs are still separate particles (if a merger occurs, the time
-          series of one particle will be longer than the other)
-        - the BHs have the same time domain (Gadget-only integration will
-          generally produce bh1.t[i] != bh2.t[i], causing problems for later
-          calculations). Interpolation is performed to overcome this, if
-          necessary.
+    - the BHs are still separate particles (if a merger occurs, the time
+    series of one particle will be longer than the other)
+    - the BHs have the same time domain (Gadget-only integration will
+    generally produce bh1.t[i] != bh2.t[i], causing problems for later
+    calculations). Interpolation is performed to overcome this, if
+    necessary.
 
     Parameters
     ----------

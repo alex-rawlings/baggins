@@ -2,7 +2,12 @@ import numpy as np
 import scipy.constants
 import scipy.integrate
 
-__all__ = ["cosmology", "angular_diameter_distance", "get_a0r", "luminosity_distance"]
+__all__ = [
+    "cosmology_pars",
+    "angular_diameter_distance",
+    "get_a0r",
+    "luminosity_distance",
+]
 
 
 """
@@ -15,10 +20,10 @@ omega_L: cosmic density parameter for dark energy
 omega_M: cosmic density parameter for non-relativistic matter
 zeq: redshift of radiation-matter equality
 """
-cosmology = dict(h=0.6736, omega_L=0.6847, omega_M=0.3153, zeq=3402)
+cosmology_pars = dict(h=0.6736, omega_L=0.6847, omega_M=0.3153, zeq=3402)
 
 
-def angular_diameter_distance(z, cosmology=cosmology):
+def angular_diameter_distance(z, cosmology=cosmology_pars):
     """
     Determine the angular diameter distance for a flat universe
 
@@ -37,7 +42,7 @@ def angular_diameter_distance(z, cosmology=cosmology):
     return get_a0r(z, cosmology) / (1 + z)
 
 
-def get_a0r(z, cosmology=cosmology):
+def get_a0r(z, cosmology=cosmology_pars):
     """
     Determine the value a_0*r from MBW eq. 3.106, for use in cosmological
     distance calculations
@@ -64,7 +69,7 @@ def get_a0r(z, cosmology=cosmology):
     return scipy.integrate.quad(Ez, 0, z) * scipy.constants.c / (100 * cosmology["h"])
 
 
-def luminosity_distance(z, cosmology=cosmology):
+def luminosity_distance(z, cosmology=cosmology_pars):
     """
     Determine the luminosity distance for a flat universe
 

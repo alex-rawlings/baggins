@@ -5,27 +5,29 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pygad
 import ketjugw
-
-from .BHBinaryData import BHBinaryData
-from ..analyse_snap import (
+from analysis.analysis_classes.BHBinaryData import BHBinaryData
+from analysis.analyse_snap import (
     influence_radius,
     enclosed_mass_radius,
     hardening_radius,
     get_G_rho_per_sigma,
     gravitational_radiation_radius,
 )
-from ..general import snap_num_for_time
-from ..analyse_ketju import (
+from general.pygad_helper import snap_num_for_time
+from analysis.analyse_ketju import (
     get_bound_binary,
     linear_fit_get_H,
     linear_fit_get_K,
     analytic_evolve_peters_quinlan,
 )
-from ...general import xval_of_quantity, convert_gadget_time
-from ...mathematics import iqr
-from ...plotting import binary_param_plot
-from ...utils import read_parameters, get_ketjubhs_in_dir, get_snapshots_in_dir
-from ...env_config import date_format, username, _cmlogger
+from general.general import xval_of_quantity
+from general.pygad_helper import convert_gadget_time
+from mathematics.statistics import iqr
+from plotting.specific_plots import binary_param_plot
+from utils.param_io import read_parameters
+from utils.data_handling import get_ketjubhs_in_dir, get_snapshots_in_dir
+from env_config import date_format, username, _cmlogger
+
 
 __all__ = ["myr", "BHBinary"]
 

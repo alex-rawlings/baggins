@@ -3,24 +3,24 @@ import numpy as np
 import h5py
 import ketjugw
 import pygad
-
-from . import HMQuantitiesBinaryData, HMQuantitiesSingle
-from ..analyse_snap import (
+from analysis.analysis_classes.HMQuantitiesBinaryData import HMQuantitiesBinaryData
+from analysis.analysis_classes.HMQuantitiesSingle import HMQuantitiesSingle
+from analysis.analyse_snap import (
     influence_radius,
     hardening_radius,
     determine_if_merged,
     get_G_rho_per_sigma,
 )
-from ..analyse_ketju import (
+from analysis.analyse_ketju import (
     get_bound_binary,
     get_binary_before_bound,
     move_to_centre_of_mass,
     find_pericentre_time,
     deflection_angle,
 )
-from ...env_config import _cmlogger
-from ...general import convert_gadget_time, units
-from ...mathematics import radial_separation
+from env_config import _cmlogger
+from general import convert_gadget_time, units
+from mathematics import radial_separation
 
 
 __all__ = ["HMQuantitiesBinary"]

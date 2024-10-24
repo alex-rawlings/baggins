@@ -2,6 +2,7 @@
 A collection of miscellaneous relations that are somehow dependent on a radial
 value.
 """
+
 __all__ = ["OsipkovMerritt", "Sahu20"]
 
 

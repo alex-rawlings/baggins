@@ -8,15 +8,16 @@ from arviz.labels import MapLabeller
 from arviz import plot_kde
 import dask
 from datetime import datetime
-from . import HierarchicalModel_2D, HMQuantitiesBinaryData
-from ..analyse_ketju import determine_merger_timescale
-from ...env_config import _cmlogger, date_format
-from ...general import units
-from ...plotting import savefig
-from ...utils import get_files_in_dir
+from analysis.analysis_classes.HMQuantitiesBinaryData import HMQuantitiesBinaryData
+from analysis.analysis_classes.StanModel import HierarchicalModel_2D
+from analysis.analyse_ketju import determine_merger_timescale
+from env_config import _cmlogger, date_format
+from general import units
+from plotting import savefig
+from utils import get_files_in_dir
 
 
-__all__ = ["QuinlanModelSimple", "QuinlanModelHierarchy"]
+__all__ = ["_QuinlanModelBase", "QuinlanModelSimple", "QuinlanModelHierarchy"]
 
 _logger = _cmlogger.getChild(__name__)
 

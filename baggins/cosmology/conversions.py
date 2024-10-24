@@ -1,12 +1,12 @@
 import numpy as np
 import scipy.constants
 import scipy.optimize
-from .cosmology import cosmology, luminosity_distance
+from cosmology.cosmology import cosmology_pars, luminosity_distance
 
 __all__ = ["time2z"]
 
 
-def time2z(t, H0=100 * cosmology["h"], pres=False):
+def time2z(t, H0=100 * cosmology_pars["h"], pres=False):
     """
     Estimate the redshift for a corresponding cosmic time
     from Carmeli 2008
@@ -37,14 +37,16 @@ def time2z(t, H0=100 * cosmology["h"], pres=False):
 
 
 # TODO: conversions for luminosity distance -> redshift
-def convert_lum_dist_2_z(lum_dist, cosmology=cosmology):
+def convert_lum_dist_2_z(lum_dist, cosmology=cosmology_pars):
     """
     Convert luminosity distance to redshift using the bisection method
 
     Parameters
     ----------
-    lum_dist: luminosity distance in kpc
-    cosmology: dict of cosmology parameters
+    lum_dist : float
+        luminosity distance in kpc
+    cosmology : dict
+        cosmology parameters
 
     Returns
     -------

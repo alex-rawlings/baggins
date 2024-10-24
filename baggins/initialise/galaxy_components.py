@@ -5,7 +5,7 @@ import scipy.stats
 from functools import cached_property
 import os
 
-from ..literature import (
+from literature import (
     Terzic05,
     Moster10,
     Behroozi19,
@@ -15,11 +15,11 @@ from ..literature import (
     zlochower_dry_spins,
     zlochower_hot_spins,
 )
-from ..cosmology import cosmology
-from ..general import arcsec_to_kpc, sersic_b_param
-from ..mathematics import uniform_sample_sphere
-from ..utils import read_parameters
-from ..env_config import _cmlogger
+from cosmology import cosmology
+from general import arcsec_to_kpc, sersic_b_param
+from mathematics import uniform_sample_sphere
+from utils import read_parameters
+from env_config import _cmlogger
 
 __all__ = []
 
@@ -101,10 +101,7 @@ class _GalaxyICBase:
     def critical_density(self):
         conversion = (1e3 * scipy.constants.parsec) ** 3 / MSOL
         return (
-            3
-            * self.hubble_redshifted**2
-            / (8 * np.pi * scipy.constants.G)
-            * conversion
+            3 * self.hubble_redshifted**2 / (8 * np.pi * scipy.constants.G) * conversion
         )
 
 

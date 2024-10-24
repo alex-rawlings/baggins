@@ -1,8 +1,8 @@
 import h5py
-from . import HDF5Base
-from ...env_config import _cmlogger
+from analysis.analysis_classes.HDF5Base import HDF5Base
+from env_config import _cmlogger
 
-__all__ = []
+__all__ = ["HMQuantitiesSingleData"]
 
 
 _logger = _cmlogger.getChild(__name__)

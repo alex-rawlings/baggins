@@ -1,7 +1,7 @@
 import warnings
-from . import HMQuantitiesSingleData
-from ...general import get_idx_in_array
-from ...env_config import _cmlogger
+from analysis.analysis_classes.HMQuantitiesSingleData import HMQuantitiesSingleData
+from general import get_idx_in_array
+from env_config import _cmlogger
 
 
 _logger = _cmlogger.getChild(__name__)

@@ -4,7 +4,7 @@ import scipy.optimize
 import scipy.special
 import scipy.interpolate
 from time import time
-from ..env_config import _cmlogger
+from env_config import _cmlogger
 
 __all__ = [
     "arcsec_to_kpc",

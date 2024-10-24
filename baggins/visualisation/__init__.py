@@ -1,1 +1,1 @@
-from .animation import *  # noqa
+from visualisation.animation import *  # noqa

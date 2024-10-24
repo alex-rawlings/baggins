@@ -8,11 +8,15 @@ from datetime import datetime
 import cmdstanpy
 import arviz as az
 import yaml
+from plotting import savefig, create_normed_colours
+from env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
 
-from ...plotting import savefig, create_normed_colours
-from ...env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
-
-__all__ = ["HierarchicalModel_1D", "HierarchicalModel_2D", "FactorModel_2D"]
+__all__ = [
+    "_StanModel",
+    "HierarchicalModel_1D",
+    "HierarchicalModel_2D",
+    "FactorModel_2D",
+]
 
 _logger = _cmlogger.getChild(__name__)
 

@@ -9,8 +9,8 @@ import seaborn as sns
 import copy
 import pygad
 import ketjugw
-from ..general import convert_gadget_time, units
-from ..env_config import _cmlogger
+from general import convert_gadget_time, units
+from env_config import _cmlogger
 
 
 __all__ = [
@@ -493,6 +493,7 @@ def annotate_heatmap(
         the text labels
 
     Returns
+    -------
     texts : list
         text in each pixel
     """

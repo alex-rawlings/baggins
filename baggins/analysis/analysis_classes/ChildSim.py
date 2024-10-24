@@ -5,9 +5,8 @@ import h5py
 import numpy as np
 import pygad
 import ketjugw
-
-from . import BHBinary, ChildSimData, myr
-from ..analyse_snap import (
+import BHBinary, ChildSimData
+from analyse_snap import (
     inner_DM_fraction,
     get_com_of_each_galaxy,
     get_com_velocity_of_each_galaxy,
@@ -20,14 +19,13 @@ from ..analyse_snap import (
     angular_momentum_difference_gal_BH,
     count_new_hypervelocity_particles,
 )
-from ..general import beta_profile, snap_num_for_time
-from ..masks import get_binding_energy_mask
-from ..voronoi import voronoi_binned_los_V_statistics
-from ...general import convert_gadget_time
-from ...literature import fit_Terzic05_profile
-from ...mathematics import get_histogram_bin_centres, spherical_components
-from ...utils import read_parameters
-from ...env_config import _cmlogger
+from general import snap_num_for_time, convert_gadget_time
+from masks import get_binding_energy_mask
+from voronoi import voronoi_binned_los_V_statistics
+from literature import fit_Terzic05_profile
+from mathematics import get_histogram_bin_centres, spherical_components
+from utils import read_parameters
+from env_config import _cmlogger
 
 __all__ = ["ChildSim"]
 

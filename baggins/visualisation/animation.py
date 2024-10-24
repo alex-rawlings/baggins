@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import itertools
 import pygad
 import ketjugw
-import baggins as bgs
 
 
 __all__ = ["OverviewAnimation", "SMBHtrajectory"]

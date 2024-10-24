@@ -4,8 +4,8 @@ from matplotlib import rc_file, rcdefaults
 import subprocess
 import yaml
 from cmdstanpy import set_cmdstan_path
-from ._backend import setup_logger
-from ._backend.States import TmpDirRegister
+from _backend.Logging import setup_logger
+from _backend.States import TmpDirRegister
 
 
 __all__ = [
@@ -41,6 +41,10 @@ set_cmdstan_path(user_params["cmdstan"])
 username = home_dir.rstrip("/").split("/")[-1]
 
 # create the logger
+os.makedirs(
+    os.path.dirname(os.path.join(this_dir, user_params["logging"]["file"])),
+    exist_ok=True,
+)
 _cmlogger = setup_logger(
     name="baggins",
     console_level=user_params["logging"]["console_level"],

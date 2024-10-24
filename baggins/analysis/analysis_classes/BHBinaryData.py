@@ -1,6 +1,6 @@
 import datetime
-from . import HDF5Base
-from ...env_config import date_format
+from analysis.analysis_classes.HDF5Base import HDF5Base
+from env_config import date_format
 
 
 __all__ = ["BHBinaryData"]

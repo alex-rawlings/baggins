@@ -215,13 +215,13 @@ code/analysis_scripts/core_kick_relation/*
 !code/analysis_scripts/core_kick_relation/*.stan
 
 # code logging
-code/baggins/logs
+baggins/logs
 
 # documentation
-code/baggins/docs/_build
+baggins/docs/_build
 
 # evironment parameters: template available
-code/baggins/env_params.yml
+baggins/env_params.yml
 
 # media files in specific directories
 code/misc/**/*.png

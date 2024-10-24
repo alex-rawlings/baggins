@@ -1,7 +1,7 @@
 import numpy as np
 import gadgetorbits as go
-from ..env_config import _cmlogger
-from ..mathematics import get_histogram_bin_centres
+from env_config import _cmlogger
+from mathematics import get_histogram_bin_centres
 
 __all__ = ["MergeMask", "OrbitClassifier"]
 

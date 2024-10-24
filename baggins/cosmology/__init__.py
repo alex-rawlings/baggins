@@ -1,2 +1,2 @@
-from .conversions import *  # noqa
-from .cosmology import *  # noqa
+from cosmology.conversions import *  # noqa
+from cosmology.cosmology import *  # noqa

@@ -1,6 +1,6 @@
 import numpy as np
 import scipy.stats
-from ..env_config import _cmlogger
+from env_config import _cmlogger
 
 
 __all__ = [

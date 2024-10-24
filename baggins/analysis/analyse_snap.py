@@ -6,12 +6,10 @@ import scipy.spatial.transform
 import scipy.stats
 import pygad
 import dask
-
-from . import masks as masks
-from ..mathematics import radial_separation, density_sphere, spherical_components
-from .general import snap_num_for_time
-from ..general import convert_gadget_time, set_seed_time
-from ..env_config import _cmlogger
+import analysis.masks as masks
+from mathematics import radial_separation, density_sphere, spherical_components
+from general import snap_num_for_time, convert_gadget_time, set_seed_time
+from env_config import _cmlogger
 
 
 __all__ = [
@@ -305,7 +303,7 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
 
 def virial_ratio(snap):
     """
-    Determine the virial ratio 2K/|W|. Note no centering is done!
+    Determine the virial ratio abs(2K/W). Note no centering is done!
 
     Parameters
     ----------
@@ -327,7 +325,7 @@ def calculate_Hamiltonian(snap, chunk=1e5, return_parts=False):
     """
     Determine the total Hamiltonian of a system. Requires that ketju has been
     compiled with the:
-        OUTPUTPOTENTIAL
+    OUTPUTPOTENTIAL
     flag (so that the potential is saved to the snapshots)
 
     Parameters
@@ -791,9 +789,9 @@ def projected_quantities(
 ):
     """
     Determine projected quantities of:
-        - half mass radius,
-        - velocity dispersion profile
-        - mass density profile
+    - half mass radius,
+    - velocity dispersion profile
+    - mass density profile
     of (potentially two) galaxies
 
     Parameters
@@ -1375,8 +1373,8 @@ def find_individual_bound_particles(snap, return_extra=False):
         snapshot to analyse
     return_extra : bool, optional
         return extra information, including:
-            - the fraction of bound particles inside the influence radius,
-            - BH energy
+        - the fraction of bound particles inside the influence radius,
+        - BH energy
         by default False
 
     Returns

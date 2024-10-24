@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.collections import LineCollection
-from ..env_config import _cmlogger
+from env_config import _cmlogger
 
 
 __all__ = ["GradientLinePlot", "GradientScatterPlot"]
@@ -13,8 +13,6 @@ _logger = _cmlogger.getChild(__name__)
 
 
 class _GradientPlot(ABC):
-    """ """
-
     def __init__(self, ax, cmap="cividis"):
         """
         Class to create pyplot plots with a colour gradient. The colour

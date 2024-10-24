@@ -15,10 +15,10 @@ def get_id_mask(snap, bhid, family="stars"):
     Obtain a mask that allows filtering of particular particles. Particles are
     first filtered to the host galaxy depending on their particle ID number,
     where it is necessarily assumed that the particle ID ordering follows:
-        galaxy 1 IDs --> galaxy 2 IDs
+    galaxy 1 IDs --> galaxy 2 IDs
     To obtain a mask of all particles in a system, the routine can be run
     for each particle family, and the masks combined as e.g.:
-        all_id_mask = star_id_mask & dm_id_mask & bh_id_mask
+    all_id_mask = star_id_mask & dm_id_mask & bh_id_mask
     #TODO should this be a separate method??
 
     Parameters

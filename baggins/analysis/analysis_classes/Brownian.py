@@ -1,15 +1,16 @@
 import pygad
 import ketjugw
-
-from . import BrownianData
-from .BHBinary import myr
-from ..analyse_snap import get_com_of_each_galaxy, get_com_velocity_of_each_galaxy
-from ..general import snap_num_for_time
-from ..masks import get_all_id_masks
-from ..analyse_ketju import get_bound_binary
-from ...env_config import _cmlogger
-from ...general import convert_gadget_time
-from ...utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
+from analysis.analysis_classes.BrownianData import BrownianData
+from analysis.analyse_snap import (
+    get_com_of_each_galaxy,
+    get_com_velocity_of_each_galaxy,
+)
+from analysis.masks import get_all_id_masks
+from analysis.analyse_ketju import get_bound_binary
+from general.pygad_helper import convert_gadget_time, snap_num_for_time
+from general.units import Myr
+from utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
+from env_config import _cmlogger
 
 __all__ = ["Brownian"]
 
@@ -46,7 +47,7 @@ class Brownian(BrownianData):
         _bh1, _bh2, *_ = get_bound_binary(self.ketju_file)
         orbit_pars = ketjugw.orbital_parameters(_bh1, _bh2)
         max_snap_idx = snap_num_for_time(
-            self.snaplist, orbit_pars["t"] / myr, method="floor"
+            self.snaplist, orbit_pars["t"] / Myr, method="floor"
         )
 
         for i, sf in enumerate(self.snaplist):
