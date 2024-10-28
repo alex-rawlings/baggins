@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import itertools
 import pygad
 import ketjugw
+from baggins.analysis import get_bound_binary, get_bh_particles
+from baggins.plotting import plot_galaxies_with_pygad
 
 
 __all__ = ["OverviewAnimation", "SMBHtrajectory"]
@@ -66,9 +68,9 @@ class SMBHtrajectory:
         kpc = ketjugw.units.pc * 1e3
         myr = ketjugw.units.yr * 1e6
         if only_bound:
-            bh1, bh2, merged = bgs.analysis.get_bound_binary(bhdata)
+            bh1, bh2, merged = get_bound_binary(bhdata)
         else:
-            bh1, bh2, merged = bgs.analysis.get_bh_particles(bhdata)
+            bh1, bh2, merged = get_bh_particles(bhdata)
         self.com = (bh1.m[:, np.newaxis] * bh1.x + bh2.m[:, np.newaxis] * bh2.x) / (
             bh1.m + bh2.m
         )[:, np.newaxis]
@@ -213,7 +215,7 @@ class OverviewAnimation:
             self.snap = pygad.Snapshot(self.snaplist[i], physical=True)
             # determine the extents of the axis
             self.get_extent()
-            _, _, imtemp = bgs.plotting.plot_galaxies_with_pygad(
+            _, _, imtemp = plot_galaxies_with_pygad(
                 self.snap, return_ims=True, figax=[tempfig, tempax], extent=self.extent
             )
             for ind, family in enumerate(self.vlims.keys()):
@@ -247,14 +249,14 @@ class OverviewAnimation:
         self.get_extent()
         # plot
         if i == 0:
-            _, _, self.image = bgs.plotting.plot_galaxies_with_pygad(
+            _, _, self.image = plot_galaxies_with_pygad(
                 self.snap,
                 return_ims=True,
                 figax=[self.fig, self.ax],
                 extent=self.extent,
             )
         else:
-            _, _, self.image = bgs.plotting.plot_galaxies_with_pygad(
+            _, _, self.image = plot_galaxies_with_pygad(
                 self.snap,
                 return_ims=True,
                 figax=[self.fig, self.ax],
