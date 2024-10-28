@@ -1,4 +1,4 @@
-from mathematics.array_operations import *  # noqa
-from mathematics.coordinates import *  # noqa
-from mathematics.geometry import *  # noqa
-from mathematics.statistics import *  # noqa
+from baggins.mathematics.array_operations import *  # noqa
+from baggins.mathematics.coordinates import *  # noqa
+from baggins.mathematics.geometry import *  # noqa
+from baggins.mathematics.statistics import *  # noqa

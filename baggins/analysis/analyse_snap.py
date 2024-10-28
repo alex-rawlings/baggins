@@ -6,10 +6,10 @@ import scipy.spatial.transform
 import scipy.stats
 import pygad
 import dask
-import analysis.masks as masks
-from mathematics import radial_separation, density_sphere, spherical_components
-from general import snap_num_for_time, convert_gadget_time, set_seed_time
-from env_config import _cmlogger
+import baggins.analysis.masks as masks
+from baggins.mathematics import radial_separation, density_sphere, spherical_components
+from baggins.general import snap_num_for_time, convert_gadget_time, set_seed_time
+from baggins.env_config import _cmlogger
 
 
 __all__ = [

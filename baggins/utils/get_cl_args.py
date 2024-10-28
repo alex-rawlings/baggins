@@ -1,6 +1,6 @@
 import argparse
 import numpy as np
-from env_config import logger_level
+from baggins.env_config import logger_level
 
 __all__ = ["argparse_for_initialise", "argparse_for_stan", "cl_str_2_space"]
 

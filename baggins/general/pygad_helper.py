@@ -1,6 +1,6 @@
 import numpy as np
 import pygad.units
-from env_config import _cmlogger
+from baggins.env_config import _cmlogger
 
 __all__ = ["convert_gadget_time", "unit_as_str", "particle_ages", "snap_num_for_time"]
 

@@ -1,16 +1,16 @@
 import pygad
 import ketjugw
-from analysis.analysis_classes.BrownianData import BrownianData
-from analysis.analyse_snap import (
+from baggins.analysis.analysis_classes.BrownianData import BrownianData
+from baggins.analysis.analyse_snap import (
     get_com_of_each_galaxy,
     get_com_velocity_of_each_galaxy,
 )
-from analysis.masks import get_all_id_masks
-from analysis.analyse_ketju import get_bound_binary
-from general.pygad_helper import convert_gadget_time, snap_num_for_time
-from general.units import Myr
-from utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
-from env_config import _cmlogger
+from baggins.analysis.masks import get_all_id_masks
+from baggins.analysis.analyse_ketju import get_bound_binary
+from baggins.general.pygad_helper import convert_gadget_time, snap_num_for_time
+from baggins.general.units import Myr
+from baggins.utils import read_parameters, get_snapshots_in_dir, get_ketjubhs_in_dir
+from baggins.env_config import _cmlogger
 
 __all__ = ["Brownian"]
 

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import merger_ic_generator as mg
 import pygad
 
-from initialise.galaxy_components import (
+from baggins.initialise.galaxy_components import (
     _GalaxyICBase,
     _StellarCore,
     _StellarCusp,
@@ -14,9 +14,9 @@ from initialise.galaxy_components import (
     _DMHaloNFW,
     _SMBH,
 )
-from analysis import projected_quantities
-from env_config import _cmlogger, date_format
-from literature import (
+from baggins.analysis import projected_quantities
+from baggins.env_config import _cmlogger, date_format
+from baggins.literature import (
     LiteratureTables,
     Sahu19,
     Moster10,
@@ -31,9 +31,9 @@ from literature import (
     zlochower_dry_spins,
     zlochower_hot_spins,
 )
-from mathematics import get_histogram_bin_centres
-from plotting import mplColours, savefig
-from utils import write_calculated_parameters
+from baggins.mathematics import get_histogram_bin_centres
+from baggins.plotting import mplColours, savefig
+from baggins.utils import write_calculated_parameters
 
 __all__ = ["GalaxyIC"]
 

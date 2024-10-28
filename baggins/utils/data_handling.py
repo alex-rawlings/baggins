@@ -4,7 +4,7 @@ import inspect
 import shutil
 import h5py
 from multiprocessing import managers
-from env_config import _cmlogger, git_hash
+from baggins.env_config import _cmlogger, git_hash
 
 
 __all__ = [

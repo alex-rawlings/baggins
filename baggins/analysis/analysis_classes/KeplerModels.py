@@ -5,11 +5,13 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from analysis.analysis_classes.StanModel import HierarchicalModel_1D
-from analysis.analysis_classes.HMQuantitiesBinaryData import HMQuantitiesBinaryData
-from analysis.analyse_ketju import find_idxs_of_n_periods
-from env_config import _cmlogger
-from plotting import savefig
+from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_1D
+from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
+    HMQuantitiesBinaryData,
+)
+from baggins.analysis.analyse_ketju import find_idxs_of_n_periods
+from baggins.env_config import _cmlogger
+from baggins.plotting import savefig
 from ketjugw.units import unit_length_in_pc, unit_time_in_years
 
 __all__ = ["_KeplerModelBase", "KeplerModelSimple", "KeplerModelHierarchy"]

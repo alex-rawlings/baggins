@@ -3,8 +3,8 @@ import h5py
 import pygad
 
 import BHBinaryData
-from general import unit_as_str
-from env_config import _cmlogger
+from baggins.general import unit_as_str
+from baggins.env_config import _cmlogger
 
 __all__ = ["ChildSimData"]
 

@@ -4,8 +4,8 @@ from matplotlib import rc_file, rcdefaults, rcParams, use
 from matplotlib.pyplot import gcf, subplots, close
 from PIL import Image
 import os.path
-from _backend.States import PublishingState
-from env_config import _cmlogger, git_hash, username, date_format, fig_ext
+from baggins._backend.States import PublishingState
+from baggins.env_config import _cmlogger, git_hash, username, date_format, fig_ext
 
 __all__ = [
     "savefig",

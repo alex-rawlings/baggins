@@ -4,7 +4,7 @@ from matplotlib.gridspec import GridSpec
 from mpl_toolkits.axes_grid1.anchored_artists import AnchoredSizeBar
 from matplotlib import colors
 import itertools
-from env_config import _cmlogger
+from baggins.env_config import _cmlogger
 
 
 __all__ = [

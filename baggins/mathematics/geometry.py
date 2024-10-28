@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.spatial.distance
 from scipy.spatial.transform import Rotation
-from env_config import _cmlogger
+from baggins.env_config import _cmlogger
 
 _logger = _cmlogger.getChild(__name__)
 

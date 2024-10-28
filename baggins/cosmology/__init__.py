@@ -1,2 +1,2 @@
-from cosmology.conversions import *  # noqa
-from cosmology.cosmology import *  # noqa
+from baggins.cosmology.conversions import *  # noqa
+from baggins.cosmology.cosmology import *  # noqa

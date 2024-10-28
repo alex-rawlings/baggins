@@ -4,8 +4,8 @@ from matplotlib import rc_file, rcdefaults
 import subprocess
 import yaml
 from cmdstanpy import set_cmdstan_path
-from _backend.Logging import setup_logger
-from _backend.States import TmpDirRegister
+from baggins._backend.Logging import setup_logger
+from baggins._backend.States import TmpDirRegister
 
 
 __all__ = [

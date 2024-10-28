@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib.collections import LineCollection
-from env_config import _cmlogger
+from baggins.env_config import _cmlogger
 
 
 __all__ = ["GradientLinePlot", "GradientScatterPlot"]

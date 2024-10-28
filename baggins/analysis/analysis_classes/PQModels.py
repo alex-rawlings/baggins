@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from analysis.analysis_classes.HMQuantitiesBinaryData import HMQuantitiesBinaryData
-from analysis.analysis_classes.StanModel import HierarchicalModel_2D
-from env_config import _cmlogger
+from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
+    HMQuantitiesBinaryData,
+)
+from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
+from baggins.env_config import _cmlogger
 
 __all__ = ["PQModelSimple", "PQModelHierarchy"]
 

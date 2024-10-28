@@ -3,7 +3,7 @@ import json
 import yaml
 from pygad import UnitArr
 
-from env_config import _cmlogger
+from baggins.env_config import _cmlogger
 
 _logger = _cmlogger.getChild(__name__)
 

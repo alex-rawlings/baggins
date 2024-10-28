@@ -1,6 +1,6 @@
-from analysis.analysis_classes.HDF5Base import HDF5Base
-from env_config import _cmlogger
-from mathematics import radial_separation
+from baggins.analysis.analysis_classes.HDF5Base import HDF5Base
+from baggins.env_config import _cmlogger
+from baggins.mathematics import radial_separation
 
 __all__ = ["BrownianData"]
 

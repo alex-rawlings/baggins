@@ -5,17 +5,17 @@ import scipy.stats
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from ketjugw.units import km_per_s
-from analysis.analysis_classes.StanModel import HierarchicalModel_2D
-from analysis.analyse_ketju import get_bound_binary
-from env_config import _cmlogger
-from general.units import kpc
-from literature import (
+from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
+from baggins.analysis.analyse_ketju import get_bound_binary
+from baggins.env_config import _cmlogger
+from baggins.general.units import kpc
+from baggins.literature import (
     zlochower_dry_spins,
     ketju_calculate_bh_merger_remnant_properties,
 )
-from mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
-from plotting import savefig
-from utils import load_data, get_ketjubhs_in_dir
+from baggins.mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
+from baggins.plotting import savefig
+from baggins.utils import load_data, get_ketjubhs_in_dir
 
 
 __all__ = ["_CoreKickBase", "CoreKickExp", "CoreKickLinear", "CoreKickSigmoid"]

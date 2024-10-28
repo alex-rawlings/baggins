@@ -1,5 +1,5 @@
 import numpy as np
-from mathematics.geometry import radial_separation
+from baggins.mathematics.geometry import radial_separation
 
 __all__ = [
     "project_orthogonal",

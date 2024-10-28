@@ -7,17 +7,21 @@ import numpy as np
 import pygad
 import merger_ic_generator as mg
 
-from initialise.mergers import e_from_rperi
-from env_config import _cmlogger, date_format
-from utils import read_parameters, write_calculated_parameters, get_snapshots_in_dir
-from analysis import (
+from baggins.initialise.mergers import e_from_rperi
+from baggins.env_config import _cmlogger, date_format
+from baggins.utils import (
+    read_parameters,
+    write_calculated_parameters,
+    get_snapshots_in_dir,
+)
+from baggins.analysis import (
     get_com_of_each_galaxy,
     get_com_velocity_of_each_galaxy,
     get_virial_info_of_each_galaxy,
 )
-from general import snap_num_for_time
-from mathematics import radial_separation
-from analysis.masks import get_all_id_masks
+from baggins.general import snap_num_for_time
+from baggins.mathematics import radial_separation
+from baggins.analysis.masks import get_all_id_masks
 
 __all__ = ["MergerIC"]
 

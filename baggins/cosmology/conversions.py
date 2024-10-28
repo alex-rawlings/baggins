@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.constants
 import scipy.optimize
-from cosmology.cosmology import cosmology_pars, luminosity_distance
+from baggins.cosmology.cosmology import cosmology_pars, luminosity_distance
 
 __all__ = ["time2z"]
 

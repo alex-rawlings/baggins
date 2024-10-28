@@ -1,4 +1,4 @@
-from env_config import _cmlogger
+from baggins.env_config import _cmlogger
 
 __all__ = ["get_histogram_bin_centres", "assert_all_unique"]
 

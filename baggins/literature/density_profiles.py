@@ -2,7 +2,7 @@ import copy
 import numpy as np
 import scipy.optimize
 import pygad
-from general.general import sersic_b_param
+from baggins.general.general import sersic_b_param
 
 
 __all__ = [

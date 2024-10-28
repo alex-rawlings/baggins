@@ -1,5 +1,5 @@
 import numpy as np
-from env_config import _cmlogger
+from baggins.env_config import _cmlogger
 
 __all__ = ["Haring04", "Magorrian98", "Sahu19", "Scott13"]
 

@@ -18,25 +18,21 @@ dependencies = [
     "scipy>=1.8.0",
     "seaborn>=0.11.2",
     "tqdm",
-    "pyyaml",
-
-    # Git dependencies
-    {git = "git@bitbucket.org:helsinkiextragalacticgroup/pygad.git", branch = "master"},
-    {git = "git@bitbucket.org:helsinkiextragalacticgroup/orbit-analysis.git", branch = "master"},
-    {git = "git@bitbucket.org:helsinkiextragalacticgroup/merger-ic-generator.git", branch = "master"},
-    {git = "git@bitbucket.org:helsinkiextragalacticgroup/ketjugw.git", branch = "master"},
-    {git = "git@bitbucket.org:helsinkiextragalacticgroup/voronoi-binning-cpp.git", branch = "master"},
+    "pyyaml"
 ]
 authors = [
     {name = "Alex Rawlings", email = "alexander.rawlings@helsinki.fi"},
     {name = "Matias Mannerkoski", email = "matias.mannerkoski@helsinki.fi"}
 ]
 maintainers = [
-    {name = "Alex Rawlings", email = "alexander.rawlings@helsinki,fi"}
+    {name = "Alex Rawlings", email = "alexander.rawlings@helsinki.fi"}
 ]
 description = "Bayesian Analysis of Galaxy-Galaxy Interactions in Simulations"
 readme = "README.md"
 license = {text = "GNU General Public License v3"}
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.black]
 target-version = ['py39']

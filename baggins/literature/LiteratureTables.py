@@ -2,9 +2,9 @@ import os.path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from env_config import _cmlogger, this_dir
-from mathematics import stat_interval, vertical_RMSE
-from utils import create_error_col
+from baggins.env_config import _cmlogger, this_dir
+from baggins.mathematics import stat_interval, vertical_RMSE
+from baggins.utils import create_error_col
 
 __all__ = ["LiteratureTables"]
 

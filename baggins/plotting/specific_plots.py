@@ -9,8 +9,8 @@ import seaborn as sns
 import copy
 import pygad
 import ketjugw
-from general import convert_gadget_time, units
-from env_config import _cmlogger
+from baggins.general import convert_gadget_time, units
+from baggins.env_config import _cmlogger
 
 
 __all__ = [
@@ -220,7 +220,7 @@ def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}, desat=False):
     Parameters
     ----------
     vdat : dict
-        voronoi values from analysis.voronoi_binned_los_V_statistics()
+        voronoi values from baggins.analysis.voronoi_binned_los_V_statistics()
     ax : np.ndarray, optional
         numpy array of pyplot.Axes objects for plotting, by default None
     figsize : tuple, optional

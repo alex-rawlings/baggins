@@ -5,10 +5,14 @@ import scipy.optimize
 import scipy.integrate
 import scipy.interpolate
 import ketjugw
-from general.general import get_idx_in_array
-from general import units
-from mathematics import radial_separation, angle_between_vectors, project_orthogonal
-from env_config import _cmlogger
+from baggins.general.general import get_idx_in_array
+from baggins.general import units
+from baggins.mathematics import (
+    radial_separation,
+    angle_between_vectors,
+    project_orthogonal,
+)
+from baggins.env_config import _cmlogger
 
 __all__ = [
     "find_pericentre_time",

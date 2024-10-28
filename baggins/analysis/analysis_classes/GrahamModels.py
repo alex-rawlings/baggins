@@ -5,15 +5,18 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from analysis.analysis_classes.StanModel import HierarchicalModel_2D, FactorModel_2D
-from analysis.analysis_classes.HMQuantitiesBinaryData import (
+from baggins.analysis.analysis_classes.StanModel import (
+    HierarchicalModel_2D,
+    FactorModel_2D,
+)
+from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
     HMQuantitiesBinaryData,
     HMQuantitiesSingleData,
 )
-from mathematics import get_histogram_bin_centres
-from env_config import _cmlogger
-from plotting import savefig
-from utils import get_files_in_dir
+from baggins.mathematics import get_histogram_bin_centres
+from baggins.env_config import _cmlogger
+from baggins.plotting import savefig
+from baggins.utils import get_files_in_dir
 
 __all__ = ["_GrahamModelBase", "GrahamModelSimple", "GrahamModelHierarchy"]
 

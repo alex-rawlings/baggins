@@ -8,8 +8,8 @@ from datetime import datetime
 import cmdstanpy
 import arviz as az
 import yaml
-from plotting import savefig, create_normed_colours
-from env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
+from baggins.plotting import savefig, create_normed_colours
+from baggins.env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
 
 __all__ = [
     "_StanModel",

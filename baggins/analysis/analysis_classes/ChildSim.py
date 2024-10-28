@@ -19,13 +19,13 @@ from analyse_snap import (
     angular_momentum_difference_gal_BH,
     count_new_hypervelocity_particles,
 )
-from general import snap_num_for_time, convert_gadget_time
+from baggins.general import snap_num_for_time, convert_gadget_time
 from masks import get_binding_energy_mask
 from voronoi import voronoi_binned_los_V_statistics
-from literature import fit_Terzic05_profile
-from mathematics import get_histogram_bin_centres, spherical_components
-from utils import read_parameters
-from env_config import _cmlogger
+from baggins.literature import fit_Terzic05_profile
+from baggins.mathematics import get_histogram_bin_centres, spherical_components
+from baggins.utils import read_parameters
+from baggins.env_config import _cmlogger
 
 __all__ = ["ChildSim"]
 
