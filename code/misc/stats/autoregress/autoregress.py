@@ -33,7 +33,7 @@ for n in names:
     )
     my_stan.figname_base = f"{my_stan.figname_base}_{n}"
     my_stan.build_model()
-    my_stan.sample_model(data=data, save=False, sample_kwargs={"output_dir":os.path.join(bgs.env_config.data_dir, "stan_files")})
+    my_stan.sample_model(data=data, save=False, sample_kwargs={"output_dir":os.path.join(baggins._backend.env_config.data_dir, "stan_files")})
     my_stan.parameter_plot(["alpha", "beta", "sigma"])
     my_stan.posterior_plot(args.var, args.var, "posterior_pred")
     plt.close()
