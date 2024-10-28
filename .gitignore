@@ -218,7 +218,7 @@ code/analysis_scripts/core_kick_relation/*
 baggins/logs
 
 # documentation
-baggins/docs/_build
+baggins/docs/_build/*
 
 # evironment parameters: template available
 baggins/env_params.yml
