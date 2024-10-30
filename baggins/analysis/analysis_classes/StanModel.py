@@ -1511,9 +1511,9 @@ class HierarchicalModel_2D(_StanModel):
 
     def reduce_obs_between_groups(self, ivar, key, newkey, func):
         """
-        Apply a reduction algorithm element-wise between groups. This only 
-        makes sense for regression data, where we might have N observations of 
-        a dependent variable y at the same independent variable x, and want for 
+        Apply a reduction algorithm element-wise between groups. This only
+        makes sense for regression data, where we might have N observations of
+        a dependent variable y at the same independent variable x, and want for
         example the mean of those points.
 
         Parameters
@@ -1535,18 +1535,25 @@ class HierarchicalModel_2D(_StanModel):
             try:
                 assert isinstance(key, str)
             except AssertionError:
-                _logger.exception(f"'key' must be a str, not {type(key)}", exc_info=True)
+                _logger.exception(
+                    f"'key' must be a str, not {type(key)}", exc_info=True
+                )
                 raise
             try:
                 for i in range(1, self._num_groups):
-                    assert(np.allclose(self.obs[ivar][0], self.obs[ivar][i]))
+                    assert np.allclose(self.obs[ivar][0], self.obs[ivar][i])
             except:
-                _logger.exception("Independent variable arrays must all have the same shape and be element-wise equal", exc_info=True)
+                _logger.exception(
+                    "Independent variable arrays must all have the same shape and be element-wise equal",
+                    exc_info=True,
+                )
                 raise
             self.obs[f"{ivar}_reduced"] = self.obs[ivar][0]
             self.obs[newkey] = np.full_like(self.obs[f"{ivar}_reduced"], np.nan)
             for i in range(len(self.obs[key][0])):
-                self.obs[newkey][i] = func([self.obs[key][n][i] for n in range(self._num_groups)])
+                self.obs[newkey][i] = func(
+                    [self.obs[key][n][i] for n in range(self._num_groups)]
+                )
             for k in (f"{ivar}_reduced", newkey):
                 self.obs[k] = np.atleast_2d(self.obs[k])
 

@@ -27,7 +27,6 @@ def get_stan_file(f):
     return os.path.join(baggins_dir, f"stan/core-sersic/{f.rstrip('.stan')}.stan")
 
 
-
 class _GrahamModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
@@ -270,10 +269,11 @@ class _GrahamModelBase(HierarchicalModel_2D):
 class GrahamModelSimple(_GrahamModelBase):
     def __init__(self, figname_base, rng=None):
         super().__init__(
-            model_file = get_stan_file("graham_simple"),
-            prior_file = "",
-            figname_base = f"{figname_base}-simple",
-            rng = rng)
+            model_file=get_stan_file("graham_simple"),
+            prior_file="",
+            figname_base=f"{figname_base}-simple",
+            rng=rng,
+        )
 
     def extract_data(self, pars, d=None, binary=True):
         """
@@ -322,20 +322,13 @@ class GrahamModelSimple(_GrahamModelBase):
             r_count = max([len(rs) for rs in self.obs["R"]]) * 10
         self._num_OOS = r_count
         rs = np.geomspace(rmin, rmax, r_count)
-        self.stan_data.update(
-            dict(
-                N_OOS=self.num_OOS,
-                R_OOS=rs
-            )
-        )
+        self.stan_data.update(dict(N_OOS=self.num_OOS, R_OOS=rs))
 
     def set_stan_data(self):
         """See docs for `_GrahamModelBase.set_stan_data()"""
         super().set_stan_data()
         self.stan_data.update(
-            dict(
-                log10_surf_rho=self.obs_collapsed["log10_proj_density"]
-            )
+            dict(log10_surf_rho=self.obs_collapsed["log10_proj_density"])
         )
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
@@ -401,10 +394,11 @@ class GrahamModelSimple(_GrahamModelBase):
 class GrahamModelHierarchy(_GrahamModelBase):
     def __init__(self, figname_base, rng=None) -> None:
         super().__init__(
-            model_file = get_stan_file("graham_hierarchy"), 
-            prior_file = get_stan_file("graham_hierarchy_prior"), 
-            figname_base = figname_base,
-            rng = rng)
+            model_file=get_stan_file("graham_hierarchy"),
+            prior_file=get_stan_file("graham_hierarchy_prior"),
+            figname_base=figname_base,
+            rng=rng,
+        )
         self._hyper_qtys = [
             "log10densb_mean",
             "log10densb_std",

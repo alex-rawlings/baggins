@@ -171,7 +171,7 @@ class VkickCoreradiusGP(_GPBase):
             model_file=get_stan_file("gp_analytic"),
             prior_file="",
             figname_base=figname_base,
-            rng=rng
+            rng=rng,
         )
         self._input_qtys_labs = [r"$v/v_\mathrm{esc}$"]
         self._folded_qtys_labs = [r"$r_\mathrm{b}/r_{\mathrm{b},0}$"]
@@ -371,11 +371,12 @@ class VkickCoreradiusGP(_GPBase):
 
 class CoreradiusVkickGP(_GPBase):
     def __init__(self, figname_base, rng) -> None:
-        super().__init__(model_file=get_stan_file("gp_analytic"),
-                         prior_file="",
-                         figname_base=figname_base,
-                         rng=rng
-                        )
+        super().__init__(
+            model_file=get_stan_file("gp_analytic"),
+            prior_file="",
+            figname_base=figname_base,
+            rng=rng,
+        )
         self._input_qtys_labs = [r"$r_\mathrm{b}/r_{\mathrm{b},0}$"]
         self._folded_qtys_labs = [r"$v/v_\mathrm{esc}$"]
         self._rb0 = np.nan
@@ -430,7 +431,7 @@ class CoreradiusVkickGP(_GPBase):
 
     def _set_stan_data_OOS(self):
         """
-        Set the out-of-sample Stan data variable for core radius normalised to 
+        Set the out-of-sample Stan data variable for core radius normalised to
         rb0 (binary-scoured radius)
         """
         _OOS = {"N2": 1000}
@@ -473,9 +474,7 @@ class CoreradiusVkickGP(_GPBase):
         )
 
         vkick_mode = self.calculate_mode("y")
-        _logger.info(
-            f"Forward-folded kick velocity mode is {vkick_mode:.3f} km/s"
-        )
+        _logger.info(f"Forward-folded kick velocity mode is {vkick_mode:.3f} km/s")
 
         # marginal distribution of dependent variable
         fig, ax_vk = plt.subplots()

@@ -15,7 +15,7 @@ __all__ = [
     "get_snapshots_in_dir",
     "get_ketjubhs_in_dir",
     "create_file_copy",
-    "get_mod_time"
+    "get_mod_time",
 ]
 
 _logger = _cmlogger.getChild(__name__)
