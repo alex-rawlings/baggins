@@ -3,6 +3,7 @@ import os
 import inspect
 import shutil
 import h5py
+from datetime import datetime, timezone
 from multiprocessing import managers
 from baggins.env_config import _cmlogger, git_hash
 
@@ -14,6 +15,7 @@ __all__ = [
     "get_snapshots_in_dir",
     "get_ketjubhs_in_dir",
     "create_file_copy",
+    "get_mod_time"
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -240,3 +242,20 @@ def create_file_copy(f, suffix="_cp", exist_ok=True):
     if not os.path.exists(new_f) or (os.path.getmtime(new_f) < os.path.getmtime(f)):
         shutil.copyfile(f, new_f)
     return new_f
+
+
+def get_mod_time(f):
+    """
+    Get the modification time of a file in UTC.
+
+    Parameters
+    ----------
+    f : str, path-like
+        file to check
+
+    Returns
+    -------
+    : float
+        timestamp of last modification
+    """
+    return datetime.fromtimestamp(os.path.getmtime(f), tz=timezone.utc).timestamp()

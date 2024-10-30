@@ -14,13 +14,18 @@ from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
     HMQuantitiesSingleData,
 )
 from baggins.mathematics import get_histogram_bin_centres
-from baggins.env_config import _cmlogger
+from baggins.env_config import _cmlogger, baggins_dir
 from baggins.plotting import savefig
 from baggins.utils import get_files_in_dir
 
 __all__ = ["_GrahamModelBase", "GrahamModelSimple", "GrahamModelHierarchy"]
 
 _logger = _cmlogger.getChild(__name__)
+
+
+def get_stan_file(f):
+    return os.path.join(baggins_dir, f"stan/core-sersic/{f.rstrip('.stan')}.stan")
+
 
 
 class _GrahamModelBase(HierarchicalModel_2D):
@@ -263,29 +268,20 @@ class _GrahamModelBase(HierarchicalModel_2D):
 
 
 class GrahamModelSimple(_GrahamModelBase):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
-        self.figname_base = f"{self.figname_base}-simple"
+    def __init__(self, figname_base, rng=None):
+        super().__init__(
+            model_file = get_stan_file("graham_simple"),
+            prior_file = "",
+            figname_base = f"{figname_base}-simple",
+            rng = rng)
 
-    def extract_data(self, pars, d=None):
+    def extract_data(self, pars, d=None, binary=True):
         """
         See docs for `_GrahamModelBase.extract_data()"
         Update figname_base to include merger ID and keyword 'simple'
         """
-        super().extract_data(pars, d)
-        self.transform_obs(
-            "log10_proj_density",
-            "log10_proj_density_mean",
-            lambda x: np.nanmean(x, axis=0),
-        )
-        self.transform_obs(
-            "log10_proj_density",
-            "log10_proj_density_std",
-            lambda x: np.nanstd(x, axis=0),
-        )
-        self.collapse_observations(
-            ["R", "log10_R", "log10_proj_density_mean", "log10_proj_density_std"]
-        )
+        super().extract_data(pars, d, binary)
+        self.collapse_observations(["R", "log10_R", "log10_proj_density"])
         self.figname_base = os.path.join(
             self.figname_base, f"{self.merger_id}/{self.merger_id}-simple"
         )
@@ -320,17 +316,25 @@ class GrahamModelSimple(_GrahamModelBase):
             self.figname_base, f"{self.merger_id}/{self.merger_id}-simple"
         )
 
-    def _set_stan_data_OOS(self):
-        raise NotImplementedError
-        return super()._set_stan_data_OOS()
+    def _set_stan_data_OOS(self, r_count=None):
+        rmin, rmax = super()._set_stan_data_OOS()
+        if r_count is None:
+            r_count = max([len(rs) for rs in self.obs["R"]]) * 10
+        self._num_OOS = r_count
+        rs = np.geomspace(rmin, rmax, r_count)
+        self.stan_data.update(
+            dict(
+                N_OOS=self.num_OOS,
+                R_OOS=rs
+            )
+        )
 
     def set_stan_data(self):
         """See docs for `_GrahamModelBase.set_stan_data()"""
         super().set_stan_data()
         self.stan_data.update(
             dict(
-                log10_surf_rho=self.obs_collapsed["log10_proj_density_mean"],
-                log10_surf_rho_err=self.obs_collapsed["log10_proj_density_std"],
+                log10_surf_rho=self.obs_collapsed["log10_proj_density"]
             )
         )
 
@@ -395,8 +399,12 @@ class GrahamModelSimple(_GrahamModelBase):
 
 
 class GrahamModelHierarchy(_GrahamModelBase):
-    def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+    def __init__(self, figname_base, rng=None) -> None:
+        super().__init__(
+            model_file = get_stan_file("graham_hierarchy"), 
+            prior_file = get_stan_file("graham_hierarchy_prior"), 
+            figname_base = figname_base,
+            rng = rng)
         self._hyper_qtys = [
             "log10densb_mean",
             "log10densb_std",

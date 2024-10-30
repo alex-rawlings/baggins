@@ -7,7 +7,6 @@ __all__ = [
     "literature",
     "plotting",
     "utils",
-    "visualisation",
     "setup_logger",
 ]
 
@@ -21,6 +20,8 @@ import baggins.plotting
 import baggins.utils
 import baggins._backend
 import baggins.env_config
+
+from baggins._backend import setup_logger
 
 # set up some global environment variables
 HOME = baggins.env_config.home_dir

@@ -10,6 +10,7 @@ import arviz as az
 import yaml
 from baggins.plotting import savefig, create_normed_colours
 from baggins.env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
+from baggins.utils import get_mod_time
 
 __all__ = [
     "_StanModel",
@@ -52,6 +53,7 @@ class _StanModel(ABC):
         self._fit_for_az = None
         self._prior_model = None
         self._prior_fit = None
+        self._exec_file = None
         self._parameter_diagnostic_plots_counter = 0
         self._gq_distribution_plot_counter = 0
         self._group_par_counter = 0
@@ -307,12 +309,10 @@ class _StanModel(ABC):
         ValueError
             when proposed dictionary key is a reserved keyword
         """
-        for k in self.obs.keys():
-            if k == newkey:
-                _logger.warning(
-                    f"Requested key {newkey} already exists! Transformation will not be reapplied --> Skipping."
-                )
-                break
+        if newkey in self.obs.keys():
+            _logger.warning(
+                f"Requested key {newkey} already exists! Transformation will not be reapplied --> Skipping."
+            )
         else:
             _logger.debug(f"Applying transformation designated by {newkey}")
             self.obs[newkey] = []
@@ -1097,6 +1097,8 @@ class _StanModel(ABC):
         state : str, optional
             return generated quantities for predictive checks or out-of-sample
             quantities, by default "pred"
+        bounds : list
+            list of tuples [(a,b), ..., (a,b)] giving the lower and upper bound for each variable in gq
         ax : matplotlib.axes.Axes or np.ndarray of, optional
             axes object to plot to, by default None
         xlabels : list, optional
@@ -1303,13 +1305,11 @@ class _StanModel(ABC):
         fit_time = datetime.strptime(
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"
         )
-        model_build_time = datetime.utcfromtimestamp(
-            os.path.getmtime(C._model.exe_file)
-        )
+        model_build_time = get_mod_time(C._model.exe_file)
         if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
             _logger.error(
-                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
+                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! This could be due to `git checkout`. Check the file update time with `git log -- {C.model_file}`. Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
             )
             print("==========================================")
 
@@ -1508,6 +1508,47 @@ class HierarchicalModel_2D(_StanModel):
     @abstractmethod
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
         return super().sample_generated_quantity(gq, force_resample, state)
+
+    def reduce_obs_between_groups(self, ivar, key, newkey, func):
+        """
+        Apply a reduction algorithm element-wise between groups. This only 
+        makes sense for regression data, where we might have N observations of 
+        a dependent variable y at the same independent variable x, and want for 
+        example the mean of those points.
+
+        Parameters
+        ----------
+        ivar : str
+            indepedent variable name
+        key : str
+            variable to reduce
+        newkey : str
+            new variable name
+        func : callable
+            reduction function
+        """
+        if newkey in self.obs.keys():
+            _logger.warning(
+                f"Requested key {newkey} already exists! Transformation will not be reapplied --> Skipping."
+            )
+        else:
+            try:
+                assert isinstance(key, str)
+            except AssertionError:
+                _logger.exception(f"'key' must be a str, not {type(key)}", exc_info=True)
+                raise
+            try:
+                for i in range(1, self._num_groups):
+                    assert(np.allclose(self.obs[ivar][0], self.obs[ivar][i]))
+            except:
+                _logger.exception("Independent variable arrays must all have the same shape and be element-wise equal", exc_info=True)
+                raise
+            self.obs[f"{ivar}_reduced"] = self.obs[ivar][0]
+            self.obs[newkey] = np.full_like(self.obs[f"{ivar}_reduced"], np.nan)
+            for i in range(len(self.obs[key][0])):
+                self.obs[newkey][i] = func([self.obs[key][n][i] for n in range(self._num_groups)])
+            for k in (f"{ivar}_reduced", newkey):
+                self.obs[k] = np.atleast_2d(self.obs[k])
 
     def _plot_predictive(
         self,

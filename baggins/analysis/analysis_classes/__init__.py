@@ -33,7 +33,10 @@ from baggins.analysis.analysis_classes.QuinlanModels import (   # noqa
     QuinlanModelSimple,
     QuinlanModelHierarchy,
 )
-from baggins.analysis.analysis_classes.GaussianProcesses import VkickCoreradiusGP   # noqa
+from baggins.analysis.analysis_classes.GaussianProcesses import (  # noqa
+    VkickCoreradiusGP,
+    CoreradiusVkickGP
+)
 from baggins.analysis.analysis_classes.CoreKick import (  # noqa
     CoreKickExp,
     CoreKickLinear,
