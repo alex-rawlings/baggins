@@ -1542,7 +1542,7 @@ class HierarchicalModel_2D(_StanModel):
             try:
                 for i in range(1, self._num_groups):
                     assert np.allclose(self.obs[ivar][0], self.obs[ivar][i])
-            except:
+            except AssertionError:
                 _logger.exception(
                     "Independent variable arrays must all have the same shape and be element-wise equal",
                     exc_info=True,

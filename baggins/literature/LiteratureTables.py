@@ -29,7 +29,7 @@ class LiteratureTables:
             if an invalid table name is given
         """
         self.table = None
-        self._literature_dir = os.path.join(this_dir, "literature/literature_data")
+        self._literature_dir = os.path.join(baggins_dir, "literature/literature_data")
         self.name = None
 
     @classmethod
