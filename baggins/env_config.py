@@ -9,7 +9,7 @@ from baggins._backend.States import TmpDirRegister
 
 
 __all__ = [
-    "this_dir",
+    "baggins_dir",
     "home_dir",
     "figure_dir",
     "data_dir",
@@ -22,9 +22,9 @@ __all__ = [
 ]
 
 # set up some aliases
-this_dir = os.path.dirname(os.path.realpath(__file__))
+baggins_dir = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.path.expanduser("~")
-env_params_file = os.path.join(this_dir, "env_params.yml")
+env_params_file = os.path.join(baggins_dir, "env_params.yml")
 with open(env_params_file, "r") as f:
     user_params, internal_params = yaml.safe_load_all(f)
 figure_dir = os.path.join(home_dir, user_params["figure_dir"])
@@ -42,13 +42,13 @@ username = home_dir.rstrip("/").split("/")[-1]
 
 # create the logger
 os.makedirs(
-    os.path.dirname(os.path.join(this_dir, user_params["logging"]["file"])),
+    os.path.dirname(os.path.join(baggins_dir, user_params["logging"]["file"])),
     exist_ok=True,
 )
 _cmlogger = setup_logger(
     name="baggins",
     console_level=user_params["logging"]["console_level"],
-    logfile=os.path.join(this_dir, user_params["logging"]["file"]),
+    logfile=os.path.join(baggins_dir, user_params["logging"]["file"]),
     file_level=user_params["logging"]["file_level"],
 )
 # set the valid logger levels
@@ -76,7 +76,7 @@ os.makedirs(figure_dir, exist_ok=True)
 
 # set the matplotlib settings
 rcdefaults()
-rc_file(os.path.join(this_dir, "plotting/matplotlibrc"))
+rc_file(os.path.join(baggins_dir, "plotting/matplotlibrc"))
 
 # get the git hash
 # only set git hash if in the collisionless-merger-sample repo

@@ -1,4 +1,5 @@
 from abc import abstractmethod
+import os.path
 import numpy as np
 import scipy.stats
 from tqdm import tqdm
@@ -7,7 +8,7 @@ from arviz.labels import MapLabeller
 from ketjugw.units import km_per_s
 from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_ketju import get_bound_binary
-from baggins.env_config import _cmlogger
+from baggins.env_config import _cmlogger, baggins_dir
 from baggins.general.units import kpc
 from baggins.literature import (
     zlochower_dry_spins,
@@ -18,9 +19,13 @@ from baggins.plotting import savefig
 from baggins.utils import save_data, load_data, get_ketjubhs_in_dir
 
 
-__all__ = ["_GPBase", "VkickCoreradiusGP"]
+__all__ = ["_GPBase", "VkickCoreradiusGP", "CoreradiusVkickGP"]
 
 _logger = _cmlogger.getChild(__name__)
+
+
+def get_stan_file(f):
+    return os.path.join(baggins_dir, f"stan/gaussian-process/{f.rstrip('.stan')}.stan")
 
 
 class _GPBase(HierarchicalModel_2D):
@@ -144,18 +149,30 @@ class _GPBase(HierarchicalModel_2D):
         self.diag_plots(figsize=figsize)
         pass
 
+    def save_gp_for_plots(self, fname):
+        data = dict(
+            vkick=self.stan_data["x1"],
+            rb=self.sample_generated_quantity(
+                self.folded_qtys_posterior[0], state="OOS"
+            ),
+        )
+        save_data(data, fname)
+
 
 class VkickCoreradiusGP(_GPBase):
     def __init__(
         self,
-        model_file,
-        prior_file,
         figname_base,
         escape_vel=None,
         premerger_ketjufile=None,
         rng=None,
     ) -> None:
-        super().__init__(model_file, prior_file, figname_base, rng)
+        super().__init__(
+            model_file=get_stan_file("gp_analytic"),
+            prior_file="",
+            figname_base=figname_base,
+            rng=rng,
+        )
         self._input_qtys_labs = [r"$v/v_\mathrm{esc}$"]
         self._folded_qtys_labs = [r"$r_\mathrm{b}/r_{\mathrm{b},0}$"]
         self.escape_vel = escape_vel
@@ -164,7 +181,7 @@ class VkickCoreradiusGP(_GPBase):
         self.bh2 = None
         self._rb0 = np.nan
 
-    def extract_data(self, d=None, npoints=50):
+    def extract_data(self, d=None):
         """
         Data extraction and manipulation required by the CoreKick model.
         Due to the complexity of extracting core radius, samples from the core
@@ -186,8 +203,6 @@ class VkickCoreradiusGP(_GPBase):
         d : path-like, optional
             file of core radius samples, by default None (paths read from
             `_input_data_files`)
-        pars : None
-            included for compatability with inherited method of StanModel()
         """
         try:
             assert self.escape_vel is not None and self.premerger_ketjufile is not None
@@ -319,15 +334,6 @@ class VkickCoreradiusGP(_GPBase):
             ax=ax_rb,
         )
 
-    def save_gp_for_plots(self, fname):
-        data = dict(
-            vkick=self.stan_data["x1"],
-            rb=self.sample_generated_quantity(
-                self.folded_qtys_posterior[0], state="OOS"
-            ),
-        )
-        save_data(data, fname)
-
     @classmethod
     def load_fit(
         cls,
@@ -361,3 +367,122 @@ class VkickCoreradiusGP(_GPBase):
         C.escape_vel = escape_vel
         C.premerger_ketjufile = premerger_ketjufile
         return C
+
+
+class CoreradiusVkickGP(_GPBase):
+    def __init__(self, figname_base, rng) -> None:
+        super().__init__(
+            model_file=get_stan_file("gp_analytic"),
+            prior_file="",
+            figname_base=figname_base,
+            rng=rng,
+        )
+        self._input_qtys_labs = [r"$r_\mathrm{b}/r_{\mathrm{b},0}$"]
+        self._folded_qtys_labs = [r"$v/v_\mathrm{esc}$"]
+        self._rb0 = np.nan
+
+    def extract_data(self, d=None):
+        """
+        Data extraction and manipulation required by the CoreKick model.
+        Due to the complexity of extracting core radius, samples from the core
+        radius distribution for each kick velocity are assumed as an input
+        pickle file. The structure of the file must be of the form:
+        {'rb': {
+                "XXXX": [core radius values],
+                ...,
+                "YYYY": [core radius values]
+        }}
+        Where XXXX and YYYY are the kick velocities as strings, convertible to
+        a float (e.g. "0060").
+
+
+        Parameters
+        ----------
+        d : path-like, optional
+            file of core radius samples, by default None (paths read from
+            `_input_data_files`)
+        """
+        try:
+            assert self.escape_vel is not None and self.premerger_ketjufile is not None
+        except AssertionError:
+            _logger.exception(
+                "Attributes `escape_vel` and `premerger_ketjufile` must be set before extracting data",
+                exc_info=True,
+            )
+            raise
+        d = self._get_data_dir(d)
+        data = load_data(d)
+        obs = {"vkick": [], "rb": []}
+        for k, v in data["rb"].items():
+            if k == "__githash" or k == "__script":
+                continue
+            _logger.info(f"Getting data for kick {k}")
+            mask = ~np.isnan(v)
+            v = v[mask]
+            rb0 = data["rb"]["0000"][mask]
+            obs["vkick"].append([float(k)])
+            # take the median core radius value for each recoil velocity
+            obs["rb"].append([np.nanmedian(v.flatten() / rb0.flatten())])
+        self._rb0 = np.nanmedian(rb0)
+        self.obs = obs
+        if not self._loaded_from_file:
+            self._add_input_data_file(d)
+        self.collapse_observations(["vkick", "rb"])
+
+    def _set_stan_data_OOS(self):
+        """
+        Set the out-of-sample Stan data variable for core radius normalised to
+        rb0 (binary-scoured radius)
+        """
+        _OOS = {"N2": 1000}
+        self._num_OOS = _OOS["N2"]
+        _OOS["x2"] = np.linspace(1, np.max(self.obs_collapsed["rb"]), self.num_OOS)
+        self.stan_data.update(_OOS)
+
+    def set_stan_data(self):
+        super().set_stan_data()
+        self.stan_data.update(
+            dict(x1=self.obs_collapsed["rb"], y1=self.obs_collapsed["vkick"])
+        )
+
+    def all_plots(self, figsize=None):
+        super().all_plots(figsize)
+        ylims = (
+            np.quantile(self.obs_collapsed["vkick"], 0.01),
+            np.quantile(self.obs_collapsed["vkick"], 0.99),
+        )
+        # posterior predictive check
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.set_ylim(*ylims)
+        ax.set_xlabel(self._input_qtys_labs[0])
+        ax.set_ylabel(self._folded_qtys_labs[0])
+        self.plot_predictive(
+            xmodel="x1",
+            ymodel=self.folded_qtys_posterior[0],
+            xobs="rb",
+            yobs="vkick",
+            ax=ax,
+        )
+
+        # OOS
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.set_ylim(*ylims)
+        ax.set_xlabel(self._input_qtys_labs[0])
+        ax.set_ylabel(self._folded_qtys_labs[0])
+        self.posterior_OOS_plot(
+            xmodel="x2", ymodel=self.folded_qtys_posterior[0], ax=ax, smooth=True
+        )
+
+        vkick_mode = self.calculate_mode("y")
+        _logger.info(f"Forward-folded kick velocity mode is {vkick_mode:.3f} km/s")
+
+        # marginal distribution of dependent variable
+        fig, ax_vk = plt.subplots()
+        # add a secondary axis, turning off ticks from the top axis (if they are there)
+        self.plot_generated_quantity_dist(
+            ["y"],
+            state="OOS",
+            bounds=[(0, 400)],
+            xlabels=self._folded_qtys_labs,
+            ax=ax_vk,
+        )

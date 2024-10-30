@@ -45,14 +45,7 @@ figname_base = "hierarchical_models/density/"
 this_dir = os.path.dirname(os.path.realpath(__file__))
 
 if args.model == "simple":
-    graham_model = stan_model_selector(
-        args,
-        bgs.analysis.GrahamModelSimple,
-        os.path.join(this_dir, "stan/density/graham_simple.stan"),
-        os.path.join(this_dir, "stan/density/graham_prior_simple.stan"),
-        figname_base,
-        SL,
-    )
+    graham_model = bgs.analysis.GrahamModelSimple(figname_base=figname_base)
 elif args.model == "factor":
     graham_model = stan_model_selector(
         args,
@@ -63,14 +56,7 @@ elif args.model == "factor":
         SL,
     )
 else:
-    graham_model = stan_model_selector(
-        args,
-        bgs.analysis.GrahamModelHierarchy,
-        os.path.join(this_dir, "stan/density/graham_hierarchy.stan"),
-        os.path.join(this_dir, "stan/density/graham_prior_hierarchy.stan"),
-        figname_base,
-        SL,
-    )
+    graham_model = bgs.analysis.GrahamModelHierarchy(figname_base=figname_base)
 
 
 # load the observational data

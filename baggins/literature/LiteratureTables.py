@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from baggins.env_config import _cmlogger, this_dir
+from baggins.env_config import _cmlogger, baggins_dir
 from baggins.mathematics import stat_interval, vertical_RMSE
 from baggins.utils import create_error_col
 
@@ -29,7 +29,7 @@ class LiteratureTables:
             if an invalid table name is given
         """
         self.table = None
-        self._literature_dir = os.path.join(this_dir, "literature/literature_data")
+        self._literature_dir = os.path.join(baggins_dir, "literature/literature_data")
         self.name = None
 
     @classmethod
