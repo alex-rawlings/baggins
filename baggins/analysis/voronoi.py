@@ -1,4 +1,4 @@
-from tqdm import tqdm
+from tqdm.dask import TqdmCallback
 import numpy as np
 import scipy.optimize
 import scipy.ndimage
@@ -7,6 +7,7 @@ from voronoi_binning import voronoi_binned_image
 from baggins.env_config import _cmlogger
 from baggins.mathematics import get_histogram_bin_centres
 from pygad import UnitArr
+import dask
 
 __all__ = [
     "voronoi_grid",
@@ -65,6 +66,7 @@ def voronoi_grid(x, y, Npx=100, extent=None, part_per_bin=500):
     # determine image extent
     w = xedges[-1] - xedges[0]
     h = yedges[-1] - yedges[0]
+    assert w > 0 and h > 0
 
     # assign particles to voronoi bin
     pixel_vor_bin_num = voronoi_binned_image(
@@ -132,6 +134,7 @@ def gauss_hermite_function(x, mu, sigma, h3, h4):
     return np.clip(a * (1 + h3 * H3 + h4 * H4) / N, 1e-30, None)
 
 
+@dask.delayed
 def fit_gauss_hermite_distribution(data):
     """
     Fit a Gauss-Hermite distribution to the data.
@@ -190,9 +193,9 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
     Parameters
     ----------
     x : np.ndarray
-        x coordinates of bins
+        x coordinates of particles
     y : np.ndarray
-        y coordinates of bins
+        y coordinates of particles
     V : np.ndarray
         LOS velocity
     m : np.ndarray
@@ -249,8 +252,10 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
     bin_mass = scipy.ndimage.sum(m, labels=particle_vor_bin_num, index=bin_index)
 
     fits = []
-    for i in tqdm(bin_index, desc="Fitting voronoi bins"):
+    for i in bin_index:
         fits.append(fit_gauss_hermite_distribution(vz[particle_vor_bin_num == i]))
+    with TqdmCallback(desc="Fitting voronoi bins"):
+        fits = dask.compute(*fits)
     bin_stats = np.array(fits)
     img_stats = bin_stats[pixel_vor_bin_num]
 

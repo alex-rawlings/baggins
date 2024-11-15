@@ -7,6 +7,7 @@ except ImportError:
     from matplotlib import use
     use("Agg")
     import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 from PIL import Image
 import baggins as bgs
 import pygad
@@ -21,6 +22,8 @@ parser.add_argument(dest="orientation", choices=["para", "ortho"], help="orienta
 parser.add_argument(
     "-e", "--extract", help="extract data", action="store_true", dest="extract"
 )
+parser.add_argument("-kv", "--kick-vel", dest="kv", type=int, help="kick velocity", default=600)
+parser.add_argument("-a", "--animate", action="store_true", dest="animate", help="make animation")
 parser.add_argument(
     "-v",
     "--verbosity",
@@ -34,13 +37,12 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-kv = 600
-data_file = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/recoil-explore/kinematics_{kv:04d}.pickle"
-snapdir = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-{kv:04d}/output"
+data_file = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/recoil-explore/kinematics_{args.kv:04d}.pickle"
+snapdir = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-{args.kv:04d}/output"
 
 if args.extract:
     seeing = {"num": 25, "sigma": 0.3}
-    extent = 5
+    extent = 7
 
     data = dict(
         time = [],
@@ -72,15 +74,18 @@ if args.extract:
             SL.warning("Final snapshot: breaking")
             break
         SL.info(f"Doing snapshot {i:03d}")
-        centre = pygad.analysis.shrinking_sphere(
-            snap.stars, pygad.analysis.center_of_mass(snap.stars), 30
-        )
         data["time"].append(bgs.general.convert_gadget_time(snap))
+        
         # move to CoM frame
-        pygad.Translation(-centre).apply(snap, total=True)
-        pre_ball_mask = pygad.BallMask(30)
+        pre_ball_mask = pygad.BallMask(5)
+        centre = pygad.analysis.shrinking_sphere(
+            snap.stars, pygad.analysis.center_of_mass(snap.stars), 30, 
+        )
+        SL.debug(f"Centre is {centre}")
         vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
+        pygad.Translation(-centre).apply(snap, total=True)
         pygad.Boost(-vcom).apply(snap, total=True)
+        SL.debug(f"BH is now position: {snap.bh['pos']}")
 
         rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
         data["rhalf"].append(rhalf)
@@ -99,26 +104,27 @@ if args.extract:
             extent_multiplier = 4
             density_mask = pygad.ExprMask(f"abs(pos[:,{x_axis}]) <= {extent_multiplier*extent}") & pygad.ExprMask(f"abs(pos[:,2]) <= {extent_multiplier*extent}")
 
-            # all stars
+            data[orientation]["bh_pos_x"].append(snap.bh["pos"][:,x_axis])
+            data[orientation]["bh_pos_y"].append(snap.bh["pos"][:,2])
+
             voronoi_stats_all = bgs.analysis.voronoi_binned_los_V_statistics(
                 x=snap.stars[ifu_mask]["pos"][:, x_axis],
                 y=snap.stars[ifu_mask]["pos"][:, 2],
                 V=snap.stars[ifu_mask]["vel"][:, LOS_axis],
                 m=snap.stars[ifu_mask]["mass"],
                 Npx=n_regular_bins,
-                part_per_bin=2000 * seeing["num"],
+                part_per_bin=5000 * seeing["num"],
                 seeing=seeing,
             )
             data[orientation]["ifu"].append(voronoi_stats_all)
-            data[orientation]["bh_pos_x"].append(snap.bh["pos"][:,x_axis])
-            data[orientation]["bh_pos_y"].append(snap.bh["pos"][:,2])
 
             # plot the density and save
             _fig, _ax, _aximage, _cbar = pygad.plotting.image(
                 snap.stars[density_mask],
                 qty="mass",
                 xaxis=x_axis,
-                yaxis=2
+                yaxis=2,
+                scaleind="labels"
             )
             data[orientation]["dens"].append(_aximage)
     
@@ -133,7 +139,6 @@ if args.extract:
 else:
     data = bgs.utils.load_data(data_file)
 
-
 fig_path = "/scratch/pjohanss/arawling/collisionless_merger/visualisations/recoil-explore"
 N_frames = len(data["time"])
 
@@ -145,22 +150,21 @@ max_h3 = max([np.max(np.abs(v["img_h3"])) for v in data[args.orientation]["ifu"]
 max_h4 = max([np.max(np.abs(v["img_h4"])) for v in data[args.orientation]["ifu"]])
 max_dens = max([np.nanmax(im.get_array()) for im in data[args.orientation]["dens"]])
 min_dens = min([np.nanmin(im.get_array()) for im in data[args.orientation]["dens"]])
-max_bound_all = max(data["bound_stars_all"])
-max_bound_original = max(data["original_bound_stars"])
 
 
-def make_plot_and_save(i):
+def make_plot_and_save_for_gif(i):
     fig, ax = plt.subplot_mosaic(
     """
-    ABEG
-    CDFH
+    ABE
+    CDF
     """,
     figsize=(8,4)
     )
 
-    fig.suptitle(f"{data['time'][i]:.3f} Gyr")
+    fig.suptitle(f"{data['time'][i]-data['time'][0]:.3f} Gyr")
 
     # voronoi plots
+    ifu_half_extent = 6
     bgs.plotting.voronoi_plot(
         data[args.orientation]["ifu"][i],
         clims={"V":[max_V], "sigma":[min_s, max_s], "h3":[max_h3], "h4":[max_h4]},
@@ -168,41 +172,109 @@ def make_plot_and_save(i):
         )
     for k in "ABCD":
         ax[k].scatter(data[args.orientation]["bh_pos_x"][i], data[args.orientation]["bh_pos_y"][i], lw=2, s=100, ec="green", fc='none')
-        ax[k].set_xlim(-3, 3)
-        ax[k].set_ylim(-3, 3)
+        ax[k].set_xlim(-ifu_half_extent, ifu_half_extent)
+        ax[k].set_ylim(-ifu_half_extent, ifu_half_extent)
         ax[k].set_xlabel(f"{'y' if args.orientation=='para' else 'x'}/kpc")
         ax[k].set_ylabel("z/kpc")
 
     # density plots
     dens = data[args.orientation]["dens"][i]
     for k in "EF":
-        ax[k].imshow(dens.get_array(), extent=dens.get_extent(), cmap=dens.get_cmap(), vmax=max_dens, vmin=min_dens, origin="lower")
+        ax[k].imshow(
+            #np.flip(dens.get_array()),
+            dens.get_array(),
+            extent=dens.get_extent(),
+            cmap=dens.get_cmap(),
+            vmax=max_dens,
+            vmin=min_dens,
+            origin="lower")
+        # make an "aperture" rectangle to show IFU footprint
+        ifu_rect = Rectangle(
+            (-ifu_half_extent, -ifu_half_extent),
+            2 * ifu_half_extent,
+            2 * ifu_half_extent,
+            fc="none",
+            ec="k",
+            fill=False
+        )
+        ax[k].add_artist(ifu_rect)
         ax[k].set_xlabel(f"{'y' if args.orientation=='para' else 'x'}/kpc")
         ax[k].set_ylabel("z/kpc")
     ax["E"].scatter(data[args.orientation]["bh_pos_x"][i], data[args.orientation]["bh_pos_y"][i], lw=2, s=100, ec="red", fc='none')
     # TODO add contours
 
-    # bound star plots
-    ax["G"].plot(data["times"][:i], data["bound_stars_all"][:i], lw=2)
-    ax["H"].plot(data["times"][:i], data["original_bound_stars"][:i], lw=2)
-    for k in "GH":
-        ax[k].set_xlabel("t/Gyr")
-    ax["G"].set_ylabel("All bound stars")
-    ax["G"].set_ylim(0, max_bound_all)
-    ax["H"].set_ylabel("Bound stars that were also originally bound")
-    ax["H"].set_ylim(0, max_bound_original)
-
     fig.tight_layout()
     os.makedirs(os.path.join(fig_path, args.orientation), exist_ok=True)
     bgs.plotting.savefig(os.path.join(fig_path, args.orientation, f"ifu_{i:02d}.png"), fig=fig)
 
-for i in range(N_frames):
-    make_plot_and_save(i)
-frames = bgs.utils.get_files_in_dir(os.path.join(fig_path, args.orientation), ".png")
+if args.animate:
+    # make the gif
+    for i in range(N_frames):
+        make_plot_and_save_for_gif(i)
+    frames = bgs.utils.get_files_in_dir(os.path.join(fig_path, args.orientation), ".png")
 
-frames = [Image.open(img) for img in frames]     # Load images
-frames.extend([frames[-1]] * 10)
+    frames = [Image.open(img) for img in frames if "bound" not in img]     # Load images
+    frames.extend([frames[-1]] * 10)
 
-# Save as an animated GIF
-frames[0].save(os.path.join(fig_path, args.orientation, f"animation_{args.orientation}.gif"), format="GIF", append_images=frames[1:], 
-               save_all=True, duration=200, loop=0)
+    # Save as an animated GIF
+    frames[0].save(os.path.join(fig_path, args.orientation, f"animation_{args.orientation}_{args.kv:04d}.gif"), format="GIF", append_images=frames[1:], 
+                save_all=True, duration=200, loop=0)
+
+    plt.close()
+else:
+    # make still panel of select times
+    fig, ax = plt.subplot_mosaic(
+    """
+    AAAA
+    BCDE
+    FGHI
+    """,
+    figsize=(10, 6)
+    )
+    for k in "CDEFGHI":
+        ax[k].sharex(ax["B"])
+        ax[k].sharey(ax["B"])
+    ifu_half_extent = 6
+    for k in "BF":
+        ax[k].set_ylabel("z/kpc")
+    for k in "FGHI":
+        ax[k].set_xlabel(f"{'y' if args.orientation=='para' else 'x'}/kpc")
+    specific_snaps = [0, 2, 13, 45]
+    for i, vax, sax in zip(specific_snaps, "BCDE", "FGHI"):
+        bgs.plotting.voronoi_plot(
+                data[args.orientation]["ifu"][i],
+                clims={"V":[max_V], "sigma":[min_s, max_s], "h3":[max_h3], "h4":[max_h4]},
+                ax=np.array([ax[vax], ax[sax]]),
+        )
+        for k in (vax, sax):
+            ax[k].scatter(data[args.orientation]["bh_pos_x"][i], data[args.orientation]["bh_pos_y"][i], lw=1.5, s=100, ec="green", fc='none')
+    t = np.array(data["time"]) - data["time"][0]
+    r = np.sqrt(
+            np.array(data[args.orientation]["bh_pos_x"])**2 + 
+            np.array(data[args.orientation]["bh_pos_y"])**2
+        )
+    ax["A"].plot(t, r, marker = "o", markevery = specific_snaps)
+    ax["A"].set_xlabel("t/Gyr")
+    ax["A"].set_ylabel("r/kpc")
+    fig.tight_layout()
+    os.makedirs(os.path.join(fig_path, args.orientation), exist_ok=True)
+    bgs.plotting.savefig(os.path.join(fig_path, args.orientation, "IFU_panel.png"), fig=fig)
+
+    plt.close()
+    fig, ax = plt.subplots()
+    ax.hist(np.log10(r+1e-14), density=True, bins=6)
+    ax.set_xlabel("log10(r/kpc)")
+    ax.set_ylabel("PDF")
+    bgs.plotting.savefig(os.path.join(fig_path, args.orientation, "r_hist.png"), fig=fig)
+
+
+
+# bound plot
+star_mass = 5e4
+fig2, ax2 = plt.subplots()
+ax2.semilogy(data["time"], np.array(data["bound_stars_all"]) * 5e4, lw=2, label="all")
+ax2.semilogy(data["time"], np.array(data["original_bound_stars"]) * 5e4, lw=2, label="original")
+ax2.set_xlabel("t/Gyr")
+ax2.set_ylabel("Stellar mass [Msol]")
+ax2.legend(title="Bound stars")
+bgs.plotting.savefig(os.path.join(fig_path, f"bound_{args.kv:04d}.png"), fig=fig2)

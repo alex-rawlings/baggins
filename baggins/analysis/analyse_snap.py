@@ -1391,8 +1391,8 @@ def find_individual_bound_particles(snap, return_extra=False):
     # shift to BH frame
     trans = pygad.Translation(-subsnap[bh_id_mask]["pos"][0, :])
     boost = pygad.Boost(-subsnap.bh[bh_id_mask]["vel"][0, :])
-    trans.apply(subsnap, total=True)
-    boost.apply(subsnap, total=True)
+    trans.apply(subsnap)
+    boost.apply(subsnap)
     G = pygad.UnitScalar(4.3009e-6, "kpc/Msol*(km/s)**2")
     KE = pygad.UnitArr(
         0.5 * np.linalg.norm(subsnap[~bh_id_mask]["vel"], axis=1) ** 2, "(km/s)**2"
