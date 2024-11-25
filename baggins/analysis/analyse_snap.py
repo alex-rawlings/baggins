@@ -1343,8 +1343,8 @@ def add_to_loss_cone_refill(snap, J_lc, prev):
 
 def _set_bound_search_rad(snap):
     """
-    Define the search area for bound stellar particles. The search is 
-    restricted to the influence radius of the most massive BH, centred on that 
+    Define the search area for bound stellar particles. The search is
+    restricted to the influence radius of the most massive BH, centred on that
     BH.
 
     Parameters

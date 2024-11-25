@@ -16,7 +16,7 @@ from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
 from baggins.mathematics import get_histogram_bin_centres
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.plotting import savefig
-from baggins.utils import get_files_in_dir
+from baggins.utils import get_files_in_dir, load_data
 
 __all__ = ["_GrahamModelBase", "GrahamModelSimple", "GrahamModelHierarchy"]
 
@@ -25,6 +25,36 @@ _logger = _cmlogger.getChild(__name__)
 
 def get_stan_file(f):
     return os.path.join(baggins_dir, f"stan/core-sersic/{f.rstrip('.stan')}.stan")
+
+
+class _DummyDataDict:
+    def __init__(self, d):
+        """
+        Dummy class to get a dict object into a class that looks like a `HMQuantities` class.
+
+        Parameters
+        ----------
+        d : dict
+            data dictionary
+        """
+        try:
+            assert isinstance(d, dict)
+        except AssertionError:
+            _logger.exception(f"Input must be a dict, not {type(d)}", exc_info=True)
+            raise
+        self.radial_edges = None
+        self.projected_mass_density = None
+        self.merger_id = None
+        for k in ("radial_edges", "projected_mass_density", "merger_id"):
+            try:
+                setattr(self, k, d[k])
+            except KeyError:
+                _logger.exception(f"Key {k} missing from input dict", exc_info=True)
+                raise
+        self.projected_mass_density = {"t0": self.projected_mass_density}
+        # XXX we're not extracting this information, set to nan
+        self.escape_velocity = {"t0": [np.nan, np.nan]}
+        self.merger_remnant = {"kick": np.nan}
 
 
 class _GrahamModelBase(HierarchicalModel_2D):
@@ -50,6 +80,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
             dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
         )
         self._merger_id = None
+        self._dims_prepped = False
 
     @property
     def folded_qtys(self):
@@ -94,24 +125,46 @@ class _GrahamModelBase(HierarchicalModel_2D):
             fnames = [d]
         else:
             fnames = get_files_in_dir(d)
+            if not fnames:
+                fnames = get_files_in_dir(d, ext=".pickle")
             _logger.debug(f"Reading from dir: {d}")
         is_single_file = len(fnames) == 1
+        data_ext = os.path.splitext(fnames[0])[1].lstrip(".")
+        try:
+            assert fnames
+        except AssertionError:
+            _logger.exception(
+                f"Directory {d} has no files with extension {data_ext}", exc_info=True
+            )
+            raise
         for f in fnames:
             _logger.info(f"Loading file: {f}")
             if binary:
                 _logger.debug(
                     "Hierarchical model will be constructed for a binary BH system"
                 )
-                hmq = HMQuantitiesBinaryData.load_from_file(f)
-                status, idx = hmq.idx_finder(
-                    pars["bh_binary"]["target_semimajor_axis"]["value"],
-                    hmq.semimajor_axis,
-                )
+                if data_ext == "hdf5":
+                    hmq = HMQuantitiesBinaryData.load_from_file(f)
+                    status, idx = hmq.idx_finder(
+                        pars["bh_binary"]["target_semimajor_axis"]["value"],
+                        hmq.semimajor_axis,
+                    )
+                else:
+                    raise NotImplementedError(
+                        "Only hdf5 data input allowed for mode 'binary'!"
+                    )
             else:
                 _logger.debug(
                     "Hierarchical model will be constructed for a single BH system"
                 )
-                hmq = HMQuantitiesSingleData.load_from_file(f)
+                if data_ext == "hdf5":
+                    hmq = HMQuantitiesSingleData.load_from_file(f)
+                elif data_ext == "pickle":
+                    hmq = _DummyDataDict(load_data(f))
+                else:
+                    raise RuntimeError(
+                        f"Only 'hdf5' and 'pickle' data input allowed, not {data_ext}"
+                    )
                 idx = 0
                 status = True
             if not status:
@@ -120,10 +173,13 @@ class _GrahamModelBase(HierarchicalModel_2D):
             obs["R"].append(r)
             obs["proj_density"].append(list(hmq.projected_mass_density.values())[idx])
             # get median escape velocity within some radius
-            vesc = np.nanmedian(
-                list(hmq.escape_velocity.values())[idx][hmq.radial_edges < 1]
-            )
-            obs["vkick"].append([hmq.merger_remnant["kick"] / vesc])
+            try:
+                vesc = np.nanmedian(
+                    list(hmq.escape_velocity.values())[idx][hmq.radial_edges < 1]
+                )
+                obs["vkick"].append([hmq.merger_remnant["kick"] / vesc])
+            except TypeError:
+                obs["vkick"].append([-99])
             if self._merger_id is None:
                 self._merger_id = re.sub("_[a-z]-", "-", hmq.merger_id)
                 if not is_single_file:
@@ -191,6 +247,17 @@ class _GrahamModelBase(HierarchicalModel_2D):
             return v[..., idxs]
         else:
             return v
+
+    def _prep_dims(self):
+        """
+        Rename dimensions for collapsing
+        """
+        if not self._dims_prepped:
+            _rename_dict = {}
+            for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
+                _rename_dict[f"{k}_dim_0"] = "group"
+            self.rename_dimensions(_rename_dict)
+            self._dims_prepped = True
 
     def plot_latent_distributions(self, figsize=None):
         """
@@ -270,8 +337,8 @@ class GrahamModelSimple(_GrahamModelBase):
     def __init__(self, figname_base, rng=None):
         super().__init__(
             model_file=get_stan_file("graham_simple"),
-            prior_file="",
-            figname_base=f"{figname_base}-simple",
+            prior_file=get_stan_file("graham_simple_prior"),
+            figname_base=figname_base,
             rng=rng,
         )
 
@@ -333,13 +400,14 @@ class GrahamModelSimple(_GrahamModelBase):
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
         self.rename_dimensions(
-            dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys if "err" not in k]),
-            "group",
+            dict.fromkeys(
+                [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
+            )
         )
-        self._expand_dimension(["err"], "group")
+        # self._expand_dimension(["err"], "group")
         return super().all_prior_plots(figsize, ylim)
 
-    def all_posterior_plots(self, figsize=None, ylim=(6, 10)):
+    def all_posterior_pred_plots(self, figsize=None, ylim=(6, 10)):
         """
         Posterior plots generally required for predictive checks and parameter convergence
 
@@ -364,14 +432,14 @@ class GrahamModelSimple(_GrahamModelBase):
         fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
         ax1.set_xlabel(r"log($R$/kpc)")
         ax1.set_ylabel(self._folded_qtys_labs[0])
+        ax1.set_xscale("log")
         ax1.set_ylim(*ylim)
         # TODO scale of x axis??
         self.plot_predictive(
             xmodel="R",
             ymodel=f"{self._folded_qtys_posterior[0]}",
             xobs="R",
-            yobs="log10_proj_density_mean",
-            yobs_err="log10_proj_density_std",
+            yobs="log10_proj_density",
             ax=ax1,
         )
 
@@ -388,6 +456,17 @@ class GrahamModelSimple(_GrahamModelBase):
             ),
             fig=fig,
         )
+        return ax
+
+    def all_posterior_OOS_plots(self, figsize=None, ylim=(6, 10)):
+        # out of sample posterior
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.set_xlabel(r"$R$/kpc")
+        ax.set_xscale("log")
+        self.posterior_OOS_plot(
+            xmodel="R_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
+        )
+        ax.set_ylim(*ylim)
         return ax
 
 
@@ -426,7 +505,6 @@ class GrahamModelHierarchy(_GrahamModelBase):
         self._labeller_hyper = MapLabeller(
             dict(zip(self._hyper_qtys, self._hyper_qtys_labs))
         )
-        self._dims_prepped = False
 
     def extract_data(self, pars, d=None, binary=True):
         """
@@ -462,17 +540,6 @@ class GrahamModelHierarchy(_GrahamModelBase):
         self.stan_data.update(
             dict(log10_surf_rho=self.obs_collapsed["log10_proj_density"])
         )
-
-    def _prep_dims(self):
-        """
-        Rename dimensions for collapsing
-        """
-        if not self._dims_prepped:
-            _rename_dict = {}
-            for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
-                _rename_dict[f"{k}_dim_0"] = "group"
-            self.rename_dimensions(_rename_dict)
-            self._dims_prepped = True
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
         self.rename_dimensions(
@@ -598,6 +665,7 @@ class GrahamModelHierarchy(_GrahamModelBase):
 
 class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        raise NotImplementedError
         _GrahamModelBase.__init__(self, model_file, prior_file, figname_base, rng)
         FactorModel_2D.__init__(self, model_file, prior_file, figname_base, rng)
         self._hyper_qtys = [
@@ -625,7 +693,6 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
         self._labeller_hyper = MapLabeller(
             dict(zip(self._hyper_qtys, self._hyper_qtys_labs))
         )
-        self.rb_0 = None
 
     def extract_data(self, pars, d=None, binary=False):
         """
@@ -633,7 +700,6 @@ class GrahamModelKick(_GrahamModelBase, FactorModel_2D):
         Update figname_base to include merger ID and keyword 'kick'
         """
         _GrahamModelBase.extract_data(self, pars, d, binary)
-        self.rb_0 = pars["core_model_pars"]["rb_0"]["value"]
         self.figname_base = os.path.join(
             self.figname_base, f"{self.merger_id}/{self.merger_id}-kick"
         )

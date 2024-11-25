@@ -73,15 +73,6 @@ def argparse_for_stan(description=""):
         "-p", "--prior", help="plot for prior", action="store_true", dest="prior"
     )
     parser.add_argument(
-        "-s",
-        "--sample",
-        help="sample set",
-        type=str,
-        dest="sample",
-        choices=["mcs", "perturb"],
-        default="mcs",
-    )
-    parser.add_argument(
         "-P",
         "--Publish",
         action="store_true",

@@ -1279,14 +1279,12 @@ class _StanModel(ABC):
             )
 
     @classmethod
-    def load_fit(cls, model_file, fit_files, figname_base, rng=None):
+    def load_fit(cls, fit_files, figname_base, rng=None):
         """
         Restore a stan model from a previously-saved set of csv files
 
         Parameters
         ----------
-        model_file : str
-            path to .stan file specifying the likelihood model
         fit_files : str, path-like
             path to previously saved csv files
         figname_base : str
@@ -1295,9 +1293,7 @@ class _StanModel(ABC):
             random number generator, by default None (creates a new instance)
         """
         # initiate a class instance
-        C = cls(
-            model_file=model_file, prior_file=None, figname_base=figname_base, rng=rng
-        )
+        C = cls(figname_base=figname_base, rng=rng)
 
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
@@ -1306,7 +1302,7 @@ class _StanModel(ABC):
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"
         )
         model_build_time = get_mod_time(C._model.exe_file)
-        if model_build_time.timestamp() > fit_time.timestamp():
+        if model_build_time > fit_time.timestamp():
             print("==========================================")
             _logger.error(
                 f"Stan executable {C._model.exe_file} has been modified since sampling was performed! This could be due to `git checkout`. Check the file update time with `git log -- {C.model_file}`. Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"

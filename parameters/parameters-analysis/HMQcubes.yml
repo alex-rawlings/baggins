@@ -3,7 +3,7 @@
 ---
 # info on file locations
 file_locations:
-  cube_dir: /scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/HMQcubes/core_study
+  cube_dir: /scratch/pjohanss/arawling/antti-cores/processed-data
 
 # info on BH Binary properties
 bh_binary:
@@ -30,18 +30,12 @@ plotting:
   kepler_model:
     a_hard_lims: [10, 350]
 
-# info about pre-merger remnant for core analysis
-core_model_pars:
-  rb_0:
-    unit: kpc
-    value: 0.1
-
 # info for stan settings
 stan:
   min_num_samples: 5
   thin_data: 30
   general_sample_kwargs:
-    show_progress: &ssp False
+    show_progress: &ssp True
     #threads_per_chain: 128
   binary_sample_kwargs:
     adapt_delta: 0.999
@@ -52,8 +46,8 @@ stan:
     max_treedepth: 15
     show_progress: *ssp
   density_sample_kwargs:
-    adapt_delta: 0.998
-    max_treedepth: 16
+    adapt_delta: 0.9
+    max_treedepth: 12
     iter_warmup: 2000
     show_progress: *ssp
   deflection_GP_kwargs:
