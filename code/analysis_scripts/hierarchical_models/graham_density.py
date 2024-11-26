@@ -46,12 +46,18 @@ analysis_params = bgs.utils.read_parameters(args.apf)
 figname_base = f"hierarchical_models/density/{args.sample}/{args.model}"
 
 if args.model == "simple":
-    graham_model = bgs.analysis.GrahamModelSimple(figname_base=figname_base)
+    if args.type == "new":
+        graham_model = bgs.analysis.GrahamModelSimple(figname_base=figname_base)
+    else:
+        graham_model = bgs.analysis.GrahamModelSimple.load_fit(args.dir, figname_base=figname_base)
 elif args.model == "factor":
     raise NotImplementedError
     graham_model = bgs.analysis.GrahamModelKick(figname_base=figname_base)
 else:
-    graham_model = bgs.analysis.GrahamModelHierarchy(figname_base=figname_base)
+    if args.type == "new":
+        graham_model = bgs.analysis.GrahamModelHierarchy(figname_base=figname_base)
+    else:
+        graham_model = bgs.analysis.GrahamModelHierarchy.load_fit(args.dir, figname_base=figname_base)
 
 
 # load the observational data

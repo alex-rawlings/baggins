@@ -530,7 +530,7 @@ class _StanModel(ABC):
             raise
         self._num_OOS = n[0]
 
-    def _sampler(self, prior=False, sample_kwargs={}, diagnose=True):
+    def _sampler(self, prior=False, sample_kwargs={}, diagnose=True, pathfinder=True):
         """
         Sample a stan model
 
@@ -542,6 +542,9 @@ class _StanModel(ABC):
             kwargs to be passed to CmdStanModel.sample(), by default {}
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
+        pathfinder : bool, optional
+            use pathfinder algorithm to optimise chain initialisation, by 
+            default True
 
         Returns
         -------
@@ -581,8 +584,11 @@ class _StanModel(ABC):
             else:
                 _logger.debug(f"exe info: {self._model.exe_info()}")
                 try:
-                    pf = self._model.pathfinder(data=self.stan_data, show_console=True)
-                    inits = pf.create_inits()
+                    if pathfinder:
+                        pf = self._model.pathfinder(data=self.stan_data, show_console=True)
+                        inits = pf.create_inits()
+                    else:
+                        inits = None
                 except (RuntimeError, ValueError) as e:
                     _logger.warning(
                         f"Stan pathfinder failed: normal initialisation will be used! Reason: {e}"
@@ -624,7 +630,7 @@ class _StanModel(ABC):
             )
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}, diagnose=True):
+    def sample_model(self, sample_kwargs={}, diagnose=True, pathfinder=True):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
 
@@ -636,10 +642,13 @@ class _StanModel(ABC):
              kwargs to be passed to CmdStanModel.sample(), by default {}
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
+        pathfinder : bool, optional
+            use pathfinder algorithm to optimise chain initialisation, by 
+            default True
         """
         if self._model is None and not self._loaded_from_file:
             self.build_model()
-        self._fit = self._sampler(sample_kwargs=sample_kwargs, diagnose=diagnose)
+        self._fit = self._sampler(sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder)
         # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
         if diagnose:
@@ -1498,8 +1507,8 @@ class HierarchicalModel_2D(_StanModel):
         return super()._set_stan_data_OOS()
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}, diagnose=True):
-        return super().sample_model(sample_kwargs, diagnose=diagnose)
+    def sample_model(self, **kwargs):
+        return super().sample_model(**kwargs)
 
     @abstractmethod
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):

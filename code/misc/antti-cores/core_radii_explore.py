@@ -107,7 +107,11 @@ else:
 # create figures
 fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
 fig.set_figwidth(2.5 * fig.get_figwidth())
-cmapper, sm = bgs.plotting.create_normed_colours(1, 2, "crest")
+cmapper_g, sm_g = bgs.plotting.create_normed_colours(1, 2, "crest")
+
+figd, axd = plt.subplots(1, 5, sharex="all", sharey="all")
+figd.set_figwidth(2.5 * figd.get_figwidth())
+cmapper_d, sm_d = bgs.plotting.create_normed_colours(1e8, 2e9, "crest", norm="LogNorm")
 
 cs_label = dict(
     rb = r"$r_\mathrm{b}/\mathrm{kpc}$",
@@ -138,14 +142,23 @@ ax3.set_xscale("log")
 if args.param != "log10densb":
     ax3.set_yscale("log")
 
+# density axis
+for axi in axd:
+    axi.set_xlabel(r"$r/\mathrm{kpc}$")
+axd[0].set_ylabel(r"$\log_{10}\left(\Sigma/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$")
+
 
 all_pickle_files = bgs.utils.get_files_in_dir(data_dir, ext=".pickle")
 snap_data_files = [f for f in all_pickle_files if "snapshot" in f]
+
+gammas = []
 
 for i, snap_data_file in enumerate(snap_data_files):
     key_cs = os.path.splitext(os.path.basename(snap_data_file))[0].replace("snapshot_last_", "")
     SL.info(f"Doing {key_cs}")
     gamma = float(key_cs[6:9])/100
+    if gamma not in gammas:
+        gammas.append(gamma)
     snap_data = bgs.utils.load_data(snap_data_file)
     mbh = np.sum(snap_data["particle_masses"]["bh"])
 
@@ -154,7 +167,7 @@ for i, snap_data_file in enumerate(snap_data_files):
         mbh,
         snap_data["rinf"],
         marker="o",
-        c=cmapper(gamma),
+        c=cmapper_g(gamma),
         mec="k",
         mew=0.5
     )
@@ -166,8 +179,8 @@ for i, snap_data_file in enumerate(snap_data_files):
         ymed,
         yerr=yerr,
         fmt="o",
-        ecolor=cmapper(gamma),
-        mfc=cmapper(gamma),
+        ecolor=cmapper_g(gamma),
+        mfc=cmapper_g(gamma),
         mec="k",
         capthick=2,
         mew=0.5
@@ -179,12 +192,23 @@ for i, snap_data_file in enumerate(snap_data_files):
         ymed,
         yerr=yerr,
         fmt="o",
-        ecolor=cmapper(gamma),
-        mfc=cmapper(gamma),
+        ecolor=cmapper_g(gamma),
+        mfc=cmapper_g(gamma),
         mec="k",
         capthick=2,
         mew=0.5
     )
+
+    # now density plot
+    axd[int((gamma-1)*4)].loglog(
+        data_cs["R_OOS"][key_cs],
+        10**np.median(data_cs["log10_surf_rho"][key_cs], axis=0),
+        lw = 2,
+        c = cmapper_d(mbh),
+        )
+
+for axi, gamma in zip(axd, gammas):
+    axi.text(1, 1e10, f"$\gamma_0 = {gamma:.2f}$")
 
 '''
 # add Thomas+16 relations, inverted
@@ -197,5 +221,10 @@ x = np.geomspace(*ax3.get_xlim(), 10)
 ax3.plot(x, 10**((np.log10(x) + 0.01) / 0.95), c="k", zorder=0.1, alpha=0.7, lw=1)
 '''
 
-plt.colorbar(sm, ax=ax3, label=r"$\gamma_0$")
-bgs.plotting.savefig("core_relations.pdf", force_ext=True)
+plt.colorbar(sm_g, ax=ax3, label=r"$\gamma_0$")
+bgs.plotting.savefig("core_relations.pdf", force_ext=True, fig=fig)
+
+plt.colorbar(sm_d, ax=axd[-1], label=r"$M_\bullet/\mathrm{M}_\odot$")
+bgs.plotting.savefig("density.pdf", force_ext=True, fig=figd)
+
+plt.close()
