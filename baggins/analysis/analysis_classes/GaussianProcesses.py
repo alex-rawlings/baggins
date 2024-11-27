@@ -149,13 +149,25 @@ class _GPBase(HierarchicalModel_2D):
         self.diag_plots(figsize=figsize)
         pass
 
-    def save_gp_for_plots(self, fname):
-        data = dict(
-            vkick=self.stan_data["x1"],
-            rb=self.sample_generated_quantity(
+    def save_gp_for_plots(self, fname, xkey="x", ykey="y"):
+        """
+        Save GP data for later plotting
+
+        Parameters
+        ----------
+        fname : str, pathlike
+            file to save data to
+        xkey : str, optional
+            key for x data, by default "x"
+        ykey : str, optional
+            key for y data, by default "y"
+        """
+        data = {
+            f"{xkey}": self.stan_data["x1"],
+            f"{ykey}": self.sample_generated_quantity(
                 self.folded_qtys_posterior[0], state="OOS"
-            ),
-        )
+            )
+        }
         save_data(data, fname)
 
 
@@ -551,17 +563,25 @@ class VkickApocentreGP(_GPBase):
                 _v = 1
             if maxvel is not None and _v > maxvel:
                 continue
-            obs["vkick"].append(
-                [_v]
-            )
             # load data from file
             if _v <= 1:
                 # for very low vkick, we have ~0 displacement
                 obs["rapo"].append([1e-3])
             else:
-                obs["rapo"].append(
-                    [np.nanmax(np.loadtxt(f, skiprows=1)[:, 1])]
-                )
+                # XXX skip the first few snapshots, in most use cases we expect 
+                # there to be many more than just 3 snapshots before apocentre 
+                # anyway
+                _r = np.loadtxt(f, skiprows=1)[3:, 1]
+                if np.any(np.diff(_r) < 0):
+                    # we have an instance where the distance of the BH to 
+                    # centre is decreasing
+                    obs["rapo"].append(
+                        [np.nanmax(_r)]
+                    )
+                else:
+                    _logger.warning(f"Velocity {_v} km/s did not reach an apocentre! Skipping")
+                    continue
+            obs["vkick"].append([_v])
             # track this file on the input data list
             if not self._loaded_from_file:
                 self._add_input_data_file(f)
@@ -658,6 +678,7 @@ class VkickApocentreGP(_GPBase):
         )
         # posterior predictive check
         fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.set_yscale("log")
         ax.set_ylim(*ylims)
         ax.set_xlabel(self._input_qtys_labs[0])
         ax.set_ylabel(self._folded_qtys_labs[0])
@@ -671,6 +692,7 @@ class VkickApocentreGP(_GPBase):
 
         # OOS
         fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.set_yscale("log")
         ax.set_ylim(*ylims)
         ax.set_xlabel(self._input_qtys_labs[0])
         ax.set_ylabel(self._folded_qtys_labs[0])
@@ -694,6 +716,26 @@ class VkickApocentreGP(_GPBase):
             xlabels=self._folded_qtys_labs,
             ax=ax_rapo,
         )
+
+    def fraction_apo_above_threshold(self, threshold):
+        """
+        Determine the fraction of apocentres above some distance threshold.
+
+        Parameters
+        ----------
+        threshold : float
+            distance threshold
+
+        Returns
+        -------
+        : float
+            fraction of apocentres above threshold
+        """
+        r_apo = self.sample_generated_quantity("y", state="OOS")
+        # make sure there are no negative values
+        r_apo = r_apo[r_apo >= 0]
+        # fraction above threshold, sum(x > T) / len(x) -> mean
+        return np.nanmean(r_apo > threshold)
 
     @classmethod
     def load_fit(

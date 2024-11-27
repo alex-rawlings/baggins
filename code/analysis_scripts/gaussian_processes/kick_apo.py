@@ -16,6 +16,9 @@ parser.add_argument(
 parser.add_argument(
     "--maxvel", type=float, dest="maxvel", help="maximum velocity to fit to"
 )
+parser.add_argument(
+    "--dist-threshold", dest="threshold", type=float, help="Minimum detection distance threshold", default=5
+)
 args = parser.parse_args()
 
 SL = bgs.setup_logger("script", console_level=args.verbose)
@@ -67,3 +70,7 @@ gp.sample_model(
 
 ax = gp.all_plots(full_figsize)
 gp.print_parameter_percentiles(gp.latent_qtys)
+
+# get fraction of apocentres above X kpc
+frac_above_X = gp.fraction_apo_above_threshold(args.threshold)
+print(f"{frac_above_X*100:.3f}% of sampled apocentres are above {args.threshold:.2f}kpc")
