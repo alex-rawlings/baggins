@@ -90,6 +90,12 @@ def load_data(filename, load_meta=False):
     : dict
         variable names: value pairs
     """
+    try:
+        f_ext = os.path.splitext(filename)[1]
+        assert f_ext == ".pickle"
+    except AssertionError:
+        _logger.exception(f"File must be a .pickle file, not {f_ext}", exc_info=True)
+        raise
     with open(filename, "rb") as f:
         d = pickle.load(f)
     if load_meta:

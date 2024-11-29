@@ -4,7 +4,7 @@ from operator import itemgetter
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams, collections, patches, ticker
-from datetime import datetime
+from datetime import datetime, timezone
 import cmdstanpy
 import arviz as az
 import yaml
@@ -1309,12 +1309,12 @@ class _StanModel(ABC):
         C._fit = cmdstanpy.from_csv(fit_files)
         fit_time = datetime.strptime(
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"
-        )
-        model_build_time = get_mod_time(C._model.exe_file)
-        if model_build_time > fit_time.timestamp():
+        ).replace(tzinfo=timezone.utc)
+        model_build_time = datetime.fromtimestamp(get_mod_time(C._model.exe_file), tz=timezone.utc)
+        if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
             _logger.error(
-                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! This could be due to `git checkout`. Check the file update time with `git log -- {C.model_file}`. Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
+                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! This could be due to `git checkout`. Check the file update time with `git log -- {C.model_file}`. Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time}"
             )
             print("==========================================")
 
@@ -1562,6 +1562,27 @@ class HierarchicalModel_2D(_StanModel):
             for k in (f"{ivar}_reduced", newkey):
                 self.obs[k] = np.atleast_2d(self.obs[k])
 
+    def _make_default_hdi_colours(self, levels):
+        """
+        Create the default colour scheme for HDI regression plots. Basically a wrapper around create_normed_colours()
+
+        Parameters
+        ----------
+        levels : list
+            HDI levels
+
+        Returns
+        -------
+        : function
+            takes an argument in the range [vmin, vmax] and returns the scaled
+            colour
+        : matplotlib.cm.ScalarMappable
+            object that is required for creating a colour bar
+        """
+        return create_normed_colours(
+            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
+        )
+
     def _plot_predictive(
         self,
         xmodel,
@@ -1614,9 +1635,7 @@ class HierarchicalModel_2D(_StanModel):
         if ax is None:
             fig, ax = plt.subplots(1, 1)
         ys = self.sample_generated_quantity(ymodel, state=state)
-        cmapper, sm = create_normed_colours(
-            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
-        )
+        cmapper, sm = self._make_default_hdi_colours(levels)
         for lev in levels:
             _logger.debug(f"Fitting level {lev}")
             az.plot_hdi(

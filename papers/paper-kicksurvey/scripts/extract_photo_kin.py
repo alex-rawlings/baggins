@@ -18,7 +18,7 @@ import pygad
 bgs.plotting.check_backend()
 
 parser = argparse.ArgumentParser(
-    description="Plot IFU maps as a function of time for 420 km/s kick",
+    description="Extract kinematic quantities",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(dest="orientation", choices=["para", "ortho"], help="orientation")
@@ -87,6 +87,7 @@ if args.extract:
             del snap
             pygad.gc_full_collect()
             continue
+        # TODO make this automatic
         # if i == 73:
         if i == 199:
             SL.warning("Final snapshot: breaking")
@@ -190,11 +191,11 @@ min_dens = min([np.nanmin(im.get_array()) for im in data[args.orientation]["dens
 
 def make_plot_and_save_for_gif(i):
     fig, ax = plt.subplot_mosaic(
-        """
+    """
     ABE
     CDF
     """,
-        figsize=(8, 4),
+    figsize=(8, 4),
     )
 
     fig.suptitle(f"{data['time'][i]-data['time'][0]:.3f} Gyr")
@@ -224,7 +225,6 @@ def make_plot_and_save_for_gif(i):
     dens = data[args.orientation]["dens"][i]
     for k in "EF":
         ax[k].imshow(
-            # np.flip(dens.get_array()),
             dens.get_array(),
             extent=dens.get_extent(),
             cmap=dens.get_cmap(),

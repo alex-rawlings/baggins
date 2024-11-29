@@ -5,6 +5,7 @@ import scipy.stats
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
+from arviz import plot_hdi
 from ketjugw.units import km_per_s
 from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_ketju import get_bound_binary
@@ -513,12 +514,20 @@ class VkickApocentreGP(_GPBase):
             figname_base=figname_base,
             rng=rng,
         )
-        self._input_qtys_labs = [r"$v_\mathrm{kick}$"]
-        self._folded_qtys_labs = [r"$r_\mathrm{apo}$"]
+        self._input_qtys_labs = [r"$v_\mathrm{kick}/\mathrm{km\,s}^{-1}$"]
+        self._folded_qtys_labs = [r"$r_\mathrm{apo}/\mathrm{kpc}$"]
         self.premerger_ketjufile = premerger_ketjufile
         self.bh1 = None
         self.bh2 = None
-        self._num_OOS = 1000
+        self._num_OOS = 2000
+
+    @property
+    def input_qtys_labs(self):
+        return self._input_qtys_labs
+
+    @property
+    def folded_qtys_labs(self):
+        return self._folded_qtys_labs
 
     def extract_data(self, d=None, maxvel=None):
         """
@@ -717,7 +726,7 @@ class VkickApocentreGP(_GPBase):
             ax=ax_rapo,
         )
 
-    def fraction_apo_above_threshold(self, threshold):
+    def fraction_apo_above_threshold(self, threshold, proj=False):
         """
         Determine the fraction of apocentres above some distance threshold.
 
@@ -734,8 +743,75 @@ class VkickApocentreGP(_GPBase):
         r_apo = self.sample_generated_quantity("y", state="OOS")
         # make sure there are no negative values
         r_apo = r_apo[r_apo >= 0]
+        if proj:
+            r_apo = r_apo * np.sin(self._rng.uniform(0, 0.5 * np.pi, size=r_apo.shape))
         # fraction above threshold, sum(x > T) / len(x) -> mean
         return np.nanmean(r_apo > threshold)
+
+    def plot_angle_to_exceed_threshold(self, threshold, levels=None, ax=None, save=True):
+        """
+        Plot the minimum angle to exceed a distance threshold as a function of kick velocity.
+
+        Parameters
+        ----------
+        threshold : float
+            distance threshold the BH must exceed
+        ax : matplotlib.Axes, optional
+            plotting axes, by default None
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : pyplot.Axes
+            plotting axes
+        """
+        try:
+            assert threshold > 0
+        except AssertionError:
+            _logger.exception("Threshold must be greater than 0!", exc_info=True)
+            raise
+        r_apo = self.sample_generated_quantity("y", state="OOS")
+        # select those above the threshold
+        mask = r_apo >= threshold
+        vk = self.stan_data["x2"]
+        theta = np.full_like(r_apo, np.nan)
+        theta[mask] = np.arcsin(threshold / r_apo[mask]) * 180 / np.pi # in degrees
+        if ax is None:
+            fig, ax = plt.subplots()
+            ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
+            ax.set_ylabel(r"$\theta$")
+        if levels is None:
+            levels = self._default_hdi_levels
+        levels.sort(reverse=True)
+        cmapper, sm = self._make_default_hdi_colours(levels)
+        for lev in levels:
+            _logger.debug(f"Fitting level {lev}")
+            plot_hdi(
+                vk,
+                theta,
+                hdi_prob=lev / 100,
+                ax=ax,
+                plot_kwargs={"c": cmapper(lev)},
+                fill_kwargs={
+                    "color": cmapper(lev),
+                    "alpha": 0.8,
+                    "label": f"{lev}% HDI",
+                    "edgecolor": None,
+                },
+                smooth=True,
+                hdi_kwargs={"skipna": True},
+            )
+        if save:
+            savefig(
+                self._make_fig_name(
+                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
+                ),
+                fig=fig,
+            )
+            self._gq_distribution_plot_counter += 1
+        return ax
+
 
     @classmethod
     def load_fit(
