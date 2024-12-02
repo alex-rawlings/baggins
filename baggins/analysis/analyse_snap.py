@@ -1389,20 +1389,31 @@ def find_individual_bound_particles(snap, return_extra=False):
     subsnap = _set_bound_search_rad(snap)
     bh_id_mask = pygad.IDMask(get_massive_bh_ID(subsnap.bh))
     # shift to BH frame
+    # note we have to shift the whole snapshot for the transformation to work
     trans = pygad.Translation(-subsnap[bh_id_mask]["pos"][0, :])
     boost = pygad.Boost(-subsnap.bh[bh_id_mask]["vel"][0, :])
-    trans.apply(subsnap)
-    boost.apply(subsnap)
+    trans.apply(subsnap, total=True)
+    boost.apply(subsnap, total=True)
+    try:
+        assert np.all(subsnap.bh[bh_id_mask]["pos"] < 1e-12)
+        assert np.all(subsnap.bh[bh_id_mask]["vel"] < 1e-12)
+    except AssertionError:
+        _logger.exception(f"The centering has not worked, cannot find the bound particles! The BH has position {subsnap.bh[bh_id_mask]['pos']} and velocity {subsnap.bh[bh_id_mask]['vel']}", exc_info=True)
+        raise
     G = pygad.UnitScalar(4.3009e-6, "kpc/Msol*(km/s)**2")
     KE = pygad.UnitArr(
         0.5 * np.linalg.norm(subsnap[~bh_id_mask]["vel"], axis=1) ** 2, "(km/s)**2"
     )
     PE = (
         G
-        * pygad.UnitScalar(snap.bh[bh_id_mask]["mass"][0], "Msol")
+        * pygad.UnitScalar(subsnap.bh[bh_id_mask]["mass"][0], "Msol")
         / pygad.UnitArr(subsnap[~bh_id_mask]["r"], snap["r"].units)
     )
     bound_IDs = subsnap[~bh_id_mask][KE - PE < 0]["ID"]
+    # now we put the snapshot back in the original coordinate system
+    # ie we apply the inverse transformations
+    trans.inverse().apply(subsnap, total=True)
+    boost.inverse().apply(subsnap, total=True)
     if return_extra:
         return bound_IDs, len(bound_IDs) / len(subsnap), KE - PE
     else:

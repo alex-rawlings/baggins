@@ -85,11 +85,12 @@ ax[0].text(1200, 5 * args.threshold, f"{(frac_above_X)*100:.1f}%", va="bottom")
 
 # plot 3: vkick - angle offset relation from GP
 ax[1].set_xlabel(gp.input_qtys_labs[0])
-ax[1].set_ylabel(r"$\theta$")
+ax[1].set_ylabel(r"$\theta_\mathrm{min}$")
 gp.plot_angle_to_exceed_threshold(args.threshold, levels=hdi_levels, ax=ax[1], save=False)
 ax[1].axvspan(-10, 480, hatch="/", color="gray", ec="none", fc="none", alpha=0.4, zorder=0.1)
 ax[1].text(150, 45, f"$r_\mathrm{{apo}}<{args.threshold:.1f}\,\mathrm{{kpc}}$", backgroundcolor="w", rotation="vertical")
 ax[1].set_xlim(1, np.max(gp.stan_data["x2"]))
 ax[1].set_ylim(0, 90)
+ax[1].text(1000, 60, r"$\mathrm{Detectable}$")
 
 bgs.plotting.savefig(figure_config.fig_path("apocentres.pdf"), force_ext=True)

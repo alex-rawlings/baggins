@@ -58,4 +58,4 @@ for axi in ax:
 for axi, gamma in zip(ax, gammas):
     axi.text(0.5, 0.5, f"$\gamma_0 = {gamma:.2f}$")
 plt.colorbar(sm, ax=ax.flat, label=r"$M_\bullet/M_\odot$")
-bgs.plotting.savefig("beta.pdf", force_ext=True)
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "antti-core-all/beta.pdf"), force_ext=True)

@@ -31,7 +31,7 @@ SL = bgs.setup_logger("script", args.verbosity)
 
 start_t = datetime.now()
 # main data
-data_file = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/kinematics_{args.kv:04d}.pickle"
+data_file = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/kinematics_{args.kv:04d}_part_0.pickle"
 data = bgs.utils.load_data(data_file)
 plt.close()
 # settling data
@@ -106,12 +106,12 @@ ax.legend()
 for t in peri_times[:-1]:
     # the last pericentre calculation fails, so let's not plot it
     ax.axvline(t, ls=":", lw=1, c="k", zorder=0.1)
-ax.text(tcore * 1.1, ax.get_ylim()[1]/300, r"$\mathrm{BH\;within\;core}$")
+ax.text(tcore * 1.1, ax.get_ylim()[1]/6, r"$\mathrm{BH\;within\;core}$")
 xlim = ax.get_xlim()
 ax.axvspan(tcore, 1.5*xlim[1], fc="gray", alpha=0.4)
 ax.set_xlim(xlim)
+ax.set_ylim(1e8, ax.get_ylim()[1])
 plt.subplots_adjust(left=0.2, top=0.95, bottom=0.15, right=0.8)
 bgs.plotting.savefig(
     figure_config.fig_path(f"bound_{args.kv:04d}.pdf"), fig=fig, force_ext=True
 )
-bgs.plotting.savefig("bound_test.png")

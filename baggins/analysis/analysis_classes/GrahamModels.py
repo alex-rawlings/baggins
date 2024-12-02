@@ -235,7 +235,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
         Wrapper around StanModel.sample_model() to handle determining num_OOS
         from previous sample.
         """
-        super().sample_model(sample_kwargs, diagnose=diagnose)
+        super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
         if self._loaded_from_file:
             self._determine_num_OOS(self._folded_qtys_posterior[0])
             self._set_stan_data_OOS()
@@ -407,7 +407,7 @@ class GrahamModelSimple(_GrahamModelBase):
         # self._expand_dimension(["err"], "group")
         return super().all_prior_plots(figsize, ylim)
 
-    def all_posterior_pred_plots(self, figsize=None, ylim=(6, 10)):
+    def all_posterior_pred_plots(self, figsize=None):
         """
         Posterior plots generally required for predictive checks and parameter convergence
 
@@ -415,8 +415,6 @@ class GrahamModelSimple(_GrahamModelBase):
         ----------
         figsize : tuple, optional
             figure size, by default None
-        ylim : tuple, optional
-            figure y-limits, by default (6, 10)
 
         Returns
         -------
@@ -433,7 +431,6 @@ class GrahamModelSimple(_GrahamModelBase):
         ax1.set_xlabel(r"log($R$/kpc)")
         ax1.set_ylabel(self._folded_qtys_labs[0])
         ax1.set_xscale("log")
-        ax1.set_ylim(*ylim)
         # TODO scale of x axis??
         self.plot_predictive(
             xmodel="R",
@@ -458,7 +455,7 @@ class GrahamModelSimple(_GrahamModelBase):
         )
         return ax
 
-    def all_posterior_OOS_plots(self, figsize=None, ylim=(6, 10)):
+    def all_posterior_OOS_plots(self, figsize=None):
         # out of sample posterior
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         ax.set_xlabel(r"$R$/kpc")
@@ -466,7 +463,6 @@ class GrahamModelSimple(_GrahamModelBase):
         self.posterior_OOS_plot(
             xmodel="R_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
         )
-        ax.set_ylim(*ylim)
         return ax
 
 

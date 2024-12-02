@@ -53,7 +53,9 @@ snapdir = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/v
 animation_path = (
     "/scratch/pjohanss/arawling/collisionless_merger/visualisations/recoil-explore"
 )
-save_data_interval = 80
+final_snaps = bgs.utils.read_parameters("/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml")["snap_nums"]
+save_data_interval = min([80, int(final_snaps[f"v{args.kv:04d}"])])
+SL.warning(f"Data will be saved every {save_data_interval} snapshots...")
 
 
 def make_data_dict():
@@ -87,9 +89,7 @@ if args.extract:
             del snap
             pygad.gc_full_collect()
             continue
-        # TODO make this automatic
-        # if i == 73:
-        if i == 199:
+        if i > int(final_snaps[f"v{args.kv:04d}"]):
             SL.warning("Final snapshot: breaking")
             break
         SL.info(f"Doing snapshot {i:03d}")
@@ -104,19 +104,20 @@ if args.extract:
         data["time"].append(snap_time)
 
         # move to CoM frame
-        pre_ball_mask = pygad.BallMask(5)
         centre = pygad.analysis.shrinking_sphere(
             snap.stars,
             pygad.analysis.center_of_mass(snap.stars),
             30,
         )
         SL.debug(f"Centre is {centre}")
+        pre_ball_mask = pygad.BallMask(5)
         vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
         pygad.Translation(-centre).apply(snap, total=True)
         pygad.Boost(-vcom).apply(snap, total=True)
         SL.debug(f"BH is now position: {snap.bh['pos']}")
 
-        rhalf = pygad.analysis.half_mass_radius(snap.stars[pre_ball_mask])
+        galaxy_mask = pygad.BallMask(30)
+        rhalf = pygad.analysis.half_mass_radius(snap.stars[galaxy_mask])
         data["rhalf"].append(rhalf)
         if not first_snap_done:
             bound_stars_0 = bgs.analysis.find_individual_bound_particles(snap)

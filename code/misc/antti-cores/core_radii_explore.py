@@ -34,14 +34,15 @@ args = parser.parse_args()
 
 
 SL = bgs.setup_logger("script", args.verbosity)
-data_dir = "/scratch/pjohanss/arawling/antti-cores/processed-data/"
+data_dir = "/scratch/pjohanss/arawling/antti-cores/processed-data/rmin_001"
 data_file = os.path.join(data_dir, "bayesian_fits.pickle")
 rng = np.random.default_rng(42)
 bgs.plotting.set_publishing_style()
 
+figname_base = "antti-core-all"
 
 if args.extract:
-    main_path = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/density/antti"
+    main_path = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/density/antti-cuspy"
     analysis_params = bgs.utils.read_parameters(
         "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml"
     )
@@ -51,8 +52,6 @@ if args.extract:
     subdirs.sort()
     for s in subdirs:
         SL.debug(f"Reading: {s}")
-
-    figname_base = "antti-core-all"
 
     # put the data into a format we can pickle as numpy arrays for faster
     # plotting
@@ -222,9 +221,15 @@ ax3.plot(x, 10**((np.log10(x) + 0.01) / 0.95), c="k", zorder=0.1, alpha=0.7, lw=
 '''
 
 plt.colorbar(sm_g, ax=ax3, label=r"$\gamma_0$")
-bgs.plotting.savefig("core_relations.pdf", force_ext=True, fig=fig)
+bgs.plotting.savefig(os.path.join(
+    bgs.FIGDIR, figname_base, "core_relations.pdf"), 
+    force_ext=True, fig=fig
+)
 
 plt.colorbar(sm_d, ax=axd[-1], label=r"$M_\bullet/\mathrm{M}_\odot$")
-bgs.plotting.savefig("density.pdf", force_ext=True, fig=figd)
+bgs.plotting.savefig(os.path.join(
+    bgs.FIGDIR, figname_base, "density.pdf"), 
+    force_ext=True, fig=figd
+)
 
 plt.close()
