@@ -77,9 +77,12 @@ for i, snapfile in enumerate(snapfiles):
     data_to_save["projected_mass_density"] = list(proj_dens.values())[0]
 
     # get influence radius
-    data_to_save["rinf"] = list(
-        bgs.analysis.influence_radius(snap, combined=True).values()
-    )[0]
+    try:
+        data_to_save["rinf"] = list(
+            bgs.analysis.influence_radius(snap, combined=True).values()
+        )[0]
+    except ValueError:
+        SL.warning("No BH present in snapshot, influence radius will not be calculated!")
 
     # conserve memory
     snap.delete_blocks()

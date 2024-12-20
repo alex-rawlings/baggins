@@ -15,6 +15,7 @@ __all__ = [
     "data_dir",
     "date_format",
     "fig_ext",
+    "synthesizer_data",
     "TMPDIRs",
     "username",
     "git_hash",
@@ -31,6 +32,14 @@ figure_dir = os.path.join(home_dir, user_params["figure_dir"])
 data_dir = user_params["data_dir"]
 date_format = user_params["date_format"]
 fig_ext = user_params["figure_ext"].lstrip(".")
+synthesizer_data = user_params["synthesizer_data"]
+
+# make sure we have valid paths
+for p in (figure_dir,
+          data_dir,
+          synthesizer_data
+          ):
+          assert os.path.isdir(p)
 
 # set up the temporary directory register
 TMPDIRs = TmpDirRegister(os.path.join(data_dir, user_params["tmp_dir"]))

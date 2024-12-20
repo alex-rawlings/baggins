@@ -48,7 +48,7 @@ if args.extract:
     )
 
     with os.scandir(main_path) as _it:
-        subdirs = [entry.path for entry in _it if entry.is_dir()]
+        subdirs = [entry.path for entry in _it if entry.is_dir() and "bh_0" not in entry.name]
     subdirs.sort()
     for s in subdirs:
         SL.debug(f"Reading: {s}")
