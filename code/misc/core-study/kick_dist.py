@@ -68,8 +68,8 @@ if False:
     plt.legend()
     plt.show()
 
-if False:
-    plt.plot(v, P)
+if True:
+    plt.plot(v_mass_constant, P)
     plt.xlabel(r"$v_\mathrm{kick}$")
     plt.show()
 
@@ -80,7 +80,7 @@ if False:
     plt.ylabel("rb")
     plt.show()
 
-if True:
+if False:
     cols = bgs.plotting.mplColours()
     # test the transform sampling
     fig, ax = plt.subplots(1,2, sharex="all")

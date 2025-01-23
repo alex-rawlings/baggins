@@ -124,6 +124,7 @@ star_count, xedges, yedges = np.histogram2d(
     y = snap.stars[density_mask]["pos"][:, yaxis],
     bins = get_num_pixels(ang_scale),
 )
+SL.debug(f"There are {(len(xedges)-1)**2:.2e} bins")
 
 # helper function to parallelise magnitude calculation
 @dask.delayed
@@ -152,20 +153,21 @@ pygad.plotting.make_scale_indicators(ax=ax[1], extent=pygad.UnitArr(im_mag.get_e
 # figure 3: plot the S/N map
 SL.debug("Plotting S/N map")
 ax[2].set_facecolor("k")
-#S_N = np.abs(im_mag.get_array())/np.sqrt(np.abs(im_mag.get_array()))
 
-S_N = np.abs(im_mag.get_array()) / np.abs(median_filter(im_mag.get_array(), size=20, mode="nearest"))
+filter_window = 10
+S_N = np.abs(im_mag.get_array()) / np.abs(median_filter(im_mag.get_array(), size=filter_window, mode="nearest"))
 imSN = ax[2].imshow(S_N, origin="lower", extent=im_mag.get_extent(), cmap="mako")
 pygad.plotting.make_scale_indicators(ax=ax[2], extent=pygad.UnitArr(im_mag.get_extent(), units=snap["pos"].units, subs=snap).reshape((2,2)), fontcolor="k", fontsize=fontsize)
 pygad.plotting.add_cbar(ax[2], cbartitle=r"$S/N$", clim=imSN.get_clim(), cmap=imSN.get_cmap(), fontcolor="k", fontsize=fontsize)
 # add a S/N contour
-x_contour = bgs.mathematics.get_histogram_bin_centres(xedges)
-y_contour = bgs.mathematics.get_histogram_bin_centres(yedges)
-CS = ax[2].contour(x_contour, y_contour, S_N, levels=[4], colors="r")
-ax[2].clabel(CS, fontsize=fontsize)
+#x_contour = bgs.mathematics.get_histogram_bin_centres(xedges)
+#y_contour = bgs.mathematics.get_histogram_bin_centres(yedges)
+#CS = ax[2].contour(x_contour, y_contour, S_N, levels=[1], colors="r")
+#ax[2].clabel(CS, fontsize=fontsize)
 
 SL.info(f"S/N at BH position is {bgs.mathematics.get_pixel_value_in_image(snap.bh['pos'][0,0], snap.bh['pos'][0,2], imSN)[0]:.2e}")
-SL.info(f"This corresponds to approx. the {bgs.analysis.signal_prominence(snap.bh['pos'][0,0], snap.bh['pos'][0,2], imSN):.2f} quantile of pixels nearby")
+signal_prom = bgs.analysis.signal_prominence(snap.bh['pos'][0,0], snap.bh['pos'][0,2], imSN, npix=filter_window)
+SL.info(f"This corresponds to approx. the {signal_prom:.2f} quantile of pixels nearby")
 
 bgs.plotting.savefig(figure_config.fig_path("density_map.pdf"), fig=fig, force_ext=True)
 plt.close()

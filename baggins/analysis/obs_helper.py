@@ -80,11 +80,23 @@ def signal_prominence(x, y, im, npix=3):
     # determine the signal of the pixel we're after
     val, row, col = get_pixel_value_in_image(x, y, im)
     # get all pixel values in some radius, excluding the central one
-    rows = np.arange(row-npix, row+npix+1, 1)
-    rows = rows[rows != row]
-    cols = np.arange(col-npix, col+npix+1, 1)
-    cols = cols[cols != col]
-    surrounds = im.get_array()[rows, cols].flatten()
+    _im = im.get_array()
+    h, w = _im.shape
+    x_min, x_max, y_min, y_max = im.get_extent()
+    # Map (x, y) to pixel coordinates
+    x_pixel = int((x - x_min) / (x_max - x_min) * w)
+    y_pixel = int((y - y_min) / (y_max - y_min) * h)
+    # Adjust for 'lower' origin
+    y_pixel = h - y_pixel
+    # Create grid
+    Y, X = np.ogrid[:h, :w]
+    # Calculate circular mask, excluding central pixel
+    dist_from_center = (X - x_pixel)**2 + (Y - y_pixel)**2
+    mask = np.logical_and(
+        dist_from_center <= npix**2,
+        dist_from_center > 0
+    )
+    surrounds = _im[mask].flatten()
     return empirical_cdf(surrounds, val)
 
 
