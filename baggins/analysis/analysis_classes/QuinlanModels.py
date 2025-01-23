@@ -249,8 +249,8 @@ class _QuinlanModelBase(HierarchicalModel_2D):
 
         fig, ax = plt.subplots(2, 1, figsize=figsize, sharex="all")
         ax[1].set_xlabel(r"$t'/\mathrm{Myr}$")
-        for axi, l in zip(ax, self._folded_qtys_labs):
-            axi.set_ylabel(l)
+        for axi, lab in zip(ax, self._folded_qtys_labs):
+            axi.set_ylabel(lab)
         self.plot_predictive(
             xobs="t_shift",
             yobs="inva",
@@ -428,8 +428,8 @@ class QuinlanModelSimple(_QuinlanModelBase):
         # posterior predictive check
         fig1, ax1 = plt.subplots(2, 1, figsize=figsize, sharex="all")
         ax1[1].set_xlabel(r"$t'/\mathrm{Myr}$")
-        for axi, l in zip(ax1, self._folded_qtys_labs):
-            axi.set_ylabel(l)
+        for axi, lab in zip(ax1, self._folded_qtys_labs):
+            axi.set_ylabel(lab)
         self.plot_predictive(
             xobs="t", yobs="inva", ymodel="inv_a_posterior", ax=ax1[0], save=False
         )
@@ -527,8 +527,8 @@ class QuinlanModelHierarchy(_QuinlanModelBase):
         # posterior predictive checks
         fig1, ax1 = plt.subplots(2, 1, figsize=figsize, sharex="all")
         ax1[1].set_xlabel(r"$t'/\mathrm{Myr}$")
-        for axi, l in zip(ax1, self._folded_qtys_labs):
-            axi.set_ylabel(l)
+        for axi, lab in zip(ax1, self._folded_qtys_labs):
+            axi.set_ylabel(lab)
         self.plot_predictive(
             xobs="t_shift",
             yobs="inva",
@@ -570,8 +570,8 @@ class QuinlanModelHierarchy(_QuinlanModelBase):
         # out of sample posterior
         fig1, ax1 = plt.subplots(2, 1, figsize=figsize, sharex="all")
         ax1[1].set_xlabel(r"$t'/\mathrm{Myr}$")
-        for axi, l in zip(ax1, self._folded_qtys_labs):
-            axi.set_ylabel(l)
+        for axi, lab in zip(ax1, self._folded_qtys_labs):
+            axi.set_ylabel(lab)
         self.posterior_OOS_plot(
             xmodel="t_OOS", ymodel="inv_a_posterior", ax=ax1[0], save=False
         )

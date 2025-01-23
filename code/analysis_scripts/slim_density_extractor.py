@@ -1,7 +1,6 @@
 import argparse
 import os.path
 import copy
-import numpy as np
 import pygad
 import baggins as bgs
 
@@ -82,7 +81,9 @@ for i, snapfile in enumerate(snapfiles):
             bgs.analysis.influence_radius(snap, combined=True).values()
         )[0]
     except ValueError:
-        SL.warning("No BH present in snapshot, influence radius will not be calculated!")
+        SL.warning(
+            "No BH present in snapshot, influence radius will not be calculated!"
+        )
 
     # conserve memory
     snap.delete_blocks()

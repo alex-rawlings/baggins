@@ -543,7 +543,7 @@ class _StanModel(ABC):
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         pathfinder : bool, optional
-            use pathfinder algorithm to optimise chain initialisation, by 
+            use pathfinder algorithm to optimise chain initialisation, by
             default True
 
         Returns
@@ -585,7 +585,9 @@ class _StanModel(ABC):
                 _logger.debug(f"exe info: {self._model.exe_info()}")
                 try:
                     if pathfinder:
-                        pf = self._model.pathfinder(data=self.stan_data, show_console=True)
+                        pf = self._model.pathfinder(
+                            data=self.stan_data, show_console=True
+                        )
                         inits = pf.create_inits()
                     else:
                         inits = None
@@ -643,12 +645,14 @@ class _StanModel(ABC):
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         pathfinder : bool, optional
-            use pathfinder algorithm to optimise chain initialisation, by 
+            use pathfinder algorithm to optimise chain initialisation, by
             default True
         """
         if self._model is None and not self._loaded_from_file:
             self.build_model()
-        self._fit = self._sampler(sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder)
+        self._fit = self._sampler(
+            sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
+        )
         # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
         if diagnose:
@@ -1045,8 +1049,8 @@ class _StanModel(ABC):
                     lower = hdi[v][:, 0]
                     upper = hdi[v][:, 1]
                 # loop through each group
-                for k, (l, u) in enumerate(zip(lower, upper)):
-                    r = patches.Rectangle((k - 0.5, l), 1, u - l)
+                for k, (ll, uu) in enumerate(zip(lower, upper)):
+                    r = patches.Rectangle((k - 0.5, ll), 1, uu - ll)
                     p.append(r)
                 ax[i].add_collection(collections.PatchCollection(p, fc=cmapper(level)))
             ax[i].autoscale_view()
@@ -1162,7 +1166,7 @@ class _StanModel(ABC):
                     exc_info=True,
                 )
                 raise
-        for i, (_gq, l) in enumerate(zip(gq, xlabels)):
+        for i, (_gq, lab) in enumerate(zip(gq, xlabels)):
             ys = self.sample_generated_quantity(_gq, state=state)
             if bounds is not None:
                 if bounds[i][0] is not None:
@@ -1183,7 +1187,7 @@ class _StanModel(ABC):
                 )
                 raise
             az.plot_dist(ys, ax=ax[i], **kwargs)
-            ax[i].set_xlabel(l)
+            ax[i].set_xlabel(lab)
             ax[i].set_ylabel("PDF")
         ax.reshape(ax_shape)
         if save:
@@ -1310,7 +1314,9 @@ class _StanModel(ABC):
         fit_time = datetime.strptime(
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"
         ).replace(tzinfo=timezone.utc)
-        model_build_time = datetime.fromtimestamp(get_mod_time(C._model.exe_file), tz=timezone.utc)
+        model_build_time = datetime.fromtimestamp(
+            get_mod_time(C._model.exe_file), tz=timezone.utc
+        )
         if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
             _logger.error(

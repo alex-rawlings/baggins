@@ -12,6 +12,7 @@ __pycache__
 *.pkl
 *.pickle
 !papers/**/*.pickle
+.ruff_cache
 
 # Personal code testing directory
 code/misc/**/*.csv
