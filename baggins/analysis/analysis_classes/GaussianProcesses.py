@@ -80,7 +80,9 @@ class _GPBase(HierarchicalModel_2D):
             self._set_stan_data_OOS(*pars)
 
     def sample_model(self, sample_kwargs=..., diagnose=True):
-        super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=False)
+        super().sample_model(
+            sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=False
+        )
         if self._loaded_from_file:
             self._determine_num_OOS(self._folded_qtys_posterior[0])
             self._set_stan_data_OOS()
@@ -167,7 +169,7 @@ class _GPBase(HierarchicalModel_2D):
             f"{xkey}": self.stan_data["x1"],
             f"{ykey}": self.sample_generated_quantity(
                 self.folded_qtys_posterior[0], state="OOS"
-            )
+            ),
         }
         save_data(data, fname)
 
@@ -566,7 +568,9 @@ class VkickApocentreGP(_GPBase):
         for f in fnames:
             _logger.info(f"Loading file: {f}")
             # get kick velocity from file name
-            _v = float(os.path.splitext(os.path.basename(f))[0].replace("kick-vel-", ""))
+            _v = float(
+                os.path.splitext(os.path.basename(f))[0].replace("kick-vel-", "")
+            )
             # handle the case of 0 km/s
             if _v < 1e-12:
                 _v = 1
@@ -577,18 +581,18 @@ class VkickApocentreGP(_GPBase):
                 # for very low vkick, we have ~0 displacement
                 obs["rapo"].append([1e-3])
             else:
-                # XXX skip the first few snapshots, in most use cases we expect 
-                # there to be many more than just 3 snapshots before apocentre 
+                # XXX skip the first few snapshots, in most use cases we expect
+                # there to be many more than just 3 snapshots before apocentre
                 # anyway
                 _r = np.loadtxt(f, skiprows=1)[3:, 1]
                 if np.any(np.diff(_r) < 0):
-                    # we have an instance where the distance of the BH to 
+                    # we have an instance where the distance of the BH to
                     # centre is decreasing
-                    obs["rapo"].append(
-                        [np.nanmax(_r)]
-                    )
+                    obs["rapo"].append([np.nanmax(_r)])
                 else:
-                    _logger.warning(f"Velocity {_v} km/s did not reach an apocentre! Skipping")
+                    _logger.warning(
+                        f"Velocity {_v} km/s did not reach an apocentre! Skipping"
+                    )
                     continue
             obs["vkick"].append([_v])
             # track this file on the input data list
@@ -636,7 +640,9 @@ class VkickApocentreGP(_GPBase):
             s1 = spins[: self.num_OOS, :]
             s2 = spins[self.num_OOS :, :]
             vkick = np.full(self.num_OOS, np.nan)
-            for i, (ss1, ss2) in tqdm(enumerate(zip(s1, s2)), total=len(s1), desc="Sampling kicks"):
+            for i, (ss1, ss2) in tqdm(
+                enumerate(zip(s1, s2)), total=len(s1), desc="Sampling kicks"
+            ):
                 remnant = ketju_calculate_bh_merger_remnant_properties(
                     m1=self.bh1.m,
                     m2=self.bh2.m,
@@ -651,14 +657,18 @@ class VkickApocentreGP(_GPBase):
             _logger.debug(
                 f"{np.sum(np.isnan(vkick)) / len(vkick) * 100:.2f}% of calculations from from the Zlochower Lousto relation are NaN!"
             )
-            _OOS["x2"] = vkick[np.logical_and(
-                ~np.isnan(vkick),
-                vkick < np.max(np.array(self.obs["vkick"]))
-            )]
+            _OOS["x2"] = vkick[
+                np.logical_and(
+                    ~np.isnan(vkick), vkick < np.max(np.array(self.obs["vkick"]))
+                )
+            ]
             try:
                 assert len(_OOS["x2"]) > 1
             except AssertionError:
-                _logger.exception("At least two points are required for GP interpolation!", exc_info=True)
+                _logger.exception(
+                    "At least two points are required for GP interpolation!",
+                    exc_info=True,
+                )
                 raise
             self._num_OOS = len(_OOS["x2"])
             _OOS["N2"] = self.num_OOS
@@ -667,7 +677,10 @@ class VkickApocentreGP(_GPBase):
                 assert isinstance(vkickOOS, np.ndarray)
                 vkickOOS = vkickOOS.flatten()
             except AssertionError:
-                _logger.exception(f"User-defined OOS kick velocities must be an array, not {type(vkickOOS)}", exc_info=True)
+                _logger.exception(
+                    f"User-defined OOS kick velocities must be an array, not {type(vkickOOS)}",
+                    exc_info=True,
+                )
                 raise
             _OOS["x2"] = vkickOOS
             _OOS["N2"] = len(_OOS["x2"])
@@ -710,9 +723,7 @@ class VkickApocentreGP(_GPBase):
         )
 
         rapo_mode = self.calculate_mode("y")
-        _logger.info(
-            f"Forward-folded apocentre mode is {rapo_mode:.3f} kpc"
-        )
+        _logger.info(f"Forward-folded apocentre mode is {rapo_mode:.3f} kpc")
 
         # marginal distribution of dependent variable
         fig, ax_rapo = plt.subplots()
@@ -720,7 +731,7 @@ class VkickApocentreGP(_GPBase):
         ax_rapo.tick_params(axis="x", which="both", top=False)
         self.plot_generated_quantity_dist(
             ["y"],
-            bounds=[(0,1e4)],
+            bounds=[(0, 1e4)],
             state="OOS",
             xlabels=self._folded_qtys_labs,
             ax=ax_rapo,
@@ -732,30 +743,36 @@ class VkickApocentreGP(_GPBase):
 
         Parameters
         ----------
-        threshold : float
-            distance threshold
+        threshold : callable
+            distance threshold function
 
         Returns
         -------
         : float
             fraction of apocentres above threshold
         """
-        r_apo = self.sample_generated_quantity("y", state="OOS")
+        r_apo = self.sample_generated_quantity("y", state="OOS").flatten()
         # make sure there are no negative values
-        r_apo = r_apo[r_apo >= 0]
+        # TODO ensure mask is a flat array?
+        mask = r_apo >= 0
+        print(f"Mask shape is {mask.shape}")
+        r_apo = r_apo[mask]
         if proj:
             r_apo = r_apo * np.sin(self._rng.uniform(0, 0.5 * np.pi, size=r_apo.shape))
         # fraction above threshold, sum(x > T) / len(x) -> mean
-        return np.nanmean(r_apo > threshold)
+        vk = self.stan_data["x2"][mask]
+        return np.nanmean(r_apo > threshold(vk))
 
-    def plot_angle_to_exceed_threshold(self, threshold, levels=None, ax=None, save=True):
+    def plot_angle_to_exceed_threshold(
+        self, threshold, levels=None, ax=None, save=True
+    ):
         """
         Plot the minimum angle to exceed a distance threshold as a function of kick velocity.
 
         Parameters
         ----------
-        threshold : float
-            distance threshold the BH must exceed
+        threshold : callable
+            distance threshold function the BH must exceed
         ax : matplotlib.Axes, optional
             plotting axes, by default None
         save : bool, optional
@@ -766,17 +783,14 @@ class VkickApocentreGP(_GPBase):
         ax : pyplot.Axes
             plotting axes
         """
-        try:
-            assert threshold > 0
-        except AssertionError:
-            _logger.exception("Threshold must be greater than 0!", exc_info=True)
-            raise
-        r_apo = self.sample_generated_quantity("y", state="OOS")
+        r_apo = self.sample_generated_quantity("y", state="OOS").flatten()
         # select those above the threshold
         mask = r_apo >= threshold
         vk = self.stan_data["x2"]
         theta = np.full_like(r_apo, np.nan)
-        theta[mask] = np.arcsin(threshold / r_apo[mask]) * 180 / np.pi # in degrees
+        theta[mask] = (
+            np.arcsin(threshold(vk[mask]) / r_apo[mask]) * 180 / np.pi
+        )  # in degrees
         if ax is None:
             fig, ax = plt.subplots()
             ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
@@ -811,7 +825,6 @@ class VkickApocentreGP(_GPBase):
             )
             self._gq_distribution_plot_counter += 1
         return ax
-
 
     @classmethod
     def load_fit(

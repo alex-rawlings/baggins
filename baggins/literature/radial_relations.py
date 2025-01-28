@@ -3,7 +3,7 @@ A collection of miscellaneous relations that are somehow dependent on a radial
 value.
 """
 
-__all__ = ["OsipkovMerritt", "Sahu20"]
+__all__ = ["OsipkovMerritt", "Sahu20", "Merritt09"]
 
 
 def OsipkovMerritt(r, ra):
@@ -42,3 +42,21 @@ def Sahu20(logRe):
         expected logarithm of spheroidal mass [log(M/Msol)]
     """
     return 1.08 * logRe + 10.32
+
+
+def Merritt09(bh_mass):
+    """
+    Define the Merritt+09 influence radius - bh mass relation.
+    https://ui.adsabs.harvard.edu/abs/2009ApJ...699.1690M/abstract
+
+    Parameters
+    ----------
+    bh_mass : float
+        BH mass [Msol]
+
+    Returns
+    -------
+    : float
+        influence radius [kpc]
+    """
+    return 35e-3 * (bh_mass / 1e8) ** 0.56

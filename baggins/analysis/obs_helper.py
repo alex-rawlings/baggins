@@ -1,21 +1,28 @@
 import os.path
 import numpy as np
 from copy import copy
-import pygad
+import unyt
 from synthesizer import grid, instruments
 from astropy import units, cosmology
 from baggins.env_config import _cmlogger, synthesizer_data
 from baggins.mathematics import get_pixel_value_in_image, empirical_cdf
+from baggins.utils import get_files_in_dir
 
-__all__ = ["set_luminosity", "signal_prominence", "get_spectrum_ssp", "get_euclid_filter_collection", "get_magnitudes"]
+__all__ = [
+    "set_luminosity",
+    "signal_prominence",
+    "get_spectrum_ssp",
+    "get_euclid_filter_collection",
+    "get_magnitudes",
+]
 
 
 _logger = _cmlogger.getChild(__name__)
 
 
-def set_luminosity(snap, metallicity, age, z=0, age_units="Gyr", **kwargs):
+def set_luminosity(snap, sed, z=0):
     """
-    Set the luminosity and magnitude for a gas-free snapshot in-place.
+    Set the bolometric luminosity and magnitude for a gas-free snapshot in-place.
 
     Parameters
     ----------
@@ -33,32 +40,30 @@ def set_luminosity(snap, metallicity, age, z=0, age_units="Gyr", **kwargs):
         other keyword-arguments parsed to pygad.get_luminosities()
     """
     try:
-        assert set(snap.stars.all_blocks()).isdisjoint({"metallicity", "age"})
+        assert set(snap.stars.all_blocks()).isdisjoint({"lum", "metallicity", "age"})
     except AssertionError:
-        _logger.exception("Cannot set blocks 'metallicity' and 'age' to a custom value if they already exist!", exc_info=True)
+        _logger.exception(
+            "Cannot set blocks 'lum', 'metallicity', or 'age' to a custom value if they already exist!",
+            exc_info=True,
+        )
         raise
-    if "band" not in kwargs or kwargs["band"] is None:
-        kwargs["band"] = "bolometric"
-    _logger.info(f"Determining luminosity in {kwargs['band']} band")
-    if kwargs["band"] != "bolometric":
-        lum_name = f"lum_{kwargs['band'].lower()}"
-    else:
-        lum_name = "lum"
-    # add the metallicity and age blocks to the snapshot
-    if isinstance(metallicity, (float, int)):
-        metallicity = pygad.UnitQty(np.full(len(snap.stars), metallicity), pygad.physics.solar.Z(), subs=snap)
-    snap.stars["metallicity"] = metallicity
-    if isinstance(age, (int, float)):
-        age = pygad.UnitArr(np.full(len(snap.stars), age), units=age_units, subs=snap)
-    snap.stars["age"] = age
-    # determine the (by default) bolometric luminosity
     # TODO calculate cosmological dimming here or elsewhere?
-    snap.stars[lum_name] = pygad.get_luminosities(snap.stars, **kwargs) / (1+z)**4
+    # sed object doesn't store unyt conversions, so manually obtain the
+    # conversion from erg/s to Lsol
+    _sed = copy(sed)
+    _sed.lnu *= snap.stars["mass"][0].view(np.ndarray)
+    erg_per_s_per_Lsun = unyt.Lsun.get_conversion_factor(
+        _sed.bolometric_luminosity.units
+    )[0]
+    snap.stars["lum"] = np.full(
+        len(snap.stars),
+        _sed.bolometric_luminosity.value / erg_per_s_per_Lsun / (1 + z) ** 4,
+    )
 
 
 def signal_prominence(x, y, im, npix=3):
     """
-    Determine the prominence of a pixel in a map relative to the surrounding 
+    Determine the prominence of a pixel in a map relative to the surrounding
     pixels.
 
     Parameters
@@ -91,16 +96,18 @@ def signal_prominence(x, y, im, npix=3):
     # Create grid
     Y, X = np.ogrid[:h, :w]
     # Calculate circular mask, excluding central pixel
-    dist_from_center = (X - x_pixel)**2 + (Y - y_pixel)**2
-    mask = np.logical_and(
-        dist_from_center <= npix**2,
-        dist_from_center > 0
-    )
+    dist_from_center = (X - x_pixel) ** 2 + (Y - y_pixel) ** 2
+    mask = np.logical_and(dist_from_center <= npix**2, dist_from_center > 0)
     surrounds = _im[mask].flatten()
     return empirical_cdf(surrounds, val)
 
 
-def get_spectrum_ssp(age, metallicity, grid_name="bpass-2.2.1-bin_chabrier03-0.1,100.0.hdf5", grid_dir=None):
+def get_spectrum_ssp(
+    age,
+    metallicity,
+    grid_name="bpass-2.2.1-bin_chabrier03-0.1,100.0.hdf5",
+    grid_dir=None,
+):
     """
     Get the spectrum of a population, given some age and metallicity. Assumes that all stellar mass contributes equally (i.e. no dust attenuation).
 
@@ -125,6 +132,12 @@ def get_spectrum_ssp(age, metallicity, grid_name="bpass-2.2.1-bin_chabrier03-0.1
     if grid_dir is None:
         # use the default location for grids
         grid_dir = synthesizer_data
+    try:
+        assert os.path.isfile(os.path.join(grid_dir, grid_name))
+    except AssertionError:
+        valid_grids = get_files_in_dir(grid_dir, ext=".hdf5", name_only=True)
+        _logger.exception(f"No grid called {grid_name}. Valid grids are {valid_grids}")
+        raise
     _logger.info(f"Using data {os.path.join(grid_dir, grid_name)}")
     # create the grid
     g = grid.Grid(grid_name, grid_dir=grid_dir, read_lines=False)
@@ -152,8 +165,7 @@ def get_euclid_filter_collection(g, new_lam_size=1000):
         collection of Euclid filters
     """
     euclid_filters = instruments.FilterCollection(
-        filter_codes = [f"Euclid/NISP.{b}" for b in ("Y", "J", "H")],
-        new_lam=g.lam
+        filter_codes=[f"Euclid/NISP.{b}" for b in ("Y", "J", "H")], new_lam=g.lam
     )
     euclid_filters.resample_filters(lam_size=new_lam_size)
     return euclid_filters
@@ -189,18 +201,22 @@ def get_magnitudes(sed, stellar_mass, filters_collection, filter_code, z):
 
     chosen_filter = filters_collection[filter_code]
 
-    Lvo = 3631 * units.jansky * 4*np.pi * (10*units.parsec)**2
+    Lvo = 3631 * units.jansky * 4 * np.pi * (10 * units.parsec) ** 2
     Lvo = Lvo.to("erg/(Hz*s)")
     _logger.debug(f"Lvo is {Lvo}")
 
     abs_mag = -2.5 * np.log10(
-        chosen_filter.apply_filter(
-            _sed.lnu, nu=_sed.obsnu
-        ) / Lvo.value)
+        chosen_filter.apply_filter(_sed.lnu, nu=_sed.obsnu) / Lvo.value
+    )
     _logger.debug(f"Abs. magntiude is: {abs_mag:.2f}")
 
-    app_mag = abs_mag + 5 * np.log10(
-        cosmology.Planck18.luminosity_distance(z).to("pc") / (10 * units.parsec)
-        ) - 2.5 * np.log10(1 + z)
+    app_mag = (
+        abs_mag
+        + 5
+        * np.log10(
+            cosmology.Planck18.luminosity_distance(z).to("pc") / (10 * units.parsec)
+        )
+        - 2.5 * np.log10(1 + z)
+    )
     _logger.debug(f"App. magnitude is {app_mag:.2f}")
-    return {"abs_mag": abs_mag, "app_mag":app_mag}
+    return {"abs_mag": abs_mag, "app_mag": app_mag}
