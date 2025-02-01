@@ -751,20 +751,17 @@ class VkickApocentreGP(_GPBase):
         : float
             fraction of apocentres above threshold
         """
-        r_apo = self.sample_generated_quantity("y", state="OOS").flatten()
+        r_apo = self.sample_generated_quantity("y", state="OOS")
         # make sure there are no negative values
-        # TODO ensure mask is a flat array?
         mask = r_apo >= 0
-        print(f"Mask shape is {mask.shape}")
-        r_apo = r_apo[mask]
         if proj:
             r_apo = r_apo * np.sin(self._rng.uniform(0, 0.5 * np.pi, size=r_apo.shape))
         # fraction above threshold, sum(x > T) / len(x) -> mean
-        vk = self.stan_data["x2"][mask]
-        return np.nanmean(r_apo > threshold(vk))
+        vk = np.tile(self.stan_data["x2"], mask.shape[0]).reshape(mask.shape)
+        return np.nanmean(r_apo[mask] > threshold(vk)[mask])
 
     def plot_angle_to_exceed_threshold(
-        self, threshold, levels=None, ax=None, save=True
+        self, threshold, levels=None, ax=None, save=True, smooth_kwargs=None
     ):
         """
         Plot the minimum angle to exceed a distance threshold as a function of kick velocity.
@@ -777,20 +774,19 @@ class VkickApocentreGP(_GPBase):
             plotting axes, by default None
         save : bool, optional
             save the plot, by default True
+        smooth_kwargs : dict, by default None
+            smoothing parameters parsed to az.plot_hdi()
 
         Returns
         -------
         ax : pyplot.Axes
             plotting axes
         """
-        r_apo = self.sample_generated_quantity("y", state="OOS").flatten()
-        # select those above the threshold
-        mask = r_apo >= threshold
-        vk = self.stan_data["x2"]
-        theta = np.full_like(r_apo, np.nan)
-        theta[mask] = (
-            np.arcsin(threshold(vk[mask]) / r_apo[mask]) * 180 / np.pi
-        )  # in degrees
+        r_apo = self.sample_generated_quantity("y", state="OOS")
+        vk = np.tile(self.stan_data["x2"], r_apo.shape[0]).reshape(r_apo.shape)
+        theta = np.arcsin(threshold(vk) / r_apo) * 180 / np.pi  # in degrees
+        # set apocentres below threshold to nan
+        theta[r_apo < threshold(vk)] = np.nan
         if ax is None:
             fig, ax = plt.subplots()
             ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
@@ -802,7 +798,7 @@ class VkickApocentreGP(_GPBase):
         for lev in levels:
             _logger.debug(f"Fitting level {lev}")
             plot_hdi(
-                vk,
+                self.stan_data["x2"],
                 theta,
                 hdi_prob=lev / 100,
                 ax=ax,
@@ -814,6 +810,7 @@ class VkickApocentreGP(_GPBase):
                     "edgecolor": None,
                 },
                 smooth=True,
+                smooth_kwargs=smooth_kwargs,
                 hdi_kwargs={"skipna": True},
             )
         if save:

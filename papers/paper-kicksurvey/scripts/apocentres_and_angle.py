@@ -48,7 +48,14 @@ else:
     data_dir = None
 
 # XXX this has to be determined prior to calling this routine
-threshold_dist = lambda x: 1.56e-2 * x - 3.63
+core_sig = 270
+
+
+def threshold_dist(x, core_sig=core_sig):
+    y = 1.56e-2 * x - 3.63
+    y[x < core_sig] = 1000
+    return y
+
 
 analysis_params = bgs.utils.read_parameters(
     "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/HMQcubes.yml"
@@ -60,6 +67,8 @@ SL.info(f"Number of simulations with usable data: {gp.num_groups}")
 
 if args.verbose == "DEBUG":
     gp.print_obs_summary()
+    for v, ra in zip(gp.obs_collapsed["vkick"], gp.obs_collapsed["rapo"]):
+        print(f"Kick {v:.1e}: {ra:.1e} kpc")
 
 # initialise the data dictionary
 gp.set_stan_data()
@@ -98,30 +107,26 @@ gp.posterior_OOS_plot(
     levels=hdi_levels,
 )
 
-vk_threshold = [np.min(gp.stan_data["x2"]), np.max(gp.stan_data["x2"])]
-ax[0].plot(vk_threshold, threshold_dist(vk_threshold), ls=":", lw=1, c="k")
-# ax[0].text(1200, 0.2 * args.threshold, f"{(1-frac_above_X)*100:.1f}%", va="top")
-# ax[0].text(1200, 5 * args.threshold, f"{(frac_above_X)*100:.1f}%", va="bottom")
-# ax[0].scatter(gp.stan_data["x1"], gp.stan_data["y1"], color=bgs.plotting.mplColours()[1], ec="k", lw="0.5")
+ylims = ax[0].get_ylim()
+vk_threshold = np.linspace(core_sig + 1, np.max(gp.stan_data["x2"]), 100)
+ax[0].plot(vk_threshold, threshold_dist(vk_threshold), ls=":", lw=1, c="k", zorder=2)
+ax[0].text(1000, 6, f"{(1-frac_above_X)*100:.1f}%", va="top")
+ax[0].text(1000, 25, f"{(frac_above_X)*100:.1f}%", va="bottom")
+ax[0].set_ylim(0.1, ylims[1])
 
-# plot 3: vkick - angle offset relation from GP
+# plot 2: vkick - angle offset relation from GP
 ax[1].set_xlabel(gp.input_qtys_labs[0])
 ax[1].set_ylabel(r"$\theta_\mathrm{min}$")
 gp.plot_angle_to_exceed_threshold(
-    args.threshold, levels=hdi_levels, ax=ax[1], save=False
+    threshold_dist,
+    levels=hdi_levels,
+    ax=ax[1],
+    save=False,
+    smooth_kwargs={"mode": "nearest", "window_length": 5},
 )
-ax[1].axvspan(
-    -10, 480, hatch="/", color="gray", ec="none", fc="none", alpha=0.4, zorder=0.1
-)
-ax[1].text(
-    150,
-    45,
-    f"$r_\mathrm{{apo}}<{args.threshold:.1f}\,\mathrm{{kpc}}$",
-    backgroundcolor="w",
-    rotation="vertical",
-)
-ax[1].set_xlim(1, np.max(gp.stan_data["x2"]))
+ax[1].set_xlim(core_sig, np.max(gp.stan_data["x2"]))
 ax[1].set_ylim(0, 90)
 ax[1].text(1000, 60, r"$\mathrm{Detectable}$")
+ax[1].text(400, 15, r"$\mathrm{Not\; detectable}$")
 
 bgs.plotting.savefig(figure_config.fig_path("apocentres.pdf"), force_ext=True)
