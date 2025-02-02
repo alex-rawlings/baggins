@@ -13,6 +13,7 @@ from baggins.env_config import _cmlogger
 
 
 __all__ = [
+    "basic_snapshot_centring",
     "get_com_of_each_galaxy",
     "get_com_velocity_of_each_galaxy",
     "get_galaxy_axis_ratios",
@@ -45,6 +46,27 @@ __all__ = [
 ]
 
 _logger = _cmlogger.getChild(__name__)
+
+
+def basic_snapshot_centring(snap):
+    """
+    Basic-style centring of a snapshot using shrinking sphere method.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to centre (done in place)
+    """
+    # move to CoM frame
+    pre_ball_mask = pygad.BallMask(5)
+    centre = pygad.analysis.shrinking_sphere(
+        snap.stars,
+        pygad.analysis.center_of_mass(snap.stars),
+        30,
+    )
+    vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
+    pygad.Translation(-centre).apply(snap, total=True)
+    pygad.Boost(-vcom).apply(snap, total=True)
 
 
 def get_com_of_each_galaxy(
@@ -412,15 +434,18 @@ def _find_radius_for_mass(s, M, centre):
     r = pygad.utils.geo.dist(s["pos"], centre)
     sorted_idx = np.argsort(r)
     r = r[sorted_idx]
-    assert np.all(np.diff(r)>0)
+    assert np.all(np.diff(r) > 0)
     cumul_mass = np.cumsum(s["mass"][sorted_idx])
     try:
         assert np.any(cumul_mass > M)
     except AssertionError:
-        _logger.exceptio(f"There is not enough mass in stellar particles (max {cumul_mass[-1]:.1e}) to equal desired mass ({M:.1e})", exc_info=True)
+        _logger.exceptio(
+            f"There is not enough mass in stellar particles (max {cumul_mass[-1]:.1e}) to equal desired mass ({M:.1e})",
+            exc_info=True,
+        )
         raise
     idx = np.argmin(cumul_mass < M)
-    r_desired = np.interp(M, cumul_mass[idx-1:idx+1], r[idx-1:idx+1])
+    r_desired = np.interp(M, cumul_mass[idx - 1 : idx + 1], r[idx - 1 : idx + 1])
     return pygad.UnitScalar(r_desired, units=s["pos"].units, subs=s)
 
 
@@ -458,9 +483,7 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
         mass_bh = np.sum(snap.bh["mass"])
         centre = pygad.analysis.center_of_mass(snap.bh)
         massive_ID = get_massive_bh_ID(snap.bh)
-        _r = _find_radius_for_mass(
-            snap.stars, mass_frac * mass_bh, centre=centre
-        )
+        _r = _find_radius_for_mass(snap.stars, mass_frac * mass_bh, centre=centre)
         r[massive_ID] = _r
     else:
         # we want the influence radius for each BH. No masking is done to
@@ -1404,7 +1427,10 @@ def find_individual_bound_particles(snap, return_extra=False):
         assert np.all(subsnap.bh[bh_id_mask]["pos"] < 1e-12)
         assert np.all(subsnap.bh[bh_id_mask]["vel"] < 1e-12)
     except AssertionError:
-        _logger.exception(f"The centering has not worked, cannot find the bound particles! The BH has position {subsnap.bh[bh_id_mask]['pos']} and velocity {subsnap.bh[bh_id_mask]['vel']}", exc_info=True)
+        _logger.exception(
+            f"The centering has not worked, cannot find the bound particles! The BH has position {subsnap.bh[bh_id_mask]['pos']} and velocity {subsnap.bh[bh_id_mask]['vel']}",
+            exc_info=True,
+        )
         raise
     G = pygad.UnitScalar(4.3009e-6, "kpc/Msol*(km/s)**2")
     KE = pygad.UnitArr(

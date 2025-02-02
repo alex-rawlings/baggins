@@ -14,7 +14,7 @@ import figure_config
 bgs.plotting.check_backend()
 
 parser = argparse.ArgumentParser(
-    description="Plot projected density image for 600km/s case",
+    description="Plot projected density image",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
