@@ -4,9 +4,9 @@ from datetime import datetime
 import numpy as np
 from scipy.ndimage import uniform_filter, generic_filter
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 from matplotlib.colors import CenteredNorm
 import pygad
+import h5py
 import baggins as bgs
 import dask
 import figure_config
@@ -68,6 +68,10 @@ class ProjectedDensityObject:
         self._fontsize = 12
 
     @property
+    def single_snapshot(self):
+        return self._single_snapshot
+
+    @property
     def save_location(self):
         return self._save_location
 
@@ -81,6 +85,7 @@ class ProjectedDensityObject:
         C._plot = True
         C._snapfiles = [snapfile]
         C.setup_plot()
+        C._single_snapshot = True
         return C
 
     @classmethod
@@ -89,6 +94,7 @@ class ProjectedDensityObject:
         C._snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
         assert os.path.splitext(saveloc)[1] == ".pickle"
         C.save_location = saveloc
+        C._single_snapshot = False
         return C
 
     def get_num_pixels(self, angscale, spatial_res=0.101, extent=None):
@@ -117,17 +123,7 @@ class ProjectedDensityObject:
         fig, self.ax = plt.subplots(1, 3)
         fig.set_figwidth(3 * fig.get_figwidth())
 
-    def add_extras(self, ax, pos, ifu_half_extent=6):
-        # make an "aperture" rectangle to show IFU footprint
-        ifu_rect = Rectangle(
-            (-ifu_half_extent, -ifu_half_extent),
-            2 * ifu_half_extent,
-            2 * ifu_half_extent,
-            fc="none",
-            ec="k",
-            fill=False,
-        )
-        ax.add_artist(ifu_rect)
+    def add_extras(self, ax, pos):
         # mark BH position
         ax.annotate(
             r"$\mathrm{bound\;cluster}$",
@@ -174,6 +170,22 @@ class ProjectedDensityObject:
                 break
             else:
                 prev_bh_dist = current_bh_dist
+
+            if self.single_snapshot:
+                t0 = None
+                _snapfiles = bgs.utils.get_snapshots_in_dir(os.path.dirname(snapfile))
+                i = 0
+                while t0 is None:
+                    SL.debug(f"Finding t0: iteration {i}")
+                    with h5py.File(_snapfiles[i], "r") as f:
+                        if len(f["/PartType5/Masses"]) < 2:
+                            _t0snap = pygad.Snapshot(_snapfiles[i], physical=True)
+                            t0 = bgs.general.convert_gadget_time(_t0snap)
+                            del _t0snap
+                    i += 1
+                SL.info(
+                    f"Snapshot is at time {bgs.general.convert_gadget_time(snap)-t0:.3f} Gyr"
+                )
 
             if self._plot:
                 self.plot_surface_mass_density(snap=snap, density_mask=density_mask)
