@@ -213,7 +213,7 @@ def twin_axes_from_samples(ax, x1, x2, log=False):
     return ax2
 
 
-def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}, desat=False):
+def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}, desat=False, cbar=True):
     """
     Plot the voronoi maps for a system.
 
@@ -229,6 +229,8 @@ def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}, desat=False):
         colour scale limits, by default None
     desat : bool, optional
         use a desaturated colour scheme, by default False
+    cbar : bool, optional
+        add a colourbar for each map, by default True
 
     Returns
     -------
@@ -301,10 +303,10 @@ def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}, desat=False):
             cmap=cmap,
             norm=norm,
         )
-        divider = make_axes_locatable(axi)
-        cax = divider.append_axes("right", size="5%", pad=0.1)
-        cbar = plt.colorbar(p1, cax=cax)
-        cbar.ax.set_ylabel(label)
+        if cbar:
+            divider = make_axes_locatable(axi)
+            cax = divider.append_axes("right", size="5%", pad=0.1)
+            cbar = plt.colorbar(p1, cax=cax, label=label)
     return ax
 
 
@@ -586,7 +588,7 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
     whiskers = np.array(
         [
             _adjacent_vals(sorted_array, q1, q3)
-            for sorted_array, q1, q3, in zip(d, quartile1, quartile3)
+            for sorted_array, q1, q3 in zip(d, quartile1, quartile3)
         ]
     )
     whisker_min, whisker_max = whiskers[:, 0], whiskers[:, 1]

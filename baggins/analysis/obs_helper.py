@@ -1,3 +1,4 @@
+from abc import ABC
 import os.path
 import numpy as np
 from copy import copy
@@ -7,6 +8,7 @@ from astropy import units, cosmology
 from baggins.env_config import _cmlogger, synthesizer_data
 from baggins.mathematics import get_pixel_value_in_image, empirical_cdf
 from baggins.utils import get_files_in_dir
+from baggins.cosmology import angular_scale
 
 __all__ = [
     "set_luminosity",
@@ -14,6 +16,7 @@ __all__ = [
     "get_spectrum_ssp",
     "get_euclid_filter_collection",
     "get_magnitudes",
+    "MUSE_NFM",
 ]
 
 
@@ -205,6 +208,7 @@ def get_magnitudes(sed, stellar_mass, filters_collection, filter_code, z):
     Lvo = Lvo.to("erg/(Hz*s)")
     _logger.debug(f"Lvo is {Lvo}")
 
+    # TODO divide by pixel area in the log??
     abs_mag = -2.5 * np.log10(
         chosen_filter.apply_filter(_sed.lnu, nu=_sed.obsnu) / Lvo.value
     )
@@ -220,3 +224,70 @@ def get_magnitudes(sed, stellar_mass, filters_collection, filter_code, z):
     )
     _logger.debug(f"App. magnitude is {app_mag:.2f}")
     return {"abs_mag": abs_mag, "app_mag": app_mag}
+
+
+class BasicInstrument(ABC):
+    def __init__(self, fov, res):
+        """
+        Template class for defining basic observation instrument properties
+
+        Parameters
+        ----------
+        fov : float
+            field of view in arcsecs
+        res : float
+            angular resolution in arcsec/pixel
+        """
+        self.field_of_view = fov
+        self.angular_resolution = res
+        self._ang_scale = None
+        self.max_extent = 40.0
+
+    def _param_check(self):
+        try:
+            assert self._ang_scale is not None
+        except AssertionError:
+            _logger.exception("Redshift must be set first!", exc_info=True)
+            raise RuntimeError
+
+    @property
+    def redshift(self):
+        return self._redshift
+
+    @redshift.setter
+    def redshift(self, z):
+        self._redshift = z
+        self._ang_scale = angular_scale(z)
+
+    @property
+    def pixel_width(self):
+        self._param_check()
+        return self.angular_resolution * self._ang_scale
+
+    @property
+    def extent(self):
+        self._param_check()
+        return min(self._ang_scale * self.field_of_view, self.max_extent)
+
+    @property
+    def number_pixels(self):
+        phys_extent = self.extent
+        return int(phys_extent / self.pixel_width)
+
+
+class MUSE_NFM(BasicInstrument):
+    def __init__(self):
+        """
+        MUSE narrow field mode instrument. Parameters taken from:
+        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
+        """
+        super().__init__(fov=7.42, res=0.025)
+
+
+class MUSE_WFM(BasicInstrument):
+    def __init__(self):
+        """
+        MUSE wide field mode instrument. Parameters taken from:
+        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
+        """
+        super().__init__(fov=60, res=0.2)

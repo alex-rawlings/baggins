@@ -223,7 +223,7 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
                 f"Key {k} is not present in dict `seeing`!", exc_info=True
             )
             raise
-        rng = seeing["rng"] if "rng" in seeing else np.random.default_rng()
+        rng = seeing.setdefault("rng", np.random.default_rng())
         x = np.array(
             [xx + rng.normal(0, seeing["sigma"], size=seeing["num"]) for xx in x]
         ).flatten()
@@ -231,7 +231,7 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
             [yy + rng.normal(0, seeing["sigma"], size=seeing["num"]) for yy in y]
         ).flatten()
         V = np.repeat(V, seeing["num"]).flatten()
-        m = np.repeat(m, seeing["num"]).flatten()
+        m = np.repeat(m / seeing["num"], seeing["num"]).flatten()
     else:
         _logger.warning("No seeing correction will be applied!")
 
@@ -251,6 +251,11 @@ def voronoi_binned_los_V_statistics(x, y, V, m, Npx=100, seeing={}, **kwargs):
 
     bin_mass = scipy.ndimage.sum(m, labels=particle_vor_bin_num, index=bin_index)
 
+    try:
+        assert max(bin_index) > 1
+    except AssertionError:
+        _logger.exception("We only have one voronoi bin!", exc_info=True)
+        raise
     fits = []
     for i in bin_index:
         fits.append(fit_gauss_hermite_distribution(vz[particle_vor_bin_num == i]))
@@ -318,9 +323,7 @@ def lambda_R(vorstat):
     F = vorstat["bin_mass"][inds]
     V = vorstat["bin_V"][inds]
     s = vorstat["bin_sigma"][inds]
-    lam = np.nancumsum(F * R * np.abs(V)) / np.nancumsum(
-        F * R * np.sqrt(V**2 + s**2)
-    )
+    lam = np.nancumsum(F * R * np.abs(V)) / np.nancumsum(F * R * np.sqrt(V**2 + s**2))
     return lambda x: np.interp(x, R, lam)
 
 

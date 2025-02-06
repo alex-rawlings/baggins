@@ -288,31 +288,10 @@ class ProjectedDensityObject:
         SL.info(f"Filter window size is {filter_window}")
 
         # determine the prominence within some aperture
-        # prom = np.abs(im_mag.get_array()) / np.abs(uniform_filter(im_mag.get_array(), size=filter_window, mode="nearest"))
-        rng = np.random.default_rng()
-
-        def custom_mean(x):
-            N = 50
-            mean_arr = np.full(N, np.nan)
-            for i in range(N):
-                mean_arr[i] = np.nanmean(rng.choice(x, x.shape, replace=True))
-            return np.nanmedian(mean_arr)
-
-        def custom_std(x):
-            N = 50
-            std_arr = np.full(N, np.nan)
-            for i in range(N):
-                std_arr[i] = np.nanstd(rng.choice(x, x.shape, replace=True))
-            return np.nanmedian(std_arr)
-
         filter_kwargs = {"size": filter_window, "mode": "nearest"}
-        # prom = (im_mag.get_array() - uniform_filter(im_mag.get_array(), size=filter_window, mode="nearest")) / np.std(im_mag.get_array())
-        # prom = (im_mag.get_array() - generic_filter(im_mag.get_array(), custom_mean, **filter_kwargs)) / generic_filter(im_mag.get_array(), custom_std, **filter_kwargs)
         prom = (
             im_mag.get_array() - uniform_filter(im_mag.get_array(), **filter_kwargs)
         ) / generic_filter(im_mag.get_array(), np.std, **filter_kwargs)
-        # prom = im_mag.get_array() - median_filter(im_mag.get_array(), **filter_kwargs)
-        # prom = (im_mag.get_array() - np.mean(im_mag.get_array())) / np.std(im_mag.get_array())
 
         if self._plot:
             ax_prom = self.ax[2]
