@@ -360,7 +360,7 @@ else:
                 "h4": [clims["max_h4"]],
             },
             ax=np.array([ax[vax], ax[sax]]),
-            cbar=vax == "E",
+            cbar="adj" if vax == "E" else "",
         )
         ax[vax].set_title(f"$t={tt:.2f}\,\mathrm{{Gyr}}$")
         for k in (vax, sax):

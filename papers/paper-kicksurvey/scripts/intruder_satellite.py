@@ -41,6 +41,7 @@ if args.new or not os.path.exists(intruder_file):
     # load and centre snapshot
     snapfile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0600/output/snap_006.hdf5"
     snap = pygad.Snapshot(snapfile, physical=True)
+    SL.info(f"Snapshot time is {bgs.general.convert_gadget_time(snap)} Gyr")
     bgs.analysis.basic_snapshot_centring(snap)
     SL.warning(f"BH position is {pygad.utils.geo.dist(snap.bh['pos'])}")
 
@@ -92,9 +93,8 @@ if args.new or not os.path.exists(intruder_file):
 
 # read in intruder snapshot -> should already be centred
 snap = pygad.Snapshot(intruder_file, physical=True)
-fig, ax = plt.subplots(
-    1, 3, gridspec_kw={"width_ratios": [1, 1.1, 1.1], "wspace": 0.02}
-)
+fig, ax = plt.subplots(1, 3)
+
 fig.set_figwidth(3 * fig.get_figwidth())
 
 # some quantities common to the subplots
@@ -133,7 +133,7 @@ ax[0].annotate(
 ax[0].annotate(
     r"$\mathrm{without\;SMBH}$",
     (-snap.bh["pos"][0, 0] + 0.25, snap.bh["pos"][0, 2] - 0.5),
-    (-snap.bh["pos"][0, 0] - 1, snap.bh["pos"][0, 2] - 8),
+    (-snap.bh["pos"][0, 0] - 1, snap.bh["pos"][0, 2] - 14),
     color="w",
     arrowprops={"fc": "w", "ec": "w", "arrowstyle": "wedge"},
     ha="center",
@@ -167,7 +167,7 @@ voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
     part_per_bin=seeing["num"] * 5000,
     seeing=seeing,
 )
-bgs.plotting.voronoi_plot(voronoi_stats, ax=ax[1:])
+bgs.plotting.voronoi_plot(voronoi_stats, ax=ax[1:], cbar="inset")
 for axi in ax[1:]:
     axi.set_xticks([])
     axi.set_xticklabels([])
@@ -179,7 +179,7 @@ for axi in ax[1:]:
         "kpc",
         location="lower left",
         color="k",
-        size_vertical=0.1,
+        size_vertical=0.4,
         textsize=fontsize,
     )
 

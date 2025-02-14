@@ -5,7 +5,7 @@ import scipy.stats
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from arviz import plot_hdi
+from arviz import plot_hdi, plot_dist
 from ketjugw.units import km_per_s
 from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_ketju import get_bound_binary
@@ -522,6 +522,9 @@ class VkickApocentreGP(_GPBase):
         self.bh1 = None
         self.bh2 = None
         self._num_OOS = 2000
+        # some OOS samples will be dropped if they are a kick velocity above
+        # the maximum vkick from the data
+        self._num_OOS_requested = self._num_OOS
 
     @property
     def input_qtys_labs(self):
@@ -737,6 +740,39 @@ class VkickApocentreGP(_GPBase):
             ax=ax_rapo,
         )
 
+    def plot_kick_distribution(self, ax=None, save=True, **kwargs):
+        """
+        Plot sampled kick velocity distribution.
+
+        Parameters
+        ----------
+        ax : matplotlib.Axes, optional
+            plotting axes, by default None
+        save : bool, optional
+            save figure, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes, optional
+            plotting axes, by default None
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+            ax.set_xlabel(self.input_qtys_labs[0])
+            ax.set_ylabel(r"$P(v_\mathrm{kick}\cos(\theta))$")
+        else:
+            fig = ax.get_figure()
+        plot_dist(self.stan_data["x2"], **kwargs)
+        if save:
+            savefig(
+                self._make_fig_name(
+                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
+                ),
+                fig=fig,
+            )
+            self._gq_distribution_plot_counter += 1
+        return ax
+
     def fraction_apo_above_threshold(self, threshold, proj=False):
         """
         Determine the fraction of apocentres above some distance threshold.
@@ -745,6 +781,8 @@ class VkickApocentreGP(_GPBase):
         ----------
         threshold : callable
             distance threshold function
+        proj : bool, optional
+            use a projected distance, by default False
 
         Returns
         -------
@@ -759,6 +797,14 @@ class VkickApocentreGP(_GPBase):
         # fraction above threshold, sum(x > T) / len(x) -> mean
         vk = np.tile(self.stan_data["x2"], mask.shape[0]).reshape(mask.shape)
         return np.nanmean(r_apo[mask] > threshold(vk)[mask])
+
+    def angle_to_exceed_threshold(self, threshold):
+        r_apo = self.sample_generated_quantity("y", state="OOS")
+        vk = np.tile(self.stan_data["x2"], r_apo.shape[0]).reshape(r_apo.shape)
+        theta = np.arcsin(threshold(vk) / r_apo) * 180 / np.pi  # in degrees
+        # set apocentres below threshold to nan
+        theta[r_apo < threshold(vk)] = np.nan
+        return theta
 
     def plot_angle_to_exceed_threshold(
         self, threshold, levels=None, ax=None, save=True, smooth_kwargs=None
@@ -782,15 +828,13 @@ class VkickApocentreGP(_GPBase):
         ax : pyplot.Axes
             plotting axes
         """
-        r_apo = self.sample_generated_quantity("y", state="OOS")
-        vk = np.tile(self.stan_data["x2"], r_apo.shape[0]).reshape(r_apo.shape)
-        theta = np.arcsin(threshold(vk) / r_apo) * 180 / np.pi  # in degrees
-        # set apocentres below threshold to nan
-        theta[r_apo < threshold(vk)] = np.nan
+        theta = self.angle_to_exceed_threshold(threshold=threshold)
         if ax is None:
             fig, ax = plt.subplots()
-            ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
+            ax.set_xlabel(self.input_qtys_labs[0])
             ax.set_ylabel(r"$\theta$")
+        else:
+            fig = ax.get_figure()
         if levels is None:
             levels = self._default_hdi_levels
         levels.sort(reverse=True)
@@ -814,6 +858,69 @@ class VkickApocentreGP(_GPBase):
                 hdi_kwargs={"skipna": True},
             )
         if save:
+            savefig(
+                self._make_fig_name(
+                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
+                ),
+                fig=fig,
+            )
+            self._gq_distribution_plot_counter += 1
+        return ax
+
+    def plot_observable_fraction(
+        self, threshold, bins=None, ax=None, save=True, **kwargs
+    ):
+        """
+        Plot observability probability of sampled kick velocity distribution.
+
+        Parameters
+        ----------
+        threshold : callable
+            distance threshold function the BH must exceed
+        bins : int or array-like, optional
+            histogram bins, by default None
+        ax : matplotlib.Axes, optional
+            plotting axes, by default None
+        save : bool, optional
+            save figure, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes, optional
+            plotting axes, by default None
+        """
+        theta = self.angle_to_exceed_threshold(threshold=threshold)
+        draws = theta.shape[0]
+        vk = np.tile(self.stan_data["x2"], draws).reshape(theta.shape)
+        theta = theta.flatten()
+        vk = vk.flatten()
+        # -> visible = 1 - not_visible
+        # ->         = 1 - 2 * 2pi(1-cosT) / 4pi
+        # ->         = cosT
+        if ax is None:
+            fig, ax = plt.subplots()
+            ax.set_xlabel(self.input_qtys_labs[0])
+            ax.set_ylabel(r"$f(v_\mathrm{kick}\cos(\theta))$")
+        else:
+            fig = ax.get_figure()
+        weights = np.cos(theta * np.pi / 180)
+        weights[np.isnan(weights)] = 0
+        N = draws * self._num_OOS_requested
+        h = ax.hist(
+            [vk, vk],
+            bins=bins,
+            density=False,
+            weights=[np.ones_like(vk) / N, weights / N],
+            rwidth=1,
+            label=[r"$\mathrm{Unweighted}$", r"$\mathrm{Weighted}$"],
+            **kwargs,
+        )
+        ylim = ax.get_ylim()
+        ax.vlines(h[1], *ylim, color="k", alpha=0.2, lw=0.5)
+        ax.set_ylim(ylim)
+
+        if save:
+            ax.legend()
             savefig(
                 self._make_fig_name(
                     self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"

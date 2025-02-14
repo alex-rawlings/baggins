@@ -4,18 +4,17 @@ import numpy as np
 from copy import copy
 import unyt
 from synthesizer import grid, instruments
-from astropy import units, cosmology
+from astropy import cosmology
 from baggins.env_config import _cmlogger, synthesizer_data
-from baggins.mathematics import get_pixel_value_in_image, empirical_cdf
 from baggins.utils import get_files_in_dir
 from baggins.cosmology import angular_scale
 
 __all__ = [
     "set_luminosity",
-    "signal_prominence",
     "get_spectrum_ssp",
     "get_euclid_filter_collection",
-    "get_magnitudes",
+    "get_hst_filter_collection",
+    "get_surface_brightness",
     "MUSE_NFM",
 ]
 
@@ -62,47 +61,6 @@ def set_luminosity(snap, sed, z=0):
         len(snap.stars),
         _sed.bolometric_luminosity.value / erg_per_s_per_Lsun / (1 + z) ** 4,
     )
-
-
-def signal_prominence(x, y, im, npix=3):
-    """
-    Determine the prominence of a pixel in a map relative to the surrounding
-    pixels.
-
-    Parameters
-    ----------
-    x : float
-        x coordinate
-    y : float
-        y coordinate
-    im : ax.AxesImage
-        output from plt.imshow() - the image to search
-    npix : int, optional
-        number of pixels to search within, by default 3
-
-    Returns
-    -------
-    : float
-        quantile of target pixel relative to surrounds
-    """
-    # determine the signal of the pixel we're after
-    val, row, col = get_pixel_value_in_image(x, y, im)
-    # get all pixel values in some radius, excluding the central one
-    _im = im.get_array()
-    h, w = _im.shape
-    x_min, x_max, y_min, y_max = im.get_extent()
-    # Map (x, y) to pixel coordinates
-    x_pixel = int((x - x_min) / (x_max - x_min) * w)
-    y_pixel = int((y - y_min) / (y_max - y_min) * h)
-    # Adjust for 'lower' origin
-    y_pixel = h - y_pixel
-    # Create grid
-    Y, X = np.ogrid[:h, :w]
-    # Calculate circular mask, excluding central pixel
-    dist_from_center = (X - x_pixel) ** 2 + (Y - y_pixel) ** 2
-    mask = np.logical_and(dist_from_center <= npix**2, dist_from_center > 0)
-    surrounds = _im[mask].flatten()
-    return empirical_cdf(surrounds, val)
 
 
 def get_spectrum_ssp(
@@ -174,7 +132,18 @@ def get_euclid_filter_collection(g, new_lam_size=1000):
     return euclid_filters
 
 
-def get_magnitudes(sed, stellar_mass, filters_collection, filter_code, z):
+def get_hst_filter_collection(g, new_lam_size=1000):
+    hst_filters = instruments.FilterCollection(
+        filter_codes=["HST/ACS_HRC.F435W", "HST/ACS_HRC.F550W", "HST/ACS_HRC.F606W"],
+        new_lam=g.lam,
+    )
+    hst_filters.resample_filters(lam_size=new_lam_size)
+    return hst_filters
+
+
+def get_surface_brightness(
+    sed, stellar_mass, filters_collection, filter_code, z, pixel_size
+):
     """
     Get the absolute and apparent magnitudes for an SED.
 
@@ -190,6 +159,8 @@ def get_magnitudes(sed, stellar_mass, filters_collection, filter_code, z):
         specific filter we want to use
     z : float
         redshift of object
+    pixel_size : float
+        pixel side length (assumed square) in kpc
 
     Returns
     -------
@@ -198,30 +169,41 @@ def get_magnitudes(sed, stellar_mass, filters_collection, filter_code, z):
     """
     # need to copy the sed so we don't affect original
     _sed = copy(sed)
+    # determine the angular scale
+    inv_ang_scale = (
+        cosmology.Planck18.arcsec_per_kpc_proper(z).value * unyt.arcsec / unyt.kpc
+    )
     # "super-impose" spectra from all the stellar mass
     _sed.lnu *= stellar_mass
     _sed.get_fnu(cosmo=cosmology.Planck18, z=z)
+    _flux = _sed.flux
+    # convert from per kpc^2 to per arcsec^2
+    _flux /= (pixel_size * unyt.kpc * inv_ang_scale) ** 2
 
     chosen_filter = filters_collection[filter_code]
 
-    Lvo = 3631 * units.jansky * 4 * np.pi * (10 * units.parsec) ** 2
-    Lvo = Lvo.to("erg/(Hz*s)")
-    _logger.debug(f"Lvo is {Lvo}")
+    # normalising factor
+    Fvo = 3631 * unyt.Jy
+    # convert to erg/s/Hz/arcsec^2
+    Fvo = Fvo.to("erg/(Hz*s*kpc**2)") / inv_ang_scale**2
+    _logger.debug(f"Fvo is {Fvo}")
 
-    # TODO divide by pixel area in the log??
-    abs_mag = -2.5 * np.log10(
-        chosen_filter.apply_filter(_sed.lnu, nu=_sed.obsnu) / Lvo.value
+    # determine first apparent magnitude with transmission correction
+    # and K correction
+    r_per_10pc = (
+        cosmology.Planck18.luminosity_distance(z).to("pc").value
+        * unyt.pc
+        / (10 * unyt.pc)
     )
-    _logger.debug(f"Abs. magntiude is: {abs_mag:.2f}")
-
+    K_correction = -2.5 * np.log10(1 + z)
     app_mag = (
-        abs_mag
-        + 5
-        * np.log10(
-            cosmology.Planck18.luminosity_distance(z).to("pc") / (10 * units.parsec)
-        )
-        - 2.5 * np.log10(1 + z)
+        -2.5 * np.log10(chosen_filter.apply_filter(_flux, nu=_sed.obsnu) / Fvo)
+        + K_correction
     )
+
+    # now convert to absolute magnitude
+    abs_mag = app_mag - K_correction - r_per_10pc
+
     _logger.debug(f"App. magnitude is {app_mag:.2f}")
     return {"abs_mag": abs_mag, "app_mag": app_mag}
 

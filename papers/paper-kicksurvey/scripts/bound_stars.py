@@ -144,48 +144,51 @@ for i, apo_file in enumerate(apo_data_files):
     del snap
     pygad.gc_full_collect()
 
-ax[1].set_yscale("log")
-ax[1].scatter(kick_velocities, bound_mass, zorder=1.5, **figure_config.marker_kwargs)
-ax[1].set_xlabel(r"$v_\mathrm{kick}/\mathrm{km\,s}^{-1}$")
-ax[1].set_ylabel(r"$M_\mathrm{bound}/\mathrm{M}_\odot$")
-xlim = ax[1].get_xlim()
-ax[1].axvspan(xlim[0], core_dispersion, fc="gray", alpha=0.4, zorder=1)
-ax[1].text(
+for axi in ax:
+    axi.tick_params(axis="y", which="both", right=False)
+    axr = axi.secondary_yaxis(
+        "right", functions=(lambda x: x / bh_mass, lambda x: x * bh_mass)
+    )
+    axr.set_ylabel(r"$M_\mathrm{bound}/M_\bullet$")
+
+ax[0].set_yscale("log")
+ax[0].scatter(kick_velocities, bound_mass, zorder=1.5, **figure_config.marker_kwargs)
+ax[0].set_xlabel(r"$v_\mathrm{kick}/\mathrm{km\,s}^{-1}$")
+ax[0].set_ylabel(r"$M_\mathrm{bound}/\mathrm{M}_\odot$")
+xlim = ax[0].get_xlim()
+ax[0].axvspan(xlim[0], core_dispersion, fc="gray", alpha=0.4, zorder=1)
+ax[0].text(
     core_dispersion * 0.3,
-    ax[1].get_ylim()[1] * 1e-3,
+    ax[0].get_ylim()[1] * 1e-3,
     r"$v_\mathrm{kick}< \sigma_{\star,0}$",
     rotation="vertical",
 )
-ax[1].set_xlim(xlim)
+ax[0].set_xlim(xlim)
 
+# XXX Step 4: specific case kick velocity
 t = np.array(data_specific["time"]) - data_specific["time"][0]
-ax[0].semilogy(
+ax[1].semilogy(
     t,
     np.array(data_specific["bound_stars_all"]) * star_mass,
     label=r"$M_\mathrm{bound}$",
 )
-ax[0].semilogy(
+ax[1].semilogy(
     t,
     np.array(data_specific["original_bound_stars"]) * star_mass,
     label=r"$M_\mathrm{bound,0}$",
 )
-ax[0].set_xlabel(r"$t/\mathrm{Gyr}$")
-ax[0].set_ylabel(r"$M_\mathrm{bound}/M_\odot$")
+ax[1].set_xlabel(r"$t/\mathrm{Gyr}$")
+ax[1].set_ylabel(r"$M_\mathrm{bound}/M_\odot$")
 
-ax[0].tick_params(axis="y", which="both", right=False)
-axr = ax[0].secondary_yaxis(
-    "right", functions=(lambda x: x / bh_mass, lambda x: x * bh_mass)
-)
-axr.set_ylabel(r"$M_\mathrm{bound}/M_\bullet$")
-ax[0].legend()
+ax[1].legend()
 for t in peri_times[:-1]:
     # the last pericentre calculation fails, so let's not plot it
-    ax[0].axvline(t, ls=":", lw=1, c="k", zorder=0.1)
-ax[0].text(tcore * 1.1, ax[0].get_ylim()[1] / 6, r"$\mathrm{BH\;within\;core}$")
-xlim = ax[0].get_xlim()
-ax[0].axvspan(tcore, 1.5 * xlim[1], fc="gray", alpha=0.4)
-ax[0].set_xlim(xlim)
-ax[0].set_ylim(1e8, ax[0].get_ylim()[1])
+    ax[1].axvline(t, ls=":", lw=1, c="k", zorder=0.1)
+ax[1].text(tcore * 1.1, ax[1].get_ylim()[1] / 6, r"$\mathrm{BH\;within\;core}$")
+xlim = ax[1].get_xlim()
+ax[1].axvspan(tcore, 1.5 * xlim[1], fc="gray", alpha=0.4)
+ax[1].set_xlim(xlim)
+ax[1].set_ylim(1e8, ax[1].get_ylim()[1])
 plt.subplots_adjust(left=0.2, top=0.95, bottom=0.15, right=0.8)
 bgs.plotting.savefig(
     figure_config.fig_path(f"bound_{args.kv:04d}.pdf"), fig=fig, force_ext=True

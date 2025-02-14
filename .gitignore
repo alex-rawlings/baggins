@@ -236,3 +236,6 @@ papers/paper-corekick/figures/IFU*/
 
 # submission scripts for SLURM
 code/analysis_scripts/submission_scripts
+
+# misc code which doesn't need to be tracked
+code/misc/recoil-explore/*.txt

@@ -90,8 +90,8 @@ print(
 )
 
 # make the plots
-fig, ax = plt.subplots(1, 2, sharex="all")
-fig.set_figwidth(2 * fig.get_figwidth())
+fig, ax = plt.subplots(1, 3, sharex="all")
+fig.set_figwidth(2.5 * fig.get_figwidth())
 hdi_levels = [50, 75, 99]
 
 # plot 1: vkick - r_apo relation from GP
@@ -124,9 +124,19 @@ gp.plot_angle_to_exceed_threshold(
     save=False,
     smooth_kwargs={"mode": "nearest", "window_length": 5},
 )
-ax[1].set_xlim(core_sig, np.max(gp.stan_data["x2"]))
+ax[1].set_xlim(0.9 * core_sig, np.max(gp.stan_data["x2"]))
 ax[1].set_ylim(0, 90)
 ax[1].text(1000, 60, r"$\mathrm{Detectable}$")
 ax[1].text(400, 15, r"$\mathrm{Not\; detectable}$")
+
+# plot 3: probability of distribution of observable vkicks
+bin_width = 100
+bins = np.arange(
+    np.nanmin(gp.stan_data["x2"]), np.nanmax(gp.stan_data["x2"]) + bin_width, bin_width
+)
+gp.plot_observable_fraction(threshold_dist, bins=bins, ax=ax[2], save=False)
+ax[2].set_xlabel(gp.input_qtys_labs[0])
+ax[2].set_ylabel(r"$f(v_\mathrm{kick})$")
+ax[2].legend()
 
 bgs.plotting.savefig(figure_config.fig_path("apocentres.pdf"), force_ext=True)

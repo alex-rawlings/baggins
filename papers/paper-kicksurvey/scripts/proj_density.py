@@ -4,11 +4,11 @@ from datetime import datetime
 import numpy as np
 from scipy.ndimage import uniform_filter, generic_filter
 import matplotlib.pyplot as plt
-from matplotlib.colors import CenteredNorm
 import pygad
 import h5py
 import baggins as bgs
 import dask
+from seaborn import cubehelix_palette
 import figure_config
 
 bgs.plotting.check_backend()
@@ -54,7 +54,8 @@ class ProjectedDensityObject:
         self._snapfiles = None
         self.ang_scale = bgs.cosmology.angular_scale(args.redshift)
         SL.info(f"Angular scale is {self.ang_scale:.4f} kpc/arcsec")
-        self.extent = 40
+        self.extent = 40  # kpc
+        self.spatial_res = 0.101  # "/pixel
         self.filter_code = "Euclid/NISP.Y"
         self.galaxy_metallicity = 0.012
         self.galaxy_star_age = 7.93e9  # yr
@@ -97,7 +98,7 @@ class ProjectedDensityObject:
         C._single_snapshot = False
         return C
 
-    def get_num_pixels(self, angscale, spatial_res=0.101, extent=None):
+    def get_num_pixels(self, angscale, extent=None):
         """
         Determine the pixel bin width
 
@@ -105,8 +106,6 @@ class ProjectedDensityObject:
         ----------
         angscale : float
             angular scale
-        spatial_res : float, optional
-            spatial resolution of detector in kpc/", by default 0.101
         extent : int, optional
             spatial extent of image in kpc, by default 40
 
@@ -117,7 +116,7 @@ class ProjectedDensityObject:
         """
         if extent is None:
             extent = self.extent
-        return int(extent / (spatial_res * angscale))
+        return int(extent / (self.spatial_res * angscale))
 
     def setup_plot(self):
         fig, self.ax = plt.subplots(1, 3)
@@ -207,12 +206,13 @@ class ProjectedDensityObject:
             @dask.delayed
             def parallel_mag_helper(num_stars_in_bin):
                 nonlocal snap
-                return bgs.analysis.get_magnitudes(
+                return bgs.analysis.get_surface_brightness(
                     sed=synth_SED,
                     stellar_mass=num_stars_in_bin * float(snap.stars["mass"][0]),
                     filters_collection=euclid_filters,
                     filter_code=self.filter_code,
                     z=self._redshift,
+                    pixel_size=xedges[1] - xedges[0],
                 )["app_mag"]
 
             res = []
@@ -283,27 +283,42 @@ class ProjectedDensityObject:
                 self.get_num_pixels(self.ang_scale, extent=5 * rinfl),
                 int(min(im_mag.get_array().shape) / 10),
             ),
-            3,
+            5,
         )
         SL.info(f"Filter window size is {filter_window}")
 
         # determine the prominence within some aperture
         filter_kwargs = {"size": filter_window, "mode": "nearest"}
-        prom = (
+        prom = -(
             im_mag.get_array() - uniform_filter(im_mag.get_array(), **filter_kwargs)
-        ) / generic_filter(im_mag.get_array(), np.std, **filter_kwargs)
+        ) / generic_filter(
+            im_mag.get_array(),
+            lambda x: np.nan if np.any(np.isnan(x)) else np.std(x),
+            **filter_kwargs,
+        )
+        prom[prom < 0] = 0
 
         if self._plot:
             ax_prom = self.ax[2]
         else:
             # define a dummy axis
             fig, ax_prom = plt.subplots()
+        # define a custom colour map
+        cmap = cubehelix_palette(
+            start=0.7,
+            rot=-0.5,
+            gamma=0.3,
+            hue=1.0,
+            light=1,
+            dark=0,
+            reverse=False,
+            as_cmap=True,
+        )
         im_SN = ax_prom.imshow(
             prom,
             origin="lower",
             extent=im_mag.get_extent(),
-            cmap="vlag",
-            norm=CenteredNorm(vcenter=0),
+            cmap=cmap,
         )
         if self._plot:
             self.plot_prominence_map(im_SN=im_SN, snap=snap)
@@ -315,14 +330,11 @@ class ProjectedDensityObject:
             plt.close()
 
         signal_prom = bgs.mathematics.get_pixel_value_in_image(
-            snap.bh["pos"][0, 0], snap.bh["pos"][0, 2], im_SN
+            snap.bh["pos"][0, self.xaxis], snap.bh["pos"][0, self.yaxis], im_SN
         )[0]
-        SL.info(f"S/N at BH position is {signal_prom:.2e}")
-        fac = np.sign(signal_prom + 1e-14)
-        ecdf = bgs.mathematics.empirical_cdf(fac * im_SN.get_array(), fac * signal_prom)
-        x = np.sort(fac * im_SN.get_array().flatten())
-        x = x[~np.isnan(x)]
-        SL.info(f"This corresponds to approx. the {ecdf:.2f} quantile of total pixels")
+        SL.info(f"Prominence at BH position is {signal_prom:.2e}")
+        ecdf = bgs.mathematics.empirical_cdf(im_SN.get_array(), signal_prom)
+        SL.info(f"This corresponds to approx. the {ecdf:.4f} quantile of total pixels")
 
     def plot_surface_mass_density(self, snap, density_mask, add_extras=True):
         # figure 1: easy, surface mass density
@@ -350,7 +362,7 @@ class ProjectedDensityObject:
         im_mag_array = im_mag_array[np.isfinite(im_mag_array)]
         pygad.plotting.add_cbar(
             ax=self.ax[1],
-            cbartitle=r"$\mathrm{App. Mag.}$",
+            cbartitle=r"$\mathrm{mag}\,\mathrm{arcsec}^{-2}$",
             clim=np.percentile(im_mag_array, [0.1, 99.9]),
             cmap=im_mag.get_cmap(),
             fontcolor="w",
@@ -380,7 +392,7 @@ class ProjectedDensityObject:
         )
         pygad.plotting.add_cbar(
             self.ax[2],
-            cbartitle=r"$S/N$",
+            cbartitle=r"$\mathrm{prominence}$",
             clim=im_SN.get_clim(),
             cmap=im_SN.get_cmap(),
             fontcolor="k",
