@@ -20,6 +20,7 @@ __all__ = [
     "get_bh_particles",
     "get_bound_binary",
     "get_binary_before_bound",
+    "get_bh_after_merger",
     "linear_fit_get_H",
     "linear_fit_get_K",
     "analytic_evolve_peters_quinlan",
@@ -243,6 +244,30 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
             bound_idx = -1
             bound_state = "oscillate"
     return bh1[:bound_idx], bh2[:bound_idx], bound_state
+
+
+def get_bh_after_merger(ketju_file):
+    """
+    Convenenience method to get the post-merger BH data.
+
+    Parameters
+    ----------
+    ketju_file : str
+        path to ketju_bhs.hdf5 file to analyse
+
+    Returns
+    -------
+    bh : ketjugw.Particle
+        remnant BH particle
+    """
+    bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
+    len1, len2 = len(bh1), len(bh2)
+    if len1 > len2:
+        # bh1 is the "merged" BH
+        return bh1[len2:]
+    else:
+        # bh2 is the "merged" BH
+        return bh2[len1:]
 
 
 def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):

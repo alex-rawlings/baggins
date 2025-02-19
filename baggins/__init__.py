@@ -10,14 +10,14 @@ __all__ = [
     "setup_logger",
 ]
 
-import baggins.analysis
-import baggins.cosmology
-import baggins.general
-import baggins.initialise
-import baggins.mathematics
-import baggins.literature
-import baggins.plotting
-import baggins.utils
+import baggins.analysis as analysis
+import baggins.cosmology as cosmology
+import baggins.general as general
+import baggins.initialise as initialise
+import baggins.mathematics as mathematics
+import baggins.literature as literature
+import baggins.plotting as plotting
+import baggins.utils as utils
 import baggins._backend
 import baggins.env_config
 

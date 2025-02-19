@@ -2,8 +2,8 @@ import os.path
 import numpy as np
 import scipy.optimize
 import baggins as bgs
-from helpers import stan_model_selector
 
+bgs.plotting.check_backend()
 
 parser = bgs.utils.argparse_for_stan("Run stan model for Core-Sersic model")
 parser.add_argument(
@@ -14,6 +14,9 @@ parser.add_argument(
     choices=["simple", "hierarchy", "factor"],
     dest="model",
     default="hierarchy",
+)
+parser.add_argument(
+    "-s", "--sample", dest="sample", help="observation sample", default="misc"
 )
 parser.add_argument(
     "-c",
@@ -40,23 +43,21 @@ else:
     hmq_dir = None
 analysis_params = bgs.utils.read_parameters(args.apf)
 
-figname_base = "hierarchical_models/density/"
-
-this_dir = os.path.dirname(os.path.realpath(__file__))
+figname_base = f"hierarchical_models/density/{args.sample}/{args.model}"
 
 if args.model == "simple":
-    graham_model = bgs.analysis.GrahamModelSimple(figname_base=figname_base)
+    if args.type == "new":
+        graham_model = bgs.analysis.GrahamModelSimple(figname_base=figname_base)
+    else:
+        graham_model = bgs.analysis.GrahamModelSimple.load_fit(args.dir, figname_base=figname_base)
 elif args.model == "factor":
-    graham_model = stan_model_selector(
-        args,
-        bgs.analysis.GrahamModelKick,
-        os.path.join(this_dir, "stan/density/graham_factor.stan"),
-        os.path.join(this_dir, "stan/density/graham_factor_prior_novk.stan"),
-        figname_base,
-        SL,
-    )
+    raise NotImplementedError
+    graham_model = bgs.analysis.GrahamModelKick(figname_base=figname_base)
 else:
-    graham_model = bgs.analysis.GrahamModelHierarchy(figname_base=figname_base)
+    if args.type == "new":
+        graham_model = bgs.analysis.GrahamModelHierarchy(figname_base=figname_base)
+    else:
+        graham_model = bgs.analysis.GrahamModelHierarchy.load_fit(args.dir, figname_base=figname_base)
 
 
 # load the observational data

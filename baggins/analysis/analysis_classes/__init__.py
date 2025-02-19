@@ -30,6 +30,7 @@ from baggins.analysis.analysis_classes.QuinlanModels import (  # noqa
 from baggins.analysis.analysis_classes.GaussianProcesses import (  # noqa
     VkickCoreradiusGP,
     CoreradiusVkickGP,
+    VkickApocentreGP
 )
 from baggins.analysis.analysis_classes.CoreKick import (  # noqa
     CoreKickExp,

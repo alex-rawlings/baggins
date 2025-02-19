@@ -1,4 +1,6 @@
-__all__ = ["get_histogram_bin_centres", "assert_all_unique"]
+import numpy as np
+
+__all__ = ["get_histogram_bin_centres", "assert_all_unique", "get_pixel_value_in_image"]
 
 
 def get_histogram_bin_centres(bins):
@@ -51,3 +53,32 @@ def assert_all_unique(a, axis=None):
                 if not res:
                     break
         return res
+
+
+def get_pixel_value_in_image(x, y, im):
+    """
+    Determine the pixel value for a given (x,y) coordinate in the array returned from pyplot's imshow()
+
+    Parameters
+    ----------
+    x : float
+        x coordinate
+    y : float
+        y coordinate
+    im : pyplot.AxesImage
+        returned object from pyplot.imshow() call
+
+    Returns
+    -------
+    : float
+        pixel value for the desired coordinates
+    row : int
+        row index
+    col : int
+        column index
+    """
+    xmin, xmax, ymin, ymax = im.get_extent()
+    nr, nc = im.get_array().shape
+    col = np.clip(((x - xmin) / (xmax - xmin) * nc).astype(int), 0, nc - 1)
+    row = np.clip(((y - ymin) / (ymax - ymin) * nr).astype(int), 0, nr - 1)
+    return im.get_array()[row, col], row, col

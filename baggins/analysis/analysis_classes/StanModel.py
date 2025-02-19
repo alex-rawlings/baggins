@@ -4,7 +4,7 @@ from operator import itemgetter
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams, collections, patches, ticker
-from datetime import datetime
+from datetime import datetime, timezone
 import cmdstanpy
 import arviz as az
 import yaml
@@ -530,7 +530,7 @@ class _StanModel(ABC):
             raise
         self._num_OOS = n[0]
 
-    def _sampler(self, prior=False, sample_kwargs={}, diagnose=True):
+    def _sampler(self, prior=False, sample_kwargs={}, diagnose=True, pathfinder=True):
         """
         Sample a stan model
 
@@ -542,6 +542,9 @@ class _StanModel(ABC):
             kwargs to be passed to CmdStanModel.sample(), by default {}
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
+        pathfinder : bool, optional
+            use pathfinder algorithm to optimise chain initialisation, by
+            default True
 
         Returns
         -------
@@ -581,8 +584,13 @@ class _StanModel(ABC):
             else:
                 _logger.debug(f"exe info: {self._model.exe_info()}")
                 try:
-                    pf = self._model.pathfinder(data=self.stan_data, show_console=True)
-                    inits = pf.create_inits()
+                    if pathfinder:
+                        pf = self._model.pathfinder(
+                            data=self.stan_data, show_console=True
+                        )
+                        inits = pf.create_inits()
+                    else:
+                        inits = None
                 except (RuntimeError, ValueError) as e:
                     _logger.warning(
                         f"Stan pathfinder failed: normal initialisation will be used! Reason: {e}"
@@ -624,7 +632,7 @@ class _StanModel(ABC):
             )
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}, diagnose=True):
+    def sample_model(self, sample_kwargs={}, diagnose=True, pathfinder=True):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
 
@@ -636,10 +644,15 @@ class _StanModel(ABC):
              kwargs to be passed to CmdStanModel.sample(), by default {}
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
+        pathfinder : bool, optional
+            use pathfinder algorithm to optimise chain initialisation, by
+            default True
         """
         if self._model is None and not self._loaded_from_file:
             self.build_model()
-        self._fit = self._sampler(sample_kwargs=sample_kwargs, diagnose=diagnose)
+        self._fit = self._sampler(
+            sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
+        )
         # TODO capture arviz warnings about NaN
         self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
         if diagnose:
@@ -1036,8 +1049,8 @@ class _StanModel(ABC):
                     lower = hdi[v][:, 0]
                     upper = hdi[v][:, 1]
                 # loop through each group
-                for k, (l, u) in enumerate(zip(lower, upper)):
-                    r = patches.Rectangle((k - 0.5, l), 1, u - l)
+                for k, (ll, uu) in enumerate(zip(lower, upper)):
+                    r = patches.Rectangle((k - 0.5, ll), 1, uu - ll)
                     p.append(r)
                 ax[i].add_collection(collections.PatchCollection(p, fc=cmapper(level)))
             ax[i].autoscale_view()
@@ -1153,7 +1166,7 @@ class _StanModel(ABC):
                     exc_info=True,
                 )
                 raise
-        for i, (_gq, l) in enumerate(zip(gq, xlabels)):
+        for i, (_gq, lab) in enumerate(zip(gq, xlabels)):
             ys = self.sample_generated_quantity(_gq, state=state)
             if bounds is not None:
                 if bounds[i][0] is not None:
@@ -1174,7 +1187,7 @@ class _StanModel(ABC):
                 )
                 raise
             az.plot_dist(ys, ax=ax[i], **kwargs)
-            ax[i].set_xlabel(l)
+            ax[i].set_xlabel(lab)
             ax[i].set_ylabel("PDF")
         ax.reshape(ax_shape)
         if save:
@@ -1279,14 +1292,12 @@ class _StanModel(ABC):
             )
 
     @classmethod
-    def load_fit(cls, model_file, fit_files, figname_base, rng=None):
+    def load_fit(cls, fit_files, figname_base, rng=None):
         """
         Restore a stan model from a previously-saved set of csv files
 
         Parameters
         ----------
-        model_file : str
-            path to .stan file specifying the likelihood model
         fit_files : str, path-like
             path to previously saved csv files
         figname_base : str
@@ -1295,21 +1306,21 @@ class _StanModel(ABC):
             random number generator, by default None (creates a new instance)
         """
         # initiate a class instance
-        C = cls(
-            model_file=model_file, prior_file=None, figname_base=figname_base, rng=rng
-        )
+        C = cls(figname_base=figname_base, rng=rng)
 
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
         C._fit = cmdstanpy.from_csv(fit_files)
         fit_time = datetime.strptime(
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"
+        ).replace(tzinfo=timezone.utc)
+        model_build_time = datetime.fromtimestamp(
+            get_mod_time(C._model.exe_file), tz=timezone.utc
         )
-        model_build_time = get_mod_time(C._model.exe_file)
         if model_build_time.timestamp() > fit_time.timestamp():
             print("==========================================")
             _logger.error(
-                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! This could be due to `git checkout`. Check the file update time with `git log -- {C.model_file}`. Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time} UTC"
+                f"Stan executable {C._model.exe_file} has been modified since sampling was performed! This could be due to `git checkout`. Check the file update time with `git log -- {C.model_file}`. Proceed with caution!\n  --> Compile time: {model_build_time} UTC\n  --> Sample time:  {fit_time}"
             )
             print("==========================================")
 
@@ -1502,8 +1513,8 @@ class HierarchicalModel_2D(_StanModel):
         return super()._set_stan_data_OOS()
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}, diagnose=True):
-        return super().sample_model(sample_kwargs, diagnose=diagnose)
+    def sample_model(self, **kwargs):
+        return super().sample_model(**kwargs)
 
     @abstractmethod
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
@@ -1557,6 +1568,27 @@ class HierarchicalModel_2D(_StanModel):
             for k in (f"{ivar}_reduced", newkey):
                 self.obs[k] = np.atleast_2d(self.obs[k])
 
+    def _make_default_hdi_colours(self, levels):
+        """
+        Create the default colour scheme for HDI regression plots. Basically a wrapper around create_normed_colours()
+
+        Parameters
+        ----------
+        levels : list
+            HDI levels
+
+        Returns
+        -------
+        : function
+            takes an argument in the range [vmin, vmax] and returns the scaled
+            colour
+        : matplotlib.cm.ScalarMappable
+            object that is required for creating a colour bar
+        """
+        return create_normed_colours(
+            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
+        )
+
     def _plot_predictive(
         self,
         xmodel,
@@ -1609,9 +1641,7 @@ class HierarchicalModel_2D(_StanModel):
         if ax is None:
             fig, ax = plt.subplots(1, 1)
         ys = self.sample_generated_quantity(ymodel, state=state)
-        cmapper, sm = create_normed_colours(
-            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
-        )
+        cmapper, sm = self._make_default_hdi_colours(levels)
         for lev in levels:
             _logger.debug(f"Fitting level {lev}")
             az.plot_hdi(

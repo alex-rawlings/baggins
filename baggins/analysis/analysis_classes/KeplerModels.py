@@ -389,8 +389,8 @@ class KeplerModelHierarchy(_KeplerModelBase):
 
         # posterior predictive checks
         fig1, ax1 = plt.subplots(2, 1, figsize=figsize)
-        for axi, l in zip(ax1, self._folded_qtys_labs):
-            axi.set_xlabel(l)
+        for axi, lab in zip(ax1, self._folded_qtys_labs):
+            axi.set_xlabel(lab)
             axi.set_ylabel("PDF")
         self.plot_predictive(
             xobs="log10_angmom_corr_red",
@@ -424,8 +424,8 @@ class KeplerModelHierarchy(_KeplerModelBase):
     def all_posterior_OOS_plots(self, figsize=None):
         self._prep_dims()
         fig, ax = plt.subplots(2, 1, figsize=figsize)
-        for axi, l in zip(ax, self._folded_qtys_labs):
-            axi.set_xlabel(l)
+        for axi, lab in zip(ax, self._folded_qtys_labs):
+            axi.set_xlabel(lab)
             axi.set_ylabel("PDF")
         for i, (q, s) in enumerate(zip(self._folded_qtys_posterior, (False, True))):
             self.posterior_OOS_plot(xmodel=q, ax=ax[i], save=s)

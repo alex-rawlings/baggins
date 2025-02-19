@@ -38,7 +38,7 @@ def argparse_for_initialise(description="", update_help=None):
     return parser
 
 
-def argparse_for_stan(description=""):
+def argparse_for_stan(description="", pos_args=None):
     """
     Get the command line arguments necessary to run Stan models, as they are
     all similar.
@@ -47,6 +47,10 @@ def argparse_for_stan(description=""):
     ----------
     description : str, optional
         main description of program invoked with help flag, by default ""
+    pos_args : list, optional
+        positional arguments that should come before the `type` positional 
+        argument. This must be a list of dicts, where each dict is expanded as 
+        a keyword-argument pair.
 
     Returns
     -------
@@ -63,6 +67,12 @@ def argparse_for_stan(description=""):
     parser.add_argument(
         type=str, help="directory to HMQuantity HDF5 files or csv files", dest="dir"
     )
+    if pos_args is not None:
+        # add the specific positional arguments
+        assert isinstance(pos_args, list)
+        for arg in pos_args:
+            assert isinstance(arg, dict)
+            parser.add_argument(**arg)
     parser.add_argument(
         type=str,
         help="new sample or load previous",
@@ -71,15 +81,6 @@ def argparse_for_stan(description=""):
     )
     parser.add_argument(
         "-p", "--prior", help="plot for prior", action="store_true", dest="prior"
-    )
-    parser.add_argument(
-        "-s",
-        "--sample",
-        help="sample set",
-        type=str,
-        dest="sample",
-        choices=["mcs", "perturb"],
-        default="mcs",
     )
     parser.add_argument(
         "-P",

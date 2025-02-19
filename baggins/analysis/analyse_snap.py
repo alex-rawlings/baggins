@@ -13,6 +13,7 @@ from baggins.env_config import _cmlogger
 
 
 __all__ = [
+    "basic_snapshot_centring",
     "get_com_of_each_galaxy",
     "get_com_velocity_of_each_galaxy",
     "get_galaxy_axis_ratios",
@@ -47,8 +48,29 @@ __all__ = [
 _logger = _cmlogger.getChild(__name__)
 
 
+def basic_snapshot_centring(snap):
+    """
+    Basic-style centring of a snapshot using shrinking sphere method.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to centre (done in place)
+    """
+    # move to CoM frame
+    pre_ball_mask = pygad.BallMask(5)
+    centre = pygad.analysis.shrinking_sphere(
+        snap.stars,
+        pygad.analysis.center_of_mass(snap.stars),
+        30,
+    )
+    vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
+    pygad.Translation(-centre).apply(snap, total=True)
+    pygad.Boost(-vcom).apply(snap, total=True)
+
+
 def get_com_of_each_galaxy(
-    snap, method="pot", masks=None, family="all", initial_radius=20
+    snap, method="ss", masks=None, family="all", initial_radius=20
 ):
     """
     Determine the centre of mass of each galaxy in the simulation, assuming each
@@ -60,7 +82,7 @@ def get_com_of_each_galaxy(
         snapshot to analyse
     method : str, optional
         use minimum potential method (pot) or shrinking sphere method (ss), by
-        default "pot"
+        default "ss"
     masks : dict, optional
         pygad masks to apply to the (sub) snapshot, by default None
     family : str, optional
@@ -407,16 +429,24 @@ def get_massive_bh_ID(bhs):
     return bhs["ID"][massive_idx]
 
 
-def _find_radius_for_mass(M, m, pos, centre):
+def _find_radius_for_mass(s, M, centre):
     # determine the radius where the enclosed mass = desired mass M
-    r = pygad.utils.geo.dist(pos, centre)
-    r.sort()
-    # interpolate in mass-radius plane
-    # determine how many m are in M -> this will be the index of r we need
-    idx = int(np.ceil(M / m)) - 1
-    ms = np.array([idx, idx + 1]) * m
-    f = scipy.interpolate.interp1d(ms, [r[idx], r[idx + 1]])
-    return pygad.UnitScalar(f(M), r.units)
+    r = pygad.utils.geo.dist(s["pos"], centre)
+    sorted_idx = np.argsort(r)
+    r = r[sorted_idx]
+    assert np.all(np.diff(r) > 0)
+    cumul_mass = np.cumsum(s["mass"][sorted_idx])
+    try:
+        assert np.any(cumul_mass > M)
+    except AssertionError:
+        _logger.exceptio(
+            f"There is not enough mass in stellar particles (max {cumul_mass[-1]:.1e}) to equal desired mass ({M:.1e})",
+            exc_info=True,
+        )
+        raise
+    idx = np.argmin(cumul_mass < M)
+    r_desired = np.interp(M, cumul_mass[idx - 1 : idx + 1], r[idx - 1 : idx + 1])
+    return pygad.UnitScalar(r_desired, units=s["pos"].units, subs=s)
 
 
 def enclosed_mass_radius(snap, combined=False, mass_frac=1):
@@ -453,9 +483,7 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
         mass_bh = np.sum(snap.bh["mass"])
         centre = pygad.analysis.center_of_mass(snap.bh)
         massive_ID = get_massive_bh_ID(snap.bh)
-        _r = _find_radius_for_mass(
-            mass_frac * mass_bh, snap.stars["mass"][0], snap.stars["pos"], centre=centre
-        )
+        _r = _find_radius_for_mass(snap.stars, mass_frac * mass_bh, centre=centre)
         r[massive_ID] = _r
     else:
         # we want the influence radius for each BH. No masking is done to
@@ -464,9 +492,8 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
         for id in snap.bh["ID"][bh_idx]:
             bh_id_mask = pygad.IDMask(id)
             _r = _find_radius_for_mass(
+                snap.stars,
                 mass_frac * snap.bh[bh_id_mask]["mass"][0],
-                snap.stars["mass"][0],
-                snap.stars["pos"],
                 centre=snap.bh[bh_id_mask]["pos"].flatten(),
             )
             r[id] = _r
@@ -1143,8 +1170,8 @@ def escape_velocity(snap):
     : function
         interpolation function vesc(r)
     """
-    r_pot_interp = scipy.interpolate.interp1d(snap["r"], snap["pot"])
-    return lambda r: np.sqrt(2 * np.abs(r_pot_interp(r)))
+    idx = np.argsort(snap["r"])
+    return lambda r: np.sqrt(2 * np.abs(np.interp(r, snap["r"][idx], snap["pot"][idx])))
 
 
 def count_new_hypervelocity_particles(snap, prev=[], vesc=None, family="stars"):
@@ -1343,8 +1370,9 @@ def add_to_loss_cone_refill(snap, J_lc, prev):
 
 def _set_bound_search_rad(snap):
     """
-    Define the search area for bound particles. The search is restricted to the
-    influence radius of the most massive BH, centred on that BH.
+    Define the search area for bound stellar particles. The search is
+    restricted to the influence radius of the most massive BH, centred on that
+    BH.
 
     Parameters
     ----------
@@ -1382,26 +1410,42 @@ def find_individual_bound_particles(snap, return_extra=False):
     : list
         list of bound particle IDs
     : float, optional
-        fraction of bound particles inside influence radius if `return_frac` is
+        fraction of bound particles inside influence radius if `return_extra` is
         True
+    : array-like, optional
+        particle energies of bound particles if `return_extra` is True
     """
     subsnap = _set_bound_search_rad(snap)
     bh_id_mask = pygad.IDMask(get_massive_bh_ID(subsnap.bh))
     # shift to BH frame
+    # note we have to shift the whole snapshot for the transformation to work
     trans = pygad.Translation(-subsnap[bh_id_mask]["pos"][0, :])
     boost = pygad.Boost(-subsnap.bh[bh_id_mask]["vel"][0, :])
     trans.apply(subsnap, total=True)
     boost.apply(subsnap, total=True)
+    try:
+        assert np.all(subsnap.bh[bh_id_mask]["pos"] < 1e-12)
+        assert np.all(subsnap.bh[bh_id_mask]["vel"] < 1e-12)
+    except AssertionError:
+        _logger.exception(
+            f"The centering has not worked, cannot find the bound particles! The BH has position {subsnap.bh[bh_id_mask]['pos']} and velocity {subsnap.bh[bh_id_mask]['vel']}",
+            exc_info=True,
+        )
+        raise
     G = pygad.UnitScalar(4.3009e-6, "kpc/Msol*(km/s)**2")
     KE = pygad.UnitArr(
         0.5 * np.linalg.norm(subsnap[~bh_id_mask]["vel"], axis=1) ** 2, "(km/s)**2"
     )
     PE = (
         G
-        * pygad.UnitScalar(snap.bh[bh_id_mask]["mass"][0], "Msol")
+        * pygad.UnitScalar(subsnap.bh[bh_id_mask]["mass"][0], "Msol")
         / pygad.UnitArr(subsnap[~bh_id_mask]["r"], snap["r"].units)
     )
     bound_IDs = subsnap[~bh_id_mask][KE - PE < 0]["ID"]
+    # now we put the snapshot back in the original coordinate system
+    # ie we apply the inverse transformations
+    trans.inverse().apply(subsnap, total=True)
+    boost.inverse().apply(subsnap, total=True)
     if return_extra:
         return bound_IDs, len(bound_IDs) / len(subsnap), KE - PE
     else:

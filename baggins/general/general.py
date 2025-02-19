@@ -2,7 +2,6 @@ import os.path
 import numpy as np
 import scipy.optimize
 import scipy.special
-import scipy.interpolate
 from time import time
 from baggins.env_config import _cmlogger
 
@@ -59,7 +58,7 @@ def sersic_b_param(n):
 
 
 def xval_of_quantity(
-    val, xvec, yvec, xsorted=False, initial_guess=None, root_kwargs={}
+    val, xvec, yvec, initial_guess=None, root_kwargs={}
 ):
     """
     Find the value in a set of independent observations corresponding to a
@@ -75,9 +74,6 @@ def xval_of_quantity(
         independent observations
     yvec : np.ndarray
         dependent observations
-    xsorted : bool, optional
-        are values in xvec monotonically increasing? (parsed to interp1d), by
-        default False
     initial_guess : list, optional
         [a,b], where a and b specify the bounds within which val should occur.
         Must be "either side" of val. By default None, sets [a, b] = [xvec[0],
@@ -92,8 +88,13 @@ def xval_of_quantity(
         value of independent observations corresponding to the observed
         dependent observation value
     """
+    try:
+        assert np.all(np.diff(xvec) > 0)
+    except AssertionError:
+        _logger.exception("x values must be ordered and increasing!", exc_info=True)
+        raise
     # create the linear interpolating function
-    f = scipy.interpolate.interp1d(xvec, yvec - val, assume_sorted=xsorted)
+    f = lambda x: np.interp(x, xvec, yvec - val)
     if initial_guess is None:
         initial_guess = [xvec[0], xvec[-1]]
     xval, rootresult = scipy.optimize.brentq(
@@ -134,7 +135,7 @@ def get_idx_in_array(t, tarr):
         array to search within
     Returns
     -------
-    int
+    idx : int
         index of t in tarr
 
     Raises
