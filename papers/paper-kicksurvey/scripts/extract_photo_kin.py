@@ -2,14 +2,6 @@ import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-
-"""try:
-    import matplotlib.pyplot as plt
-except ImportError:
-    from matplotlib import use
-
-    use("Agg")
-    import matplotlib.pyplot as plt"""
 from matplotlib.patches import Rectangle
 from PIL import Image
 import baggins as bgs
@@ -61,7 +53,7 @@ animation_path = (
 final_snaps = bgs.utils.read_parameters(
     "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml"
 )["snap_nums"]
-save_data_interval = min([80, int(final_snaps[f"v{args.kv:04d}"])])
+save_data_interval = 50  # min([80, int(final_snaps[f"v{args.kv:04d}"])])
 SL.warning(f"Data will be saved every {save_data_interval} snapshots...")
 
 
@@ -87,7 +79,8 @@ if args.extract:
 
     snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
     first_snap_done = False
-    for i, snapfile in enumerate(snapfiles):
+    # TODO remove this slicing
+    for i, snapfile in enumerate(snapfiles[:30]):
         snap = pygad.Snapshot(snapfile, physical=True)
         if len(snap.bh) > 1:
             SL.warning(f"Two BHs present in snapshot {i} -> skipping")
@@ -111,16 +104,8 @@ if args.extract:
         data["time"].append(snap_time)
 
         # move to CoM frame
-        centre = pygad.analysis.shrinking_sphere(
-            snap.stars,
-            pygad.analysis.center_of_mass(snap.stars),
-            30,
-        )
-        SL.debug(f"Centre is {centre}")
-        pre_ball_mask = pygad.BallMask(5)
-        vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
-        pygad.Translation(-centre).apply(snap, total=True)
-        pygad.Boost(-vcom).apply(snap, total=True)
+        SL.debug(f"BH is at {snap.bh['pos']}")
+        bgs.analysis.basic_snapshot_centring(snap)
         SL.debug(f"BH is now position: {snap.bh['pos']}")
 
         galaxy_mask = pygad.BallMask(30)
@@ -146,16 +131,17 @@ if args.extract:
             data[orientation]["bh_pos_x"].append(snap.bh["pos"][:, x_axis])
             data[orientation]["bh_pos_y"].append(snap.bh["pos"][:, 2])
 
-            voronoi_stats_all = bgs.analysis.voronoi_binned_los_V_statistics(
+            voronoi = bgs.analysis.VoronoiKinematics(
                 x=snap.stars[ifu_mask]["pos"][:, x_axis],
                 y=snap.stars[ifu_mask]["pos"][:, 2],
                 V=snap.stars[ifu_mask]["vel"][:, LOS_axis],
                 m=snap.stars[ifu_mask]["mass"],
                 Npx=muse_nfm.number_pixels,
-                part_per_bin=5000 * seeing["num"],
                 seeing=seeing,
             )
-            data[orientation]["ifu"].append(voronoi_stats_all)
+            voronoi.make_grid(part_per_bin=5000 * seeing["num"])
+            voronoi.binned_LOSV_statistics()
+            data[orientation]["ifu"].append(voronoi)
 
             # plot the density and save
             _fig, _ax, _aximage, _cbar = pygad.plotting.image(
@@ -212,15 +198,15 @@ def make_plot_and_save_for_gif(i, max_dens, min_dens):
     clims = voronoi_colour_limit_maker(data[args.orientation]["ifu"])
 
     # voronoi plots
-    bgs.plotting.voronoi_plot(
-        data[args.orientation]["ifu"][i],
+    voronoi = data[args.orientation]["ifu"][i]
+    voronoi.plot_kinematic_maps(
+        ax=np.array([ax["A"], ax["B"], ax["C"], ax["D"]]),
         clims={
             "V": [clims["max_V"]],
             "sigma": [clims["min_s"], clims["max_s"]],
             "h3": [clims["max_h3"]],
             "h4": [clims["max_h4"]],
         },
-        ax=np.array([ax["A"], ax["B"], ax["C"], ax["D"]]),
     )
     for k in "ABCD":
         ax[k].scatter(

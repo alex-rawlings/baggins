@@ -237,6 +237,9 @@ def voronoi_plot(vdat, ax=None, figsize=(7, 4.7), clims={}, desat=False, cbar="a
     ax : np.ndarray
         plotting axes
     """
+    raise DeprecationWarning(
+        "This method is no longer supported, use the new VoronoiKinematics interface"
+    )
     # set the colour limits
     _clims = dict(V=[None], sigma=[None, None], h3=[None], h4=[None])
     for k, v in clims.items():

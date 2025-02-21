@@ -33,6 +33,9 @@ parser.add_argument(
 )
 parser.add_argument("-z", dest="redshift", help="redshift", type=float, default=0.3)
 parser.add_argument(
+    "--DIAGNOSE", dest="diagnose", help="dump magnitude data", action="store_true"
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -233,6 +236,20 @@ class ProjectedDensityObject:
                 extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
                 cmap="mako_r",
             )
+            if args.diagnose:
+                # XXX this is strictly for debugging purposes and for testing
+                # prominence methods
+                _debug_data = dict(
+                    mags=im_mag.get_array(),
+                    bh=[snap.bh["pos"][0, self.xaxis], snap.bh["pos"][0, self.yaxis]],
+                    xedges=xedges,
+                    yedges=yedges,
+                    filename=snapfile,
+                )
+                bgs.utils.save_data(
+                    _debug_data,
+                    "/users/arawling/projects/collisionless-merger-sample/code/misc/recoil-explore/mag_data.pickle",
+                )
 
             if self._plot:
                 self.plot_app_magnitude(im_mag=im_mag, snap=snap)
