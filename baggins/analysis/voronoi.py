@@ -2,6 +2,7 @@ from tqdm.dask import TqdmCallback
 import numpy as np
 import scipy.optimize
 import scipy.ndimage
+import scipy.special
 from scipy.stats import binned_statistic_2d
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -13,11 +14,7 @@ from baggins.mathematics import get_histogram_bin_centres
 from pygad import UnitArr
 import dask
 
-__all__ = [
-    "VoronoiKinematics",
-    "lambda_R",
-    "radial_profile_velocity_moment",
-]
+__all__ = ["VoronoiKinematics"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -43,6 +40,10 @@ class VoronoiKinematics:
             contaminate image, must contain keys 'num' and 'sigma', by default
             None
         """
+        x = np.asarray(x)
+        y = np.asarray(y)
+        V = np.asarray(V)
+        m = np.asarray(m)
         try:
             assert len(x) == len(y) == len(V) == len(m)
         except AssertionError:
@@ -83,6 +84,8 @@ class VoronoiKinematics:
         self._extent = None
         self._grid = None
         self._stats = None
+        self._hermite_polys = []
+        self._hermite_order = None
 
     @property
     def extent(self):
@@ -111,16 +114,6 @@ class VoronoiKinematics:
     def img_sigma(self):
         self._stat_is_calculated("sigma")
         return self._stats["img_sigma"]
-
-    @property
-    def img_h3(self):
-        self._stat_is_calculated("h3")
-        return self._stats["img_h3"]
-
-    @property
-    def img_h4(self):
-        self._stat_is_calculated("h4")
-        return self._stats["img_h4"]
 
     @property
     def stats(self):
@@ -194,12 +187,10 @@ class VoronoiKinematics:
             yedges=yedges,
         )
 
-    def gauss_hermite_function(self, x, mu, sigma, h3, h4):
+    def gauss_hermite_function(self, x, mu, sigma, *h):
         """
-        The normalised (when non-negative) function corresponding to the first
-        three terms in the expansion used by van der Marel & Franx
-        (1993ApJ...407..525V) and others following their methods.
-        Original form by Matias Mannerkoski.
+        Normalised Gauss-Hermite function (using physicist's definition)
+        following van der Marel & Franx (1993ApJ...407..525V).
 
         Parameters
         ----------
@@ -209,25 +200,21 @@ class VoronoiKinematics:
             mean of x
         sigma : float
             standard deviation of x
-        h3 : float
-            3rd moment
-        h4 : float
-            4th moment
+        *h : float
+            higher order coefficients
 
         Returns
         -------
         : np.ndarray
             function value of x
         """
-        w = (x - mu) / sigma
-        a = np.exp(-0.5 * w**2) / np.sqrt(2 * np.pi)
-        H3 = (2 * w**3 - 3 * w) / np.sqrt(3)
-        H4 = (4 * w**4 - 12 * w**2 + 3) / np.sqrt(24)
-        N = (
-            np.sqrt(6) * h4 * sigma / 4 + sigma
-        )  # normalization when the function is non-negative
-        # TODO for fitting the function should be always normalized
-        return np.clip(a * (1 + h3 * H3 + h4 * H4) / N, 1e-30, None)
+        t = (x - mu) / sigma
+        gauss = np.exp(-0.5 * t**2) / np.sqrt(2 * np.pi)
+        hermite_polys = [H(t) for H in self._hermite_polys]
+        gh_series = sum(_h * _H for _h, _H in zip(h, hermite_polys))
+        # Eq. 18 of paper
+        normalisation = sigma * (1 + np.sqrt(6) / 4 * h[1])
+        return np.clip(gauss * (1 + gh_series) / normalisation, 1e-30, None)
 
     @dask.delayed
     def fit_gauss_hermite_distribution(self, data):
@@ -242,14 +229,8 @@ class VoronoiKinematics:
 
         Returns
         -------
-        mu0 : float
-            fit mean
-        sigma0 : float
-            fit standard deviation
-        h3 : float
-            3rd moment
-        h4 : float
-            4th moment
+        coeffs : list
+            best fit coefficients (including mean and std)
         """
         if isinstance(data, UnitArr):
             data = data.view(np.ndarray)
@@ -259,10 +240,13 @@ class VoronoiKinematics:
         if np.any(np.isnan(data)):
             _logger.warning("Removing NaNs from data!")
             data = data[~np.isnan(data)]
-        # the gauss hermite function is made to have the same mean and sigma as the
-        # plain gaussian so compute them with faster estimates
+        # the gauss hermite function is made to have the same mean and sigma as
+        # the plain gaussian so compute them with faster estimates
         mu0 = np.nanmean(data)
         sigma0 = np.nanstd(data)
+        coeffs = [mu0, sigma0]
+        if self._hermite_order == 2:
+            return coeffs
 
         def log_likelihood(pars):
             ll = -np.nansum(
@@ -270,23 +254,32 @@ class VoronoiKinematics:
             )
             return ll
 
+        num_h_coeffs = self._hermite_order - 2
         try:
+            x0 = [0.0] * num_h_coeffs
+            bounds = ([-1.0] * num_h_coeffs, [1.0] * num_h_coeffs)
             res = scipy.optimize.least_squares(
-                log_likelihood, (0.0, 0.0), loss="huber", bounds=((-1, -1), (1, 1))
+                log_likelihood, x0, loss="huber", bounds=bounds
             )
-            h3, h4 = res.x
+            h_coeffs = res.x
         except ValueError as err:
             _logger.warning(
                 f"Unsuccessful fitting of Gauss-Hermite function for IFU bin - {err}"
             )
-            h3, h4 = np.nan, np.nan
-        return mu0, sigma0, h3, h4
+            h_coeffs = np.full(num_h_coeffs, np.nan)
+        coeffs.extend(h_coeffs)
+        return coeffs
 
-    def binned_LOSV_statistics(self):
+    def binned_LOSV_statistics(self, p=4):
         """
-        Generate the binned LOS statistics for the voronoi map
+        Generate the binned LOS statistics for the voronoi map.
+
+        Parameters
+        ----------
+        p : int, optional
+            Hermite polynomial order, by default 4
         """
-        _logger.info(f"Binning {len(self.x):.2e} particles...")
+        _logger.info(f"Binning {len(self.x):.2e} particles, Hermite order {p}")
         bin_index = list(range(self.max_voronoi_bin_index))
 
         bin_mass = scipy.ndimage.sum(
@@ -298,6 +291,21 @@ class VoronoiKinematics:
         except AssertionError:
             _logger.exception("We only have one voronoi bin!", exc_info=True)
             raise
+
+        if p < 2:
+            _logger.warning("Gauss-Hermite series must include at least V and sigma")
+            p = 2
+        if p % 2 != 0:
+            _logger.warning(
+                f"Always fit matching symmetric and asymmetric components - increasing order from {p} to {p+1}"
+            )
+            p = p + 1
+        self._hermite_order = p
+        self._hermite_polys = [
+            scipy.special.hermite(i, monic=True)
+            for i in range(3, self._hermite_order + 1)
+        ]
+
         fits = []
         for i in bin_index:
             fits.append(
@@ -313,14 +321,14 @@ class VoronoiKinematics:
         self._stats = dict(
             bin_V=bin_stats[:, 0],
             bin_sigma=bin_stats[:, 1],
-            bin_h3=bin_stats[:, 2],
-            bin_h4=bin_stats[:, 3],
             bin_mass=bin_mass,
             img_V=img_stats[..., 0],
             img_sigma=img_stats[..., 1],
-            img_h3=img_stats[..., 2],
-            img_h4=img_stats[..., 3],
         )
+
+        for i in range(2, self._hermite_order):
+            self._stats[f"bin_h{i+1}"] = bin_stats[:, i]
+            self._stats[f"img_h{i+1}"] = img_stats[..., i]
 
     def binned_LOS_dispersion_only(self, ax=None, clims=None, cbar="adj"):
         """
@@ -340,6 +348,7 @@ class VoronoiKinematics:
         ax : pyplot.Axes
             plotting axis
         """
+        raise DeprecationWarning
         _logger.info(f"Binning {len(self.x):.2e} particles...")
         bin_index = list(range(self.max_voronoi_bin_index))
         try:
@@ -421,62 +430,52 @@ class VoronoiKinematics:
         """
         self._stat_is_calculated("V")
         # set the colour limits
-        _clims = dict(V=[None], sigma=[None, None], h3=[None], h4=[None])
-        for k, v in clims.items():
-            try:
-                assert isinstance(v, (list, tuple))
-            except AssertionError:
-                _logger.exception(
-                    f"Each value of `clim` must be a list or tuple, not {type(v)}!",
-                    exc_info=True,
-                )
-                raise
-            vlen = 2 if k == "sigma" else 1
-            try:
-                assert len(v) == vlen
-            except AssertionError:
-                _logger.exception(
-                    f"`clim` entry for {k} must be of length {vlen}, not {len(v)}!",
-                    exc_info=True,
-                )
-                raise
-            _clims[k] = v
+        clims.setdefault("V", None)
+        clims.setdefault("sigma", [None, None])
+        for p in range(3, self._hermite_order + 1):
+            clims.setdefault(f"h{p}", None)
 
         # set up the figure
         if ax is None:
-            fig, ax = plt.subplots(2, 2, sharex="all", sharey="all", figsize=figsize)
+            num_cols = int(self._hermite_order / 2)
+            fig, ax = plt.subplots(
+                2, num_cols, sharex="all", sharey="all", figsize=figsize
+            )
             for i in range(2):
-                ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
                 ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
+            for i in range(num_cols):
+                ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
         if desat:
             div_cols = colormaps.get("voronoi_div_desat")
             asc_cols = colormaps.get("voronoi_seq_desat")
         else:
             div_cols = colormaps.get("voronoi_div")
             asc_cols = colormaps.get("voronoi_seq")
+
+        # handle arbitrary-length h coefficients
+        # we will always have V and sigma
+        statkeys = ["V", "sigma"]
+        cmaps = [div_cols, asc_cols]
+        labels = [
+            r"$V/\mathrm{km}\,\mathrm{s}^{-1}$",
+            r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$",
+        ]
+        # now add the h coefficients
+        for p in range(3, self._hermite_order + 1):
+            statkeys.append(f"h{p}")
+            cmaps.append(div_cols)
+            labels.append(f"$h_{p}$")
+
         for i, (statkey, axi, cmap, label) in enumerate(
-            zip(
-                ("V", "sigma", "h3", "h4"),
-                ax.flat,
-                (div_cols, asc_cols, div_cols, div_cols),
-                (
-                    r"$V/\mathrm{km}\,\mathrm{s}^{-1}$",
-                    r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$",
-                    r"$h_3$",
-                    r"$h_4$",
-                ),
-            )
+            zip(statkeys, ax.flat, cmaps, labels)
         ):
             # plot the statistic
             cmap.set_bad(color="k")
             stat = self._stats[f"img_{statkey}"]
-            if i != 1:
-                norm = colors.CenteredNorm(vcenter=0, halfrange=_clims[statkey][0])
+            if statkey != "sigma":
+                norm = colors.CenteredNorm(vcenter=0, halfrange=clims[statkey])
             else:
-                if _clims["sigma"]:
-                    norm = colors.Normalize(*_clims["sigma"])
-                else:
-                    norm = colors.Normalize(stat.min(), stat.max())
+                norm = colors.Normalize(*clims["sigma"])
             axi.set_aspect("equal")
             p1 = axi.imshow(
                 stat,
@@ -522,10 +521,11 @@ class VoronoiKinematics:
         """
         # get the pixel number of x and y
         try:
-            assert isinstance(x, (float, int)) and isinstance(y, (float, int))
-        except AssertionError:
+            x = float(x)
+            y = float(y)
+        except TypeError as err:
             _logger.exception(
-                f"Coordinates must be a single point, not {type(x)}", exc_info=True
+                f"Coordinates must be convertible to a float. {err}", exc_info=True
             )
             raise
         indx = np.digitize(x, self._grid["xedges"]) - 1
@@ -565,8 +565,10 @@ class VoronoiKinematics:
                 _v,
                 self.img_V[indx, indy],
                 self.img_sigma[indx, indy],
-                self.img_h3[indx, indy],
-                self.img_h4[indx, indy],
+                *[
+                    self.stats[f"img_h{i}"][indx, indy]
+                    for i in range(3, 3 + len(self._hermite_polys))
+                ],
             ),
         )
         return ax
@@ -583,68 +585,56 @@ class VoronoiKinematics:
         )
         return lambda x: np.interp(x, R, lam)
 
+    def dump_to_dict(self):
+        """
+        Dump the minimum amount of data to a dict that can then be used to reinitialise the class
 
-def _get_R(vs):
-    """
-    Helper function to get radial value of voronoi bins
+        Returns
+        -------
+        d : dict
+            necessary data
+        """
+        d = dict(x_bin=self._grid["x_bin"], y_bin=self._grid["y_bin"])
+        d.update(self.stats)
+        d["extent"] = self.extent
+        return d
 
-    Parameters
-    ----------
-    vs : dict
-        output of voronoi_binned_los_V_statistics() method
+    @classmethod
+    def load_from_dict(cls, d):
+        """
+        Initiate class from a dictionary. Not all keys will have available data.
 
-    Returns
-    -------
-    R : np.ndarray
-        radial values
-    inds : np.ndarray
-        sorted indices of radius
-    """
-    R = np.sqrt(vs["xBar"] ** 2 + vs["yBar"] ** 2)
-    inds = np.argsort(R)
-    return R[inds], inds
+        Parameters
+        ----------
+        d : dict
+            Dictionary to load data from
 
-
-def lambda_R(vorstat):
-    """
-    Determine the lambda(R) spin parameter.
-    Original form by Matias Mannerkoski
-
-    Parameters
-    ----------
-    vorstat : dict
-        output of voronoi_binned_los_V_statistics() method
-
-    Returns
-    -------
-    : callable
-        interpolation function to get spin value at a particular radius
-    """
-    R, inds = _get_R(vorstat)
-    F = vorstat["bin_mass"][inds]
-    V = vorstat["bin_V"][inds]
-    s = vorstat["bin_sigma"][inds]
-    lam = np.nancumsum(F * R * np.abs(V)) / np.nancumsum(F * R * np.sqrt(V**2 + s**2))
-    return lambda x: np.interp(x, R, lam)
-
-
-def radial_profile_velocity_moment(vorstat, stat):
-    """
-    Obtain a radial mass-weighted velocity moment profile from a Voronoi map.
-
-    Parameters
-    ----------
-    vorstat : dict
-        output of voronoi_binned_los_V_statistics() method
-    stat : str
-        velocity moment, one of: "V", "sigma", "h3", or "h4"
-
-    Returns
-    -------
-    R : np.ndarray
-        radial values
-    : np.ndarray
-        radial moment profile
-    """
-    R, inds = _get_R(vorstat)
-    return R, vorstat[f"bin_{stat}"][inds]
+        Returns
+        -------
+        C : VoronoiKinematics
+            initiated class
+        """
+        C = cls(x=[], y=[], V=[], m=[])
+        grid_keys = [
+            "particle_vor_bin_num",
+            "pixel_vor_bin_num",
+            "x_bin",
+            "y_bin",
+            "xedges",
+            "xedges",
+        ]
+        stat_keys = list(set(d.keys()).difference(set(grid_keys)))
+        C._grid = {}
+        C._stats = {}
+        for k in grid_keys:
+            try:
+                C._grid[k] = d[k]
+            except KeyError:
+                C._grid[k] = None
+        for k in stat_keys:
+            try:
+                C._stats[k] = d[k]
+            except KeyError:
+                C._stats[k] = None
+        C._extent = d["extent"]
+        return C

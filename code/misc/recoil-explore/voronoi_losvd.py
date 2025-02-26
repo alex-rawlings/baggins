@@ -10,7 +10,7 @@ y_axis = 2
 LOS_axis = 1
 
 muse_nfm = bgs.analysis.MUSE_NFM()
-muse_nfm.redshift = 0.3
+muse_nfm.redshift = 1.
 
 ifu_mask = pygad.ExprMask(
     f"abs(pos[:,{x_axis}]) <= {0.5 * muse_nfm.extent}"
@@ -40,7 +40,7 @@ for i, snapnum, in enumerate((0, 9, 16)):
         seeing=seeing
     )
     voronoi.make_grid(part_per_bin=5000 * seeing["num"])
-    voronoi.binned_LOSV_statistics()
+    voronoi.binned_LOSV_statistics(p=6)
 
     # plot for BH
     data_bh.append(voronoi.get_pixel_LOSVD(snap.bh["pos"][0,x_axis], snap.bh["pos"][0,y_axis])[0])
@@ -55,16 +55,17 @@ for i, snapnum, in enumerate((0, 9, 16)):
 ax[0,0].set_xlim(-1e3, 1e3)
 bgs.plotting.savefig("losvd.png")
 
-with h5py.File("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/misc/losvd_jens.hdf5", "w") as f:
-    f.create_dataset("BH_merger", data=data_bh[0])
-    f["BH_merger"].attrs["description"] = "LOSVD of pixel containing BH at time of merger"
-    f.create_dataset("BH_apo", data=data_bh[1])
-    f["BH_apo"].attrs["description"] = "LOSVD of pixel containing BH at time of first apocentre"
-    f.create_dataset("BH_peri", data=data_bh[2])
-    f["BH_peri"].attrs["description"] = "LOSVD of pixel containing BH at time of first pericentre"
-    f.create_dataset("peak_merger", data=data_other[0])
-    f["peak_merger"].attrs["description"] = "LOSVD of pixel at coordinates (-10, 0) at time of BH merger"
-    f.create_dataset("peak_apo", data=data_other[1])
-    f["peak_apo"].attrs["description"] = "LOSVD of pixel at coordinates (-10, 0) at time of BH apocentre"
-    f.create_dataset("peak_peri", data=data_other[2])
-    f["peak_peri"].attrs["description"] = "LOSVD of pixel at coordinates (-10, 0) at time of BH pericentre"
+if False:
+    with h5py.File("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/misc/losvd_jens.hdf5", "w") as f:
+        f.create_dataset("BH_merger", data=data_bh[0])
+        f["BH_merger"].attrs["description"] = "LOSVD of pixel containing BH at time of merger"
+        f.create_dataset("BH_apo", data=data_bh[1])
+        f["BH_apo"].attrs["description"] = "LOSVD of pixel containing BH at time of first apocentre"
+        f.create_dataset("BH_peri", data=data_bh[2])
+        f["BH_peri"].attrs["description"] = "LOSVD of pixel containing BH at time of first pericentre"
+        f.create_dataset("peak_merger", data=data_other[0])
+        f["peak_merger"].attrs["description"] = "LOSVD of pixel at coordinates (-10, 0) at time of BH merger"
+        f.create_dataset("peak_apo", data=data_other[1])
+        f["peak_apo"].attrs["description"] = "LOSVD of pixel at coordinates (-10, 0) at time of BH apocentre"
+        f.create_dataset("peak_peri", data=data_other[2])
+        f["peak_peri"].attrs["description"] = "LOSVD of pixel at coordinates (-10, 0) at time of BH pericentre"
