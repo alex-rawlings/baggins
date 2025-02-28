@@ -29,6 +29,17 @@ parser.add_argument(
     "-a", "--animate", action="store_true", dest="animate", help="make animation"
 )
 parser.add_argument(
+    "-f",
+    "--final",
+    dest="final",
+    help="final snapshot number to make",
+    default=None,
+    type=int,
+)
+parser.add_argument(
+    "--stride", type=int, help="plot every nth snapshot", dest="stride", default=None
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -50,10 +61,12 @@ snapdir = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/v
 animation_path = (
     "/scratch/pjohanss/arawling/collisionless_merger/visualisations/recoil-explore"
 )
-final_snaps = bgs.utils.read_parameters(
+final_snap = bgs.utils.read_parameters(
     "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml"
-)["snap_nums"]
-save_data_interval = 50  # min([80, int(final_snaps[f"v{args.kv:04d}"])])
+)["snap_nums"][f"v{args.kv:04d}"]
+if args.final is not None:
+    final_snap = args.final
+save_data_interval = min([80, final_snap])
 SL.warning(f"Data will be saved every {save_data_interval} snapshots...")
 
 
@@ -78,10 +91,15 @@ if args.extract:
     data = make_data_dict()
 
     snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
+    if args.stride is not None:
+        assert args.stride > 1
+        snapfiles = snapfiles[:: args.stride]
     first_snap_done = False
-    # TODO remove this slicing
-    for i, snapfile in enumerate(snapfiles[:30]):
+    for i, snapfile in enumerate(snapfiles):
         snap = pygad.Snapshot(snapfile, physical=True)
+        snapnum = int(
+            os.path.splitext(os.path.basename(snapfile).replace("snap_", ""))[0]
+        )
         if len(snap.bh) > 1:
             SL.warning(f"Two BHs present in snapshot {i} -> skipping")
             # conserve memory
@@ -89,10 +107,10 @@ if args.extract:
             del snap
             pygad.gc_full_collect()
             continue
-        if i > int(final_snaps[f"v{args.kv:04d}"]):
+        if snapnum > final_snap:
             SL.warning("Final snapshot: breaking")
             break
-        SL.info(f"Doing snapshot {i:03d}")
+        SL.info(f"Doing snapshot {snapnum:03d}")
         snap_time = bgs.general.convert_gadget_time(snap)
         # we don't need all the snapshots as the BH is thermalising
         if snap_time > 1 and i % 4 != 0:
@@ -117,12 +135,15 @@ if args.extract:
             data["original_bound_stars"].append(len(bound_stars_0))
             first_snap_done = True
         else:
-            bound_stars = bgs.analysis.find_individual_bound_particles(snap)
-            data["bound_stars_all"].append(len(bound_stars))
-            data["original_bound_stars"].append(
-                len(set(bound_stars_0).intersection(set(bound_stars)))
-            )
-
+            try:
+                bound_stars = bgs.analysis.find_individual_bound_particles(snap)
+                data["bound_stars_all"].append(len(bound_stars))
+                data["original_bound_stars"].append(
+                    len(set(bound_stars_0).intersection(set(bound_stars)))
+                )
+            except AssertionError:
+                data["bound_stars_all"].append(np.nan)
+                data["original_bound_stars"].append(np.nan)
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             ifu_mask = pygad.ExprMask(
                 f"abs(pos[:,{x_axis}]) <= {0.5 * muse_nfm.extent}"
@@ -141,7 +162,7 @@ if args.extract:
             )
             voronoi.make_grid(part_per_bin=5000 * seeing["num"])
             voronoi.binned_LOSV_statistics()
-            data[orientation]["ifu"].append(voronoi)
+            data[orientation]["ifu"].append(voronoi.dump_to_dict())
 
             # plot the density and save
             _fig, _ax, _aximage, _cbar = pygad.plotting.image(
@@ -157,6 +178,7 @@ if args.extract:
         snap.delete_blocks()
         del snap
         pygad.gc_full_collect()
+        del voronoi
 
         if i % save_data_interval == 0:
             SL.warning("Dumping data")
@@ -198,7 +220,9 @@ def make_plot_and_save_for_gif(i, max_dens, min_dens):
     clims = voronoi_colour_limit_maker(data[args.orientation]["ifu"])
 
     # voronoi plots
-    voronoi = data[args.orientation]["ifu"][i]
+    voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(
+        data[args.orientation]["ifu"][i]
+    )
     voronoi.plot_kinematic_maps(
         ax=np.array([ax["A"], ax["B"], ax["C"], ax["D"]]),
         clims={

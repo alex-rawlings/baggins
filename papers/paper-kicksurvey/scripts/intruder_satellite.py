@@ -45,6 +45,10 @@ if args.new or not os.path.exists(intruder_file):
     bgs.analysis.basic_snapshot_centring(snap)
     SL.warning(f"BH position is {pygad.utils.geo.dist(snap.bh['pos'])}")
 
+    # get the density of the entire galaxy
+    r_edges_gal = np.geomspace(1e-2, 2 * snap.bh["r"][0], 51)
+    gal_dens = pygad.analysis.profile_dens(snap.stars, "mass", r_edges=r_edges_gal)
+
     # extract those stellar particles within the influence radius
     rinfl = list(bgs.analysis.influence_radius(snap).values())[0]
     SL.debug(f"Influence radius is {rinfl:.2e} kpc")
@@ -52,22 +56,54 @@ if args.new or not os.path.exists(intruder_file):
     infl_stars = snap.stars[rinfl_mask]
     SL.debug(f"There are {len(infl_stars):.2e} stars within the influence radius")
 
-    # fit a Dehnen density profile to these stars
-    redges = np.geomspace(1e-2, 2, 15)
-    rcentres = bgs.mathematics.get_histogram_bin_centres(redges)
-    density = pygad.analysis.profile_dens(
-        infl_stars, "mass", r_edges=redges, center=snap.bh["pos"].flatten()
+    # get the density of the total cluster
+    def get_cluster_density(Rmax):
+        r_edges = np.geomspace(1e-2, Rmax, 21)
+        r_centres = bgs.mathematics.get_histogram_bin_centres(r_edges)
+        dens = pygad.analysis.profile_dens(
+            infl_stars, "mass", r_edges=r_edges, center=snap.bh["pos"].flatten()
+        )
+        return r_centres, dens
+
+    r_centres_cluster, density_cluster = get_cluster_density(rinfl)
+    # only include those stars which are within a radius that encloses a
+    # density above the background density
+    background_dens = np.interp(
+        r_centres_cluster,
+        bgs.mathematics.get_histogram_bin_centres(r_edges_gal),
+        gal_dens,
     )
-    Mcluster = np.sum(infl_stars["mass"])
+    cluster_max_r = r_centres_cluster[
+        np.argmin(density_cluster > background_dens) + 1
+    ]  # plus 1 so we get the full bin
+
+    # now fit the cluster that is visible above the background
+    r_centres_cluster, density_cluster = get_cluster_density(cluster_max_r)
+    cluster_mask = pygad.BallMask(cluster_max_r, center=snap.bh["pos"].flatten())
+    SL.info(
+        f"Updated half mass radius: {bgs.analysis.lagrangian_radius(snap[cluster_mask], 0.5)}"
+    )
+    SL.info(
+        f"Updated LOS velocity dispersion: {pygad.analysis.los_velocity_dispersion(snap.stars[cluster_mask], proj=1)}"
+    )
+
+    Mcluster = np.sum(snap.stars[cluster_mask]["mass"])
     dehnen_params = bgs.literature.fit_Dehnen_profile(
-        rcentres, density, Mcluster, bounds=[[0.1, 0.1], [10, 3]]
+        r_centres_cluster, density_cluster, Mcluster, bounds=[[0.1, 0.1], [10, 3]]
     )
     SL.info(f"Best fit parameters are: {dehnen_params}")
 
     if args.verbosity == "DEBUG":
-        plt.loglog(rcentres, density)
-        plt.loglog(rcentres, bgs.literature.Dehnen(rcentres, *dehnen_params, Mcluster))
-        bgs.plotting.savefig("dehnen.png", force_ext=True)
+        plt.loglog(r_centres_cluster, density_cluster)
+        plt.loglog(
+            r_centres_cluster,
+            bgs.literature.Dehnen(r_centres_cluster, *dehnen_params, Mcluster),
+            label=f"a: {dehnen_params[0]:.3f}, g: {dehnen_params[1]:.3f}",
+        )
+        plt.legend()
+        bgs.plotting.savefig(
+            os.path.join(bgs.FIGDIR, "kick-survey/dehnen.png"), force_ext=True
+        )
         plt.close()
 
     # create a new cluster with the same density profile
@@ -158,16 +194,17 @@ seeing = seeing = {
     "sigma": muse_nfm.pixel_width,
     "rng": np.random.default_rng(42),
 }
-voronoi_stats = bgs.analysis.voronoi_binned_los_V_statistics(
+voronoi = bgs.analysis.VoronoiKinematics(
     x=snap.stars[ifu_mask]["pos"][:, 0],
     y=snap.stars[ifu_mask]["pos"][:, 2],
     V=snap.stars[ifu_mask]["vel"][:, 1],
     m=snap.stars[ifu_mask]["mass"],
     Npx=muse_nfm.number_pixels,
-    part_per_bin=seeing["num"] * 5000,
     seeing=seeing,
 )
-bgs.plotting.voronoi_plot(voronoi_stats, ax=ax[1:], cbar="inset")
+voronoi.make_grid(part_per_bin=seeing["num"] * 5000)
+voronoi.binned_LOSV_statistics()
+voronoi.plot_kinematic_maps(ax=ax[1:], cbar="inset")
 for axi in ax[1:]:
     axi.set_xticks([])
     axi.set_xticklabels([])

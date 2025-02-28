@@ -434,7 +434,14 @@ def _find_radius_for_mass(s, M, centre):
     r = pygad.utils.geo.dist(s["pos"], centre)
     sorted_idx = np.argsort(r)
     r = r[sorted_idx]
-    assert np.all(np.diff(r) > 0)
+    try:
+        assert np.all(np.diff(r) > 0)
+    except AssertionError:
+        _logger.exception(
+            f"Radii are not monotonically ascending! Radii have values {r}",
+            exc_info=True,
+        )
+        raise
     cumul_mass = np.cumsum(s["mass"][sorted_idx])
     try:
         assert np.any(cumul_mass > M)
@@ -526,9 +533,7 @@ def lagrangian_radius(snap, mass_frac=0.1, centre=None):
             center=pygad.analysis.center_of_mass(snap.stars),
             R=np.quantile(snap.stars["r"], 0.75),
         )
-    return _find_radius_for_mass(
-        target_mass, snap.stars["mass"][0], snap.stars["pos"], centre
-    )
+    return _find_radius_for_mass(snap.stars, target_mass, centre)
 
 
 def influence_radius(snap, combined=False):
