@@ -13,6 +13,7 @@ __all__ = [
     "get_idx_in_array",
     "get_unique_path_part",
     "represent_numeric_in_scientific",
+    "get_snapshot_number",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -57,9 +58,7 @@ def sersic_b_param(n):
     )
 
 
-def xval_of_quantity(
-    val, xvec, yvec, initial_guess=None, root_kwargs={}
-):
+def xval_of_quantity(val, xvec, yvec, initial_guess=None, root_kwargs={}):
     """
     Find the value in a set of independent observations corresponding to a
     dependent observation. For example, the time corresponding to a particular
@@ -202,3 +201,23 @@ def represent_numeric_in_scientific(v, mantissa_fmt=".1f"):
         mantissa_fmt = ".1f"
     exponent = int(np.floor(np.log10(v)))
     return f"${v/10**exponent:{mantissa_fmt}}\\times 10^{exponent}$"
+
+
+def get_snapshot_number(s, prefix="snap"):
+    """
+    Get the number of a snapshot from the file name.
+
+    Parameters
+    ----------
+    s : str, path-like
+        snapshot file name
+    prefix : str, optional
+        prefix to remove from file name, by default "snap"
+
+    Returns
+    -------
+    : str
+        snapshot identifier
+    """
+    fname = os.path.splitext((os.path.basename(s)))[0]
+    return fname.replace(f"{prefix}_", "")
