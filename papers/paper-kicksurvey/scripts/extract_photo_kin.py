@@ -2,14 +2,6 @@ import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-
-"""try:
-    import matplotlib.pyplot as plt
-except ImportError:
-    from matplotlib import use
-
-    use("Agg")
-    import matplotlib.pyplot as plt"""
 from matplotlib.patches import Rectangle
 from PIL import Image
 import baggins as bgs
@@ -37,6 +29,17 @@ parser.add_argument(
     "-a", "--animate", action="store_true", dest="animate", help="make animation"
 )
 parser.add_argument(
+    "-f",
+    "--final",
+    dest="final",
+    help="final snapshot number to make",
+    default=None,
+    type=int,
+)
+parser.add_argument(
+    "--stride", type=int, help="plot every nth snapshot", dest="stride", default=None
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -58,10 +61,12 @@ snapdir = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/v
 animation_path = (
     "/scratch/pjohanss/arawling/collisionless_merger/visualisations/recoil-explore"
 )
-final_snaps = bgs.utils.read_parameters(
+final_snap = bgs.utils.read_parameters(
     "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml"
-)["snap_nums"]
-save_data_interval = min([80, int(final_snaps[f"v{args.kv:04d}"])])
+)["snap_nums"][f"v{args.kv:04d}"]
+if args.final is not None:
+    final_snap = args.final
+save_data_interval = min([80, final_snap])
 SL.warning(f"Data will be saved every {save_data_interval} snapshots...")
 
 
@@ -86,9 +91,15 @@ if args.extract:
     data = make_data_dict()
 
     snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
+    if args.stride is not None:
+        assert args.stride > 1
+        snapfiles = snapfiles[:: args.stride]
     first_snap_done = False
     for i, snapfile in enumerate(snapfiles):
         snap = pygad.Snapshot(snapfile, physical=True)
+        snapnum = int(
+            os.path.splitext(os.path.basename(snapfile).replace("snap_", ""))[0]
+        )
         if len(snap.bh) > 1:
             SL.warning(f"Two BHs present in snapshot {i} -> skipping")
             # conserve memory
@@ -96,10 +107,10 @@ if args.extract:
             del snap
             pygad.gc_full_collect()
             continue
-        if i > int(final_snaps[f"v{args.kv:04d}"]):
+        if snapnum > final_snap:
             SL.warning("Final snapshot: breaking")
             break
-        SL.info(f"Doing snapshot {i:03d}")
+        SL.info(f"Doing snapshot {snapnum:03d}")
         snap_time = bgs.general.convert_gadget_time(snap)
         # we don't need all the snapshots as the BH is thermalising
         if snap_time > 1 and i % 4 != 0:
@@ -111,16 +122,8 @@ if args.extract:
         data["time"].append(snap_time)
 
         # move to CoM frame
-        centre = pygad.analysis.shrinking_sphere(
-            snap.stars,
-            pygad.analysis.center_of_mass(snap.stars),
-            30,
-        )
-        SL.debug(f"Centre is {centre}")
-        pre_ball_mask = pygad.BallMask(5)
-        vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
-        pygad.Translation(-centre).apply(snap, total=True)
-        pygad.Boost(-vcom).apply(snap, total=True)
+        SL.debug(f"BH is at {snap.bh['pos']}")
+        bgs.analysis.basic_snapshot_centring(snap)
         SL.debug(f"BH is now position: {snap.bh['pos']}")
 
         galaxy_mask = pygad.BallMask(30)
@@ -132,12 +135,15 @@ if args.extract:
             data["original_bound_stars"].append(len(bound_stars_0))
             first_snap_done = True
         else:
-            bound_stars = bgs.analysis.find_individual_bound_particles(snap)
-            data["bound_stars_all"].append(len(bound_stars))
-            data["original_bound_stars"].append(
-                len(set(bound_stars_0).intersection(set(bound_stars)))
-            )
-
+            try:
+                bound_stars = bgs.analysis.find_individual_bound_particles(snap)
+                data["bound_stars_all"].append(len(bound_stars))
+                data["original_bound_stars"].append(
+                    len(set(bound_stars_0).intersection(set(bound_stars)))
+                )
+            except AssertionError:
+                data["bound_stars_all"].append(np.nan)
+                data["original_bound_stars"].append(np.nan)
         for orientation, x_axis, LOS_axis in zip(("para", "ortho"), (1, 0), (0, 1)):
             ifu_mask = pygad.ExprMask(
                 f"abs(pos[:,{x_axis}]) <= {0.5 * muse_nfm.extent}"
@@ -146,16 +152,17 @@ if args.extract:
             data[orientation]["bh_pos_x"].append(snap.bh["pos"][:, x_axis])
             data[orientation]["bh_pos_y"].append(snap.bh["pos"][:, 2])
 
-            voronoi_stats_all = bgs.analysis.voronoi_binned_los_V_statistics(
+            voronoi = bgs.analysis.VoronoiKinematics(
                 x=snap.stars[ifu_mask]["pos"][:, x_axis],
                 y=snap.stars[ifu_mask]["pos"][:, 2],
                 V=snap.stars[ifu_mask]["vel"][:, LOS_axis],
                 m=snap.stars[ifu_mask]["mass"],
                 Npx=muse_nfm.number_pixels,
-                part_per_bin=5000 * seeing["num"],
                 seeing=seeing,
             )
-            data[orientation]["ifu"].append(voronoi_stats_all)
+            voronoi.make_grid(part_per_bin=5000 * seeing["num"])
+            voronoi.binned_LOSV_statistics()
+            data[orientation]["ifu"].append(voronoi.dump_to_dict())
 
             # plot the density and save
             _fig, _ax, _aximage, _cbar = pygad.plotting.image(
@@ -171,6 +178,7 @@ if args.extract:
         snap.delete_blocks()
         del snap
         pygad.gc_full_collect()
+        del voronoi
 
         if i % save_data_interval == 0:
             SL.warning("Dumping data")
@@ -212,15 +220,17 @@ def make_plot_and_save_for_gif(i, max_dens, min_dens):
     clims = voronoi_colour_limit_maker(data[args.orientation]["ifu"])
 
     # voronoi plots
-    bgs.plotting.voronoi_plot(
-        data[args.orientation]["ifu"][i],
+    voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(
+        data[args.orientation]["ifu"][i]
+    )
+    voronoi.plot_kinematic_maps(
+        ax=np.array([ax["A"], ax["B"], ax["C"], ax["D"]]),
         clims={
             "V": [clims["max_V"]],
             "sigma": [clims["min_s"], clims["max_s"]],
             "h3": [clims["max_h3"]],
             "h4": [clims["max_h4"]],
         },
-        ax=np.array([ax["A"], ax["B"], ax["C"], ax["D"]]),
     )
     for k in "ABCD":
         ax[k].scatter(

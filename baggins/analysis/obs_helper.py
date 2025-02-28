@@ -15,6 +15,7 @@ __all__ = [
     "get_euclid_filter_collection",
     "get_hst_filter_collection",
     "get_surface_brightness",
+    "get_flux_from_magnitude",
     "MUSE_NFM",
 ]
 
@@ -206,6 +207,24 @@ def get_surface_brightness(
 
     _logger.debug(f"App. magnitude is {app_mag:.2f}")
     return {"abs_mag": abs_mag, "app_mag": app_mag}
+
+
+def get_flux_from_magnitude(mag):
+    """
+    Convert AB magnitude to flux
+
+    Parameters
+    ----------
+    mag : float, array-like
+        magnitudes to convert
+
+    Returns
+    -------
+    : float, array-like
+        flux values in Jy
+    """
+    const = 2.5 * np.log10(3631)
+    return 10 ** ((mag - const) / -2.5)
 
 
 class BasicInstrument(ABC):
