@@ -224,7 +224,7 @@ def get_com_velocity_of_each_galaxy(
 
 
 def get_galaxy_axis_ratios(
-    snap, xcom=None, bin_mask=None, family="stars", return_eigenvectors=False
+    snap, bin_mask=None, family="stars", return_eigenvectors=False
 ):
     """
     Determine the axis ratios b/a and c/a of a galaxy
@@ -233,8 +233,6 @@ def get_galaxy_axis_ratios(
     ----------
     snap : pygad.Snapshot
         snapshot to analyse
-    xcom : pygad.UnitArr, optional
-        CoM coordinates for the galaxy, by default None
     bin_mask : pygad.snapshot.masks, optional
         radial or energy masks to apply to the (sub) snapshot, by default None
     family : str, optional
@@ -249,15 +247,10 @@ def get_galaxy_axis_ratios(
     eigenvecs : np.ndarray, optional
         eigenvectors of inertia tensor
     """
-    if xcom is None:
-        xcom = pygad.UnitArr([0, 0, 0], "kpc")
-    elif not isinstance(xcom, pygad.UnitArr):
-        xcom = pygad.UnitArr(xcom, "kpc")
     subsnap = getattr(snap, family)
     # move entire subsnap to CoM coordinates
     # just doing this for a masked section results in the radial distance 'r'
     # block not being rederived...
-    pygad.Translation(-xcom).apply(subsnap)
     if bin_mask is not None:
         # apply either a ball or shell mask
         subsnap = subsnap[bin_mask]
@@ -996,7 +989,7 @@ def projected_quantities(
     return eff_rad, vsig2_re, vsig2_r, surf_rho
 
 
-def inner_DM_fraction(snap, Re=None, centre=None):
+def inner_DM_fraction(snap, Re=None):
     """
     Determine the dark matter fraction within 1 Re
 
@@ -1006,8 +999,6 @@ def inner_DM_fraction(snap, Re=None, centre=None):
         snapshot to analyse
     Re : pygad.UnitArr, optional
         effective radius, by default None (calculates the value)
-    centre : pygad.UnitArr, optional
-        mass centre, default uses the CoM of the BH binary, by default None
 
     Returns
     -------
@@ -1017,9 +1008,7 @@ def inner_DM_fraction(snap, Re=None, centre=None):
     if Re is None:
         Re, *_ = projected_quantities(snap)
         Re = np.nanmedian(list(Re.values())[0])
-    if centre is None:
-        centre = pygad.analysis.center_of_mass(snap.bh)
-    ball_mask = pygad.BallMask(Re, center=centre)
+    ball_mask = pygad.BallMask(Re)
     dm_mass = snap.dm["mass"][0]
     star_mass = snap.stars["mass"][0]
     return (
