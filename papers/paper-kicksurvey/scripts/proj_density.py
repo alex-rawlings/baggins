@@ -31,9 +31,9 @@ parser.add_argument(
     action="store_true",
     dest="prom_only",
 )
-parser.add_argument("-z", dest="redshift", help="redshift", type=float, default=0.3)
+parser.add_argument("-z", dest="redshift", help="redshift", type=float, default=0.6)
 parser.add_argument(
-    "--DIAGNOSE", dest="diagnose", help="dump magnitude data", action="store_true"
+    "--dump", dest="dump", help="dump magnitude data", action="store_true"
 )
 parser.add_argument(
     "-v",
@@ -62,6 +62,7 @@ class ProjectedDensityObject:
         self.filter_code = "Euclid/NISP.Y"
         self.galaxy_metallicity = 0.012
         self.galaxy_star_age = 7.93e9  # yr
+        self.binary_core_radius = 0.58
         self._save_location = None
         self.max_bh_dist = 30
 
@@ -156,8 +157,10 @@ class ProjectedDensityObject:
             # load and centre the snapshot
             snap = self.load_and_centre_snap(snapfile=snapfile)
 
-            if len(snap.bh) > 1:
-                SL.warning("BHs have not yet merged! Skipping this snapshot")
+            if len(snap.bh) > 1 or snap.bh["r"].flatten() < self.binary_core_radius:
+                SL.warning(
+                    "BHs have not yet merged or BH still within core radius! Skipping this snapshot"
+                )
                 # clean memory
                 snap.delete_blocks()
                 del snap
@@ -236,7 +239,7 @@ class ProjectedDensityObject:
                 extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
                 cmap="mako_r",
             )
-            if args.diagnose:
+            if args.dump:
                 # XXX this is strictly for debugging purposes and for testing
                 # prominence methods
                 _debug_data = dict(

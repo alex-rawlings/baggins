@@ -95,12 +95,12 @@ class VoronoiKinematics:
     def max_voronoi_bin_index(self):
         return int(np.max(self._grid["particle_vor_bin_num"]) + 1)
 
-    def _stat_is_calculated(self, p):
+    def _stat_is_calculated(self, k):
         try:
             assert self._stats is not None
         except AssertionError:
             _logger.exception(
-                f"Need to determine LOS statistics first before calling property '{p}'!",
+                f"Need to determine LOS statistics first before calling property '{k}'!",
                 exc_info=True,
             )
             raise
@@ -118,6 +118,22 @@ class VoronoiKinematics:
     @property
     def stats(self):
         return self._stats
+
+    def get_colour_limits(self):
+        """
+        Get the colour limits of all kinematic maps for this object
+
+        Returns
+        -------
+        d : dict
+            colour limits to be parsed to plot_kinematic_maps()
+        """
+        d = {}
+        d["V"] = np.max(np.abs(self.img_V))
+        d["sigma"] = [np.min(self.stats["img_sigma"]), np.max(self.stats["img_sigma"])]
+        for p in range(3, self._hermite_order + 1):
+            d[f"h{p}"] = np.max(np.abs(self.stats[f"img_h{p}"]))
+        return d
 
     def make_grid(self, extent=None, part_per_bin=500):
         """
@@ -331,7 +347,13 @@ class VoronoiKinematics:
             self._stats[f"img_h{i+1}"] = img_stats[..., i]
 
     def plot_kinematic_maps(
-        self, ax=None, figsize=(7, 4.7), clims={}, desat=False, cbar="adj"
+        self,
+        ax=None,
+        figsize=(7, 4.7),
+        clims={},
+        desat=False,
+        cbar="adj",
+        fontsize=None,
     ):
         """
         Plot the voronoi maps for a system.
@@ -350,6 +372,8 @@ class VoronoiKinematics:
             use a desaturated colour scheme, by default False
         cbar : str, optional
             how to add a colourbar to each map, can be "adj" for adjacent or "inset" for inset, by default "adj"
+        fontsize : float or int, optional
+            font size for colour bar label
 
         Returns
         -------
@@ -416,13 +440,15 @@ class VoronoiKinematics:
             if cbar == "adj":
                 divider = make_axes_locatable(axi)
                 cax = divider.append_axes("right", size="5%", pad=0.1)
-                plt.colorbar(p1, cax=cax, label=label)
+                cb = plt.colorbar(p1, cax=cax)
+                cb.set_label(label=label, size=fontsize)
             elif cbar == "inset":
                 cax = axi.inset_axes([0.4, 0.95, 0.55, 0.025])
                 cax.set_xticks([])
                 cax.set_yticks([])
                 cax.patch.set_alpha(0)
-                plt.colorbar(p1, cax=cax, label=label, orientation="horizontal")
+                cb = plt.colorbar(p1, cax=cax, label=label, orientation="horizontal")
+                cb.set_label(label=label, size=fontsize)
             else:
                 _logger.debug("No colour bar added")
         return ax

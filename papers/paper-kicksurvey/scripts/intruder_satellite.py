@@ -2,7 +2,6 @@ import argparse
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.patches import Rectangle
 import pygad
 import baggins as bgs
 import merger_ic_generator as mig
@@ -19,7 +18,7 @@ parser.add_argument(
     "-n", "--new", dest="new", action="store_true", help="create a new IC file"
 )
 parser.add_argument(
-    "-z", "--redshift", dest="redshift", type=float, help="redshift", default=0.3
+    "-z", "--redshift", dest="redshift", type=float, help="redshift", default=0.6
 )
 parser.add_argument(
     "-v",
@@ -39,7 +38,7 @@ intruder_file = figure_config.data_path("intruder_ic.hdf5")
 if args.new or not os.path.exists(intruder_file):
     SL.warning("Creating a new intruder system!")
     # load and centre snapshot
-    snapfile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0600/output/snap_006.hdf5"
+    snapfile = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0600/output/snap_007.hdf5"
     snap = pygad.Snapshot(snapfile, physical=True)
     SL.info(f"Snapshot time is {bgs.general.convert_gadget_time(snap)} Gyr")
     bgs.analysis.basic_snapshot_centring(snap)
@@ -122,7 +121,7 @@ if args.new or not os.path.exists(intruder_file):
         merger_remnant,
         mig.TransformedSystem(
             new_cluster,
-            mig.Translation(snap.bh["pos"].flatten() * np.array([-1, 1, 1])),
+            mig.Translation([0, 0, -15]),
         ),
     )
     mig.write_hdf5_ic_file(intruder_file, joined_system, double_precision=True)
@@ -155,11 +154,12 @@ pygad.plotting.image(
     cbartitle=r"$\log_{10}\left(\Sigma/\left(\mathrm{M}_\odot\,\mathrm{kpc}^{-2}\right)\right)$",
     outline=None,
     fontsize=fontsize,
+    extent=muse_nfm.max_extent,
 )
 ax[0].annotate(
     r"$\mathrm{with\;SMBH}$",
     (snap.bh["pos"][0, 0] + 0.25, snap.bh["pos"][0, 2] - 0.25),
-    (snap.bh["pos"][0, 0] + 12, snap.bh["pos"][0, 2] - 8),
+    (snap.bh["pos"][0, 0] + 11, snap.bh["pos"][0, 2] - 8),
     color="w",
     arrowprops={"fc": "w", "ec": "w", "arrowstyle": "wedge"},
     ha="right",
@@ -168,15 +168,15 @@ ax[0].annotate(
 )
 ax[0].annotate(
     r"$\mathrm{without\;SMBH}$",
-    (-snap.bh["pos"][0, 0] + 0.25, snap.bh["pos"][0, 2] - 0.5),
-    (-snap.bh["pos"][0, 0] - 1, snap.bh["pos"][0, 2] - 14),
+    (-0.5, -15),
+    (-10, 2),
     color="w",
     arrowprops={"fc": "w", "ec": "w", "arrowstyle": "wedge"},
     ha="center",
     va="bottom",
     fontsize=fontsize,
 )
-# make an "aperture" rectangle to show IFU footprint
+"""# make an "aperture" rectangle to show IFU footprint
 ifu_rect = Rectangle(
     (-muse_nfm.extent * 0.5, -muse_nfm.extent * 0.5),
     muse_nfm.extent,
@@ -186,7 +186,7 @@ ifu_rect = Rectangle(
     fill=False,
 )
 ax[0].add_artist(ifu_rect)
-ax[0].set_facecolor("k")
+ax[0].set_facecolor("k")"""
 
 # create IFU maps
 seeing = seeing = {
@@ -204,7 +204,7 @@ voronoi = bgs.analysis.VoronoiKinematics(
 )
 voronoi.make_grid(part_per_bin=seeing["num"] * 5000)
 voronoi.binned_LOSV_statistics()
-voronoi.plot_kinematic_maps(ax=ax[1:], cbar="inset")
+voronoi.plot_kinematic_maps(ax=ax[1:], cbar="inset", fontsize=fontsize)
 for axi in ax[1:]:
     axi.set_xticks([])
     axi.set_xticklabels([])
@@ -212,12 +212,20 @@ for axi in ax[1:]:
     axi.set_yticklabels([])
     bgs.plotting.draw_sizebar(
         axi,
-        5,
+        10,
         "kpc",
         location="lower left",
         color="k",
         size_vertical=0.4,
         textsize=fontsize,
+    )
+    axi.scatter(
+        snap.bh["pos"][:, 0],
+        snap.bh["pos"][:, 2],
+        lw=1,
+        s=150,
+        ec="k",
+        fc="none",
     )
 
 bgs.plotting.savefig(figure_config.fig_path("intruder.pdf"), force_ext=True)
