@@ -87,6 +87,7 @@ if args.new or not os.path.exists(intruder_file):
     )
 
     Mcluster = np.sum(snap.stars[cluster_mask]["mass"])
+    SL.debug(f"Cluster mass is {Mcluster:.3e}")
     dehnen_params = bgs.literature.fit_Dehnen_profile(
         r_centres_cluster, density_cluster, Mcluster, bounds=[[0.1, 0.1], [10, 3]]
     )

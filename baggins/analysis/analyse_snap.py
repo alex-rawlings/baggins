@@ -7,7 +7,12 @@ import scipy.stats
 import pygad
 import dask
 import baggins.analysis.masks as masks
-from baggins.mathematics import radial_separation, density_sphere, spherical_components
+from baggins.mathematics import (
+    radial_separation,
+    density_sphere,
+    spherical_components,
+    get_histogram_bin_centres,
+)
 from baggins.general import snap_num_for_time, convert_gadget_time, set_seed_time
 from baggins.env_config import _cmlogger
 
@@ -43,6 +48,7 @@ __all__ = [
     "add_to_loss_cone_refill",
     "find_individual_bound_particles",
     "relax_time",
+    "observable_cluster_density_BH",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -1494,3 +1500,94 @@ def relax_time(snap, r):
         / (G * star_mass * coulomb)
     )
     return tr.in_units_of("Gyr")
+
+
+def observable_cluster_density_BH(
+    snap, Rmax=30, n_gal_bins=51, n_cluster_bins=21, proj=None
+):
+    """
+    Find the density of an cluster around a SMBH, comparing it to the background host galaxy density. Note NO centring is done. If 'proj' is None, then a 3D density profile is produced, otherwise a 2D density.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
+    Rmax : float, optional
+        maximum galaxy radius, by default 30
+    n_gal_bins : int, optional
+        number of bins for galaxy density profile, by default 51
+    n_cluster_bins : int, optional
+        number of bins for cluster density profile, by default 21
+    proj : int, optional
+        projection, by default None
+
+    Returns
+    -------
+    : dict
+        cluster and galaxy densities, and visibility
+    """
+    try:
+        assert len(snap.bh) == 1
+    except AssertionError:
+        _logger.exception(
+            f"Only 1 BH can be present, there are {len(snap.bh)}", exc_info=True
+        )
+        raise
+    bound_mask = pygad.IDMask(find_individual_bound_particles(snap))
+
+    # helper function to get the density of the total cluster
+    def _get_cluster_density(_Rmax):
+        r_edges = np.geomspace(1e-2, _Rmax, n_cluster_bins)
+        r_centres = get_histogram_bin_centres(r_edges)
+        dens = pygad.analysis.profile_dens(
+            snap.stars[bound_mask],
+            "mass",
+            r_edges=r_edges,
+            center=snap.bh["pos"].flatten(),
+            proj=proj,
+        )
+        return r_centres + snap.bh["r"].flatten(), dens
+
+    # get the density of the entire galaxy
+    r_edges_gal = np.geomspace(1e-2, Rmax, n_gal_bins)
+    r_centres_gal = get_histogram_bin_centres(r_edges_gal)
+    gal_dens = pygad.analysis.profile_dens(
+        snap.stars, "mass", r_edges=r_edges_gal, proj=proj
+    )
+    # remove NaNs from galaxy density
+    nan_idx = np.isnan(gal_dens)
+    r_centres_gal = r_centres_gal[~nan_idx]
+    gal_dens = gal_dens[~nan_idx]
+    try:
+        np.all(np.diff(r_centres_gal) > 0)
+    except AssertionError:
+        _logger.exception("Radii not monotonically increasing", exc_info=True)
+        raise
+
+    # only include those stars which are within a radius that encloses a
+    # density above the background density
+    r_centres_cluster, cluster_dens = _get_cluster_density(
+        np.max(snap.stars[bound_mask]["r"])
+    )
+    background_dens = np.interp(r_centres_cluster, r_centres_gal, gal_dens, left=0)
+    cluster_max_r_idx = (
+        np.argmin(cluster_dens > background_dens) + 1
+    )  # plus 1 so we get the full bin
+    if cluster_max_r_idx == 1:
+        visible = False
+    else:
+        cluster_max_r = r_centres_cluster[cluster_max_r_idx]
+        # now fit the cluster that is visible above the background
+        r_centres_cluster, cluster_dens = _get_cluster_density(cluster_max_r)
+        if r_centres_cluster[0] < r_centres_gal[0]:
+            # protect against low-particle noise in centre
+            visible = False
+        else:
+            visible = np.any(cluster_dens > background_dens)
+    return dict(
+        r_centres_cluster=r_centres_cluster,
+        cluster_dens=cluster_dens,
+        r_centres_gal=r_centres_gal,
+        gal_dens=gal_dens,
+        visible=visible,
+    )
