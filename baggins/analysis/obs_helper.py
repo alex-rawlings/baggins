@@ -17,6 +17,9 @@ __all__ = [
     "get_surface_brightness",
     "get_flux_from_magnitude",
     "MUSE_NFM",
+    "MUSE_WFM",
+    "Euclid_NISP",
+    "Euclid_VIS",
 ]
 
 
@@ -126,8 +129,10 @@ def get_euclid_filter_collection(g, new_lam_size=1000):
     euclid_filters : synthesizer.FilterCollection
         collection of Euclid filters
     """
+    _filter_codes = ["Euclid/VIS.vis"]
+    _filter_codes.extend([f"Euclid/NISP.{b}" for b in ("Y", "J", "H")])
     euclid_filters = instruments.FilterCollection(
-        filter_codes=[f"Euclid/NISP.{b}" for b in ("Y", "J", "H")], new_lam=g.lam
+        filter_codes=_filter_codes, new_lam=g.lam
     )
     euclid_filters.resample_filters(lam_size=new_lam_size)
     return euclid_filters
@@ -292,3 +297,13 @@ class MUSE_WFM(BasicInstrument):
         https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
         """
         super().__init__(fov=60, res=0.2)
+
+
+class Euclid_NISP(BasicInstrument):
+    def __init__(self):
+        super().__init__(fov=0.55 * 3600, res=0.3)
+
+
+class Euclid_VIS(BasicInstrument):
+    def __init__(self):
+        super().__init__(fov=0.56 * 3600, res=0.101)

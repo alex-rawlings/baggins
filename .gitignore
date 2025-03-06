@@ -214,6 +214,8 @@ code/analysis_scripts/gaussian_processes/stan/*
 !code/analysis_scripts/gaussian_processes/stan/*.stan
 code/analysis_scripts/core_kick_relation/*
 !code/analysis_scripts/core_kick_relation/*.stan
+code/misc/recoil-explore/stan/*
+!code/misc/recoil-explore/stan/*.stan
 
 baggins/stan/core-sersic/*
 !baggins/stan/core-sersic/*.stan

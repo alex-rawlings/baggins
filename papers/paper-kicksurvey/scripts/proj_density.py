@@ -55,11 +55,10 @@ class ProjectedDensityObject:
         self._redshift = redshift
         self._plot = plot
         self._snapfiles = None
-        self.ang_scale = bgs.cosmology.angular_scale(args.redshift)
-        SL.info(f"Angular scale is {self.ang_scale:.4f} kpc/arcsec")
-        self.extent = 40  # kpc
-        self.spatial_res = 0.101  # "/pixel
-        self.filter_code = "Euclid/NISP.Y"
+        self.instrument = bgs.analysis.Euclid_VIS()
+        self.instrument.redshift = self._redshift
+        self.instrument.max_extent = 40
+        self.filter_code = "Euclid/VIS.vis"
         self.galaxy_metallicity = 0.012
         self.galaxy_star_age = 7.93e9  # yr
         self.binary_core_radius = 0.58
@@ -101,26 +100,6 @@ class ProjectedDensityObject:
         C.save_location = saveloc
         C._single_snapshot = False
         return C
-
-    def get_num_pixels(self, angscale, extent=None):
-        """
-        Determine the pixel bin width
-
-        Parameters
-        ----------
-        angscale : float
-            angular scale
-        extent : int, optional
-            spatial extent of image in kpc, by default 40
-
-        Returns
-        -------
-        : float
-            pixel bin wodth
-        """
-        if extent is None:
-            extent = self.extent
-        return int(extent / (self.spatial_res * angscale))
 
     def setup_plot(self):
         fig, self.ax = plt.subplots(1, 3)
@@ -204,7 +183,7 @@ class ProjectedDensityObject:
             star_count, xedges, yedges = np.histogram2d(
                 x=snap.stars[density_mask]["pos"][:, self.xaxis],
                 y=snap.stars[density_mask]["pos"][:, self.yaxis],
-                bins=self.get_num_pixels(self.ang_scale),
+                bins=self.instrument.number_pixels,
             )
             SL.debug(f"There are {(len(xedges)-1)**2:.2e} bins")
 
@@ -278,15 +257,7 @@ class ProjectedDensityObject:
         SL.info(f"Reading snapshot {snapfile}")
         snap = pygad.Snapshot(snapfile, physical=True)
         # move to CoM frame
-        pre_ball_mask = pygad.BallMask(5)
-        centre = pygad.analysis.shrinking_sphere(
-            snap.stars,
-            pygad.analysis.center_of_mass(snap.stars),
-            30,
-        )
-        vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
-        pygad.Translation(-centre).apply(snap, total=True)
-        pygad.Boost(-vcom).apply(snap, total=True)
+        bgs.analysis.basic_snapshot_centring(snap)
         return snap
 
     def calculate_prominence(self, im_mag, snap):
@@ -300,7 +271,7 @@ class ProjectedDensityObject:
         filter_window = max(
             2
             * min(
-                self.get_num_pixels(self.ang_scale, extent=5 * rinfl),
+                5 * rinfl / self.instrument.pixel_width,
                 int(min(im_mag.get_array().shape) / 10),
             ),
             5,
@@ -370,8 +341,8 @@ class ProjectedDensityObject:
             outline=None,
             cmap="rocket",
             ax=self.ax[0],
-            Npx=self.get_num_pixels(self.ang_scale),
-            extent=self.extent,
+            Npx=self.instrument.number_pixels,
+            extent=self.instrument.extent,
         )
         if add_extras:
             self.add_extras(ax=self.ax[0], pos=snap.bh["pos"])
