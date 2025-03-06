@@ -35,41 +35,60 @@ R = np.sqrt(XX**2 + YY**2).flatten()
 def log_sersic(R, logI0, Re, n):
     return logI0 - bgs.general.sersic_b_param(n) * ((R/Re)**(1/n) - 1)
 
-def ellipse(x, y, x0, y0, theta, dt, ellip, boxy):
+def ellipse(x, y, x0, y0, theta, ellip, boxy):
     _Rt = np.sqrt((x-x0)**2 + (y-y0)**2)
     _thetat = np.arctan2(x-x0, y-y0) + theta
-    _thetat = _thetat + np.sin(dt*_Rt/np.max(_Rt)*np.pi)
+    #_thetat = _thetat + np.sin(dt*_Rt/np.max(_Rt)*np.pi)
     Arat = 1 - ellip
     Rm = (np.abs(_Rt * np.sin(_thetat) * Arat) ** (2 + boxy) +
             np.abs(_Rt * np.cos(_thetat)) ** (2 + boxy)
         )**(1 / (2 + boxy))
+    '''Rm = np.sqrt(np.abs(_Rt * np.sin(_thetat) * Arat) ** (2) +
+            np.abs(_Rt * np.cos(_thetat)) ** (2)
+        )'''
     return Rm
 
-def log_sersic_2d(xy, x0, y0, theta, dt, ellip, boxy, logI0, Re, n):
-    x , y = xy[0].flatten(), xy[1].flatten()
-    Rm = ellipse(x, y, x0, y0, theta, dt, ellip, boxy)
+def log_sersic_2d(xy, x0, y0, theta, ellip, boxy, logI0, Re, n):
+    #x , y = xy[0].flatten(), xy[1].flatten()
+    x, y = xy[0], xy[1]
+    Rm = ellipse(x, y, x0, y0, theta, ellip, boxy)
     return log_sersic(Rm, logI0, Re, n)
 
+flux = flux.reshape(XX.shape)
+
+def loglik(pars):
+    return np.nansum(
+        np.log(np.exp(log_sersic_2d((XX,YY), *pars)) - np.exp(flux))**2
+    )
+
+minres = so.minimize(
+            loglik,
+            [1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1, 7, 4],
+            bounds=(
+                (-5, 5), (-5, 5), (0, 2*np.pi), (0, 1), (-1, 1), (-10, 10), (0, 20), (1, 20)
+            )
+        )
+params = minres.x
 
 
-# fit the params
+'''# fit the params
 params, pcov, *_ = so.curve_fit(log_sersic_2d,
                                 (XX, YY),
                                 flux,
                                 bounds=(
-                                    [-5, -5, 0, -1, 0, 0, -10, 2, 1],
-                                    [5, 5, 2*np.pi, 1, 1, 1, 10, 20, 20]
+                                    [-5, -5, 0, 0, -.5, -10, 2, 1],
+                                    [5, 5, 2*np.pi, 1, .5, 10, 20, 20]
                                 ),
-                                p0=[1e-10, 1e-10, 1e-10, 1e-2, 1e-2, 1e-2, 1, 7, 4]
+                                #p0=[1e-2, 1e-2, 1e-2, 1e-2, 1e-2, 1, 7, 4]
                                 )
-
+'''
 print(params)
 
 fig, ax = plt.subplots(1, 3, sharex="all", sharey="all")
 fig.set_figwidth(2*fig.get_figwidth())
 
 
-ax[0].imshow(mags, origin="lower", extent=[min(x), max(x), min(y), max(y)], cmap="cividis", aspect="equal")
+ax[0].imshow(flux.reshape(XX.shape), origin="lower", extent=[min(x), max(x), min(y), max(y)], cmap="cividis", aspect="equal")
 ax[0].contour(XX, YY, mags, levels=10, colors="k", linestyles="solid", linewdiths=0.5)
 
 xx = np.linspace(np.min(x), np.max(x), 400)
@@ -97,9 +116,10 @@ prom = -(
 )
 prom[prom < 0] = 0
 
-res_standard = (res - np.nanmean(res)) / np.nanstd(res)
+res_standard = res #(res - np.nanmean(res)) / np.nanstd(res)
 
-print(f"Residual at BH pos: {res_standard[bh_pix[0], bh_pix[1]]}")
+max_in_area = generic_filter(res_standard, np.nanmax, size=3, mode="nearest")
+print(f"Residual at ~BH pos: {max_in_area[bh_pix[0], bh_pix[1]]}")
 
 cmap = sns.cubehelix_palette(
     start=0.7,
