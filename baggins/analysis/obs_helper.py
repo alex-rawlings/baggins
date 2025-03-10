@@ -301,9 +301,17 @@ class MUSE_WFM(BasicInstrument):
 
 class Euclid_NISP(BasicInstrument):
     def __init__(self):
+        """ "
+        "Euclid infrared bands. Parameters taken from:
+        https://www.esa.int/Science_Exploration/Space_Science/Euclid/Euclid_s_instruments
+        """
         super().__init__(fov=0.55 * 3600, res=0.3)
 
 
 class Euclid_VIS(BasicInstrument):
     def __init__(self):
+        """ "
+        "Euclid visible bands. Parameters taken from:
+        https://www.esa.int/Science_Exploration/Space_Science/Euclid/Euclid_s_instruments
+        """
         super().__init__(fov=0.56 * 3600, res=0.101)
