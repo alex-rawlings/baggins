@@ -2,13 +2,14 @@ import argparse
 import os.path
 from datetime import datetime
 import numpy as np
-from scipy.ndimage import uniform_filter, generic_filter
+from scipy.ndimage import gaussian_filter
 import matplotlib.pyplot as plt
+from matplotlib.colors import CenteredNorm
 import pygad
+import re
 import h5py
 import baggins as bgs
 import dask
-from seaborn import cubehelix_palette
 import figure_config
 
 bgs.plotting.check_backend()
@@ -22,7 +23,7 @@ parser.add_argument(
     "--data",
     dest="data",
     type=str,
-    help="(list of) snapshot(s) to aanlyse or plot",
+    help="(list of) snapshot(s) to analyse or plot",
     default="/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0600/output/snap_007.hdf5",
 )
 parser.add_argument(
@@ -93,9 +94,17 @@ class ProjectedDensityObject:
         return C
 
     @classmethod
-    def load_snapshot_list(cls, snapdir, redshift, saveloc):
+    def load_snapshot_list(cls, snapdir, redshift, saveloc, snapnums=None):
         C = cls(redshift=redshift)
-        C._snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
+        snapfiles = bgs.utils.get_snapshots_in_dir(snapdir)
+        if snapnums is None:
+            C._snapfiles = snapfiles
+        else:
+            C._snapfiles = [
+                s
+                for s in snapfiles
+                if any(sn in os.path.basename(s) for sn in snapnums)
+            ]
         assert os.path.splitext(saveloc)[1] == ".pickle"
         C.save_location = saveloc
         C._single_snapshot = False
@@ -107,10 +116,11 @@ class ProjectedDensityObject:
 
     def add_extras(self, ax, pos):
         # mark BH position
+        annotate_str = r"$\mathrm{bound\;cluster}$" + "\n" + "$\mathrm{around\;SMBH}$"
         ax.annotate(
-            r"$\mathrm{bound\;cluster}$",
+            annotate_str,
             (pos[0, 0] + 0.25, pos[0, 2] - 0.25),
-            (pos[0, 0] + 12, pos[0, 2] - 8),
+            (pos[0, 0] + 12, pos[0, 2] - 14),
             color="w",
             arrowprops={"fc": "w", "ec": "w", "arrowstyle": "wedge"},
             ha="right",
@@ -260,56 +270,33 @@ class ProjectedDensityObject:
         bgs.analysis.basic_snapshot_centring(snap)
         return snap
 
-    def calculate_prominence(self, im_mag, snap):
+    def calculate_prominence(self, im_mag, snap, sigma=0.5, detection=4.0):
         if isinstance(snap, str):
             snap = self.load_and_centre_snap(snap)
 
-        galaxy_stellar_mass = np.sum(snap.stars[pygad.BallMask(30)]["mass"])
-        bh_mass = 10 ** bgs.literature.Sahu19(np.log10(galaxy_stellar_mass))
-        rinfl = bgs.literature.Merritt09(bh_mass)
-        SL.debug(f"Influence radius is {rinfl:.1e} kpc")
-        filter_window = max(
-            2
-            * min(
-                5 * rinfl / self.instrument.pixel_width,
-                int(min(im_mag.get_array().shape) / 10),
-            ),
-            5,
-        )
-        SL.info(f"Filter window size is {filter_window}")
+        log_image = np.clip(np.log10(im_mag.get_array()), 1e-6, None)
 
-        # determine the prominence within some aperture
-        filter_kwargs = {"size": filter_window, "mode": "nearest"}
-        prom = -(
-            im_mag.get_array() - uniform_filter(im_mag.get_array(), **filter_kwargs)
-        ) / generic_filter(
-            im_mag.get_array(),
-            lambda x: np.nan if np.any(np.isnan(x)) else np.std(x),
-            **filter_kwargs,
-        )
-        prom[prom < 0] = 0
+        # convolve with a low-pass filter and standardise
+        prom = log_image - gaussian_filter(log_image, sigma, mode="nearest")
+        prom = -(prom - np.mean(prom)) / np.std(prom)
+        # set the edges where the kernel extends beyond the image to 0
+        edge_idx = int(np.ceil(sigma * 4) - 1)  # truncated to 4 sigma
+        prom[:edge_idx, :] = 0
+        prom[-edge_idx:, :] = 0
+        prom[:, :edge_idx] = 0
+        prom[:, -edge_idx:] = 0
 
         if self._plot:
             ax_prom = self.ax[2]
         else:
             # define a dummy axis
             fig, ax_prom = plt.subplots()
-        # define a custom colour map
-        cmap = cubehelix_palette(
-            start=0.7,
-            rot=-0.5,
-            gamma=0.3,
-            hue=1.0,
-            light=1,
-            dark=0,
-            reverse=False,
-            as_cmap=True,
-        )
         im_SN = ax_prom.imshow(
             prom,
             origin="lower",
             extent=im_mag.get_extent(),
-            cmap=cmap,
+            cmap="RdBu_r",
+            norm=CenteredNorm(0),
         )
         if self._plot:
             self.plot_prominence_map(im_SN=im_SN, snap=snap)
@@ -326,6 +313,8 @@ class ProjectedDensityObject:
         SL.info(f"Prominence at BH position is {signal_prom:.2e}")
         ecdf = bgs.mathematics.empirical_cdf(im_SN.get_array(), signal_prom)
         SL.info(f"This corresponds to approx. the {ecdf:.4f} quantile of total pixels")
+        if np.any(np.abs(prom) > detection):
+            SL.info(f"Detection of anomolous pixel at {detection}-sigma")
 
     def plot_surface_mass_density(self, snap, density_mask, add_extras=True):
         # figure 1: easy, surface mass density
@@ -404,8 +393,26 @@ else:
         "mag-maps",
         f"{args.data.rstrip('/').split('/')[-2]}-magnitude-maps.pickle",
     )
+    try:
+        kick_vel_str = re.search("kick-vel-(....)", args.data)
+        if kick_vel_str:
+            kv = kick_vel_str.group(1)
+        else:
+            raise RuntimeError(
+                f"Cannot find required kick velocity from data name {args.data}"
+            )
+
+        snapnums = bgs.utils.load_data(
+            f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/perfect_obs/perf_obs_{kv}.pickle"
+        )["snapnums"]
+        SL.debug(f"Will read snapshots {snapnums}")
+    except FileNotFoundError:
+        SL.warning(
+            "No specific snapshot numbers found based off 'perfect observability'! We will use all snapshots."
+        )
+        snapnums = None
     proj_dens = ProjectedDensityObject.load_snapshot_list(
-        snapdir=args.data, redshift=args.redshift, saveloc=data_file
+        snapdir=args.data, redshift=args.redshift, saveloc=data_file, snapnums=snapnums
     )
     if args.prom_only:
         data = bgs.utils.load_data(data_file)
