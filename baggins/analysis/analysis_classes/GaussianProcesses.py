@@ -534,7 +534,7 @@ class VkickApocentreGP(_GPBase):
     def folded_qtys_labs(self):
         return self._folded_qtys_labs
 
-    def extract_data(self, d=None, maxvel=None):
+    def extract_data(self, d=None, minvel=None, maxvel=None):
         """
         Data extraction and manipulation required by the CoreKick model.
         Due to the time complexity of obtaining apocentre information from snapshots, we take Atte's format from the `core-kick` study as default input.
@@ -578,6 +578,8 @@ class VkickApocentreGP(_GPBase):
             if _v < 1e-12:
                 _v = 1
             if maxvel is not None and _v > maxvel:
+                continue
+            if minvel is not None and _v < minvel:
                 continue
             # load data from file
             if _v <= 1:
@@ -775,7 +777,8 @@ class VkickApocentreGP(_GPBase):
 
     def fraction_apo_above_threshold(self, threshold, proj=False):
         """
-        Determine the fraction of apocentres above some distance threshold.
+        Determine the fraction of apocentres above some distance threshold
+        given that the SMBH has a reasonable amount of mass bound to it.
 
         Parameters
         ----------

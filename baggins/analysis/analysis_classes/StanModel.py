@@ -628,7 +628,6 @@ class _StanModel(ABC):
         else:
             self._model = cmdstanpy.CmdStanModel(
                 stan_file=self._model_file,
-                cpp_options={"STAN_THREADS": "true", "STAN_CPP_OPTIMS": "true"},
             )
 
     @abstractmethod

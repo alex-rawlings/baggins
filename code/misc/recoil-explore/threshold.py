@@ -50,8 +50,8 @@ else:
         "0120": -1,
         "0180": -1,
         "0240": -1,
-        "0300": -1,
-        "0360": -1,
+        "0300": 4,
+        "0360": 3,
         "0420": 3,
         "0480": 4,
         "0540": 5,
@@ -103,13 +103,16 @@ for k, v in rdetect.items():
 # fit linear regression
 vks = np.array(vks).flatten()
 rs = np.array(rs).flatten()
+# only use those that have a distance > 1
+vks = vks[rs>1]
+rs = rs[rs>1]
 regress = scipy.stats.linregress(vks, rs)
 print("Regression:")
 print(f"  slope: {regress.slope:.2e}")
 print(f"  intercept: {regress.intercept:.2e}")
 
 ax.scatter(vks, rs, zorder=2, color="tab:red")
-ax.semilogy(vks, regress.slope*vks+regress.intercept, label=f"{regress.slope:.2e}v{regress.intercept:+.2e}")
+ax.plot(vks, regress.slope*vks+regress.intercept, label=f"{regress.slope:.2e}v{regress.intercept:+.2e}")
 ax.set_xlabel("v/kms")
 ax.set_ylabel("Threshold distance/kpc")
 ax.legend()
