@@ -121,7 +121,7 @@ mask = np.logical_and(first_bit_bad, bh.t < 1.1 * max(ifu_ts))
 p = ax["A"].plot(bh.t[mask], r[mask])
 # add markers for IFU times
 ifu_r = np.interp(ifu_ts, bh.t, r)
-ax["A"].plot(ifu_ts, ifu_r, ls="", marker="o", c=p[-1].get_color())
+ax["A"].plot(ifu_ts, ifu_r, ls="", marker="o", c=p[-1].get_color(), mec="k", mew=0.5)
 ax["A"].set_xlabel(r"$t/\mathrm{Gyr}$")
 ax["A"].set_ylabel(r"$r/\mathrm{kpc}$")
 
