@@ -104,7 +104,7 @@ class VkickColourMap:
     """
 
     def __init__(self) -> None:
-        self._vmax = 1020
+        self._vmax = 1080
         self.norm = mpl.colors.Normalize(vmin=0, vmax=self._vmax)
         self.cmapv = cubehelix_palette(
             n_colors=6,

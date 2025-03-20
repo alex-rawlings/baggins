@@ -38,11 +38,6 @@ core_dispersion = 270  # km/s
 data_file = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/kinematics_{args.kv:04d}_part_0.pickle"
 data_specific = bgs.utils.load_data(data_file)
 plt.close()
-# settling data
-settle_data = np.loadtxt(
-    f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data/kick-vel-{args.kv:04d}.txt",
-    skiprows=1,
-)
 # settled snapshots
 bh_settled_idx = bgs.utils.read_parameters(
     "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml"
@@ -55,6 +50,11 @@ ketju_file = bgs.utils.get_ketjubhs_in_dir(
 apo_data_files = bgs.utils.get_files_in_dir(
     "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data",
     ext=".txt",
+)
+# settling data
+settle_data = np.loadtxt(
+    os.path.join(apo_data_files, f"kick-vel-{args.kv:04d}.txt"),
+    skiprows=1,
 )
 # snapshot data
 snapshot_dir = (

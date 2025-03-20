@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import pygad
 import baggins as bgs
 import merger_ic_generator as mig
-import figure_config
 
 
 bgs.plotting.check_backend()
@@ -33,7 +32,7 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-intruder_file = figure_config.data_path("intruder_ic.hdf5")
+intruder_file = ("/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/intruder_ic.hdf5")
 
 if args.new or not os.path.exists(intruder_file):
     SL.warning("Creating a new intruder system!")
@@ -92,7 +91,7 @@ if args.new or not os.path.exists(intruder_file):
         r_centres_cluster, density_cluster, Mcluster, bounds=[[0.1, 0.1], [10, 3]]
     )
     SL.info(f"Best fit parameters are: {dehnen_params}")
-
+    quit()
     if args.verbosity == "DEBUG":
         plt.loglog(r_centres_cluster, density_cluster)
         plt.loglog(
@@ -229,4 +228,4 @@ for axi in ax[1:]:
         fc="none",
     )
 
-bgs.plotting.savefig(figure_config.fig_path("intruder.pdf"), force_ext=True)
+#bgs.plotting.savefig(figure_config.fig_path("intruder.pdf"), force_ext=True)

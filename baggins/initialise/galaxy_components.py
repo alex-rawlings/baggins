@@ -16,7 +16,7 @@ from baggins.literature import (
     zlochower_hot_spins,
 )
 from baggins.cosmology import cosmology
-from baggins.general import arcsec_to_kpc, sersic_b_param
+from baggins.general import BasicQuantityConverter, sersic_b_param
 from baggins.mathematics import uniform_sample_sphere
 from baggins.utils import read_parameters
 from baggins.env_config import _cmlogger
@@ -101,10 +101,7 @@ class _GalaxyICBase:
     def critical_density(self):
         conversion = (1e3 * scipy.constants.parsec) ** 3 / MSOL
         return (
-            3
-            * self.hubble_redshifted**2
-            / (8 * np.pi * scipy.constants.G)
-            * conversion
+            3 * self.hubble_redshifted**2 / (8 * np.pi * scipy.constants.G) * conversion
         )
 
 
@@ -196,10 +193,9 @@ class _StellarCore(_StellarComponent):
         Convert input from units of arcsecs to kpc
         """
         assert self.stellar_distance_units == "arcsec"
-        self.core_radius = arcsec_to_kpc(self.distance_modulus, self.core_radius)
-        self.effective_radius = arcsec_to_kpc(
-            self.distance_modulus, self.effective_radius
-        )
+        bqc = BasicQuantityConverter(dist_mod=self.distance_modulus)
+        self.core_radius = bqc.convert_ang_size_to_pc(self.core_radius) / 1e3
+        self.effective_radius = bqc.convert_ang_size_to_pc(self.effective_radius) / 1e3
         self.stellar_distance_units = "kpc"
 
     @cached_property

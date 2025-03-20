@@ -4,9 +4,10 @@ import scipy.optimize
 import scipy.special
 from time import time
 from baggins.env_config import _cmlogger
+from baggins.cosmology import luminosity_distance, angular_diameter_distance
 
 __all__ = [
-    "arcsec_to_kpc",
+    "BasicQuantityConverter",
     "sersic_b_param",
     "xval_of_quantity",
     "set_seed_time",
@@ -19,23 +20,95 @@ __all__ = [
 _logger = _cmlogger.getChild(__name__)
 
 
-def arcsec_to_kpc(dist_mod, angle_in_arcsec):
-    """
-    Convert arcseconds to kpc using a distance modulus
+class BasicQuantityConverter:
+    def __init__(
+        self,
+        z=None,
+        dist=None,
+        dist_mod=None,
+        abs_mag=None,
+        app_mag=None,
+        mass_light_ratio=4.0,
+    ):
+        """
+        Class to do conversions of basic astronomical quantities
 
-    Parameters
-    ----------
-    dist_mod : float
-        distance modulus
-    angle_in_arcsec : float
-        angle to convert
+        Parameters
+        ----------
+        z : float, optional
+            redshift (will be used to determine a luminosity distance), by default None
+        dist : float, optional
+            distance, by default None
+        dist_mod : float, optional
+            distance modulus, by default None
+        abs_mag : float, optional
+            absolute magnitude, by default None
+        app_mag : float, optional
+            apparent magnitude, by default None
+        mass_light_ratio : float, optional
+            mass-light ratio, by default 4.
+        """
+        if z is not None:
+            _logger.info("Redshift given, 'dist' and 'dist_mod' will be ignored")
+            if isinstance(z, (float, int)):
+                z = np.array([z])
+            self.z = z
+            self.dist = np.full_like(z, np.nan)
+            self.dist_ang = np.full_like(z, np.nan)
+            for i, zz in enumerate(z):
+                self.dist[i] = luminosity_distance(zz) * 1e3
+                self.dist_ang[i] = angular_diameter_distance(zz) * 1e3
+            self._convert_pc_to_modulus()
+        elif dist is not None:
+            _logger.info("Distance given, 'z' and 'dist_mod' will be ignored")
+            self.z = np.zeros_like(dist)
+            self.dist = dist
+            self.dist_ang = dist
+            self._convert_pc_to_modulus()
+        else:
+            _logger.info("Distance modulus given, 'z' and 'dist' will be ignored")
+            self.z = np.zeros_like(dist)
+            self.dist_mod = dist_mod
+            self._convert_modulus_to_pc()
+            self.dist_ang = self.dist
+        if abs_mag is not None:
+            _logger.info("Absolute magnitude given, 'app_mag' will be ignored")
+            self.abs_mag = abs_mag
+            self.app_mag = self.convert_abs_mag_to_app_mag(self.abs_mag)
+        else:
+            _logger.info("Apparent magnitude given, 'abs_mag' will be ignored")
+            self.app_mag = app_mag
+            self.abs_mag = self.convert_app_mag_to_abs_mag(self.app_mag)
+        self.mass_light_ratio = mass_light_ratio
+        self.lum = self.convert_mag_to_lum(self.abs_mag)
+        self.mass = self.convert_lum_to_mass(self.lum)
 
-    Returns
-    -------
-    : float
-        distance [kpc]
-    """
-    return np.tan(np.radians(angle_in_arcsec / 3600)) * 10 ** (1 + dist_mod / 5) / 1e3
+    @property
+    def abs_mag_solar(self):
+        return 4.83
+
+    def convert_app_mag_to_abs_mag(self, m):
+        return m - self.dist_mod
+
+    def convert_abs_mag_to_app_mag(self, M):
+        return M + self.dist_mod
+
+    def _convert_modulus_to_pc(self):
+        self.dist = 10 ** (1 + self.dist_mod / 5)
+
+    def _convert_pc_to_modulus(self):
+        self.dist_mod = 5 * (np.log10(self.dist) - 1)
+
+    def convert_mag_to_lum(self, M):
+        return 10 ** ((M - self.abs_mag_solar) / -2.5)
+
+    def convert_lum_to_mass(self, L, mlr=None):
+        if mlr is None:
+            mlr = self.mass_light_ratio
+        return L * mlr
+
+    def convert_ang_size_to_pc(self, t):
+        return np.tan(t * np.pi / (3600 * 180)) * self.dist_ang
 
 
 def sersic_b_param(n):

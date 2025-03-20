@@ -80,7 +80,7 @@ if args.extract:
             continue
         try:
             data["cluster_props"].append(
-                bgs.analysis.observable_cluster_density_BH(snap, proj=1)
+                bgs.analysis.observable_cluster_props_BH(snap, proj=1)
             )
         except AssertionError as err:
             SL.warning(f"Skipping snapshot {snapnum}: {err}")

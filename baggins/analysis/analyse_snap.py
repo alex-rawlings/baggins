@@ -48,7 +48,7 @@ __all__ = [
     "add_to_loss_cone_refill",
     "find_individual_bound_particles",
     "relax_time",
-    "observable_cluster_density_BH",
+    "observable_cluster_props_BH",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -1502,7 +1502,7 @@ def relax_time(snap, r):
     return tr.in_units_of("Gyr")
 
 
-def observable_cluster_density_BH(
+def observable_cluster_props_BH(
     snap, Rmax=30, n_gal_bins=51, n_cluster_bins=21, proj=None
 ):
     """
@@ -1523,8 +1523,8 @@ def observable_cluster_density_BH(
 
     Returns
     -------
-    : dict
-        cluster and galaxy densities, and visibility
+    obs_props : dict
+        observationaal properties of cluster
     """
     try:
         assert len(snap.bh) == 1
@@ -1566,17 +1566,20 @@ def observable_cluster_density_BH(
 
     # only include those stars which are within a radius that encloses a
     # density above the background density
-    r_centres_cluster, cluster_dens = _get_cluster_density(
-        np.max(snap.stars[bound_mask]["r"])
-    )
+    rinfl = list(influence_radius(snap).values())[0]
+    r_centres_cluster, cluster_dens = _get_cluster_density(rinfl)
     background_dens = np.interp(r_centres_cluster, r_centres_gal, gal_dens, left=0)
-    cluster_max_r_idx = (
-        np.argmin(cluster_dens > background_dens) + 1
-    )  # plus 1 so we get the full bin
-    if cluster_max_r_idx == 1:
+    if np.all(cluster_dens < background_dens):
         visible = False
+    elif np.all(cluster_dens > background_dens):
+        _logger.debug("All of cluster is visible above background")
+        visible = True
+        cluster_max_r = rinfl
     else:
-        cluster_max_r = r_centres_cluster[cluster_max_r_idx]
+        cluster_max_r_idx = (
+            np.argmin(cluster_dens > background_dens) + 1
+        )  # plus 1 so we get the full bin
+        cluster_max_r = r_centres_cluster[cluster_max_r_idx] - snap.bh["r"].flatten()
         # now fit the cluster that is visible above the background
         r_centres_cluster, cluster_dens = _get_cluster_density(cluster_max_r)
         if r_centres_cluster[0] < r_centres_gal[0]:
@@ -1584,10 +1587,23 @@ def observable_cluster_density_BH(
             visible = False
         else:
             visible = np.any(cluster_dens > background_dens)
-    return dict(
-        r_centres_cluster=r_centres_cluster,
-        cluster_dens=cluster_dens,
-        r_centres_gal=r_centres_gal,
-        gal_dens=gal_dens,
-        visible=visible,
+    obs_props = dict(cluster_mass=None, cluster_Re_pc=None, cluster_vsig=None)
+    if visible:
+        cluster_mask = pygad.BallMask(cluster_max_r[0], center=snap.bh["pos"].flatten())
+        obs_props["cluster_mass"] = np.sum(snap.stars[cluster_mask]["mass"])
+        obs_props["cluster_Re_pc"] = pygad.analysis.half_mass_radius(
+            snap.stars[cluster_mask], center=snap.bh["pos"].flatten(), proj=proj
+        ).in_units_of("pc", subs=snap)
+        obs_props["cluster_vsig"] = pygad.analysis.los_velocity_dispersion(
+            snap.stars[cluster_mask], proj=proj
+        )
+    obs_props.update(
+        dict(
+            r_centres_cluster=r_centres_cluster,
+            cluster_dens=cluster_dens,
+            r_centres_gal=r_centres_gal,
+            gal_dens=gal_dens,
+            visible=visible,
+        )
     )
+    return obs_props
