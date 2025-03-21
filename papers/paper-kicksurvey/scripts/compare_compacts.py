@@ -92,6 +92,34 @@ def make_cluster_mean_and_error(q, xy):
     }
 
 
+def make_cluster_median_and_error(q, xy):
+    """
+    Determine the median and error of cluster properties in log space
+
+    Parameters
+    ----------
+    q : array-like
+        quantity
+    xy : str
+        x or y quantity to plot
+
+    Returns
+    -------
+    : dict
+        axis mean and error for plt.errorbar()
+    """
+    xy = xy.lower()
+    assert xy == "x" or xy == "y"
+    qmedian = np.nanmedian(np.log10(q))
+    qIQR = np.nanquantile(np.log10(q), [0.25, 0.75])
+    return {
+        xy: 10**qmedian,
+        f"{xy}err": np.atleast_2d(
+            [10**qmedian - 10 ** qIQR[0], 10 ** qIQR[1] - 10**qmedian]
+        ).T,
+    }
+
+
 def load_cluster_data():
     dat_files = bgs.utils.get_files_in_dir(
         "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/perfect_obs/",
@@ -138,15 +166,15 @@ sk_gen = scatter_kwargs_maker()
 cluster_gen = load_cluster_data()
 for i, props in enumerate(cluster_gen):
     ax[0].errorbar(
-        **make_cluster_mean_and_error(props[0], "x"),
-        **make_cluster_mean_and_error(props[1], "y"),
+        **make_cluster_median_and_error(props[0], "x"),
+        **make_cluster_median_and_error(props[1], "y"),
         **cluster_plot_kwargs,
         c=props[3],
         label=r"$\mathrm{BH\; cluster}$" if i == 0 else "",
     )
     ax[1].errorbar(
-        **make_cluster_mean_and_error(props[2], "x"),
-        **make_cluster_mean_and_error(props[1], "y"),
+        **make_cluster_median_and_error(props[2], "x"),
+        **make_cluster_median_and_error(props[1], "y"),
         **cluster_plot_kwargs,
         c=props[3],
         label=r"$\mathrm{BH\; cluster}$" if i == 0 else "",
