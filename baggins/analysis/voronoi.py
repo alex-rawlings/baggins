@@ -68,7 +68,7 @@ class VoronoiKinematics:
             ).flatten()
             V = np.repeat(V, seeing["num"]).flatten()
             m = np.repeat(m / seeing["num"], seeing["num"]).flatten()
-        else:
+        elif len(V) != 0:
             _logger.warning("No seeing correction will be applied!")
 
         self.M = np.sum(m)
@@ -349,6 +349,7 @@ class VoronoiKinematics:
     def plot_kinematic_maps(
         self,
         ax=None,
+        moments=None,
         figsize=(7, 4.7),
         clims={},
         desat=False,
@@ -364,6 +365,8 @@ class VoronoiKinematics:
             voronoi values from baggins.analysis.voronoi_binned_los_V_statistics()
         ax : np.ndarray, optional
             numpy array of pyplot.Axes objects for plotting, by default None
+        moments : str, optional
+            moments as a 1-based hex string to plot, by default None
         figsize : tuple, optional
             figure size, by default (7,4.7)
         clims : dict, optional
@@ -388,8 +391,10 @@ class VoronoiKinematics:
             clims.setdefault(f"h{p}", None)
 
         # set up the figure
+        if moments is None:
+            moments = "123456789ABCDEFG"[: self._hermite_order]
         if ax is None:
-            num_cols = int(self._hermite_order / 2)
+            num_cols = int((len(moments)) / 2)
             fig, ax = plt.subplots(
                 2, num_cols, sharex="all", sharey="all", figsize=figsize
             )
@@ -397,6 +402,8 @@ class VoronoiKinematics:
                 ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
             for i in range(num_cols):
                 ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
+        elif isinstance(ax, plt.Axes):
+            ax = np.array(ax)
         if desat:
             div_cols = colormaps.get("voronoi_div_desat")
             asc_cols = colormaps.get("voronoi_seq_desat")
@@ -404,23 +411,27 @@ class VoronoiKinematics:
             div_cols = colormaps.get("voronoi_div")
             asc_cols = colormaps.get("voronoi_seq")
 
-        # handle arbitrary-length h coefficients
-        # we will always have V and sigma
-        statkeys = ["V", "sigma"]
-        cmaps = [div_cols, asc_cols]
-        labels = [
-            r"$V/\mathrm{km}\,\mathrm{s}^{-1}$",
-            r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$",
-        ]
-        # now add the h coefficients
-        for p in range(3, self._hermite_order + 1):
-            statkeys.append(f"h{p}")
-            cmaps.append(div_cols)
-            labels.append(f"$h_{p}$")
+        def _get_key_map_label(i):
+            if i == 0:
+                return "V", div_cols, r"$V/\mathrm{km}\,\mathrm{s}^{-1}$"
+            elif i == 1:
+                return "sigma", asc_cols, r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$"
+            else:
+                return f"h{i}", div_cols, f"$h_{p}$"
 
-        for i, (statkey, axi, cmap, label) in enumerate(
-            zip(statkeys, ax.flat, cmaps, labels)
-        ):
+        # get 0-based indexing for the moments in base 10
+        moment_idxs = np.array([int(m, 17) - 1 for m in moments])
+        try:
+            assert np.all(moment_idxs < self._hermite_order)
+        except AssertionError:
+            _logger.exception(
+                f"Requested Hermite order {np.max(moment_idxs)}, but Gauss-Hermite only fit to order {self._hermite_order}",
+                exc_info=True,
+            )
+            raise
+
+        for i, (m, axi) in enumerate(zip(moment_idxs, ax.flat)):
+            statkey, cmap, label = _get_key_map_label(m)
             # plot the statistic
             cmap.set_bad(color="k")
             stat = self._stats[f"img_{statkey}"]
@@ -447,7 +458,7 @@ class VoronoiKinematics:
                 cax.set_xticks([])
                 cax.set_yticks([])
                 cax.patch.set_alpha(0)
-                cb = plt.colorbar(p1, cax=cax, label=label, orientation="horizontal")
+                cb = plt.colorbar(p1, cax=cax, orientation="horizontal")
                 cb.set_label(label=label, size=fontsize)
             else:
                 _logger.debug("No colour bar added")
@@ -578,6 +589,13 @@ class VoronoiKinematics:
             "xedges",
         ]
         stat_keys = list(set(d.keys()).difference(set(grid_keys)))
+        try:
+            C._hermite_order = max(
+                [int(v.replace("bin_h", "")) for v in stat_keys if "bin_h" in v]
+            )
+        except ValueError:
+            # there are no h moments
+            C._hermite_order = 2
         C._grid = {}
         C._stats = {}
         for k in grid_keys:

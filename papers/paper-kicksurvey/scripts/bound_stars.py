@@ -168,8 +168,8 @@ for i, df in enumerate(data_files):
         .replace("-bound", "")
     )
     if i == 0:
-        # ax[0].fill_between(data["t"], data["rhalf"], fc="k", alpha=0.3)
         mstar = data["other"]["mstar"]
+        m_bh = data["other"]["mbh"]
     # need to find first pericentre
     try:
         apo_idx = np.nanargmax(data["r"])
@@ -252,6 +252,11 @@ ax[1].text(
     rotation="vertical",
 )
 ax[1].set_xlim(xlim)
+
+# set dual y axis on second plot
+ax[1].tick_params(axis="y", which="both", right=False)
+axr = ax[1].secondary_yaxis("right", functions=(lambda x: x / m_bh, lambda x: x * m_bh))
+axr.set_ylabel(r"$M_\mathrm{bound}/M_\bullet$")
 
 
 # Generate manual minor tick positions (log space, skipping linear region)

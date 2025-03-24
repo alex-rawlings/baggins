@@ -15,6 +15,9 @@ parser.add_argument(
     "-kv", "--kick-vel", dest="kv", type=int, help="kick velocity", default=600
 )
 parser.add_argument(
+    "-e", "--extract", help="extract data", action="store_true", dest="extract"
+)
+parser.add_argument(
     "-z", "--redshift", dest="redshift", type=float, help="redshift", default=0.6
 )
 parser.add_argument(
@@ -31,9 +34,10 @@ args = parser.parse_args()
 SL = bgs.setup_logger("script", args.verbosity)
 
 ifu_snaps = [7, 14, 20, 45]
-ifu_ts = []
-voronois = []
-bh_pos = []
+if args.extract:
+    data = {"kv": args.kv}
+    for s in ifu_snaps:
+        data[f"snap_{s:03d}"] = {"t": None, "voronoi": None, "bh_pos": None}
 
 snapfiles = bgs.utils.get_snapshots_in_dir(
     f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-{args.kv:04d}/output"
@@ -65,10 +69,13 @@ for i, snapfile in enumerate(snapfiles[: max(ifu_snaps) + 1]):
         t_interp.append(bgs.general.convert_gadget_time(snap))
         xcom_interp.append(xcom)
 
-        if snap_num in ifu_snaps:
-            ifu_ts.append(t_interp[-1])
+        if args.extract and snap_num in ifu_snaps:
+            data[f"snap_{snap_num:03d}"]["t"] = t_interp[-1]
             bgs.analysis.basic_snapshot_centring(snap)
-            bh_pos.append([snap.bh["pos"][:, 0], snap.bh["pos"][:, 2]])
+            data[f"snap_{snap_num:03d}"]["bh_pos"] = [
+                snap.bh["pos"][:, 0],
+                snap.bh["pos"][:, 2],
+            ]
             # create IFU plots
             voronoi = bgs.analysis.VoronoiKinematics(
                 x=snap.stars[ifu_mask]["pos"][:, 0],
@@ -78,26 +85,34 @@ for i, snapfile in enumerate(snapfiles[: max(ifu_snaps) + 1]):
                 Npx=muse_nfm.number_pixels,
                 seeing=seeing,
             )
-            voronoi.make_grid(part_per_bin=5000 * seeing["num"])
+            voronoi.make_grid(part_per_bin=10000)
             voronoi.binned_LOSV_statistics()
-            voronois.append(voronoi)
+            data[f"snap_{snap_num:03d}"]["voronoi"] = voronoi.dump_to_dict()
 
         # conserve memory
         snap.delete_blocks()
         del snap
         pygad.gc_full_collect()
+if args.extract:
+    bgs.utils.save_data(data, figure_config.data_path("ifu_times.pickle"))
+else:
+    data = bgs.utils.load_data(figure_config.data_path("ifu_times.pickle"))
+    assert args.kv == data["kv"]
+ifu_ts = [v["t"] for k, v in data.items() if "snap" in k]
 
 # initialise figure
 fig, ax = plt.subplot_mosaic(
     """
     AAAAA
     BCDE.
-    FGHI.
     """,
-    gridspec_kw={"width_ratios": [1, 1, 1, 1, 0.2], "wspace": 0.02},
+    gridspec_kw={
+        "width_ratios": [0.89, 0.89, 0.89, 1, 0.2],
+        "wspace": 0.02,
+        "height_ratios": [0.5, 1],
+    },
 )
 fig.set_figwidth(2.2 * fig.get_figwidth())
-fig.set_figheight(1.5 * fig.get_figheight())
 
 # XXX top figure: BH position
 # interpolate BH positions
@@ -125,17 +140,11 @@ ax["A"].plot(ifu_ts, ifu_r, ls="", marker="o", c=p[-1].get_color(), mec="k", mew
 ax["A"].set_xlabel(r"$t/\mathrm{Gyr}$")
 ax["A"].set_ylabel(r"$r/\mathrm{kpc}$")
 
-
-# XXX IFU figures
-def ax_generator(axm):
-    for s in zip("BCDE", "FGHI"):
-        yield np.array([axm[s[0]], axm[s[1]]])
-
-
-ax_getter = ax_generator(ax)
-
 clims = None
-for voronoi in voronois:
+for k, v in data.items():
+    if "snap" not in k:
+        continue
+    voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(v["voronoi"])
     if clims is None:
         clims = voronoi.get_colour_limits()
     else:
@@ -147,22 +156,28 @@ for voronoi in voronois:
             else:
                 clims[k] = max([clims[k], _clims[k]])
 
-for i, (voronoi, _bh, t) in enumerate(zip(voronois, bh_pos, ifu_ts)):
-    this_ax = next(ax_getter)
-    voronoi.plot_kinematic_maps(ax=this_ax, cbar=("adj" if i == 3 else ""), clims=clims)
-    this_ax[0].set_title(f"$t={t:.2f}\,\mathrm{{Gyr}}$")
-    for _ax in this_ax:
-        _ax.set_xticks([])
-        _ax.set_yticks([])
-        bgs.plotting.draw_sizebar(_ax, 5, "kpc")
-        _ax.scatter(
-            _bh[0],
-            _bh[1],
-            lw=1,
-            s=100,
-            ec="k",
-            fc="none",
-        )
+i = 0
+for k, v in data.items():
+    if "snap" not in k:
+        continue
+    axk = "BCDE"[i]
+    voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(v["voronoi"])
+    voronoi.plot_kinematic_maps(
+        ax=ax[axk], moments="2", cbar=("adj" if i == 3 else ""), clims=clims
+    )
+    ax[axk].set_title(f"$t={v['t']:.2f}\,\mathrm{{Gyr}}$")
+    ax[axk].set_xticks([])
+    ax[axk].set_yticks([])
+    bgs.plotting.draw_sizebar(ax[axk], 5, "kpc")
+    ax[axk].scatter(
+        v["bh_pos"][0],
+        v["bh_pos"][1],
+        lw=0.5,
+        s=100,
+        ec="k",
+        fc="none",
+    )
+    i += 1
 
 bgs.plotting.savefig(
     figure_config.fig_path(f"IFU_{args.kv:04d}_ortho.pdf"), force_ext=True
