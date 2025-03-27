@@ -1,4 +1,5 @@
 from tqdm.dask import TqdmCallback
+from tqdm import tqdm
 import numpy as np
 import scipy.optimize
 import scipy.ndimage
@@ -322,12 +323,11 @@ class VoronoiKinematics:
             for i in range(3, self._hermite_order + 1)
         ]
 
-        fits = []
-        for i in bin_index:
-            fits.append(
-                self.fit_gauss_hermite_distribution(
-                    self.vz[self._grid["particle_vor_bin_num"] == i]
-                )
+        fits = [None] * int(max(bin_index) + 1)
+        assert len(np.unique(np.diff(bin_index))) == 1 and bin_index[0] == 0
+        for idx in tqdm(bin_index, desc="Initialising Gauss Hermite fits"):
+            fits[idx] = self.fit_gauss_hermite_distribution(
+                self.vz[self._grid["particle_vor_bin_num"] == idx]
             )
         with TqdmCallback(desc="Fitting voronoi bins"):
             fits = dask.compute(*fits)

@@ -38,6 +38,7 @@ SL = bgs.setup_logger("script", args.verbosity)
 # XXX: set the data files and constant quantities we'll need
 core_dispersion = 270  # km/s
 core_radius = 0.58  # kpc
+eff_radius = 5.65  # kpc
 # apocentre data
 apo_data_files = bgs.utils.get_files_in_dir(
     "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data",
@@ -169,7 +170,7 @@ for i, df in enumerate(data_files):
     )
     if i == 0:
         mstar = data["other"]["mstar"]
-        m_bh = data["other"]["mbh"]
+        m_bh = 2 * data["other"]["mbh"]  # BH yet to merge
     # need to find first pericentre
     try:
         apo_idx = np.nanargmax(data["r"])
@@ -185,7 +186,7 @@ for i, df in enumerate(data_files):
     )
     if vk <= args.maxvel:
         (lp,) = ax[0].plot(
-            t, data["r"][:peri_idx], c=vkcols.get_colour(vk), ls="-", zorder=0.1, lw=1
+            t, data["r"][:peri_idx], c=vkcols.get_colour(vk), ls="-", zorder=0.3, lw=1
         )
         # create marker sizes
         msizes = marker_size_scale(mstar * data["Nbound"][:peri_idx])
@@ -222,7 +223,7 @@ legend_handles = [
         marker="o",
         color="w",
         label=f"{np.log10(lm):.1f}",
-        markerfacecolor="gray",
+        markerfacecolor="dimgray",
         markersize=np.sqrt(marker_size_scale(lm)),
     )
     for lm in legend_masses
@@ -237,14 +238,17 @@ ax[0].legend(
     frameon=True,
 )
 
-# set regions to show core radius and dispersion
+# set regions to show core radius and effective radius
 ylim = ax[0].get_ylim()
-ax[0].axhspan(ylim[0], core_radius, fc="gray", alpha=0.4, zorder=0.1)
+ax[0].axhspan(ylim[0], core_radius, fc="dimgray", alpha=0.6, zorder=0.1)
 ax[0].text(0.3, 0.5 * core_radius, r"$r<r_{\mathrm{b},0}$")
+ax[0].axhspan(ylim[0], eff_radius, fc="gray", alpha=0.4, zorder=0.1)
+ax[0].text(0.3, 0.25 * eff_radius, r"$r<R_\mathrm{e}$")
 ax[0].set_ylim(ylim)
 
+# show core dispersion
 xlim = ax[1].get_xlim()
-ax[1].axvspan(xlim[0], core_dispersion, fc="gray", alpha=0.4, zorder=1)
+ax[1].axvspan(xlim[0], core_dispersion, fc="dimgray", alpha=0.6, zorder=1)
 ax[1].text(
     core_dispersion * 0.3,
     ax[1].get_ylim()[1] * 1e-3,

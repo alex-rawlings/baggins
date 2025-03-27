@@ -277,8 +277,7 @@ class BasicInstrument(ABC):
 
     @property
     def number_pixels(self):
-        phys_extent = self.extent
-        return int(phys_extent / self.pixel_width)
+        return int(self.extent / self.pixel_width)
 
 
 class MUSE_NFM(BasicInstrument):
