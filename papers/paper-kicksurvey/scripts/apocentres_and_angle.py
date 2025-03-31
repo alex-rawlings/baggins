@@ -186,3 +186,12 @@ for axi in ax[:2]:
     axi.axvspan(axi.get_xlim()[0], core_sig, ec="none", fc="lightgray")
 
 bgs.plotting.savefig(figure_config.fig_path("apocentres.pdf"), force_ext=True)
+plt.close()
+
+# auxillary plot, not for paper
+fig, ax = plt.subplots()
+ax.hist(gp.stan_data["x2"], bins=bins, density=True, cumulative=True)
+ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
+ax.set_ylabel(r"$\mathrm{CDF}$")
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "kicksurvey-study/cumulative_vkick.png"))
+plt.close()

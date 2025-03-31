@@ -15,7 +15,7 @@ from baggins.mathematics import get_histogram_bin_centres
 from pygad import UnitArr
 import dask
 
-__all__ = ["VoronoiKinematics"]
+__all__ = ["VoronoiKinematics", "unify_IFU_colour_scheme"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -610,3 +610,20 @@ class VoronoiKinematics:
                 C._stats[k] = None
         C._extent = d["extent"]
         return C
+
+
+def unify_IFU_colour_scheme(vor_list):
+    clims = None
+    for v in vor_list:
+        voronoi = VoronoiKinematics.load_from_dict(v)
+        if clims is None:
+            clims = voronoi.get_colour_limits()
+        else:
+            _clims = voronoi.get_colour_limits()
+            for k in _clims:
+                if k == "sigma":
+                    clims[k][0] = np.min([clims[k][0], _clims[k][0]])
+                    clims[k][1] = np.max([clims[k][1], _clims[k][1]])
+                else:
+                    clims[k] = max([clims[k], _clims[k]])
+    return clims

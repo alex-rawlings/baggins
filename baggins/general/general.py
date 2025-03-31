@@ -15,6 +15,7 @@ __all__ = [
     "get_unique_path_part",
     "represent_numeric_in_scientific",
     "get_snapshot_number",
+    "print_dict_summary",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -294,3 +295,31 @@ def get_snapshot_number(s, prefix="snap"):
     """
     fname = os.path.splitext((os.path.basename(s)))[0]
     return fname.replace(f"{prefix}_", "")
+
+
+def print_dict_summary(d, level=0):
+    """
+    Print a summary of the contents of a dictionary.
+    Recursively calls itself to handle sub-dicts.
+
+    Parameters
+    ----------
+    d : dict
+        dictionary to print.
+    level : int, optional
+        spacing level, by default 0
+    """
+    for k, v in d.items():
+        if isinstance(v, dict):
+            print(" " * level + f"> {k}")
+            level += 1
+            print_dict_summary(v, level=level)
+            level -= 1
+        else:
+            if isinstance(v, np.ndarray):
+                extra_info = f"shape: {v.shape}"
+            elif isinstance(v, list):
+                extra_info = f"len: {len(v)}"
+            else:
+                extra_info = ""
+            print(" " * level + f"> {k}: {type(v)} - {extra_info}")

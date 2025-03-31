@@ -233,7 +233,7 @@ def get_flux_from_magnitude(mag):
 
 
 class BasicInstrument(ABC):
-    def __init__(self, fov, res):
+    def __init__(self, fov, sampling, res=None):
         """
         Template class for defining basic observation instrument properties
 
@@ -241,10 +241,15 @@ class BasicInstrument(ABC):
         ----------
         fov : float
             field of view in arcsecs
-        res : float
-            angular resolution in arcsec/pixel
+        sampling : float
+            spatial sampling of instrument in arcsec/pixel
+        res : float, optional
+            angular resolution in arcsec, by default None
         """
         self.field_of_view = fov
+        self.sampling = sampling
+        if res is None:
+            res = sampling
         self.angular_resolution = res
         self._ang_scale = None
         self.max_extent = 40.0
@@ -268,6 +273,11 @@ class BasicInstrument(ABC):
     @property
     def pixel_width(self):
         self._param_check()
+        return self.sampling * self._ang_scale
+
+    @property
+    def resolution_kpc(self):
+        self._param_check()
         return self.angular_resolution * self._ang_scale
 
     @property
@@ -286,7 +296,7 @@ class MUSE_NFM(BasicInstrument):
         MUSE narrow field mode instrument. Parameters taken from:
         https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
         """
-        super().__init__(fov=7.42, res=0.025)
+        super().__init__(fov=7.42, sampling=0.025, res=55e-3)
 
 
 class MUSE_WFM(BasicInstrument):
@@ -295,22 +305,22 @@ class MUSE_WFM(BasicInstrument):
         MUSE wide field mode instrument. Parameters taken from:
         https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
         """
-        super().__init__(fov=60, res=0.2)
+        super().__init__(fov=60, sampling=0.2, res=0.4)
 
 
 class Euclid_NISP(BasicInstrument):
     def __init__(self):
         """ "
         "Euclid infrared bands. Parameters taken from:
-        https://www.esa.int/Science_Exploration/Space_Science/Euclid/Euclid_s_instruments
+        https://sci.esa.int/web/euclid/-/euclid-nisp-instrument
         """
-        super().__init__(fov=0.55 * 3600, res=0.3)
+        super().__init__(fov=0.722 * 3600, sampling=0.3, res=None)
 
 
 class Euclid_VIS(BasicInstrument):
     def __init__(self):
         """ "
         "Euclid visible bands. Parameters taken from:
-        https://www.esa.int/Science_Exploration/Space_Science/Euclid/Euclid_s_instruments
+        https://sci.esa.int/web/euclid/-/euclid-vis-instrument
         """
-        super().__init__(fov=0.56 * 3600, res=0.101)
+        super().__init__(fov=0.709 * 3600, sampling=0.101, res=0.23)
