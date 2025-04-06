@@ -1,5 +1,9 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import scipy.stats
+from tqdm.dask import TqdmCallback
+from tqdm import trange
+import dask
 from baggins.env_config import _cmlogger
 
 
@@ -13,6 +17,7 @@ __all__ = [
     "uniform_sample_sphere",
     "vertical_RMSE",
     "empirical_cdf",
+    "EmpiricalCDF",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -358,4 +363,203 @@ def empirical_cdf(x, t):
     : float
         ECDF value at point
     """
+    DeprecationWarning(
+        "Empirical CDFs should be constructed using the new 'EmpiricalCDF' class"
+    )
     return np.nanmean(x <= t)
+
+
+class EmpiricalCDF:
+    def __init__(self, x, weights=None):
+        """
+        Class to determine an empirical cumulative distribution function, that
+        can also handle weights applied to the observations.
+
+        Parameters
+        ----------
+        x : array-like
+            observed data
+        weights : array-like, optional
+            weights, by default None
+        """
+        x = np.asarray(x)
+        if weights is None:
+            weights = np.ones_like(x, dtype=float)
+        else:
+            weights = np.asarray(weights, dtype=float)
+
+        nan_idx = np.zeros_like(x, dtype=bool)
+        nan_idx[np.isnan(x)] = True
+        nan_idx[np.isnan(weights)] = True
+        if np.sum(nan_idx) > 0:
+            _logger.warning("NaNs detected, will be removed!")
+            x = x[~nan_idx]
+            weights = weights[~nan_idx]
+
+        # sort data for consistent ECDF logic
+        sort_idx = np.argsort(x)
+        self.x_raw = x
+        self.weights_raw = weights
+
+        self.x_sorted = x[sort_idx]
+        self.weights_sorted = weights[sort_idx]
+
+        # combine duplicates: group by unique x and sum weights
+        x_unique, inverse = np.unique(self.x_sorted, return_inverse=True)
+        weight_sums = np.zeros_like(x_unique, dtype=float)
+        np.add.at(weight_sums, inverse, self.weights_sorted)
+
+        self.x = x_unique
+        self.cdf_vals = np.cumsum(weight_sums)
+        self.cdf_vals /= self.cdf_vals[-1]
+
+    def cdf(self, x_val):
+        """
+        Evaluate the CDF.
+
+        Parameters
+        ----------
+        x_val : array-like
+            points to evaluate CDF at
+
+        Returns
+        -------
+        : array-like
+            CDF values
+        """
+        x_val = np.atleast_1d(x_val)
+        return np.interp(x_val, self.x, self.cdf_vals, left=0.0, right=1.0)
+
+    def ppf(self, q):
+        """
+        Evaluate the inverse CDF.
+
+        Parameters
+        ----------
+        q : array-like
+            quantiles to evaluate
+
+        Returns
+        -------
+        : array-like
+            distribution-sampeld value
+        """
+        q = np.atleast_1d(q)
+        try:
+            assert not np.any((q < 0) | (q > 1))
+        except AssertionError:
+            _logger.exception("Quantiles must be in [0, 1]", exc_info=True)
+            raise
+        idx = np.searchsorted(self.cdf_vals, q, side="right")
+        idx = np.clip(idx, 0, len(self.x) - 1)
+        return self.x[idx]
+
+    def sample(self, size=1, random_state=None):
+        """
+        Sample the ECDF.
+
+        Parameters
+        ----------
+        size : int, optional
+            number of draws, by default 1
+        random_state : float, optional
+            random seed, by default None
+
+        Returns
+        -------
+        : array-like
+            sampled distribution values
+        """
+        rng = np.random.default_rng(random_state)
+        u = rng.uniform(0, 1, size)
+        return self.ppf(u)
+
+    def bootstrap_dirichlet(self, n_bootstraps=1000, random_state=None):
+        """
+        Bootstraps the data using a Dirichlet distribution for the weights.
+        Preserves the weighted distribution using importance weights.
+
+        Parameters
+        ----------
+        n_bootstraps : int, optional
+            number of bootstraps, by default 1000
+        random_state : float, optional
+            random seed, by default None
+
+        Returns
+        -------
+        boot_ecdfs : list
+            list of bootstrapped ECDFs
+        """
+        rng = np.random.default_rng(random_state)
+        boot_ecdfs = []
+        alpha = self.weights_raw / self.weights_raw.sum() * len(self.weights_raw)
+
+        @dask.delayed
+        def _dask_helper():
+            # use Dirichlet distribution to sample new weights
+            new_weights = rng.dirichlet(alpha)
+            return EmpiricalCDF(self.x_raw, new_weights)
+
+        for _ in trange(n_bootstraps, desc="Initialising bootstrap"):
+            boot_ecdfs.append(_dask_helper())
+        with TqdmCallback(desc="Bootstrapping ECDF"):
+            boot_ecdfs = dask.compute(*boot_ecdfs)
+        return boot_ecdfs
+
+    def plot(
+        self,
+        ax=None,
+        ci_prob=None,
+        npoints=100,
+        n_bootstraps=500,
+        ci_kwargs={},
+        **kwargs,
+    ):
+        """
+        Plot the observed ECDF, and optionally a bootstrapped-confidence
+        interval if 'ci_prob' is not None.
+
+        Parameters
+        ----------
+        ax : pyplot.Axes, optional
+            plotting axes, by default None
+        ci_prob : float, optional
+            confidence interval, by default None
+        npoints : int, optional
+            number of points to evalute ECDF at, by default 100
+        n_bootstraps : int, optional
+            number of bootstrap draws, by default 500
+        ci_kwargs : dict, optional
+            plotting parameters given to pyplot.fill_between(), by default {}
+        **kwargs :
+            other keyword arguments given to pyplot.plot()
+
+        Returns
+        -------
+        ax : pyplot.Axes, optional
+            plotting axes, by default None
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+        x = np.linspace(np.nanmin(self.x), np.nanmax(self.x), npoints)
+        (lp,) = ax.plot(x, self.cdf(x), **kwargs)
+        if ci_prob is not None:
+            try:
+                assert 0 < ci_prob < 1
+            except AssertionError:
+                _logger.exception(
+                    "Confidence interval must be between 0 and 1", exc_info=True
+                )
+                raise
+            boots = self.bootstrap_dirichlet(n_bootstraps=n_bootstraps)
+            cdf_vals_bootstrap = np.array([boot.cdf(x) for boot in boots])
+            ax.fill_between(
+                x,
+                np.nanquantile(cdf_vals_bootstrap, 0.5 - ci_prob / 2, axis=0),
+                np.nanquantile(cdf_vals_bootstrap, 0.5 + ci_prob / 2, axis=0),
+                fc=lp.get_color(),
+                zorder=lp.get_zorder() - 0.1,
+                **ci_kwargs,
+            )
+        return ax
