@@ -3,6 +3,7 @@ import re
 import numpy as np
 import baggins as bgs
 
+bgs.plotting.check_backend()
 
 parser = argparse.ArgumentParser(
     description="Create ICs for Gadget which are somewhat inspired by observations",
@@ -33,6 +34,12 @@ parser.add_argument(
     help="use legacy Sahu method for BH mass",
 )
 parser.add_argument(
+    "--overwrite",
+    dest="overwrite",
+    action="store_true",
+    help="allow overwriting of IC file",
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -52,7 +59,7 @@ if args.batch == 1:
     plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
     if plot_flag:
         galaxy.plot_mass_scaling_relations()
-    galaxy.generate_galaxy()
+    galaxy.generate_galaxy(args.overwrite)
     if plot_flag:
         galaxy.plot_ic_kinematics(num_rots=args.nrot)
 else:
@@ -111,6 +118,6 @@ else:
         plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
         if plot_flag:
             galaxy.plot_mass_scaling_relations()
-        galaxy.generate_galaxy()
+        galaxy.generate_galaxy(args.overwrite)
         if plot_flag:
             galaxy.plot_ic_kinematics(num_rots=args.nrot)

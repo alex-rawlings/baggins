@@ -437,7 +437,7 @@ class LiteratureTables:
         C.table = data
         return C
 
-    def hist(self, var, ax=None, hist_kwargs={}):
+    def hist(self, var, ax=None, **hist_kwargs):
         """
         Histogram table data
 
@@ -457,17 +457,12 @@ class LiteratureTables:
         """
         if ax is None:
             fig, ax = plt.subplots(1, 1)
-        default_hist_kwargs = {
-            "bins": 20,
-            "density": True,
-            "facecolor": "tab:blue",
-            "alpha": 0.5,
-            "linewidth": 0.8,
-            "edgecolor": "k",
-        }
-        for k, v in hist_kwargs.items():
-            default_hist_kwargs[k] = v
-        ax.hist(self.table.loc[:, var], label=self.name, **default_hist_kwargs)
+        hist_kwargs.setdefault("bins", 20)
+        hist_kwargs.setdefault("density", True)
+        hist_kwargs.setdefault("alpha", 0.5)
+        hist_kwargs.setdefault("lw", 0.8)
+        hist_kwargs.setdefault("ec", "k")
+        ax.hist(self.table.loc[:, var], label=self.name, **hist_kwargs)
         return ax
 
     def add_qauntile_to_plot(self, q, var, ax, xaxis=True, lkwargs={}):
@@ -548,10 +543,6 @@ class LiteratureTables:
             fig, ax = plt.subplots(1, 1)
         ax.set_xlabel(x)
         ax.set_ylabel(y)
-        if use_label:
-            label = self.name
-        else:
-            label = ""
 
         scatter_kwargs.setdefault("fmt", ".")
         scatter_kwargs.setdefault("alpha", 1)
@@ -561,6 +552,7 @@ class LiteratureTables:
         scatter_kwargs.setdefault("color", scatter_kwargs["c"])
         scatter_kwargs.pop("c")
         scatter_kwargs.setdefault("elinewidth", 1)
+        scatter_kwargs.setdefault("label", self.name if use_label else "")
         if mask is None:
             if xerr is not None:
                 if isinstance(xerr, (list, tuple)):
@@ -578,7 +570,6 @@ class LiteratureTables:
                 xerr=xerr,
                 yerr=yerr,
                 ls="",
-                label=label,
                 **scatter_kwargs,
             )
         else:
@@ -592,7 +583,6 @@ class LiteratureTables:
                 xerr=xerr,
                 yerr=yerr,
                 ls="",
-                label=label,
                 **scatter_kwargs,
             )
         return ax, p
