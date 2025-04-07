@@ -1,3 +1,4 @@
+import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
@@ -6,36 +7,77 @@ import pygad
 
 bgs.plotting.check_backend()
 
-rdetect = {
-    "0000": -1,
-    "0060": -1,
-    "0120": -1,
-    "0180": -1,
-    "0240": -1,
-    "0300": -1,
-    "0360": -1,
-    "0420": -1,
-    "0480": 5,
-    "0540": 5,
-    "0600": 5,
-    "0660": 5,
-    "0720": 5,
-    "0780": 4,
-    "0840": 5,
-    "0900": 4,
-    "0960": 5,
-    "1020": 5,
-    "1080": 5,
-    "1140": 5,
-    "1200": 5,
-    "1260": -1,
-    "1320": 5,
-    "1380": -1,
-    "1440": -1,
-    "1500": -1,
-    "1560": -1,
-    "1620": -1
-}
+if False:
+    # theoretical observability
+    rdetect = {
+        "0000": -1,
+        "0060": -1,
+        "0120": -1,
+        "0180": -1,
+        "0240": -1,
+        "0300": -1,
+        "0360": -1,
+        "0420": 4,
+        "0480": 3,
+        "0540": 3,
+        "0600": 4,
+        "0660": 4,
+        "0720": 4,
+        "0780": 4,
+        "0840": 4,
+        "0900": 4,
+        "0960": 3,
+        "1020": 4,
+        "1080": 4,
+        "1140": 4,
+        "1200": 4,
+        "1260": 4,
+        "1320": 4,
+        "1380": 4,
+        "1440": 3,
+        "1500": 4,
+        "1560": 4,
+        "1620": 5,
+        "1680": 5,
+        "1740": 4,
+        "1800": 4
+    }
+    fname = "threshold_theoretical"
+else:
+    rdetect = {
+        "0000": -1,
+        "0060": -1,
+        "0120": -1,
+        "0180": -1,
+        "0240": -1,
+        "0300": 4,
+        "0360": 3,
+        "0420": 3,
+        "0480": 4,
+        "0540": 5,
+        "0600": 5,
+        "0660": 7,
+        "0720": 8,
+        "0780": 8,
+        "0840": 6,
+        "0900": 8,
+        "0960": 8,
+        "1020": 8,
+        "1080": 8,
+        "1140": -1,
+        "1200": -1,
+        "1260": -1,
+        "1320": -1,
+        "1380": -1,
+        "1440": -1,
+        "1500": -1,
+        "1560": -1,
+        "1620": -1,
+        "1680": -1,
+        "1740": -1,
+        "1800": -1
+    }
+    fname = "threshold_obs"
 
 fig, ax = plt.subplots()
 vks = []
@@ -47,16 +89,9 @@ for k, v in rdetect.items():
     print(k)
     snapfile = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-{k}/output/snap_{v:03d}.hdf5"
     snap = pygad.Snapshot(snapfile, physical=True)
-    # move to CoM frame
-    pre_ball_mask = pygad.BallMask(5)
-    centre = pygad.analysis.shrinking_sphere(
-        snap.stars,
-        pygad.analysis.center_of_mass(snap.stars),
-        30,
-    )
-    vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
-    pygad.Translation(-centre).apply(snap, total=True)
-    pygad.Boost(-vcom).apply(snap, total=True)
+    print(f"  BH: {snap.bh['pos']}")
+    bgs.analysis.basic_snapshot_centring(snap)
+    print(f"  BH: {snap.bh['pos']}")
 
     vks.append(float(k))
     rs.append(pygad.utils.geo.dist(snap.bh["pos"][0,:]))
@@ -68,13 +103,17 @@ for k, v in rdetect.items():
 # fit linear regression
 vks = np.array(vks).flatten()
 rs = np.array(rs).flatten()
+# only use those that have a distance > 1
+vks = vks[rs>1]
+rs = rs[rs>1]
 regress = scipy.stats.linregress(vks, rs)
 print("Regression:")
 print(f"  slope: {regress.slope:.2e}")
 print(f"  intercept: {regress.intercept:.2e}")
 
 ax.scatter(vks, rs, zorder=2, color="tab:red")
-ax.semilogy(vks, regress.slope*vks+regress.intercept)
+ax.plot(vks, regress.slope*vks+regress.intercept, label=f"{regress.slope:.2e}v{regress.intercept:+.2e}")
 ax.set_xlabel("v/kms")
 ax.set_ylabel("Threshold distance/kpc")
-bgs.plotting.savefig("threshold.png")
+ax.legend()
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"kicksurvey-study/{fname}.png"))

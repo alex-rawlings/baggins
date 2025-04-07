@@ -1,4 +1,5 @@
 from tqdm.dask import TqdmCallback
+from tqdm import tqdm
 import numpy as np
 import scipy.optimize
 import scipy.ndimage
@@ -14,7 +15,7 @@ from baggins.mathematics import get_histogram_bin_centres
 from pygad import UnitArr
 import dask
 
-__all__ = ["VoronoiKinematics"]
+__all__ = ["VoronoiKinematics", "unify_IFU_colour_scheme"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -68,7 +69,7 @@ class VoronoiKinematics:
             ).flatten()
             V = np.repeat(V, seeing["num"]).flatten()
             m = np.repeat(m / seeing["num"], seeing["num"]).flatten()
-        else:
+        elif len(V) != 0:
             _logger.warning("No seeing correction will be applied!")
 
         self.M = np.sum(m)
@@ -95,12 +96,12 @@ class VoronoiKinematics:
     def max_voronoi_bin_index(self):
         return int(np.max(self._grid["particle_vor_bin_num"]) + 1)
 
-    def _stat_is_calculated(self, p):
+    def _stat_is_calculated(self, k):
         try:
             assert self._stats is not None
         except AssertionError:
             _logger.exception(
-                f"Need to determine LOS statistics first before calling property '{p}'!",
+                f"Need to determine LOS statistics first before calling property '{k}'!",
                 exc_info=True,
             )
             raise
@@ -118,6 +119,22 @@ class VoronoiKinematics:
     @property
     def stats(self):
         return self._stats
+
+    def get_colour_limits(self):
+        """
+        Get the colour limits of all kinematic maps for this object
+
+        Returns
+        -------
+        d : dict
+            colour limits to be parsed to plot_kinematic_maps()
+        """
+        d = {}
+        d["V"] = np.max(np.abs(self.img_V))
+        d["sigma"] = [np.min(self.stats["img_sigma"]), np.max(self.stats["img_sigma"])]
+        for p in range(3, self._hermite_order + 1):
+            d[f"h{p}"] = np.max(np.abs(self.stats[f"img_h{p}"]))
+        return d
 
     def make_grid(self, extent=None, part_per_bin=500):
         """
@@ -306,12 +323,11 @@ class VoronoiKinematics:
             for i in range(3, self._hermite_order + 1)
         ]
 
-        fits = []
-        for i in bin_index:
-            fits.append(
-                self.fit_gauss_hermite_distribution(
-                    self.vz[self._grid["particle_vor_bin_num"] == i]
-                )
+        fits = [None] * int(max(bin_index) + 1)
+        assert len(np.unique(np.diff(bin_index))) == 1 and bin_index[0] == 0
+        for idx in tqdm(bin_index, desc="Initialising Gauss Hermite fits"):
+            fits[idx] = self.fit_gauss_hermite_distribution(
+                self.vz[self._grid["particle_vor_bin_num"] == idx]
             )
         with TqdmCallback(desc="Fitting voronoi bins"):
             fits = dask.compute(*fits)
@@ -331,7 +347,14 @@ class VoronoiKinematics:
             self._stats[f"img_h{i+1}"] = img_stats[..., i]
 
     def plot_kinematic_maps(
-        self, ax=None, figsize=(7, 4.7), clims={}, desat=False, cbar="adj"
+        self,
+        ax=None,
+        moments=None,
+        figsize=(7, 4.7),
+        clims={},
+        desat=False,
+        cbar="adj",
+        fontsize=None,
     ):
         """
         Plot the voronoi maps for a system.
@@ -342,6 +365,8 @@ class VoronoiKinematics:
             voronoi values from baggins.analysis.voronoi_binned_los_V_statistics()
         ax : np.ndarray, optional
             numpy array of pyplot.Axes objects for plotting, by default None
+        moments : str, optional
+            moments as a 1-based hex string to plot, by default None
         figsize : tuple, optional
             figure size, by default (7,4.7)
         clims : dict, optional
@@ -350,6 +375,8 @@ class VoronoiKinematics:
             use a desaturated colour scheme, by default False
         cbar : str, optional
             how to add a colourbar to each map, can be "adj" for adjacent or "inset" for inset, by default "adj"
+        fontsize : float or int, optional
+            font size for colour bar label
 
         Returns
         -------
@@ -364,8 +391,10 @@ class VoronoiKinematics:
             clims.setdefault(f"h{p}", None)
 
         # set up the figure
+        if moments is None:
+            moments = "123456789ABCDEFG"[: self._hermite_order]
         if ax is None:
-            num_cols = int(self._hermite_order / 2)
+            num_cols = int((len(moments)) / 2)
             fig, ax = plt.subplots(
                 2, num_cols, sharex="all", sharey="all", figsize=figsize
             )
@@ -373,6 +402,8 @@ class VoronoiKinematics:
                 ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
             for i in range(num_cols):
                 ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
+        elif isinstance(ax, plt.Axes):
+            ax = np.array(ax)
         if desat:
             div_cols = colormaps.get("voronoi_div_desat")
             asc_cols = colormaps.get("voronoi_seq_desat")
@@ -380,23 +411,27 @@ class VoronoiKinematics:
             div_cols = colormaps.get("voronoi_div")
             asc_cols = colormaps.get("voronoi_seq")
 
-        # handle arbitrary-length h coefficients
-        # we will always have V and sigma
-        statkeys = ["V", "sigma"]
-        cmaps = [div_cols, asc_cols]
-        labels = [
-            r"$V/\mathrm{km}\,\mathrm{s}^{-1}$",
-            r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$",
-        ]
-        # now add the h coefficients
-        for p in range(3, self._hermite_order + 1):
-            statkeys.append(f"h{p}")
-            cmaps.append(div_cols)
-            labels.append(f"$h_{p}$")
+        def _get_key_map_label(i):
+            if i == 0:
+                return "V", div_cols, r"$V/\mathrm{km}\,\mathrm{s}^{-1}$"
+            elif i == 1:
+                return "sigma", asc_cols, r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$"
+            else:
+                return f"h{i}", div_cols, f"$h_{p}$"
 
-        for i, (statkey, axi, cmap, label) in enumerate(
-            zip(statkeys, ax.flat, cmaps, labels)
-        ):
+        # get 0-based indexing for the moments in base 10
+        moment_idxs = np.array([int(m, 17) - 1 for m in moments])
+        try:
+            assert np.all(moment_idxs < self._hermite_order)
+        except AssertionError:
+            _logger.exception(
+                f"Requested Hermite order {np.max(moment_idxs)}, but Gauss-Hermite only fit to order {self._hermite_order}",
+                exc_info=True,
+            )
+            raise
+
+        for i, (m, axi) in enumerate(zip(moment_idxs, ax.flat)):
+            statkey, cmap, label = _get_key_map_label(m)
             # plot the statistic
             cmap.set_bad(color="k")
             stat = self._stats[f"img_{statkey}"]
@@ -416,13 +451,15 @@ class VoronoiKinematics:
             if cbar == "adj":
                 divider = make_axes_locatable(axi)
                 cax = divider.append_axes("right", size="5%", pad=0.1)
-                plt.colorbar(p1, cax=cax, label=label)
+                cb = plt.colorbar(p1, cax=cax)
+                cb.set_label(label=label, size=fontsize)
             elif cbar == "inset":
                 cax = axi.inset_axes([0.4, 0.95, 0.55, 0.025])
                 cax.set_xticks([])
                 cax.set_yticks([])
                 cax.patch.set_alpha(0)
-                plt.colorbar(p1, cax=cax, label=label, orientation="horizontal")
+                cb = plt.colorbar(p1, cax=cax, orientation="horizontal")
+                cb.set_label(label=label, size=fontsize)
             else:
                 _logger.debug("No colour bar added")
         return ax
@@ -552,6 +589,13 @@ class VoronoiKinematics:
             "xedges",
         ]
         stat_keys = list(set(d.keys()).difference(set(grid_keys)))
+        try:
+            C._hermite_order = max(
+                [int(v.replace("bin_h", "")) for v in stat_keys if "bin_h" in v]
+            )
+        except ValueError:
+            # there are no h moments
+            C._hermite_order = 2
         C._grid = {}
         C._stats = {}
         for k in grid_keys:
@@ -566,3 +610,20 @@ class VoronoiKinematics:
                 C._stats[k] = None
         C._extent = d["extent"]
         return C
+
+
+def unify_IFU_colour_scheme(vor_list):
+    clims = None
+    for v in vor_list:
+        voronoi = VoronoiKinematics.load_from_dict(v)
+        if clims is None:
+            clims = voronoi.get_colour_limits()
+        else:
+            _clims = voronoi.get_colour_limits()
+            for k in _clims:
+                if k == "sigma":
+                    clims[k][0] = np.min([clims[k][0], _clims[k][0]])
+                    clims[k][1] = np.max([clims[k][1], _clims[k][1]])
+                else:
+                    clims[k] = max([clims[k], _clims[k]])
+    return clims

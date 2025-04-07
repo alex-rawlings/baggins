@@ -1,4 +1,4 @@
-from baggins.literature import LiteratureTables  # noqa
+from baggins.literature.LiteratureTables import LiteratureTables  # noqa
 from baggins.literature.bh_bulge import *  # noqa
 from baggins.literature.density_profiles import *  # noqa
 from baggins.literature.dm_bulge import *  # noqa

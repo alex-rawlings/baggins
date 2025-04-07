@@ -1,10 +1,10 @@
 import argparse
 import os.path
 from datetime import datetime
+from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 import baggins as bgs
-import ketjugw
 import pygad
 import figure_config
 
@@ -15,7 +15,10 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(
-    "-kv", "--kick-vel", dest="kv", type=int, help="kick velocity", default=600
+    "-e", "--extract", help="extract data", action="store_true", dest="extract"
+)
+parser.add_argument(
+    "-u", "--upper", help="upper velocity", type=float, dest="maxvel", default=1080
 )
 parser.add_argument(
     "-v",
@@ -30,27 +33,10 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-start_t = datetime.now()
-
-# XXX: set the data files we'll need
+# XXX: set the data files and constant quantities we'll need
 core_dispersion = 270  # km/s
-# main data
-data_file = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/kinematics_{args.kv:04d}_part_0.pickle"
-data_specific = bgs.utils.load_data(data_file)
-plt.close()
-# settling data
-settle_data = np.loadtxt(
-    f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data/kick-vel-{args.kv:04d}.txt",
-    skiprows=1,
-)
-# settled snapshots
-bh_settled_idx = bgs.utils.read_parameters(
-    "/users/arawling/projects/collisionless-merger-sample/parameters/parameters-analysis/corekick_files.yml"
-)["snap_nums"][f"v{args.kv:04d}"]
-# ketju file
-ketju_file = bgs.utils.get_ketjubhs_in_dir(
-    f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-{args.kv:04d}/output"
-)[0]
+core_radius = 0.58  # kpc
+eff_radius = 5.65  # kpc
 # apocentre data
 apo_data_files = bgs.utils.get_files_in_dir(
     "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data",
@@ -60,136 +46,217 @@ apo_data_files = bgs.utils.get_files_in_dir(
 snapshot_dir = (
     "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick"
 )
+# main data file
+main_data_dir = os.path.join(figure_config.reduced_data_dir, "bound_stars")
+
+if args.extract:
+    snap_offset = 3
+    for i, apo_file in enumerate(apo_data_files):
+        file_name_only = os.path.basename(apo_file).replace(".txt", "")
+        _r = np.loadtxt(apo_file, skiprows=1)[snap_offset:, 1]
+        if np.any(np.diff(_r) < 0):
+            # we have an instance where the distance of the BH to
+            # centre is decreasing
+            apo_snap_num = np.nanargmax(_r) + snap_offset
+        else:
+            # no apocentre
+            continue
+        if np.any(np.diff(_r[apo_snap_num:]) > 0):
+            # we have an instance where the distance of the BH to
+            # centre is increasing
+            peri_snap_num = np.nanargmin(_r[apo_snap_num:]) + apo_snap_num
+        else:
+            # we have run out of snapshots before pericentre
+            SL.warning("No pericentre found, using first 10% of snapshots!")
+            peri_snap_num = int(np.ceil(0.1 * len(_r)))
+        if "0000" in file_name_only:
+            # we have the special 0km/s case
+            peri_snap_num = 10
+            apo_snap_num = 5
+        data = dict(
+            t=np.full(peri_snap_num, np.nan),
+            r=np.full(peri_snap_num, np.nan),
+            Nbound=np.full(peri_snap_num, np.nan),
+            rhalf=np.full(peri_snap_num, np.nan),
+            other={},
+        )
+
+        start_kick_time = datetime.now()
+        SL.info(f"Doing kick velocity {file_name_only.replace('kick-vel-','')}")
+        for j, snapfile in tqdm(
+            enumerate(
+                bgs.utils.get_snapshots_in_dir(
+                    os.path.join(snapshot_dir, file_name_only, "output")
+                )[:peri_snap_num]
+            ),
+            desc="Analysing snapshots",
+            total=peri_snap_num,
+        ):
+            snap = pygad.Snapshot(snapfile, physical=True)
+            if j == 0:
+                data["other"]["mstar"] = snap.stars["mass"][0]
+                data["other"]["mbh"] = snap.bh["mass"][0]
+                data["other"]["apo_snap_num"] = apo_snap_num
+                data["other"]["vel"] = float(
+                    os.path.splitext(file_name_only)[0].replace("kick-vel-", "")
+                )
+            if len(snap.bh) != 1:
+                SL.warning("We require 1 BH! Skipping this snapshot")
+                # clean memory
+                snap.delete_blocks()
+                del snap
+                pygad.gc_full_collect()
+                continue
+            data["t"][j] = bgs.general.convert_gadget_time(snap, new_unit="Myr")
+            bgs.analysis.basic_snapshot_centring(snap)
+            data["r"][j] = snap.bh["r"].flatten()
+            try:
+                bound_ids = bgs.analysis.find_individual_bound_particles(snap)
+                data["Nbound"][j] = len(bound_ids)
+                bound_id_mask = pygad.IDMask(bound_ids)
+                data["rhalf"][j] = float(
+                    pygad.analysis.half_mass_radius(snap.stars[bound_id_mask])
+                )
+            except AssertionError as err:
+                SL.exception(err)
+                continue
+
+            # clean memory
+            snap.delete_blocks()
+            del snap
+            pygad.gc_full_collect()
+
+        SL.warning(
+            f"Completed extraction for {file_name_only} in {datetime.now()-start_kick_time}"
+        )
+        bgs.utils.save_data(
+            data, os.path.join(main_data_dir, f"{file_name_only}-bound.pickle")
+        )
+        del data
+
+# load the data files
+data_files = bgs.utils.get_files_in_dir(main_data_dir, ".pickle")
+
+# set up the figure
+fig, ax = plt.subplots(1, 1)
+fig.set_figwidth(1.2 * fig.get_figwidth())
+ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km\,s}^{-1}$")
+ax.set_ylabel(r"$M_\mathrm{bound}/\mathrm{M}_\odot$")
 
 
-SL.debug(f"Data loaded in {datetime.now() - start_t}")
+def data_grabber():
+    """
+    Generator to get the data to plot
 
-# XXX Step 1: Determine when the BH is within the core
-# find when the velocity falls below the velocity dispersion
-tsigma = bgs.general.xval_of_quantity(
-    core_dispersion, settle_data[:, 0], settle_data[:, 2]
+    Yields
+    ------
+    return_dict : dict
+        plotting data
+    """
+    for i, df in enumerate(data_files):
+        data = bgs.utils.load_data(df)
+        # XXX temp fix
+        vk = float(
+            os.path.splitext(os.path.basename(df))[0]
+            .replace("kick-vel-", "")
+            .replace("-bound", "")
+        )
+        if i == 0:
+            mstar = data["other"]["mstar"]
+            m_bh = 2 * data["other"]["mbh"]  # BH yet to merge
+        # need to find first pericentre
+        return_dict = {
+            "vk": vk,
+            "bound_a": np.nan,
+            "bound_p": np.nan,
+            "r_a": np.nan,
+            "r_p": np.nan,
+            "m_bh": m_bh,
+        }
+        try:
+            apo_idx = np.nanargmax(data["r"])
+            peri_idx = np.nanargmax(np.diff(data["r"][apo_idx:]) > 0) + apo_idx + 1
+            return_dict["bound_a"] = mstar * data["Nbound"][apo_idx]
+            return_dict["bound_p"] = mstar * data["Nbound"][peri_idx]
+            return_dict["r_a"] = data["r"][apo_idx]
+            return_dict["r_p"] = data["r"][peri_idx]
+        except ValueError as err:
+            SL.warning(f"Skipping: {vk}")
+            SL.debug(err)
+        yield return_dict
+
+
+grab_data = data_grabber()
+max_r = np.nanmax(list(d["r_a"] for d in grab_data))
+SL.debug(f"Maximum radius is {max_r}")
+r_col_mapper, sm = bgs.plotting.create_normed_colours(
+    1e-3, max_r, cmap="rocket", norm="LogNorm"
 )
-SL.debug(f"time when v < sigma permanently is {tsigma:.3e}")
-t_sigma_idx = bgs.general.get_idx_in_array(tsigma, settle_data[:bh_settled_idx, 0])
-SL.debug(f"Which has index {t_sigma_idx}")
-# and then the BH stays within the core
-tcore = bgs.general.xval_of_quantity(
-    0.58, settle_data[t_sigma_idx:, 0], settle_data[t_sigma_idx:, 1]
-)
 
-# XXX Step 2: Identify pericentres
-# only want those times before BH in core
-bh = bgs.analysis.get_bh_after_merger(ketju_file)
-tcore_idx = bgs.general.get_idx_in_array(tcore, bh.t / bgs.general.units.Gyr)
-bh = bh[:tcore_idx]
-# set t=0 to be the time of merger
-bh.t = bh.t - bh.t[0]
-ghost_particle = ketjugw.Particle(
-    t=bh.t,
-    m=np.zeros_like(bh.t),
-    x=np.zeros((len(bh.t), 3)),
-    v=np.zeros((len(bh.t), 3)),
-)
-
-peri_times, peri_idxs, sep = bgs.analysis.find_pericentre_time(
-    bh, ghost_particle, return_sep=True
-)
-peri_times /= bgs.general.units.Gyr
-SL.debug(f"Pericentre times are {peri_times}")
-fig, ax = plt.subplots()
-ax.set_xlabel(r"$t/\mathrm{Gyr}$")
-ax.set_ylabel(r"$r/\mathrm{kpc}$")
-ax.plot(
-    bh.t / bgs.general.units.Gyr,
-    sep / bgs.general.units.kpc,
-    markevery=peri_idxs,
-    marker="o",
-)
-bgs.plotting.savefig(
-    os.path.join(bgs.FIGDIR, f"kicksurvey-study/sep-{args.kv}.png"), fig=fig
-)
-plt.close()
-
-# set up main plot
-fig, ax = plt.subplots(1, 2)
-fig.set_figwidth(2 * fig.get_figwidth())
-
-# XXX Step 3: plot bound mass as a function of kick velocity
-kick_velocities = np.full(len(apo_data_files), np.nan)
-bound_mass = np.full_like(kick_velocities, np.nan)
-snap_offset = 3
-for i, apo_file in enumerate(apo_data_files):
-    file_name_only = os.path.basename(apo_file).replace(".txt", "")
-    _r = np.loadtxt(apo_file, skiprows=1)[snap_offset:, 1]
-    if np.any(np.diff(_r) < 0):
-        # we have an instance where the distance of the BH to
-        # centre is decreasing
-        apo_snap_num = np.nanargmax(_r) + snap_offset
-    else:
-        # no apocentre
+grab_data = data_grabber()
+reff_vel = None
+for d in grab_data:
+    if d["vk"] < 1 or d["vk"] > args.maxvel:
+        m_bh = d["m_bh"]
         continue
-    snap_file = bgs.utils.get_snapshots_in_dir(
-        os.path.join(snapshot_dir, file_name_only, "output")
-    )[apo_snap_num]
-    SL.info(f"Reading snapshot {snap_file}")
-    snap = pygad.Snapshot(snap_file, physical=True)
-    if i == 0:
-        star_mass = snap.stars["mass"][0]
-        bh_mass = snap.bh["mass"][0]
-    # get the bound mass within the influence radius of the BH
-    bound_mass[i] = len(bgs.analysis.find_individual_bound_particles(snap)) * star_mass
-    kick_velocities[i] = float(file_name_only.replace("kick-vel-", ""))
-    # clean memory
-    snap.delete_blocks()
-    del snap
-    pygad.gc_full_collect()
-
-for axi in ax:
-    axi.tick_params(axis="y", which="both", right=False)
-    axr = axi.secondary_yaxis(
-        "right", functions=(lambda x: x / bh_mass, lambda x: x * bh_mass)
+    ax.semilogy([d["vk"]] * 2, [d["bound_a"], d["bound_p"]], lw=0.5, ls="-", c="k")
+    ax.semilogy(
+        d["vk"],
+        d["bound_p"],
+        marker="s",
+        ls="",
+        mew="0.5",
+        mec="k",
+        c=r_col_mapper(d["r_p"]),
     )
-    axr.set_ylabel(r"$M_\mathrm{bound}/M_\bullet$")
+    ax.semilogy(
+        d["vk"],
+        d["bound_a"],
+        marker="o",
+        ls="",
+        mew="0.5",
+        mec="k",
+        c=r_col_mapper(d["r_a"]),
+    )
+    if d["r_a"] > eff_radius and reff_vel is None:
+        reff_vel = d["vk"]
+plt.colorbar(sm, ax=ax, label=r"$r/\mathrm{kpc}$", location="top")
 
-ax[0].set_yscale("log")
-ax[0].scatter(kick_velocities, bound_mass, zorder=1.5, **figure_config.marker_kwargs)
-ax[0].set_xlabel(r"$v_\mathrm{kick}/\mathrm{km\,s}^{-1}$")
-ax[0].set_ylabel(r"$M_\mathrm{bound}/\mathrm{M}_\odot$")
-xlim = ax[0].get_xlim()
-ax[0].axvspan(xlim[0], core_dispersion, fc="gray", alpha=0.4, zorder=1)
-ax[0].text(
-    core_dispersion * 0.3,
-    ax[0].get_ylim()[1] * 1e-3,
+ax.scatter(
+    [], [], marker="o", c="gray", lw="0.5", ec="k", label=r"$\mathrm{apocentre}$"
+)
+ax.scatter(
+    [], [], marker="s", c="gray", lw="0.5", ec="k", label=r"$\mathrm{pericentre}$"
+)
+ax.legend()
+
+# set dual y axis on second plot
+ax.tick_params(axis="y", which="both", right=False)
+axr = ax.secondary_yaxis("right", functions=(lambda x: x / m_bh, lambda x: x * m_bh))
+axr.set_ylabel(r"$M_\mathrm{bound}/M_\bullet$")
+
+# show core dispersion
+xlim = ax.get_xlim()
+ax.axvspan(
+    xlim[0], core_dispersion, zorder=1, hatch="//", fc="none", ec="dimgray", lw=1
+)
+ax.text(
+    0.1,
+    0.5,
     r"$v_\mathrm{kick}< \sigma_{\star,0}$",
     rotation="vertical",
+    transform=ax.transAxes,
+    va="center",
+    bbox={"fc": "w", "ec": "none"},
 )
-ax[0].set_xlim(xlim)
 
-# XXX Step 4: specific case kick velocity
-t = np.array(data_specific["time"]) - data_specific["time"][0]
-ax[1].semilogy(
-    t,
-    np.array(data_specific["bound_stars_all"]) * star_mass,
-    label=r"$M_\mathrm{bound}$",
+# show were r_apo > Re
+ax.axvspan(reff_vel, xlim[1], alpha=0.6, zorder=1, fc="gray")
+ax.text(
+    1.1 * reff_vel,
+    1e7,
+    r"$r_\mathrm{apo} > R_\mathrm{e}$",
 )
-ax[1].semilogy(
-    t,
-    np.array(data_specific["original_bound_stars"]) * star_mass,
-    label=r"$M_\mathrm{bound,0}$",
-)
-ax[1].set_xlabel(r"$t/\mathrm{Gyr}$")
-ax[1].set_ylabel(r"$M_\mathrm{bound}/M_\odot$")
+ax.set_xlim(xlim)
 
-ax[1].legend()
-for t in peri_times[:-1]:
-    # the last pericentre calculation fails, so let's not plot it
-    ax[1].axvline(t, ls=":", lw=1, c="k", zorder=0.1)
-ax[1].text(tcore * 1.1, ax[1].get_ylim()[1] / 6, r"$\mathrm{BH\;within\;core}$")
-xlim = ax[1].get_xlim()
-ax[1].axvspan(tcore, 1.5 * xlim[1], fc="gray", alpha=0.4)
-ax[1].set_xlim(xlim)
-ax[1].set_ylim(1e8, ax[1].get_ylim()[1])
-plt.subplots_adjust(left=0.2, top=0.95, bottom=0.15, right=0.8)
-bgs.plotting.savefig(
-    figure_config.fig_path(f"bound_{args.kv:04d}.pdf"), fig=fig, force_ext=True
-)
+bgs.plotting.savefig(figure_config.fig_path("bound.pdf"), force_ext=True)

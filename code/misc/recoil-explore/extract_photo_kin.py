@@ -23,7 +23,7 @@ parser.add_argument(
     "-kv", "--kick-vel", dest="kv", type=int, help="kick velocity", default=600
 )
 parser.add_argument(
-    "-z", "--redshift", dest="redshift", type=float, help="redshift", default=0.3
+    "-z", "--redshift", dest="redshift", type=float, help="redshift", default=0.6
 )
 parser.add_argument(
     "-a", "--animate", action="store_true", dest="animate", help="make animation"
@@ -197,11 +197,11 @@ N_frames = len(data["time"])
 # set axis and colour limits
 def voronoi_colour_limit_maker(cvals):
     return dict(
-        max_V=max([np.max(np.abs(v["img_V"])) for v in cvals]),
-        max_s=max([np.max(v["img_sigma"]) for v in cvals]),
-        min_s=min([np.min(v["img_sigma"]) for v in cvals]),
-        max_h3=max([np.max(np.abs(v["img_h3"])) for v in cvals]),
-        max_h4=max([np.max(np.abs(v["img_h4"])) for v in cvals]),
+        max_V=max([np.max(np.abs(v.stats["img_V"])) for v in cvals]),
+        max_s=max([np.max(v.stats["img_sigma"]) for v in cvals]),
+        min_s=min([np.min(v.stats["img_sigma"]) for v in cvals]),
+        max_h3=max([np.max(np.abs(v.stats["img_h3"])) for v in cvals]),
+        max_h4=max([np.max(np.abs(v.stats["img_h4"])) for v in cvals]),
     )
 
 
