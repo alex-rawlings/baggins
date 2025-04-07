@@ -9,6 +9,7 @@ __all__ = [
     "cartesian_components",
     "convert_cartesian_to_spherical",
     "convert_spherical_to_cartesian",
+    "create_orthonormal_basis_from_vec",
 ]
 
 
@@ -47,7 +48,7 @@ def set_spherical_basis(R):
     Parameters
     ----------
     R : np.ndarray
-        array to use to set the spherical coordinate basis, yypically will be
+        array to use to set the spherical coordinate basis, typically will be
         particle position vector
 
     Returns
@@ -175,3 +176,38 @@ def convert_spherical_to_cartesian(S):
     R[:, 1] = S[:, 0] * np.sin(S[:, 1]) * np.sin(S[:, 2])
     R[:, 2] = S[:, 0] * np.cos(S[:, 1])
     return R
+
+
+def create_orthonormal_basis_from_vec(v):
+    """
+    Create an orthonormal basis where the e1 coordinate vector is aligned with
+    the given vector.
+
+    Parameters
+    ----------
+    v : array-like
+        vector to define the basis
+
+    Returns
+    -------
+    : tuple
+        basis vectors
+
+    Raises
+    ------
+    ValueError
+        if input has 0 norm
+    """
+    v = np.asarray(v)
+    v_norm = np.linalg.norm(v)
+    if v_norm == 0:
+        raise ValueError("The vector must be nonzero.")
+    v_unit = v / v_norm  # Normalize
+
+    # Generate orthonormal basis (e1, e2, e3)
+    e1 = v_unit  # e1 is aligned with v
+    temp_vec = np.array([1, 0, 0]) if abs(v_unit[0]) < 0.9 else np.array([0, 1, 0])
+    e2 = np.cross(e1, temp_vec)
+    e2 /= np.linalg.norm(e2)
+    e3 = np.cross(e1, e2)
+    return e1, e2, e3

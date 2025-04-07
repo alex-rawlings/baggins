@@ -197,7 +197,7 @@ grab_data = data_grabber()
 reff_vel = None
 for d in grab_data:
     if d["vk"] < 1 or d["vk"] > args.maxvel:
-        m_bh = 2 * d["m_bh"]
+        m_bh = d["m_bh"]
         continue
     ax.semilogy([d["vk"]] * 2, [d["bound_a"], d["bound_p"]], lw=0.5, ls="-", c="k")
     ax.semilogy(

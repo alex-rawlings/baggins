@@ -116,11 +116,11 @@ class ProjectedDensityObject:
 
     def add_extras(self, ax, pos):
         # mark BH position
-        annotate_str = r"$\mathrm{bound\;cluster}$" + "\n" + "$\mathrm{around\;SMBH}$"
+        annotate_str = r"$\mathrm{BCSS}$"
         ax.annotate(
             annotate_str,
             (pos[0, 0] + 0.25, pos[0, 2] - 0.25),
-            (pos[0, 0] + 12, pos[0, 2] - 14),
+            (pos[0, 0] + 10, pos[0, 2] - 10),
             color="w",
             arrowprops={"fc": "w", "ec": "w", "arrowstyle": "wedge"},
             ha="right",

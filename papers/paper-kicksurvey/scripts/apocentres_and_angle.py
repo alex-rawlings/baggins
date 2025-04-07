@@ -60,16 +60,8 @@ core_rad = 0.58
 
 
 # the simulated detectability
-def threshold_dist_sim(x, core_sig=core_sig):
+def threshold_dist(x, core_sig=core_sig):
     y = np.atleast_1d(3.21e-2 * x - 11.5)
-    y[y < core_rad] = core_rad
-    y[x < core_sig] = 1000
-    return y
-
-
-# the theoretical detectability
-def threshold_dist_theory(x, core_sig=core_sig):
-    y = np.atleast_1d(1.18e-2 * x - 3.51)
     y[y < core_rad] = core_rad
     y[x < core_sig] = 1000
     return y
@@ -100,16 +92,18 @@ analysis_params["stan"]["GP_sample_kwargs"]["output_dir"] = os.path.join(
 gp.sample_model(sample_kwargs=analysis_params["stan"]["GP_sample_kwargs"])
 
 # get fraction of apocentres above X kpc
-frac_above_X = gp.fraction_apo_above_threshold(threshold_dist_sim)
+frac_above_X = gp.fraction_apo_above_threshold(threshold_dist)
 print(f"{frac_above_X*100:.3f}% of sampled apocentres are above the threshold function")
-frac_above_X_proj = gp.fraction_apo_above_threshold(threshold_dist_sim, proj=True)
+frac_above_X_proj = gp.fraction_apo_above_threshold(threshold_dist, proj=True)
 print(
     f"{frac_above_X_proj*100:.3f}% of sampled projected apocentres are above the threshold function"
 )
 
 # make the plots
-fig, ax = plt.subplots(1, 3, sharex="all")
-fig.set_figwidth(2.5 * fig.get_figwidth())
+fig, ax = plt.subplots(2, 2, sharex="all")
+ax = ax.flatten()
+fig.set_figwidth(2 * fig.get_figwidth())
+fig.set_figheight(2 * fig.get_figheight())
 hdi_levels = [50, 75, 99]
 
 # XXX plot 1: vkick - r_apo relation from GP
@@ -135,23 +129,20 @@ for i, axi in enumerate((ax[0], axins)):
         smooth=True,
         save=False,
         levels=hdi_levels,
-        show_legend=not bool(i),
+        show_legend=False,
     )
     ylims = ax[0].get_ylim()
 
     # plot the detection distance thresholds
     (l_rS,) = axi.plot(
-        vk_threshold, threshold_dist_sim(vk_threshold), ls="-.", lw=1, c="k", zorder=2
+        vk_threshold, threshold_dist(vk_threshold), ls="-.", lw=1, c="k", zorder=2
     )
-    (l_rT,) = axi.plot(
-        vk_threshold, threshold_dist_theory(vk_threshold), ls=":", lw=1, c="k", zorder=2
-    )
+ax[0].legend(loc="upper left")
 
 ax[0].indicate_inset_zoom(axins, ec="k")
 axins.set_xticks([])
 axins.set_yticks([], minor=True)
-ax[0].text(900, threshold_dist_sim(900), r"$r_\mathrm{d,S}$", va="top")
-ax[0].text(900, threshold_dist_theory(900), r"$r_\mathrm{d,T}$", va="top")
+ax[0].text(900, threshold_dist(900), r"$r_\mathrm{d}$", va="top")
 ax[0].text(750, 8, f"{(1-frac_above_X)*100:.1f}%", va="bottom")
 ax[0].text(700, 30, f"{(frac_above_X)*100:.1f}%", va="bottom")
 ax[0].set_ylim(0.1, ylims[1])
@@ -160,37 +151,74 @@ ax[0].set_ylim(0.1, ylims[1])
 ax[1].set_xlabel(gp.input_qtys_labs[0])
 ax[1].set_ylabel(r"$\theta_\mathrm{min}$")
 gp.plot_angle_to_exceed_threshold(
-    threshold_dist_sim,
+    threshold_dist,
     levels=hdi_levels,
     ax=ax[1],
     save=False,
     smooth_kwargs={"mode": "nearest", "window_length": 5},
 )
-ax[1].set_xlim(0.8 * core_sig, 1.05 * np.max(gp.stan_data["x2"]))
+ax[1].set_xlim(0.8 * core_sig, np.max(gp.stan_data["x2"]))
 ax[1].set_ylim(0, 90)
 ax[1].text(800, 60, r"$\mathrm{Detectable}$")
 ax[1].text(500, 15, r"$\mathrm{Not\; detectable}$")
 
-# XXX plot 3: probability of distribution of observable vkicks
+# XXX plot 3&4: probability of distribution of observable vkicks
 bin_width = 100
 bins = np.arange(
-    np.nanmin(gp.stan_data["x2"]), np.nanmax(gp.stan_data["x2"]) + bin_width, bin_width
+    -bin_width / 2,  # bin_width*np.ceil(core_sig/bin_width)-bin_width/2,
+    bin_width * np.ceil(np.nanmax(gp.stan_data["x2"]) / bin_width) + bin_width / 2,
+    bin_width,
 )
-gp.plot_observable_fraction(threshold_dist_sim, bins=bins, ax=ax[2], save=False)
+cols = bgs.plotting.mplColours()[:2][::-1]
+gp.plot_observable_fraction(
+    threshold_dist, bins=bins, ax=ax[2], cols=cols, save=False, edgecolor="k", lw=0.2
+)
+gp.plot_observable_fraction(
+    threshold_dist,
+    bins=bins,
+    ax=ax[3],
+    cols=cols,
+    save=False,
+    edgecolor="k",
+    lw=0.2,
+    cumulative=True,
+)
+ax[2].set_xlim(-bin_width / 2, bins[-1])
 ax[2].set_xlabel(gp.input_qtys_labs[0])
 ax[2].set_ylabel(r"$f(v_\mathrm{kick})$")
-ax[2].legend()
+ax[3].set_xlabel(gp.input_qtys_labs[0])
+ax[3].set_ylabel(r"$F(v<v_\mathrm{kick})$")
+ax[3].legend()
 
 # add a hash region to indicate velocities for v < sigcore
 for axi in ax[:2]:
     axi.axvspan(axi.get_xlim()[0], core_sig, ec="none", fc="lightgray")
+    axi.text(
+        0.15,
+        0.5,
+        r"$v_\mathrm{kick}< \sigma_{\star,0}$",
+        rotation="vertical",
+        transform=axi.transAxes,
+        va="center",
+    )
+
+# set dual y axis on second plot
+for axi in ax:
+    axi.tick_params(axis="x", which="both", top=False, labelbottom=True)
+    axr = axi.secondary_xaxis("top", functions=(lambda x: x / 1800, lambda x: x * 1800))
+    axr.set_xlabel(r"$v_\mathrm{kick}/v_\mathrm{esc}$")
 
 bgs.plotting.savefig(figure_config.fig_path("apocentres.pdf"), force_ext=True)
 plt.close()
 
 # auxillary plot, not for paper
 fig, ax = plt.subplots()
-ax.hist(gp.stan_data["x2"], bins=bins, density=True, cumulative=True)
+ax.hist(
+    gp.stan_data["x2"],
+    bins=np.arange(0, np.max(gp.stan_data["x2"]), 100),
+    density=True,
+    cumulative=True,
+)
 ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km}\,\mathrm{s}^{-1}$")
 ax.set_ylabel(r"$\mathrm{CDF}$")
 bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "kicksurvey-study/cumulative_vkick.png"))

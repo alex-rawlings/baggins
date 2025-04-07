@@ -39,13 +39,7 @@ SL = bgs.setup_logger("script", args.verbosity)
 
 x_axis, y_axis = args.axes
 LOS_axis = list(set({0, 1, 2}).difference({x_axis, y_axis}))[0]
-if LOS_axis == 0:
-    SL.info("We will plot mean velocity")
-    data_file = figure_config.data_path("ifu_mock_para.pickle")
-else:
-    SL.info("We will plot velocity dispersion")
-    data_file = figure_config.data_path("ifu_mock_ortho.pickle")
-
+data_file = figure_config.data_path(f"ifu_mock_{x_axis}{y_axis}.pickle")
 
 # set up the instruments
 muse_nfm = bgs.analysis.MUSE_NFM()
@@ -57,7 +51,7 @@ ifu_mask = pygad.ExprMask(
 
 # set the specific snaps to create IFU images for
 # ifu_snaps = {"0000":[2, 6, 20], "0420":[7, 9, 16], "0600":[11, 19, 24]}
-ifu_snaps = {"0000": [2, 6, 20], "0540": [9, 16, 23], "0720": [22, 38, 55]}
+ifu_snaps = {"0000": [2, 6, 40], "0540": [9, 16, 23], "0720": [22, 38, 55]}
 
 if args.extract:
     data = dict.fromkeys(ifu_snaps, None)
@@ -70,6 +64,8 @@ core_sig = 270
 core_rad = 0.58
 
 
+# this is the threshold distance beyond which the cluster has a projected
+# density above that of the background galaxy
 def threshold_dist_theory(x):
     y = np.atleast_1d(1.18e-2 * x - 3.51)
     y[y < core_rad] = core_rad

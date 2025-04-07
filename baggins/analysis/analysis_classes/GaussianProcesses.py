@@ -1,21 +1,19 @@
 from abc import abstractmethod
 import os.path
 import numpy as np
-import scipy.stats
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from arviz import plot_hdi, plot_dist
-from ketjugw.units import km_per_s
+import ketjugw
 from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_ketju import get_bound_binary
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.general.units import kpc
 from baggins.literature import (
-    zlochower_dry_spins,
+    SMBHSpins,
     ketju_calculate_bh_merger_remnant_properties,
 )
-from baggins.mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
 from baggins.plotting import savefig
 from baggins.utils import save_data, load_data, get_ketjubhs_in_dir, get_files_in_dir
 
@@ -250,8 +248,8 @@ class VkickCoreradiusGP(_GPBase):
         # move to Gadget units: kpc, km/s, 1e10Msol
         bh1.x /= kpc
         bh2.x /= kpc
-        bh1.v /= km_per_s
-        bh2.v /= km_per_s
+        bh1.v /= ketjugw.units.km_per_s
+        bh2.v /= ketjugw.units.km_per_s
         bh1.m /= 1e10
         bh2.m /= 1e10
         self.bh1 = bh1[-1]
@@ -266,15 +264,9 @@ class VkickCoreradiusGP(_GPBase):
         """
         _OOS = {"N2": 1000}
         self._num_OOS = _OOS["N2"]
-        t, p = uniform_sample_sphere(_OOS["N2"] * 2, rng=self._rng)
-        spin_mag = scipy.stats.beta.rvs(
-            *zlochower_dry_spins.values(),
-            random_state=self._rng,
-            size=_OOS["N2"] * 2,
-        )
-        spins = convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
-        s1 = spins[: _OOS["N2"], :]
-        s2 = spins[_OOS["N2"] :, :]
+        spins = SMBHSpins("zlochower_dry", "uniform")
+        s1 = spins.sample_spins(n=_OOS["N2"])
+        s2 = spins.sample_spins(n=_OOS["N2"])
         vkick = np.full(_OOS["N2"], np.nan)
         for i, (ss1, ss2) in tqdm(enumerate(zip(s1, s2)), total=len(s1)):
             remnant = ketju_calculate_bh_merger_remnant_properties(
@@ -610,15 +602,19 @@ class VkickApocentreGP(_GPBase):
         # extract BH data at the timestep before merger
         kfile = get_ketjubhs_in_dir(self.premerger_ketjufile)[0]
         bh1, bh2, *_ = get_bound_binary(kfile)
-        # move to Gadget units: kpc, km/s, 1e10Msol
-        bh1.x /= kpc
-        bh2.x /= kpc
-        bh1.v /= km_per_s
-        bh2.v /= km_per_s
-        bh1.m /= 1e10
-        bh2.m /= 1e10
         self.bh1 = bh1[-1]
         self.bh2 = bh2[-1]
+
+    def _ketju_particle_to_gadget_units(self):
+        """
+        Move to Gadget units: kpc, km/s, 1e10Msol
+        """
+        self.bh1.x /= kpc
+        self.bh2.x /= kpc
+        self.bh1.v /= ketjugw.units.km_per_s
+        self.bh2.v /= ketjugw.units.km_per_s
+        self.bh1.m /= 1e10
+        self.bh2.m /= 1e10
 
     def _set_stan_data_OOS(self, vkickOOS=None):
         """
@@ -635,16 +631,12 @@ class VkickApocentreGP(_GPBase):
         _OOS = {"N2": None}
         if vkickOOS is None:
             # randomly sample recoil velocities from Zlochower Lousto
-            t, p = uniform_sample_sphere(self.num_OOS * 2, rng=self._rng)
-            spin_mag = scipy.stats.beta.rvs(
-                *zlochower_dry_spins.values(),
-                random_state=self._rng,
-                size=self.num_OOS * 2,
-            )
-            spins = convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
-            s1 = spins[: self.num_OOS, :]
-            s2 = spins[self.num_OOS :, :]
+            spins = SMBHSpins("zlochower_dry", "skewed")
+            L = ketjugw.orbital_angular_momentum(self.bh1, self.bh2).flatten()
+            s1 = spins.sample_spins(self.num_OOS, L=L)
+            s2 = spins.sample_spins(self.num_OOS, L=L)
             vkick = np.full(self.num_OOS, np.nan)
+            self._ketju_particle_to_gadget_units()
             for i, (ss1, ss2) in tqdm(
                 enumerate(zip(s1, s2)), total=len(s1), desc="Sampling kicks"
             ):
@@ -871,7 +863,7 @@ class VkickApocentreGP(_GPBase):
         return ax
 
     def plot_observable_fraction(
-        self, threshold, bins=None, ax=None, save=True, **kwargs
+        self, threshold, bins=None, ax=None, cols=None, save=True, **kwargs
     ):
         """
         Plot observability probability of sampled kick velocity distribution.
@@ -880,8 +872,10 @@ class VkickApocentreGP(_GPBase):
         ----------
         threshold : callable
             distance threshold function the BH must exceed
-        bins : int or array-like, optional
-            histogram bins, by default None
+        min_v : float, optional
+            lower cut for velocity, by default None
+        n_bootstrap : int, optional
+            number of ECDF bootstrap samples, by default 100
         ax : matplotlib.Axes, optional
             plotting axes, by default None
         save : bool, optional
@@ -909,18 +903,26 @@ class VkickApocentreGP(_GPBase):
         weights = np.cos(theta * np.pi / 180)
         weights[np.isnan(weights)] = 0
         N = draws * self._num_OOS_requested
-        h = ax.hist(
-            [vk, vk],
+        if cols is None:
+            cols = [None, None]
+        ax.hist(
+            vk,
             bins=bins,
             density=False,
-            weights=[np.ones_like(vk) / N, weights / N],
-            rwidth=1,
-            label=[r"$\mathrm{Unweighted}$", r"$\mathrm{Weighted}$"],
+            weights=np.ones_like(vk) / N,
+            label=r"$\mathrm{SMBH\;recoil}$",
+            color=cols[0],
             **kwargs,
         )
-        ylim = ax.get_ylim()
-        ax.vlines(h[1], *ylim, color="k", alpha=0.2, lw=0.5)
-        ax.set_ylim(ylim)
+        ax.hist(
+            vk,
+            bins=bins,
+            density=False,
+            weights=weights / N,
+            label=r"$\mathrm{BCSS\; not\; occulted}$",
+            color=cols[1],
+            **kwargs,
+        )
 
         if save:
             ax.legend()

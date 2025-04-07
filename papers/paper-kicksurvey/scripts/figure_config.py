@@ -104,20 +104,22 @@ class VkickColourMap:
     """
 
     def __init__(self) -> None:
-        self._vmax = 1080
-        self.norm = mpl.colors.Normalize(vmin=0, vmax=self._vmax)
+        self._vmin = 270  # core dispersion
+        self._vmax = 1080  # max velocity that is detevctable
+        self.norm = mpl.colors.Normalize(vmin=self._vmin, vmax=self._vmax)
         self.cmapv = cubehelix_palette(
-            n_colors=6,
-            start=2.7,
-            rot=0.0,
-            gamma=1.6,
+            n_colors=16,
+            start=0.0,
+            rot=0.5,
+            gamma=1.0,
             hue=1.0,
             light=0.9,
-            dark=0.3,
+            dark=0.1,
             reverse=True,
             as_cmap=True,
         )
         self.cmapv.set_over(mpl.pyplot.get_cmap("Reds")(0.85))
+        self.cmapv.set_under("k")
         self.sm = mpl.pyplot.cm.ScalarMappable(norm=self.norm, cmap=self.cmapv)
         self._max_value = -99
 
@@ -127,7 +129,7 @@ class VkickColourMap:
         return self.cmapv(self.norm(v))
 
     def make_cbar(self, ax, **kwargs):
-        extend = "max" if self._max_value > self._vmax else "neither"
+        extend = "both" if self._max_value > self._vmax else "min"
         cbar = mpl.pyplot.colorbar(
             self.sm,
             ax=ax,

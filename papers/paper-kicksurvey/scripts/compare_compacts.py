@@ -11,7 +11,7 @@ bgs.plotting.check_backend()
 cols = figure_config.custom_colors_shuffled
 fig, ax = plt.subplots(1, 2, sharey="all")
 fig.set_figwidth(2 * fig.get_figwidth())
-legend_font = 5
+legend_font = 6
 rng = np.random.default_rng(42)
 vk_cols = figure_config.VkickColourMap()
 
@@ -170,14 +170,14 @@ for i, props in enumerate(cluster_gen):
         **make_cluster_median_and_error(props[1], "y"),
         **cluster_plot_kwargs,
         c=props[3],
-        label=r"$\mathrm{BH\; cluster}$" if i == 0 else "",
+        label=r"$\mathrm{BCSS}$" if i == 0 else "",
     )
     ax[1].errorbar(
         **make_cluster_median_and_error(props[2], "x"),
         **make_cluster_median_and_error(props[1], "y"),
         **cluster_plot_kwargs,
         c=props[3],
-        label=r"$\mathrm{BH\; cluster}$" if i == 0 else "",
+        label=r"$\mathrm{BCSS}$" if i == 0 else "",
     )
 
 misgeld09.scatter(
@@ -241,6 +241,14 @@ _, s24p = siljeg24.scatter(
     ax=ax[0],
 )
 
+# label some regions of the plot
+region_kwargs = {"fontsize": legend_font}
+ax[0].text(1e4, 4, r"$\mathrm{GCs}$", **region_kwargs)
+ax[0].text(1e7, 7, r"$\mathrm{UCDs}$", **region_kwargs)
+ax[0].text(4e4, 11, r"$\mathrm{Clusters}$", **region_kwargs)
+ax[0].text(5e4, 700, r"$\mathrm{Dwarfs}$", **region_kwargs)
+ax[0].text(5e10, 1e4, r"$\mathrm{Bulges}$", **region_kwargs)
+
 ax[0].set_xlim(1e3, ax[0].get_xlim()[1])
 ax[0].set_ylim(1, ax[0].get_ylim()[1])
 ax[0].legend(fontsize=legend_font)
@@ -269,6 +277,10 @@ siljeg24.scatter(
     scatter_kwargs=scatter_kwargs_from_prev(s24p),
     ax=ax[1],
 )
+
+# label some regions of the plot
+ax[1].text(0.5, 4, r"$\mathrm{GCs}$", **region_kwargs)
+ax[1].text(1, 1e3, r"$\mathrm{Dwarfs}$", **region_kwargs)
 
 ax[1].legend(fontsize=legend_font)
 ax[1].set_xlabel(r"$\sigma_\star/\mathrm{km\,s}^{-1}$")
