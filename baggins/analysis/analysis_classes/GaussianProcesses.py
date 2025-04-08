@@ -788,10 +788,14 @@ class VkickApocentreGP(_GPBase):
         # make sure there are no negative values
         mask = r_apo >= 0
         if proj:
-            r_apo = r_apo * np.sin(self._rng.uniform(0, 0.5 * np.pi, size=r_apo.shape))
-        # fraction above threshold, sum(x > T) / len(x) -> mean
+            r_apo = r_apo * np.sin(np.arccos(self._rng.uniform(size=r_apo.shape)))
+        # fraction above threshold
+        # relative to the total kick distribution, i.e. not truncated to some
+        # upper value
         vk = np.tile(self.stan_data["x2"], mask.shape[0]).reshape(mask.shape)
-        return np.nanmean(r_apo[mask] > threshold(vk)[mask])
+        return np.nansum(r_apo[mask] > threshold(vk)[mask]) / (
+            self._num_OOS_requested * mask.shape[0]
+        )
 
     def angle_to_exceed_threshold(self, threshold):
         r_apo = self.sample_generated_quantity("y", state="OOS")
@@ -914,7 +918,7 @@ class VkickApocentreGP(_GPBase):
             color=cols[0],
             **kwargs,
         )
-        ax.hist(
+        h = ax.hist(
             vk,
             bins=bins,
             density=False,
@@ -923,6 +927,8 @@ class VkickApocentreGP(_GPBase):
             color=cols[1],
             **kwargs,
         )
+        if kwargs.pop("cumulative", False):
+            _logger.debug(f"Final bin has (cumulative) value {h[0][-1]:.3e}")
 
         if save:
             ax.legend()
