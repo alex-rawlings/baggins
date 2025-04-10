@@ -1,5 +1,6 @@
 import argparse
 import os
+from datetime import datetime
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ parser = argparse.ArgumentParser(
     allow_abbrev=False,
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
+parser.add_argument(type=str, help="path to snapshot", dest="path")
 parser.add_argument(
     "-m",
     "--min",
@@ -22,7 +24,9 @@ parser.add_argument(
     dest="min",
     default=None,
 )
-parser.add_argument(type=str, help="path to snapshot", dest="path")
+parser.add_argument(
+    "--stride", type=int, help="use every ith snapshot", dest="stride", default=None
+)
 parser.add_argument(
     "-v",
     "--verbosity",
@@ -55,6 +59,13 @@ ax[1].set_xlabel(r"$r/\mathrm{kpc}$")
 ax[1].set_ylabel(r"$\beta$")
 
 snapfiles = bgs.utils.get_snapshots_in_dir(args.path)
+if args.stride is not None:
+    snapfiles = snapfiles[:: args.stride]
+
+# set up arrays to hold data
+t = np.full(len(snapfiles), np.nan)
+lang_radii = np.full((len(snapfiles), len(mass_fracs)), np.nan)
+
 cmapperR, smR = bgs.plotting.create_normed_colours(
     min(mass_fracs), max(mass_fracs), cmap="crest_r"
 )
@@ -66,12 +77,9 @@ for i, snapfile in tqdm(
     snap = pygad.Snapshot(snapfile, physical=True)
     bgs.analysis.basic_snapshot_centring(snap)
 
-    lang_radii = np.full(5, np.nan)
     for j, mf in enumerate(mass_fracs):
-        lang_radii[j] = bgs.analysis.lagrangian_radius(snap, mass_frac=mf)
-    t = np.full_like(lang_radii, bgs.general.convert_gadget_time(snap))
-
-    ax[0].scatter(t, lang_radii, c=cmapperR(mass_fracs))
+        lang_radii[i, j] = bgs.analysis.lagrangian_radius(snap, mass_frac=mf)
+    t[i] = bgs.general.convert_gadget_time(snap)
 
     beta, bincounts = bgs.analysis.velocity_anisotropy(snap, r_edges=r_edges)
     if args.min is not None:
@@ -85,6 +93,10 @@ for i, snapfile in tqdm(
     del snap
     pygad.gc_full_collect()
 
+# plot lagrangian radii
+for i in range(lang_radii.shape[-1]):
+    ax[0].plot(t, lang_radii[..., i], c=cmapperR(mass_fracs[i]))
+
 ax[0].set_yscale("log")
 # let's keep the beta axis sensible
 ax[1].set_ylim(-2, 1)
@@ -94,5 +106,9 @@ plt.colorbar(smt, ax=ax[1], label="Snapshot")
 
 os.makedirs(os.path.join(bgs.FIGDIR, "stability"), exist_ok=True)
 bgs.plotting.savefig(
-    os.path.join(bgs.FIGDIR, "stability", f"{args.path.rstrip('/').split('/')[-2]}.png")
+    os.path.join(
+        bgs.FIGDIR,
+        "stability",
+        f"stability_{datetime.now().strftime('%Y%m%d-%H%M%S')}.png",
+    )
 )

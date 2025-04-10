@@ -394,14 +394,14 @@ class VoronoiKinematics:
         if moments is None:
             moments = "123456789ABCDEFG"[: self._hermite_order]
         if ax is None:
-            num_cols = int((len(moments)) / 2)
+            num_cols = max(int((len(moments)) / 2), 1)
             fig, ax = plt.subplots(
                 2, num_cols, sharex="all", sharey="all", figsize=figsize
             )
             for i in range(2):
                 ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
             for i in range(num_cols):
-                ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
+                ax[-1, i].set_xlabel(r"$x/\mathrm{kpc}$")
         elif isinstance(ax, plt.Axes):
             ax = np.array(ax)
         if desat:

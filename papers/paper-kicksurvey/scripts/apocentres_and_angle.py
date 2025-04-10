@@ -40,7 +40,6 @@ if args.new:
     gp = bgs.analysis.VkickApocentreGP(**gp_kwargs)
     data_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data"
 else:
-    # TODO make this dynamic, choose last sampled model
     stan_output_dir = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/gp-vkick-apo/kick-apo/"
     csv_files = bgs.utils.get_files_in_dir(stan_output_dir, ext=".csv")
     timestamp = np.max(

@@ -34,7 +34,7 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-data_file_name = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/perfect_obs/perf_obs_{args.kv:04d}.pickle"
+data_file_name = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/perfect_obs_dens_only/perf_obs_{args.kv:04d}.pickle"
 os.makedirs(os.path.dirname(data_file_name), exist_ok=True)
 
 snapdir = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-{args.kv:04d}/output"
@@ -96,18 +96,33 @@ if args.extract:
 else:
     data = bgs.utils.load_data(data_file_name)
 
+visible_count = 0
 for snapnum, props in zip(data["snapnums"], data["cluster_props"]):
     if props["visible"]:
         print(f"Observable cluster in snapshot {snapnum}")
+        visible_count += 1
+print(f"There are {visible_count} snapshots with a visible cluster")
 
 if args.plot is not None:
     subdat = data["cluster_props"][data["snapnums"].index(f"{args.plot:03d}")]
-    fig, ax = plt.subplots()
-    ax.loglog(subdat["r_centres_gal"], subdat["gal_dens"], label="galaxy")
-    ax.loglog(subdat["r_centres_cluster"], subdat["cluster_dens"], label="cluster")
-    ax.set_xlabel(r"$R/\mathrm{kpc}$")
-    ax.set_ylabel(r"$\Sigma(R)/\mathrm{M}_\odot\,\mathrm{kpc}^{-2}$")
-    ax.legend()
+    fig, ax = plt.subplots(1, 2)
+    ax[0].loglog(subdat["r_centres_gal"], subdat["gal_dens"], label="galaxy")
+    ax[0].loglog(subdat["r_centres_cluster"], subdat["cluster_dens"], label="cluster")
+    ax[1].loglog(
+        subdat["r_centres_gal"] - subdat["r_centres_cluster"][0] + 1e-4,
+        subdat["gal_dens"],
+        label="galaxy",
+    )
+    ax[1].loglog(
+        subdat["r_centres_cluster"] - subdat["r_centres_cluster"][0] + 1e-4,
+        subdat["cluster_dens"],
+        label="cluster",
+    )
+
+    for axi in ax:
+        axi.set_xlabel(r"$R/\mathrm{kpc}$")
+        axi.set_ylabel(r"$\Sigma(R)/\mathrm{M}_\odot\,\mathrm{kpc}^{-2}$")
+    ax[0].legend()
     figdir = os.path.join(bgs.FIGDIR, "kicksurvey-study/perfect_obs")
     os.makedirs(figdir, exist_ok=True)
     bgs.plotting.savefig(
