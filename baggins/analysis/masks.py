@@ -7,6 +7,7 @@ __all__ = [
     "get_radial_mask",
     "get_all_radial_masks",
     "get_binding_energy_mask",
+    "get_cylindrical_mask",
 ]
 
 
@@ -288,3 +289,34 @@ def get_binding_energy_mask(snap, energy=None, id_mask=None, family=None):
         raise ValueError(
             "energy must either be an array, or a list of tuple-like objects"
         )
+
+
+def get_cylindrical_mask(R, proj=2, length=None, centre=None):
+    """
+    A cylindrical mask along an axis.
+
+    Parameters
+    ----------
+    R : float
+        cylinder radius
+    proj : int, optional
+        axis along which the long side of the cylinder is, by default 2
+    length : float, optional
+        height of cylinder, by default None
+
+    Returns
+    -------
+    mask : pygad.snapshot.ExprMask
+        mask that can be parsed to snapshots
+    """
+    xy = list(set({0, 1, 2}).difference({proj}))
+    if centre is None:
+        centre = [0, 0]
+    else:
+        assert len(centre) == 2
+    mask = pygad.ExprMask(
+        f"sqrt((pos[:,{xy[0]}]-{centre[0]})**2 + (pos[:,{xy[1]}]-{centre[1]})**2)<{R}"
+    )
+    if length is not None:
+        mask = mask & pygad.ExprMask(f"abs(pos[:,{proj}])<{length}")
+    return mask

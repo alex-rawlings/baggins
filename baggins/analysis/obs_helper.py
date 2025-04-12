@@ -20,6 +20,8 @@ __all__ = [
     "MUSE_WFM",
     "Euclid_NISP",
     "Euclid_VIS",
+    "MICADO_WFM",
+    "MICADO_NFM",
 ]
 
 
@@ -289,6 +291,10 @@ class BasicInstrument(ABC):
     def number_pixels(self):
         return int(self.extent / self.pixel_width)
 
+    @property
+    def name(self):
+        return type(self).__name__
+
 
 class MUSE_NFM(BasicInstrument):
     def __init__(self):
@@ -319,8 +325,26 @@ class Euclid_NISP(BasicInstrument):
 
 class Euclid_VIS(BasicInstrument):
     def __init__(self):
-        """ "
+        """
         "Euclid visible bands. Parameters taken from:
         https://sci.esa.int/web/euclid/-/euclid-vis-instrument
         """
         super().__init__(fov=0.709 * 3600, sampling=0.101, res=0.23)
+
+
+class MICADO_WFM(BasicInstrument):
+    def __init__(self):
+        """
+        MICADO for ELT
+        https://elt.eso.org/instrument/MICADO/
+        """
+        super().__init__(fov=50.5, sampling=4e-3, res=50e-6)
+
+
+class MICADO_NFM(BasicInstrument):
+    def __init__(self):
+        """
+        MICADO for ELT
+        https://elt.eso.org/instrument/MICADO/
+        """
+        super().__init__(fov=18, sampling=1.5e-3, res=50e-6)

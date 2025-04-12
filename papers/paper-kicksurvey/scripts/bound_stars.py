@@ -186,22 +186,6 @@ def data_grabber():
         yield return_dict
 
 
-def load_cluster_data():
-    dat_files = bgs.utils.get_files_in_dir(
-        os.path.join(figure_config.reduced_data_dir, "perfect_obs"), ".pickle"
-    )
-    for f in dat_files:
-        vk = float(os.path.splitext(os.path.basename(f))[0].replace("perf_obs_", ""))
-        if vk > args.maxvel:
-            continue
-        cluster_mass = []
-        cluster = bgs.utils.load_data(f)["cluster_props"]
-        cluster_mass = np.full(len(cluster), np.nan)
-        for i, c in enumerate(cluster):
-            cluster_mass[i] = c["cluster_mass"]
-        yield cluster_mass, vk
-
-
 grab_data = data_grabber()
 max_r = np.nanmax(list(d["r_a"] for d in grab_data))
 SL.debug(f"Maximum radius is {max_r}")
@@ -274,22 +258,5 @@ ax.text(
     r"$r_\mathrm{apo} > R_\mathrm{e}$",
 )
 ax.set_xlim(xlim)
-
-grab_cluster = load_cluster_data()
-cluster_plot_kwargs = {
-    "fmt": "o",
-    "markersize": 4,
-    "elinewidth": 0.5,
-    "capsize": 0,
-    "mec": "k",
-    "mew": 0.1,
-    "c": "k",
-}
-for c in grab_cluster:
-    if c[1] <= 270:
-        continue
-    ym, yerr = bgs.mathematics.quantiles_relative_to_median(c[0])
-    ax.errorbar(c[1], ym, yerr=yerr, **cluster_plot_kwargs)
-ax.set_ylim(1e6, ax.get_ylim()[1])
 
 bgs.plotting.savefig(figure_config.fig_path("bound.pdf"), force_ext=True)

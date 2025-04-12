@@ -165,20 +165,23 @@ siljeg24 = bgs.literature.LiteratureTables.load_siljeg_2024_data()
 sk_gen = scatter_kwargs_maker()
 cluster_gen = load_cluster_data()
 for i, props in enumerate(cluster_gen):
-    ax[0].errorbar(
-        **make_cluster_median_and_error(props[0], "x"),
-        **make_cluster_median_and_error(props[1], "y"),
-        **cluster_plot_kwargs,
-        c=props[3],
-        label=r"$\mathrm{BCSS}$" if i == 0 else "",
-    )
-    ax[1].errorbar(
-        **make_cluster_median_and_error(props[2], "x"),
-        **make_cluster_median_and_error(props[1], "y"),
-        **cluster_plot_kwargs,
-        c=props[3],
-        label=r"$\mathrm{BCSS}$" if i == 0 else "",
-    )
+    try:
+        ax[0].errorbar(
+            **make_cluster_median_and_error(props[0], "x"),
+            **make_cluster_median_and_error(props[1], "y"),
+            **cluster_plot_kwargs,
+            c=props[3],
+            label=r"$\mathrm{BCSS}$" if i == 0 else "",
+        )
+        ax[1].errorbar(
+            **make_cluster_median_and_error(props[2], "x"),
+            **make_cluster_median_and_error(props[1], "y"),
+            **cluster_plot_kwargs,
+            c=props[3],
+            label=r"$\mathrm{BCSS}$" if i == 0 else "",
+        )
+    except IndexError:
+        continue
 
 misgeld09.scatter(
     "mass",

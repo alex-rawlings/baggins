@@ -49,6 +49,7 @@ __all__ = [
     "find_individual_bound_particles",
     "relax_time",
     "observable_cluster_props_BH",
+    "binding_energy",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -1503,7 +1504,7 @@ def relax_time(snap, r):
 
 
 def observable_cluster_props_BH(
-    snap, Rmax=30, n_gal_bins=51, n_cluster_bins=21, proj=None
+    snap, Rmax=30, n_gal_bins=51, n_cluster_bins=21, proj=None, vel_clip=None
 ):
     """
     Find the density of an cluster around a SMBH, comparing it to the background host galaxy density. Note NO centring is done. If 'proj' is None, then a 3D density profile is produced, otherwise a 2D density.
@@ -1581,7 +1582,7 @@ def observable_cluster_props_BH(
         )  # plus 1 so we get the full bin
         cluster_max_r = r_centres_cluster[cluster_max_r_idx] - snap.bh["r"].flatten()
         # now fit the cluster that is visible above the background
-        r_centres_cluster, cluster_dens = _get_cluster_density(cluster_max_r)
+        r_centres_cluster, cluster_dens = _get_cluster_density(cluster_max_r[0])
         if r_centres_cluster[0] < r_centres_gal[0]:
             # protect against low-particle noise in centre
             visible = False
@@ -1589,14 +1590,31 @@ def observable_cluster_props_BH(
             visible = np.any(cluster_dens > background_dens)
     obs_props = dict(cluster_mass=None, cluster_Re_pc=None, cluster_vsig=None)
     if visible:
-        cluster_mask = pygad.BallMask(cluster_max_r[0], center=snap.bh["pos"].flatten())
+        if proj is None:
+            # we are taking a 3D Ball within which we calculate cluster props
+            cluster_mask = pygad.BallMask(
+                cluster_max_r[0], center=snap.bh["pos"].flatten()
+            )
+        else:
+            # we are taking a cylinder with a projected radius the same as the
+            # cluster
+            xyaxis = list(set({0, 1, 2}).difference({proj}))
+            cluster_mask = masks.get_cylindrical_mask(
+                cluster_max_r[0], proj=proj, centre=snap.bh["pos"][:, xyaxis].flatten()
+            )
         obs_props["cluster_mass"] = np.sum(snap.stars[cluster_mask]["mass"])
         obs_props["cluster_Re_pc"] = pygad.analysis.half_mass_radius(
             snap.stars[cluster_mask], center=snap.bh["pos"].flatten(), proj=proj
         ).in_units_of("pc", subs=snap)
-        obs_props["cluster_vsig"] = pygad.analysis.los_velocity_dispersion(
-            snap.stars[cluster_mask], proj=proj
-        )
+        cluster_vel = snap.stars[cluster_mask]["vel"]
+        if proj is not None:
+            cluster_vel = cluster_vel[:, proj]
+        cluster_vel = cluster_vel.flatten()
+        if vel_clip is not None:
+            # apply an optional sigma clipping to protect against outliers
+            vsig = np.nanstd(cluster_vel)
+            cluster_vel = cluster_vel[np.abs(cluster_vel) < vel_clip * vsig]
+        obs_props["cluster_vsig"] = np.nanstd(cluster_vel)
     obs_props.update(
         dict(
             r_centres_cluster=r_centres_cluster,
@@ -1607,3 +1625,24 @@ def observable_cluster_props_BH(
         )
     )
     return obs_props
+
+
+def binding_energy(snap):
+    """
+    Calculate the binding energy of each particle. Note that no centring is
+    done.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
+
+    Returns
+    -------
+    : array
+        binding energy for each particle in snap
+    """
+    return (
+        -snap["mass"] * snap["pot"]
+        - snap["mass"] * pygad.utils.geo.dist(snap["vel"]) ** 2
+    )

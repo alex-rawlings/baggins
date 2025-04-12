@@ -33,7 +33,7 @@ orbital_properties:
     # distance at first pericentre passage
   rperi:
     unit: kpc
-    value: 2.0
+    value: 1.9
   a0:
     unit: kpc
     value:
@@ -74,12 +74,12 @@ perturb_properties:
 
 ---
 e0: 0.97
-full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/minor_merger/H_2M-H_2M_minor-30.000-2.000
-last_update: '2025-04-07 19:23:56'
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/minor_merger/H_2M-H_2M_minor-30.000-1.900
+last_update: '2025-04-10 16:02:40'
 mass_resolution: 1.17200010e+04
 r0_physical: 30.0
-rperi_physical: 2.0
-time_to_pericentre: 0.06505555949500655
+rperi_physical: 1.9
+time_to_pericentre: 0.06507118064324814
 virial_radius_large: 330.2669423214681
 ...
 

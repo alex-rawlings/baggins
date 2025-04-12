@@ -4,6 +4,7 @@ import numpy as np
 import scipy.optimize
 import scipy.ndimage
 import scipy.special
+import scipy.integrate
 from scipy.stats import binned_statistic_2d
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -520,13 +521,19 @@ class VoronoiKinematics:
         # histogram particle velocities
         if ax is None:
             fig, ax = plt.subplots()
-        h = ax.hist(sample, density=True, **kwargs)
+        density = kwargs.pop("density", True)
+        h = ax.hist(sample, density=density, **kwargs)
 
         # add the LOSD over the top
         _v = np.linspace(h[1][0], h[1][-1], 1000)
+        if density:
+            scale = 1
+        else:
+            scale = scipy.integrate.trapezoid(h[0], get_histogram_bin_centres(h[1]))
         ax.plot(
             _v,
-            self.gauss_hermite_function(
+            scale
+            * self.gauss_hermite_function(
                 _v,
                 self.img_V[indx, indy],
                 self.img_sigma[indx, indy],

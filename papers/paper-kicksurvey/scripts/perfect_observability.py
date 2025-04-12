@@ -34,7 +34,7 @@ args = parser.parse_args()
 
 SL = bgs.setup_logger("script", args.verbosity)
 
-data_file_name = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/perfect_obs_dens_only/perf_obs_{args.kv:04d}.pickle"
+data_file_name = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/perfect_obs/perf_obs_{args.kv:04d}.pickle"
 os.makedirs(os.path.dirname(data_file_name), exist_ok=True)
 
 snapdir = f"/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-{args.kv:04d}/output"
@@ -58,6 +58,7 @@ if args.extract:
     if os.path.exists(data_file_name):
         raise FileExistsError
 
+    bh_rad_prev = -99
     for snapfile in tqdm(snapfiles, desc="Analysing snapshots"):
         snap = pygad.Snapshot(snapfile, physical=True)
         snapnum = bgs.general.get_snapshot_number(snapfile)
@@ -71,16 +72,29 @@ if args.extract:
 
         bgs.analysis.basic_snapshot_centring(snap)
         # no point doing this if the BH is a long way away
-        if snap.bh["r"].flatten() > 50:
-            SL.warning(f"BH too far away, skipping snapshot {snapnum}")
+        bh_rad = snap.bh["r"].flatten()
+        if bh_rad > 50:
+            SL.warning(f"BH too far away, stopping at snapshot {snapnum}")
             # conserve memory
             snap.delete_blocks()
             del snap
             pygad.gc_full_collect()
-            continue
+            break
+        if bh_rad_prev > bh_rad:
+            SL.warning("BH passed apocentre, ending")
+            # conserve memory
+            snap.delete_blocks()
+            del snap
+            pygad.gc_full_collect()
+            break
+        else:
+            bh_rad_prev = bh_rad
+        """data["cluster_props"].append(
+            bgs.analysis.observable_cluster_props_BH(snap, proj=1, vel_clip=3)
+        )"""
         try:
             data["cluster_props"].append(
-                bgs.analysis.observable_cluster_props_BH(snap, proj=1)
+                bgs.analysis.observable_cluster_props_BH(snap, proj=1, vel_clip=3)
             )
         except AssertionError as err:
             SL.warning(f"Skipping snapshot {snapnum}: {err}")
@@ -105,6 +119,7 @@ print(f"There are {visible_count} snapshots with a visible cluster")
 
 if args.plot is not None:
     subdat = data["cluster_props"][data["snapnums"].index(f"{args.plot:03d}")]
+    SL.info(f"Vel sig is {subdat['cluster_vsig']:.2e}")
     fig, ax = plt.subplots(1, 2)
     ax[0].loglog(subdat["r_centres_gal"], subdat["gal_dens"], label="galaxy")
     ax[0].loglog(subdat["r_centres_cluster"], subdat["cluster_dens"], label="cluster")
@@ -118,7 +133,6 @@ if args.plot is not None:
         subdat["cluster_dens"],
         label="cluster",
     )
-
     for axi in ax:
         axi.set_xlabel(r"$R/\mathrm{kpc}$")
         axi.set_ylabel(r"$\Sigma(R)/\mathrm{M}_\odot\,\mathrm{kpc}^{-2}$")
