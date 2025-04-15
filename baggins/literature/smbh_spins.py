@@ -68,6 +68,8 @@ class SMBHSpins:
             )
         if rng is None:
             self._rng = np.random.default_rng()
+        else:
+            self._rng = rng
 
     def _uniform_dir_on_sphere(self, n, **kwargs):
         """

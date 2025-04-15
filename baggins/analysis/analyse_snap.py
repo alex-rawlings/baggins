@@ -1644,5 +1644,5 @@ def binding_energy(snap):
     """
     return (
         -snap["mass"] * snap["pot"]
-        - snap["mass"] * pygad.utils.geo.dist(snap["vel"]) ** 2
+        - 0.5 * snap["mass"] * pygad.utils.geo.dist(snap["vel"]) ** 2
     )

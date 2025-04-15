@@ -16,7 +16,7 @@ general:
 
 # info about where files are to be read from and saved to
 file_locations:
-  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_2M/hernquist_2M/hernquist_2M.hdf5
+  galaxy_file_1: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_2M/hernquist_2M_a/hernquist_2M_a.hdf5
   galaxy_file_2: /scratch/pjohanss/arawling/collisionless_merger/galaxies/hernquists/hernquists_2M/hernquist_2M_minor/hernquist_2M_minor.hdf5
   # file will be saved to 
   # save_location/galaxy_name_1-galaxy_name_2-r0-rperi
@@ -70,5 +70,16 @@ perturb_properties:
     SofteningStars:
     ketju_disable_integration:
     ErrTolIntAccuracy:
+...
+
+---
+e0: 0.97
+full_save_location: /scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/minor_merger/H_2M-H_2M_minor-30.000-1.900
+last_update: '2025-04-10 16:02:40'
+mass_resolution: 1.17200010e+04
+r0_physical: 30.0
+rperi_physical: 1.9
+time_to_pericentre: 0.06507118064324814
+virial_radius_large: 330.2669423214681
 ...
 

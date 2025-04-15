@@ -6,7 +6,7 @@ __all__ = [
     "get_all_id_masks",
     "get_radial_mask",
     "get_all_radial_masks",
-    "get_binding_energy_mask",
+    "binding_energy_mask_generator",
     "get_cylindrical_mask",
 ]
 
@@ -215,7 +215,7 @@ def get_all_radial_masks(snap, radius, centre=None, id_masks=None, family="stars
     return masks
 
 
-def get_binding_energy_mask(snap, energy=None, id_mask=None, family=None):
+def binding_energy_mask_generator(snap, energy=None, id_mask=None, family=None):
     """
     Mask particles into bins of binding energy. Assumes that we are in centre of mass coordinates (including velocity): no centring is done.
 
@@ -231,7 +231,7 @@ def get_binding_energy_mask(snap, energy=None, id_mask=None, family=None):
         logscale
     id_mask : pygad.snapshot.masks.IDMask, optional
         ID mask to constrain particles to a given galaxy, by default None
-    family : _type_, optional
+    family : str, optional
         particle type we want to mask, by default None (all)
 
     Yields

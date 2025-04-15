@@ -111,9 +111,22 @@ if args.extract:
             bgs.analysis.basic_snapshot_centring(snap)
             data["r"][j] = snap.bh["r"].flatten()
             try:
-                bound_ids = bgs.analysis.find_individual_bound_particles(snap)
-                data["Nbound"][j] = len(bound_ids)
-                bound_id_mask = pygad.IDMask(bound_ids)
+                bound_ids, _, energy = bgs.analysis.find_individual_bound_particles(
+                    snap, return_extra=True
+                )
+                # we want those particles which are strongly bound
+                ambient_ball = pygad.BallMask(
+                    5 * list(bgs.analysis.influence_radius(snap).values())[0],
+                    center=snap.bh["pos"].flatten(),
+                )
+                ambient_sigma = np.nanstd(snap.stars[ambient_ball]["vel"])
+                idx_sorted = np.argsort(energy)
+                summed_energy = np.cumsum(energy[idx_sorted])
+                num_strongly_bound_stars = np.where(summed_energy < -1)[0][-1] + 1
+                data["Nbound"][j] = num_strongly_bound_stars
+                bound_id_mask = pygad.IDMask(
+                    bound_ids[energy[energy < 0] / ambient_sigma**2 < -1]
+                )
                 data["rhalf"][j] = float(
                     pygad.analysis.half_mass_radius(snap.stars[bound_id_mask])
                 )
