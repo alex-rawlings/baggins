@@ -89,9 +89,6 @@ if args.extract:
             break
         else:
             bh_rad_prev = bh_rad
-        """data["cluster_props"].append(
-            bgs.analysis.observable_cluster_props_BH(snap, proj=1, vel_clip=3)
-        )"""
         try:
             data["cluster_props"].append(
                 bgs.analysis.observable_cluster_props_BH(snap, proj=1, vel_clip=None)

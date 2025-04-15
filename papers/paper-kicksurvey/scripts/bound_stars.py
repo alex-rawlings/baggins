@@ -74,59 +74,48 @@ if args.extract:
             peri_snap_num = 10
             apo_snap_num = 5
         data = dict(
-            t=np.full(peri_snap_num, np.nan),
-            r=np.full(peri_snap_num, np.nan),
-            Nbound=np.full(peri_snap_num, np.nan),
-            rhalf=np.full(peri_snap_num, np.nan),
+            t=np.full(2, np.nan),
+            r=np.full(2, np.nan),
+            bound_mass=np.full(2, np.nan),
+            ids=[[], []],
+            rhalf=np.full(2, np.nan),
             other={},
+            ambient_sigma=np.full(2, np.nan),
         )
 
         start_kick_time = datetime.now()
         SL.info(f"Doing kick velocity {file_name_only.replace('kick-vel-','')}")
+        snapfiles = (
+            bgs.utils.get_snapshots_in_dir(
+                os.path.join(snapshot_dir, file_name_only, "output")
+            )[sn]
+            for sn in [apo_snap_num, peri_snap_num]
+        )
         for j, snapfile in tqdm(
-            enumerate(
-                bgs.utils.get_snapshots_in_dir(
-                    os.path.join(snapshot_dir, file_name_only, "output")
-                )[:peri_snap_num]
-            ),
+            enumerate(snapfiles),
             desc="Analysing snapshots",
-            total=peri_snap_num,
+            total=2,
         ):
             snap = pygad.Snapshot(snapfile, physical=True)
+            if len(snap.bh) != 1:
+                raise RuntimeError("We require 1 BH! Skipping this snapshot")
             if j == 0:
                 data["other"]["mstar"] = snap.stars["mass"][0]
                 data["other"]["mbh"] = snap.bh["mass"][0]
-                data["other"]["apo_snap_num"] = apo_snap_num
                 data["other"]["vel"] = float(
                     os.path.splitext(file_name_only)[0].replace("kick-vel-", "")
                 )
-            if len(snap.bh) != 1:
-                SL.warning("We require 1 BH! Skipping this snapshot")
-                # clean memory
-                snap.delete_blocks()
-                del snap
-                pygad.gc_full_collect()
-                continue
             data["t"][j] = bgs.general.convert_gadget_time(snap, new_unit="Myr")
             bgs.analysis.basic_snapshot_centring(snap)
             data["r"][j] = snap.bh["r"].flatten()
             try:
-                bound_ids, _, energy = bgs.analysis.find_individual_bound_particles(
-                    snap, return_extra=True
+                strong_bound_ids, energy, amb_sigma = (
+                    bgs.analysis.find_strongly_bound_particles(snap, return_extra=True)
                 )
-                # we want those particles which are strongly bound
-                ambient_ball = pygad.BallMask(
-                    5 * list(bgs.analysis.influence_radius(snap).values())[0],
-                    center=snap.bh["pos"].flatten(),
-                )
-                ambient_sigma = np.nanstd(snap.stars[ambient_ball]["vel"])
-                idx_sorted = np.argsort(energy)
-                summed_energy = np.cumsum(energy[idx_sorted])
-                num_strongly_bound_stars = np.where(summed_energy < -1)[0][-1] + 1
-                data["Nbound"][j] = num_strongly_bound_stars
-                bound_id_mask = pygad.IDMask(
-                    bound_ids[energy[energy < 0] / ambient_sigma**2 < -1]
-                )
+                data["ambient_sigma"][j] = amb_sigma
+                bound_id_mask = pygad.IDMask(strong_bound_ids)
+                data["bound_mass"][j] = np.sum(snap.stars[bound_id_mask]["mass"])
+                data["ids"][j] = strong_bound_ids
                 data["rhalf"][j] = float(
                     pygad.analysis.half_mass_radius(snap.stars[bound_id_mask])
                 )
@@ -154,7 +143,7 @@ data_files = bgs.utils.get_files_in_dir(main_data_dir, ".pickle")
 fig, ax = plt.subplots(1, 1)
 fig.set_figwidth(1.2 * fig.get_figwidth())
 ax.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km\,s}^{-1}$")
-ax.set_ylabel(r"$M_\mathrm{bound}/\mathrm{M}_\odot$")
+ax.set_ylabel(r"$M/\mathrm{M}_\odot$")
 
 
 def data_grabber():
@@ -175,8 +164,7 @@ def data_grabber():
             .replace("-bound", "")
         )
         if i == 0:
-            mstar = data["other"]["mstar"]
-            m_bh = 2 * data["other"]["mbh"]  # BH yet to merge
+            m_bh = data["other"]["mbh"]
         # need to find first pericentre
         return_dict = {
             "vk": vk,
@@ -187,16 +175,43 @@ def data_grabber():
             "m_bh": m_bh,
         }
         try:
-            apo_idx = np.nanargmax(data["r"])
-            peri_idx = np.nanargmax(np.diff(data["r"][apo_idx:]) > 0) + apo_idx + 1
-            return_dict["bound_a"] = mstar * data["Nbound"][apo_idx]
-            return_dict["bound_p"] = mstar * data["Nbound"][peri_idx]
-            return_dict["r_a"] = data["r"][apo_idx]
-            return_dict["r_p"] = data["r"][peri_idx]
+            return_dict["bound_a"] = data["bound_mass"][0]
+            return_dict["bound_p"] = data["bound_mass"][1]
+            return_dict["r_a"] = data["r"][0]
+            return_dict["r_p"] = data["r"][1]
         except ValueError as err:
             SL.warning(f"Skipping: {vk}")
             SL.debug(err)
+        diff_ids = list(set(data["ids"][0]).difference(set(data["ids"][1])))
+        SL.debug(
+            f"{len(diff_ids)/len(data['ids'][0]):.3f} of particles are different between apo and peri centres"
+        )
         yield return_dict
+
+
+def load_obs_cluster_data():
+    """
+    Load the mass data calculated from perfect_observability.py
+
+    Yields
+    ------
+    : tuple
+        kick velocity and apocentre mass
+    """
+    dat_files = bgs.utils.get_files_in_dir(
+        os.path.join(figure_config.reduced_data_dir, "perfect_obs"),
+        ".pickle",
+    )
+    for f in dat_files:
+        vk = float(os.path.splitext(os.path.basename(f))[0].replace("perf_obs_", ""))
+        if vk > args.maxvel:
+            continue
+        cluster = bgs.utils.load_data(f)["cluster_props"]
+        m = cluster[-1]["cluster_mass"]
+        apo = cluster[-1]["r_centres_cluster"][0]
+        if m is None:
+            m = np.nan
+        yield vk, m, apo
 
 
 grab_data = data_grabber()
@@ -206,13 +221,13 @@ r_col_mapper, sm = bgs.plotting.create_normed_colours(
     1e-3, max_r, cmap="rocket", norm="LogNorm"
 )
 
+# XXX plot the strongly bound mass
 grab_data = data_grabber()
 reff_vel = None
 for d in grab_data:
     if d["vk"] < 1 or d["vk"] > args.maxvel:
         m_bh = d["m_bh"]
         continue
-    ax.semilogy([d["vk"]] * 2, [d["bound_a"], d["bound_p"]], lw=0.5, ls="-", c="k")
     ax.semilogy(
         d["vk"],
         d["bound_p"],
@@ -241,12 +256,21 @@ ax.scatter(
 ax.scatter(
     [], [], marker="s", c="gray", lw="0.5", ec="k", label=r"$\mathrm{pericentre}$"
 )
-ax.legend()
+
+# XXX plot the observed mass
+obs_data = load_obs_cluster_data()
+for i, dat in enumerate(obs_data):
+    ax.plot(dat[0], dat[1], c=r_col_mapper(dat[2]), ls="", marker="^", mec="k", mew=0.5)
+
+ax.scatter(
+    [], [], marker="^", c="gray", lw="0.5", ec="k", label=r"$\mathrm{LOS\,integrated}$"
+)
 
 # set dual y axis on second plot
+SL.debug(f"BH mass is {m_bh:.2e} Msol")
 ax.tick_params(axis="y", which="both", right=False)
 axr = ax.secondary_yaxis("right", functions=(lambda x: x / m_bh, lambda x: x * m_bh))
-axr.set_ylabel(r"$M_\mathrm{bound}/M_\bullet$")
+axr.set_ylabel(r"$M/M_\bullet$")
 
 # show core dispersion
 xlim = ax.get_xlim()
@@ -255,7 +279,7 @@ ax.axvspan(
 )
 ax.text(
     0.1,
-    0.5,
+    0.7,
     r"$v_\mathrm{kick}< \sigma_{\star,0}$",
     rotation="vertical",
     transform=ax.transAxes,
@@ -267,9 +291,11 @@ ax.text(
 ax.axvspan(reff_vel, xlim[1], alpha=0.6, zorder=1, fc="gray")
 ax.text(
     1.1 * reff_vel,
-    1e7,
+    2.5e6,
     r"$r_\mathrm{apo} > R_\mathrm{e}$",
 )
 ax.set_xlim(xlim)
+
+ax.legend(fontsize="small")
 
 bgs.plotting.savefig(figure_config.fig_path("bound.pdf"), force_ext=True)

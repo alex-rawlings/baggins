@@ -50,6 +50,7 @@ __all__ = [
     "relax_time",
     "observable_cluster_props_BH",
     "binding_energy",
+    "find_strongly_bound_particles",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -1606,7 +1607,18 @@ def observable_cluster_props_BH(
         obs_props["cluster_Re_pc"] = pygad.analysis.half_mass_radius(
             snap.stars[cluster_mask], center=snap.bh["pos"].flatten(), proj=proj
         ).in_units_of("pc", subs=snap)
-        cluster_vel = snap.stars[cluster_mask]["vel"]
+        if proj is None:
+            # use a 3D half mass radius
+            cluster_re_mask = pygad.BallMask(
+                obs_props["cluster_Re_pc"], center=snap.bh["pos"].flatten()
+            )
+        else:
+            cluster_re_mask = masks.get_cylindrical_mask(
+                obs_props["cluster_Re_pc"],
+                proj=proj,
+                centre=snap.bh["pos"][:, xyaxis].flatten(),
+            )
+        cluster_vel = snap.stars[cluster_re_mask]["vel"]
         if proj is not None:
             cluster_vel = cluster_vel[:, proj]
         cluster_vel = cluster_vel.flatten()
@@ -1646,3 +1658,44 @@ def binding_energy(snap):
         -snap["mass"] * snap["pot"]
         - 0.5 * snap["mass"] * pygad.utils.geo.dist(snap["vel"]) ** 2
     )
+
+
+def find_strongly_bound_particles(snap, rfac=5, return_extra=False):
+    """
+    Find those particles within the influence radius of the most massive BH
+    which are strongly bound to it, compared to the ambient velocity dispersion.
+    This method calls find_individual_bound_particles() to get the initial set
+    of bound particles.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        snapshot to analyse
+    rfac : float, optional
+        ambient vel. dispersion determined within this many influence radii, by default 5
+    return_extra : bool, optional
+        return extra information, including:
+            - energies of particles within influence radius
+            - ambient velocity dispersion
+        by default False
+
+    Returns
+    -------
+    : list
+        list of strongly bound particle IDs
+    energy : array-like, optional
+        energies if 'return_extra' is True
+    ambient_sigma : float, optional
+        ambient velocity dispersion if 'return_extra' is True
+    """
+    bound_ids, _, energy = find_individual_bound_particles(snap, return_extra=True)
+    # we want those particles which are strongly bound
+    ambient_ball = pygad.BallMask(
+        rfac * list(influence_radius(snap).values())[0], center=snap.bh["pos"].flatten()
+    )
+    ambient_sigma = np.linalg.norm(np.std(snap.stars[ambient_ball]["vel"], axis=0))
+    bound_id_mask = pygad.IDMask(bound_ids[energy[energy < 0] / ambient_sigma**2 < -1])
+    if return_extra:
+        return snap.stars[bound_id_mask]["ID"], energy, ambient_sigma
+    else:
+        return snap.stars[bound_id_mask]["ID"]

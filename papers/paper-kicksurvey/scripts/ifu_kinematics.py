@@ -131,6 +131,7 @@ clims = bgs.analysis.unify_IFU_colour_scheme(vor_gen)
 
 # plot the data
 dt = pygad.UnitScalar(2e-2, "Gyr")
+visual_offset = pygad.UnitScalar(1e-3, "Gyr")
 for i, (k, v) in enumerate(data.items()):
     for j, (vor, bhx, bhv, t) in enumerate(
         zip(v["voronoi"], v["bhpos"], v["bhvel"], v["t"])
@@ -144,12 +145,12 @@ for i, (k, v) in enumerate(data.items()):
         voronoi.plot_kinematic_maps(
             ax=ax[i, j], moments=args.moment, cbar="inset", clims=clims
         )
-        ax[i, j].scatter(bhx[0], bhx[1], marker="o", c="k", ec="w", lw=0.5)
+        ax[i, j].scatter(bhx[0], bhx[1], marker="o", fc="none", ec="k", lw=1)
         if float(k) > core_sig:
             ax[i, j].annotate(
                 "",
                 (bhx[0] + bhv[0] * dt, bhx[1] + bhv[1] * dt),
-                (bhx[0], bhx[1]),
+                (bhx[0] + bhv[0] * visual_offset, bhx[1] + bhv[1] * visual_offset),
                 arrowprops=dict(arrowstyle="-|>", fc="k"),
             )
             # add theoretical detection radius

@@ -95,7 +95,7 @@ if True:
     rinfl = list(bgs.analysis.influence_radius(snap).values())[0]
     bound_ids, _, energy = bgs.analysis.find_individual_bound_particles(snap, return_extra=True)
     ball_mask = pygad.BallMask(3*rinfl, center=snap.bh["pos"].flatten())
-    vsig = np.nanstd(snap.stars[ball_mask]["vel"])
+    vsig = np.linalg.norm(np.nanstd(snap.stars[ball_mask]["vel"], axis=0))
     strong_bound_ids = bound_ids[energy[energy<0]/vsig**2 < -1]
     bound_id_mask = pygad.IDMask(strong_bound_ids)
     energy = energy[energy < 0] / vsig**2
