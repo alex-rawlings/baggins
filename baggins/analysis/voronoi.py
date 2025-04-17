@@ -356,6 +356,7 @@ class VoronoiKinematics:
         desat=False,
         cbar="adj",
         fontsize=None,
+        cbar_kwargs={},
     ):
         """
         Plot the voronoi maps for a system.
@@ -449,17 +450,18 @@ class VoronoiKinematics:
                 cmap=cmap,
                 norm=norm,
             )
+            label = cbar_kwargs.pop("label", label)
             if cbar == "adj":
                 divider = make_axes_locatable(axi)
                 cax = divider.append_axes("right", size="5%", pad=0.1)
-                cb = plt.colorbar(p1, cax=cax)
+                cb = plt.colorbar(p1, cax=cax, **cbar_kwargs)
                 cb.set_label(label=label, size=fontsize)
             elif cbar == "inset":
-                cax = axi.inset_axes([0.4, 0.95, 0.55, 0.025])
+                cax = axi.inset_axes([0.4, 0.94, 0.55, 0.04])
                 cax.set_xticks([])
                 cax.set_yticks([])
                 cax.patch.set_alpha(0)
-                cb = plt.colorbar(p1, cax=cax, orientation="horizontal")
+                cb = plt.colorbar(p1, cax=cax, orientation="horizontal", **cbar_kwargs)
                 cb.set_label(label=label, size=fontsize)
             else:
                 _logger.debug("No colour bar added")

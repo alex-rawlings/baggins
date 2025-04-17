@@ -24,7 +24,7 @@ parser.add_argument(
     dest="data",
     type=str,
     help="(list of) snapshot(s) to analyse or plot",
-    default="/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0600/output/snap_007.hdf5",
+    default="/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0540/output/snap_009.hdf5",
 )
 parser.add_argument(
     "--prominence-only",
