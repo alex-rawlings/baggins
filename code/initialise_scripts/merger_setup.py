@@ -16,10 +16,9 @@ parser.add_argument(
     choices=["new", "field", "bh"],
 )
 parser.add_argument(
-    "-o",
     "--overwrite",
     dest="overwrite",
-    help="allow overwriting of files?",
+    help="allow overwriting of files",
     action="store_true",
 )
 parser.add_argument(

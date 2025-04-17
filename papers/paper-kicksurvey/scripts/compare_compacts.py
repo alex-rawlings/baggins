@@ -11,7 +11,7 @@ bgs.plotting.check_backend()
 cols = figure_config.custom_colors_shuffled
 fig, ax = plt.subplots(1, 2, sharey="all")
 fig.set_figwidth(2 * fig.get_figwidth())
-legend_font = 6
+fig.set_figheight(1.2 * fig.get_figheight())
 rng = np.random.default_rng(42)
 vk_cols = figure_config.VkickColourMap()
 
@@ -164,21 +164,25 @@ siljeg24 = bgs.literature.LiteratureTables.load_siljeg_2024_data()
 
 sk_gen = scatter_kwargs_maker()
 cluster_gen = load_cluster_data()
+needs_label = True
 for i, props in enumerate(cluster_gen):
-    ax[0].errorbar(
-        **make_cluster_median_and_error(props[0], "x"),
-        **make_cluster_median_and_error(props[1], "y"),
-        **cluster_plot_kwargs,
-        c=props[3],
-        label=r"$\mathrm{BCSS}$" if i == 0 else "",
-    )
-    ax[1].errorbar(
-        **make_cluster_median_and_error(props[2], "x"),
-        **make_cluster_median_and_error(props[1], "y"),
-        **cluster_plot_kwargs,
-        c=props[3],
-        label=r"$\mathrm{BCSS}$" if i == 0 else "",
-    )
+    try:
+        ax[0].errorbar(
+            **make_cluster_median_and_error(props[0], "x"),
+            **make_cluster_median_and_error(props[1], "y"),
+            **cluster_plot_kwargs,
+            c=props[3],
+            label=r"$\mathrm{BCSS}$" if needs_label else "",
+        )
+        ax[1].errorbar(
+            **make_cluster_median_and_error(props[2], "x"),
+            **make_cluster_median_and_error(props[1], "y"),
+            **cluster_plot_kwargs,
+            c=props[3],
+        )
+        needs_label = False
+    except IndexError:
+        continue
 
 misgeld09.scatter(
     "mass",
@@ -242,16 +246,15 @@ _, s24p = siljeg24.scatter(
 )
 
 # label some regions of the plot
-region_kwargs = {"fontsize": legend_font}
-ax[0].text(1e4, 4, r"$\mathrm{GCs}$", **region_kwargs)
+region_kwargs = {}
+ax[0].text(5e3, 4, r"$\mathrm{GCs}$", **region_kwargs)
 ax[0].text(1e7, 7, r"$\mathrm{UCDs}$", **region_kwargs)
 ax[0].text(4e4, 11, r"$\mathrm{Clusters}$", **region_kwargs)
 ax[0].text(5e4, 700, r"$\mathrm{Dwarfs}$", **region_kwargs)
-ax[0].text(5e10, 1e4, r"$\mathrm{Bulges}$", **region_kwargs)
+ax[0].text(2e10, 1e4, r"$\mathrm{Bulges}$", **region_kwargs)
 
 ax[0].set_xlim(1e3, ax[0].get_xlim()[1])
 ax[0].set_ylim(1, ax[0].get_ylim()[1])
-ax[0].legend(fontsize=legend_font)
 ax[0].set_xscale("log")
 ax[0].set_yscale("log")
 ax[0].set_xlabel(r"$M_\star/\mathrm{M}_\odot$")
@@ -260,7 +263,14 @@ ax[0].set_ylabel(r"$R_\mathrm{e}/\mathrm{pc}$")
 # XXX: FIGURE 2 - SIGMA VS RE
 harris10 = bgs.literature.LiteratureTables.load_harris_2010_data()
 
-harris10.scatter("sig_v", "Re", xerr="sig_v_err", scatter_kwargs=next(sk_gen), ax=ax[1])
+harris10.scatter(
+    "sig_v",
+    "Re",
+    xerr="sig_v_err",
+    scatter_kwargs=next(sk_gen),
+    ax=ax[1],
+    use_label=False,
+)
 mcconnachie12.scatter(
     "vsig",
     "rh",
@@ -268,6 +278,7 @@ mcconnachie12.scatter(
     yerr="rh_err",
     scatter_kwargs=scatter_kwargs_from_prev(m12p),
     ax=ax[1],
+    use_label=False,
 )
 siljeg24.scatter(
     "vsig",
@@ -276,16 +287,19 @@ siljeg24.scatter(
     yerr="Re_pc_err",
     scatter_kwargs=scatter_kwargs_from_prev(s24p),
     ax=ax[1],
+    use_label=False,
 )
 
 # label some regions of the plot
 ax[1].text(0.5, 4, r"$\mathrm{GCs}$", **region_kwargs)
 ax[1].text(1, 1e3, r"$\mathrm{Dwarfs}$", **region_kwargs)
 
-ax[1].legend(fontsize=legend_font)
 ax[1].set_xlabel(r"$\sigma_\star/\mathrm{km\,s}^{-1}$")
 ax[1].set_ylabel("")
 ax[1].set_xscale("log")
 ax[1].set_yscale("log")
 vk_cols.make_cbar(ax=ax[1])
+
+fig.legend(loc="outside upper center", ncols=4)
+
 bgs.plotting.savefig(figure_config.fig_path("compact.pdf"), force_ext=True)

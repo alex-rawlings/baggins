@@ -4,6 +4,7 @@ import numpy as np
 import scipy.optimize
 import scipy.ndimage
 import scipy.special
+import scipy.integrate
 from scipy.stats import binned_statistic_2d
 import matplotlib.pyplot as plt
 from matplotlib import colors
@@ -355,6 +356,7 @@ class VoronoiKinematics:
         desat=False,
         cbar="adj",
         fontsize=None,
+        cbar_kwargs={},
     ):
         """
         Plot the voronoi maps for a system.
@@ -394,14 +396,14 @@ class VoronoiKinematics:
         if moments is None:
             moments = "123456789ABCDEFG"[: self._hermite_order]
         if ax is None:
-            num_cols = int((len(moments)) / 2)
+            num_cols = max(int((len(moments)) / 2), 1)
             fig, ax = plt.subplots(
                 2, num_cols, sharex="all", sharey="all", figsize=figsize
             )
             for i in range(2):
                 ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")
             for i in range(num_cols):
-                ax[1, i].set_xlabel(r"$x/\mathrm{kpc}$")
+                ax[-1, i].set_xlabel(r"$x/\mathrm{kpc}$")
         elif isinstance(ax, plt.Axes):
             ax = np.array(ax)
         if desat:
@@ -448,17 +450,18 @@ class VoronoiKinematics:
                 cmap=cmap,
                 norm=norm,
             )
+            label = cbar_kwargs.pop("label", label)
             if cbar == "adj":
                 divider = make_axes_locatable(axi)
                 cax = divider.append_axes("right", size="5%", pad=0.1)
-                cb = plt.colorbar(p1, cax=cax)
+                cb = plt.colorbar(p1, cax=cax, **cbar_kwargs)
                 cb.set_label(label=label, size=fontsize)
             elif cbar == "inset":
-                cax = axi.inset_axes([0.4, 0.95, 0.55, 0.025])
+                cax = axi.inset_axes([0.4, 0.94, 0.55, 0.04])
                 cax.set_xticks([])
                 cax.set_yticks([])
                 cax.patch.set_alpha(0)
-                cb = plt.colorbar(p1, cax=cax, orientation="horizontal")
+                cb = plt.colorbar(p1, cax=cax, orientation="horizontal", **cbar_kwargs)
                 cb.set_label(label=label, size=fontsize)
             else:
                 _logger.debug("No colour bar added")
@@ -520,13 +523,19 @@ class VoronoiKinematics:
         # histogram particle velocities
         if ax is None:
             fig, ax = plt.subplots()
-        h = ax.hist(sample, density=True, **kwargs)
+        density = kwargs.pop("density", True)
+        h = ax.hist(sample, density=density, **kwargs)
 
         # add the LOSD over the top
         _v = np.linspace(h[1][0], h[1][-1], 1000)
+        if density:
+            scale = 1
+        else:
+            scale = scipy.integrate.trapezoid(h[0], get_histogram_bin_centres(h[1]))
         ax.plot(
             _v,
-            self.gauss_hermite_function(
+            scale
+            * self.gauss_hermite_function(
                 _v,
                 self.img_V[indx, indy],
                 self.img_sigma[indx, indy],

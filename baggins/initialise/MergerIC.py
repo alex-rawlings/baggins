@@ -6,7 +6,6 @@ import h5py
 import numpy as np
 import pygad
 import merger_ic_generator as mg
-
 from baggins.initialise.mergers import e_from_rperi
 from baggins.env_config import _cmlogger, date_format
 from baggins.utils import (
@@ -269,7 +268,6 @@ class MergerIC:
         mg.write_hdf5_ic_file(
             filename=file_name,
             system=merger,
-            save_plots=False,
             center_CoM=self.parameters["general"]["recentre_merger_to_com"],
         )
         _logger.info(f"Merger IC file written to {file_name}")
@@ -479,9 +477,9 @@ class MergerIC:
                 _logger.debug(
                     f[f"/{PartTypes[family]}/Coordinates"][selected_part_idx, :]
                 )
-                f[f"/{PartTypes[family]}/Coordinates"][
-                    selected_part_idx, :
-                ] += perturbation
+                f[f"/{PartTypes[family]}/Coordinates"][selected_part_idx, :] += (
+                    perturbation
+                )
 
             with h5py.File(this_snapfile, "r") as f:
                 _logger.debug("After perturbing: ")

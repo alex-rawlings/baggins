@@ -39,25 +39,37 @@ SL = bgs.setup_logger("script", args.verbosity)
 
 x_axis, y_axis = args.axes
 LOS_axis = list(set({0, 1, 2}).difference({x_axis, y_axis}))[0]
-data_file = figure_config.data_path(f"ifu_mock_{x_axis}{y_axis}.pickle")
+muse_data_file = figure_config.data_path(f"ifu_mock_{x_axis}{y_axis}.pickle")
+micado_data_file = figure_config.data_path(f"micado_ifu_mock_{x_axis}{y_axis}.pickle")
 
 # set up the instruments
+# MUSE
 muse_nfm = bgs.analysis.MUSE_NFM()
 muse_nfm.redshift = args.redshift
 seeing = {"num": 25, "sigma": muse_nfm.resolution_kpc}
 ifu_mask = pygad.ExprMask(
     f"abs(pos[:,{x_axis}]) <= {0.5 * muse_nfm.extent}"
 ) & pygad.ExprMask(f"abs(pos[:,{y_axis}]) <= {0.5 * muse_nfm.extent}")
+# MICADO
+micado_nfm = bgs.analysis.MICADO_NFM()
+micado_nfm.redshift = args.redshift
+micado_extent = 1.5
+micado_nfm.max_extent = micado_extent
+seeing = {"num": 25, "sigma": micado_nfm.resolution_kpc}
+micado_mask = pygad.ExprMask(
+    f"abs(pos[:,{x_axis}]) <= {0.5 * micado_nfm.extent}"
+) & pygad.ExprMask(f"abs(pos[:,{y_axis}]) <= {0.5 * micado_nfm.extent}")
 
 # set the specific snaps to create IFU images for
-# ifu_snaps = {"0000":[2, 6, 20], "0420":[7, 9, 16], "0600":[11, 19, 24]}
 ifu_snaps = {"0000": [2, 6, 40], "0540": [9, 16, 23], "0720": [22, 38, 55]}
+micado_inset = [3, 8]
 
 if args.extract:
-    data = dict.fromkeys(ifu_snaps, None)
+    data_muse = dict.fromkeys(ifu_snaps, None)
     # have to this way so we don't have a self-referencing copy
-    for k in data.keys():
-        data[k] = {"t": [], "voronoi": [], "bhpos": [], "bhvel": []}
+    for k in data_muse.keys():
+        data_muse[k] = {"t": [], "voronoi": [], "bhpos": [], "bhvel": []}
+    data_micado = dict(voronoi=[], parts_per_bin=[30, 30, 30, 30, 30, 30, 30, 30, 20])
 
 # fitted equation for theoretical detectability radius
 core_sig = 270
@@ -83,7 +95,7 @@ if args.extract:
             SL.info(f"Doing snapshot {snapnum}")
             snap = pygad.Snapshot(snapfiles[snapnum], physical=True)
             bgs.analysis.basic_snapshot_centring(snap)
-            data[k]["t"].append(bgs.general.convert_gadget_time(snap))
+            data_muse[k]["t"].append(bgs.general.convert_gadget_time(snap))
 
             voronoi = bgs.analysis.VoronoiKinematics(
                 x=snap.stars[ifu_mask]["pos"][:, x_axis],
@@ -95,23 +107,46 @@ if args.extract:
             )
             voronoi.make_grid(part_per_bin=int(1000**2))
             voronoi.binned_LOSV_statistics()
-            data[k]["voronoi"].append(voronoi.dump_to_dict())
-            data[k]["bhpos"].append(
+            data_muse[k]["voronoi"].append(voronoi.dump_to_dict())
+            data_muse[k]["bhpos"].append(
                 [snap.bh["pos"][:, x_axis], snap.bh["pos"][:, y_axis]]
             )
-            data[k]["bhvel"].append(
+            data_muse[k]["bhvel"].append(
                 [snap.bh["vel"][:, x_axis], snap.bh["vel"][:, y_axis]]
             )
+
+            if i * 3 + j in micado_inset:
+                # do separate zoom for MICADO
+                # centre on the BH
+                pygad.Translation(-snap.bh["pos"].flatten()).apply(snap, total=True)
+                pygad.Boost(-snap.bh["vel"].flatten()).apply(snap, total=True)
+                voronoi = bgs.analysis.VoronoiKinematics(
+                    x=snap.stars[micado_mask]["pos"][:, x_axis],
+                    y=snap.stars[micado_mask]["pos"][:, y_axis],
+                    V=snap.stars[micado_mask]["vel"][:, LOS_axis],
+                    m=snap.stars[micado_mask]["mass"],
+                    Npx=micado_nfm.number_pixels,
+                    seeing=seeing,
+                )
+                voronoi.make_grid(
+                    part_per_bin=data_micado["parts_per_bin"][i * 3 + j] ** 2
+                )
+                voronoi.binned_LOSV_statistics()
+                data_micado["voronoi"].append(voronoi.dump_to_dict())
+            else:
+                data_micado["voronoi"].append([])
 
             # conserve memory
             snap.delete_blocks()
             del snap
             pygad.gc_full_collect()
-    bgs.utils.save_data(data, data_file, exist_ok=True)
+    # bgs.utils.save_data(data_muse, muse_data_file, exist_ok=True)
+    bgs.utils.save_data(data_micado, micado_data_file, exist_ok=True)
 else:
-    data = bgs.utils.load_data(data_file)
+    data_muse = bgs.utils.load_data(muse_data_file)
+    data_micado = bgs.utils.load_data(micado_data_file)
     if args.verbosity == "DEBUG":
-        bgs.general.print_dict_summary(data)
+        bgs.general.print_dict_summary(data_muse)
 
 # set up the figure
 fig, ax = plt.subplots(3, 3, sharex="all", sharey="all")
@@ -126,12 +161,13 @@ def vor_generator(d):
             yield vv
 
 
-vor_gen = vor_generator(data)
+vor_gen = vor_generator(data_muse)
 clims = bgs.analysis.unify_IFU_colour_scheme(vor_gen)
 
 # plot the data
 dt = pygad.UnitScalar(2e-2, "Gyr")
-for i, (k, v) in enumerate(data.items()):
+visual_offset = pygad.UnitScalar(1e-3, "Gyr")
+for i, (k, v) in enumerate(data_muse.items()):
     for j, (vor, bhx, bhv, t) in enumerate(
         zip(v["voronoi"], v["bhpos"], v["bhvel"], v["t"])
     ):
@@ -144,12 +180,12 @@ for i, (k, v) in enumerate(data.items()):
         voronoi.plot_kinematic_maps(
             ax=ax[i, j], moments=args.moment, cbar="inset", clims=clims
         )
-        ax[i, j].scatter(bhx[0], bhx[1], marker="o", c="k", ec="w", lw=0.5)
+        ax[i, j].scatter(bhx[0], bhx[1], marker="o", fc="none", ec="k", lw=1)
         if float(k) > core_sig:
             ax[i, j].annotate(
                 "",
                 (bhx[0] + bhv[0] * dt, bhx[1] + bhv[1] * dt),
-                (bhx[0], bhx[1]),
+                (bhx[0] + bhv[0] * visual_offset, bhx[1] + bhv[1] * visual_offset),
                 arrowprops=dict(arrowstyle="-|>", fc="k"),
             )
             # add theoretical detection radius
@@ -169,12 +205,57 @@ for i, (k, v) in enumerate(data.items()):
             0.05, 0.9, f"${t:.3f}\,\mathrm{{Gyr}}$", transform=ax[i, j].transAxes
         )
 
-for i, k in enumerate(data.keys()):
+for i, k in enumerate(data_muse.keys()):
     ax[i, 0].text(
         0.05,
         0.1,
         f"$v_\mathrm{{kick}}={float(k):.0f}\,\mathrm{{km}}\,\mathrm{{s}}^{{-1}}$",
         transform=ax[i, 0].transAxes,
+    )
+
+# add MICADO inset panel
+for mi, cbar_ticks in zip(micado_inset, ([200, 400], [200, 600])):
+    SL.debug(f"Doing MICADO inset {mi}")
+    axins = ax.flatten()[mi].inset_axes(
+        [0.53, 0.0, 0.45, 0.48],
+        xticklabels=[],
+        yticklabels=[],
+    )
+    axins.set_xticks([])
+    axins.set_yticks([])
+    voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(data_micado["voronoi"][mi])
+    voronoi.plot_kinematic_maps(
+        ax=axins,
+        moments="2",
+        cbar="inset",
+        cbar_kwargs={"label": "", "aspect": 40, "ticks": cbar_ticks},
+    )
+    # XXX these need to be set by hand
+    axins.set_xlim(-0.5, 0.5)
+    axins.set_ylim(-0.3, 0.65)
+
+    bhx, bhy = list(data_muse.values())[mi // 3]["bhpos"][mi % 3]
+
+    ax.flatten()[mi].indicate_inset(
+        bounds=[
+            bhx[0] - micado_extent / 2,
+            bhy[0] - micado_extent / 2,
+            micado_extent,
+            micado_extent,
+        ],
+        inset_ax=axins,
+        alpha=1,
+        edgecolor="k",
+        lw=1,
+    )
+    axins.annotate(
+        r"$\mathrm{BCSS}$",
+        (0, 0),
+        (-0.1, 0.2),
+        color="k",
+        arrowprops={"fc": "k", "ec": "k", "arrowstyle": "wedge"},
+        ha="right",
+        va="bottom",
     )
 
 bgs.plotting.savefig(figure_config.fig_path("IFU_mock.pdf"), force_ext=True)

@@ -40,7 +40,6 @@ if args.new:
     gp = bgs.analysis.VkickApocentreGP(**gp_kwargs)
     data_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data"
 else:
-    # TODO make this dynamic, choose last sampled model
     stan_output_dir = "/scratch/pjohanss/arawling/collisionless_merger/stan_files/gp-vkick-apo/kick-apo/"
     csv_files = bgs.utils.get_files_in_dir(stan_output_dir, ext=".csv")
     timestamp = np.max(
@@ -57,13 +56,15 @@ else:
 # XXX this has to be determined prior to calling this routine
 core_sig = 270
 core_rad = 0.58
+upper_vk = 1080  # kicks above this do not have a detectable cluster
 
 
 # the simulated detectability
-def threshold_dist(x, core_sig=core_sig):
+def threshold_dist(x):
     y = np.atleast_1d(3.21e-2 * x - 11.5)
     y[y < core_rad] = core_rad
     y[x < core_sig] = 1000
+    y[x > upper_vk] = 1000
     return y
 
 

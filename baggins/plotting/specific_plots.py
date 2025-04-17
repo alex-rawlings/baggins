@@ -11,6 +11,7 @@ import pygad
 import ketjugw
 from baggins.general import convert_gadget_time, units
 from baggins.env_config import _cmlogger
+from baggins.plotting.general import mplColours
 
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     "heatmap",
     "annotate_heatmap",
     "violinplot",
+    "bayesian_bars",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -564,7 +566,7 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
 
     Returns
     -------
-    ax : matplotlib.axes.Axes, optional
+    ax : matplotlib.axes.Axes
         plotting axes
     """
 
@@ -641,4 +643,73 @@ def violinplot(d, pos=None, ax=None, showbox=True, lcol=None, boxwidth=5, **kwar
         else:
             fc
         pc.set_facecolor(fc)
+    return ax
+
+
+def bayesian_bars(
+    d,
+    ax=None,
+    bins=10,
+    q=[0.99, 0.8, 0.5],
+    weights=None,
+    cumulative=False,
+    cols=None,
+    **kwargs,
+):
+    """
+    Step function where the uncertainty is given for the bins.
+
+    Parameters
+    ----------
+    d : array-like
+        2-dimensional data, where rows are samples and columns are observations
+    ax : matplotlib.axes.Axes, optional
+        plotting axes, by default None
+    bins : int or array-like, optional
+        bins for histogram, by default 10
+    q : list, optional
+        quantiles to plot, by default [0.99, 0.8, 0.5]
+    weights : array-like, optional
+        weights, must be of the same shape as d, by default None
+    cumulative : bool, optional
+        cumulative graph, by default False
+    cols : list or callable, optional
+        colours for the quantiles, by default None
+
+    Returns
+    -------
+    ax : matplotlib.axes.Axes
+        plotting axes
+
+    Raises
+    ------
+    ValueError
+        if cols is not valid
+    """
+    if weights is None:
+        weights = np.ones_like(d)
+    q.sort(reverse=True)
+    if cols is None:
+        cols = mplColours()
+    elif callable(cols):
+        cols = cols(q)
+    else:
+        raise ValueError("'cols' must be either a list of colours or a callable!")
+    if isinstance(bins, int):
+        bins = np.histogram_bin_edges(d)
+    bin_vals = np.full((d.shape[0], len(bins) - 1), np.nan)
+    for i in range(d.shape[0]):
+        bin_vals[i, :] = np.histogram(
+            d[i, :], bins=bins, weights=weights[i, :], density=False
+        )[0]
+    if cumulative:
+        bin_vals = np.cumsum(bin_vals, axis=-1)
+    for _q, c in zip(q, cols):
+        # determine quantiles
+        lower, upper = np.nanquantile(bin_vals, (0.5 - _q / 2, 0.5 + _q / 2), axis=0)
+        for e1, e2, ll, uu in zip(bins[:-1], bins[1:], lower, upper):
+            if np.abs((ll - uu) / uu) < 1e-5:
+                ax.plot([e1, e2], [ll, ll], lw=3, ls="-", c=c, **kwargs)
+            else:
+                ax.fill_between([e1, e2], [ll, ll], [uu, uu], fc=c, **kwargs)
     return ax

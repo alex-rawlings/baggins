@@ -5,7 +5,6 @@ import scipy.stats
 import matplotlib.pyplot as plt
 import merger_ic_generator as mg
 import pygad
-
 from baggins.initialise.galaxy_components import (
     _GalaxyICBase,
     _StellarCore,
@@ -178,6 +177,36 @@ class GalaxyIC(_GalaxyICBase):
         self.mass_units = "gadget"
         _logger.warning(f"Mass units are now in {self.mass_units} standard.")
 
+    def revert_from_gadget_units(self):
+        """
+        Convert all masses from Gadgets units of 1e10 Msol to Msol, the
+        standard.
+        """
+        _logger.warning("Converting mass units from Gadget default (1e10 Msol)")
+        _logger.debug("Masses of galaxy components")
+        assert self.mass_units == "gadget"
+        try:
+            self.stars.particle_mass *= 1e10
+            _logger.debug(f"Stellar particle mass: {self.stars.particle_mass}")
+            self.stars.total_mass *= 1e10
+            _logger.debug(f"Total stellar mass: {self.stars.total_mass}")
+        except AttributeError:
+            pass
+        try:
+            self.dm.particle_mass *= 1e10
+            _logger.debug(f"DM particle mass: {self.dm.particle_mass}")
+            self.dm.peak_mass *= 1e10
+            _logger.debug(f"DM peak mass: {self.dm.peak_mass}")
+        except AttributeError:
+            pass
+        try:
+            self.bh.mass *= 1e10
+            _logger.debug(f"SMBH particle mass: {self.bh.mass}")
+        except AttributeError:
+            pass
+        self.mass_units = "msol"
+        _logger.warning(f"Mass units are now in {self.mass_units} standard.")
+
     def write_calculated_parameters(self):
         """
         Write calculated parameters to the parameter file
@@ -191,8 +220,12 @@ class GalaxyIC(_GalaxyICBase):
         Plot the stellar mass distribution, and the scaling relations of BH mass -- bulge mass and bulge mass -- DM mass.
         """
         # read in literature data
-        mass_data = LiteratureTables("sdss_mass")
-        bh_data = LiteratureTables("sahu_2020")
+        mass_data = LiteratureTables.load_sdss_mass_data()
+        bh_data = LiteratureTables.load_sahu_2020_data()
+
+        # ensure standard units
+        if self.mass_units != "msol":
+            self.revert_from_gadget_units()
 
         # set up figure
         fig, ax = plt.subplots(1, 3)
@@ -210,7 +243,7 @@ class GalaxyIC(_GalaxyICBase):
         ax[2].text(13.5, -1.5, f"z: {self.redshift}")
 
         # plot bulge mass distribution
-        mass_data.hist("logMstar", ax=ax[0], label="SDSS DR7")
+        mass_data.hist("logMstar", ax=ax[0])
         ax[0].axvline(x=self.stars.log_total_mass, color=cols[3], label="Simulation")
         mass_data.add_qauntile_to_plot(
             0.5, "logMstar", ax[0], lkwargs={"c": cols[2], "ls": "--"}
@@ -229,7 +262,8 @@ class GalaxyIC(_GalaxyICBase):
             yerr="logMbh_ERR",
             ax=ax[1],
             mask=bh_data.table.loc[:, "Cored"],
-            label="Cored",
+            use_label=False,
+            scatter_kwargs={"label": "Cored"},
         )
         bh_data.scatter(
             "logM*_sph",
@@ -238,12 +272,12 @@ class GalaxyIC(_GalaxyICBase):
             yerr="logMbh_ERR",
             ax=ax[1],
             mask=~bh_data.table.loc[:, "Cored"],
-            scatter_kwargs={"marker": "s"},
-            label=r"S$\acute\mathrm{e}$rsic",
+            scatter_kwargs={"marker": "s", "label": r"S$\acute\mathrm{e}$rsic"},
+            use_label=False,
         )
         logmstar_seq = np.linspace(8, 12, 500)
-        ax[0].plot(logmstar_seq, Sahu19(logmstar_seq), c="k", alpha=0.4)
-        ax[0].scatter(
+        ax[1].plot(logmstar_seq, Sahu19(logmstar_seq), c="k", alpha=0.4)
+        ax[1].scatter(
             self.stars.log_total_mass,
             self.bh.log_mass,
             zorder=10,
@@ -411,12 +445,17 @@ class GalaxyIC(_GalaxyICBase):
             dists.append(bh_particle)
 
         # generate the galaxy
-        generated_galaxy = mg.SphericalSystem(
-            *dists,
-            rmax=self.maximum_radius,
-            anisotropy_radius=self.stars.anisotropy_radius,
-            rng=self._rng,
-        )
+        if self.stars.anisotropy_radius is None:
+            generated_galaxy = mg.ErgodicSphericalSystem(
+                *dists, rmax=self.maximum_radius, rng=self._rng
+            )
+        else:
+            generated_galaxy = mg.AnisotropicSphericalSystem(
+                *dists,
+                rmax=self.maximum_radius,
+                ra=[self.stars.anisotropy_radius, None],
+                rng=self._rng,
+            )
 
         # clean centre
         if self.bh is not None:
@@ -454,11 +493,15 @@ class GalaxyIC(_GalaxyICBase):
         num_rots : int, optional
             number of rotations performed for projected quantities, by default 3
         """
+        # ensure standard units
+        if self.mass_units != "msol":
+            self.revert_from_gadget_units()
+
         self._calc_quants["kinematics"] = {}
         # load literature data
-        bulgeBHData = LiteratureTables("sahu_2020")
-        fDMData = LiteratureTables("jin_2020")
-        BHsigmaData = LiteratureTables("vdBosch_2016")
+        bulgeBHData = LiteratureTables.load_sahu_2020_data()
+        fDMData = LiteratureTables.load_jin_2020_data()
+        BHsigmaData = LiteratureTables.load_vdBosch_2016_data()
 
         radial_bin_edges = dict(
             stars=np.logspace(-2, 2, 50),
@@ -512,13 +555,15 @@ class GalaxyIC(_GalaxyICBase):
         # estimate number of particles in Ketju region
         max_softening = max([self.stars.softening, self.bh.softening])
         ketju_radius = 3 * max_softening
-        print(f"Assumed Ketju radius: {ketju_radius:.2f} kpc")
+        _logger.info(f"Assumed Ketju radius: {ketju_radius:.2f} kpc")
         ketju_mask = pygad.BallMask(ketju_radius, center=mass_centre)
         number_ketju_particles = len(ic.stars[ketju_mask]) + 1  # smbh
         self._calc_quants["kinematics"]["ketju_particles"] = number_ketju_particles
 
         # generate figure layout
         fig, ax = plt.subplots(3, 3)
+        fig.set_figwidth(2 * fig.get_figwidth())
+        fig.set_figheight(2 * fig.get_figheight())
 
         # plot of the radial density profiles
         ax[0, 0].set_xscale("log")
@@ -675,7 +720,7 @@ class GalaxyIC(_GalaxyICBase):
         ax[1, 0].legend()
 
         # inner dark matter
-        ax[1, 1].set_xlim(9.8, 12.1)
+        # ax[1, 1].set_xlim(9.8, 12.1)
         ax[1, 1].set_ylim(0, 1)
         ax[1, 1].set_xlabel(r"log(M$_*$/M$_\odot$)")
         ax[1, 1].set_ylabel(r"f$_\mathrm{DM}(r<1\,$R$_\mathrm{e})$")
@@ -701,6 +746,7 @@ class GalaxyIC(_GalaxyICBase):
         inner_dm_mass = np.sum(ic.dm[ball_mask]["mass"])
         idmf = inner_dm_mass / (inner_dm_mass + np.sum(ic.stars[ball_mask]["mass"]))
         self._calc_quants["kinematics"]["inner_DM_frac"] = idmf
+        print(self.stars.log_total_mass)
         ax[1, 1].scatter(self.stars.log_total_mass, idmf, c=cols[3], zorder=10)
         ax[1, 1].legend(loc="upper left")
 
@@ -715,7 +761,7 @@ class GalaxyIC(_GalaxyICBase):
         ax[1, 2].set_title("Star Count", fontsize="small")
         ax[1, 2].set_yscale("log")
         star_rad_dist = np.sort(np.log10(ic.stars["r"]))
-        ax[1, 2].hist(star_rad_dist, 100)
+        ax[1, 2].hist(star_rad_dist, 100, cumulative=True)
         ax[1, 2].axvline(star_rad_dist[100], c=cols[1], label=r"$10^2$")
         ax[1, 2].axvline(star_rad_dist[1000], c=cols[1], label=r"$10^3$")
         ax[1, 2].legend()

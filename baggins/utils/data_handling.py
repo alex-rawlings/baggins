@@ -166,6 +166,10 @@ def get_snapshots_in_dir(path, ext=".hdf5", exclude=[]):
     exclude.append("ketju_bhs")
     for e in exclude:
         all_files = [f for f in all_files if e not in f]
+    # re-sort, to protect agaist cases where there are more than 1000 snaps
+    all_files.sort(
+        key=lambda x: int(os.path.splitext(os.path.basename(x))[0].split("_")[-1])
+    )
     # filter out corrupt snaps
     bad_snaps = []
     has_bak_snaps = False

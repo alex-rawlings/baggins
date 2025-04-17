@@ -117,3 +117,9 @@ ax.set_xlabel("v/kms")
 ax.set_ylabel("Threshold distance/kpc")
 ax.legend()
 bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"kicksurvey-study/{fname}.png"))
+
+# when velocity normalised to escape velocity
+regress = scipy.stats.linregress(vks/1800, rs)
+print("Regression:")
+print(f"  slope: {regress.slope:.2e}")
+print(f"  intercept: {regress.intercept:.2e}")
