@@ -172,7 +172,7 @@ for i, props in enumerate(cluster_gen):
             **make_cluster_median_and_error(props[1], "y"),
             **cluster_plot_kwargs,
             c=props[3],
-            label=r"$\mathrm{BCSS}$" if needs_label else "",
+            label=r"$\mathrm{BRC}$" if needs_label else "",
         )
         ax[1].errorbar(
             **make_cluster_median_and_error(props[2], "x"),
