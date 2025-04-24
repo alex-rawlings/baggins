@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import baggins as bgs
 import pygad
+from data_classes import RecoilCluster, RecoilClusterSeries
 import figure_config
 
 bgs.plotting.check_backend()
@@ -73,15 +74,7 @@ if args.extract:
             # we have the special 0km/s case
             peri_snap_num = 10
             apo_snap_num = 5
-        data = dict(
-            t=np.full(2, np.nan),
-            r=np.full(2, np.nan),
-            bound_mass=np.full(2, np.nan),
-            ids=[[], []],
-            rhalf=np.full(2, np.nan),
-            other={},
-            ambient_sigma=np.full(2, np.nan),
-        )
+        clusters = [RecoilCluster(), RecoilCluster()]
 
         start_kick_time = datetime.now()
         SL.info(f"Doing kick velocity {file_name_only.replace('kick-vel-','')}")
@@ -99,25 +92,44 @@ if args.extract:
             snap = pygad.Snapshot(snapfile, physical=True)
             if len(snap.bh) != 1:
                 raise RuntimeError("We require 1 BH! Skipping this snapshot")
-            if j == 0:
-                data["other"]["mstar"] = snap.stars["mass"][0]
-                data["other"]["mbh"] = snap.bh["mass"][0]
-                data["other"]["vel"] = float(
-                    os.path.splitext(file_name_only)[0].replace("kick-vel-", "")
-                )
-            data["t"][j] = bgs.general.convert_gadget_time(snap, new_unit="Myr")
+            clusters[j].particle_masses["bh"] = snap.bh["mass"][0]
+            clusters[j].particle_masses["stars"] = snap.stars["mass"][0]
+            clusters[j].kick_vel = float(
+                os.path.splitext(file_name_only)[0].replace("kick-vel-", "")
+            )
+            clusters[j].time = bgs.general.convert_gadget_time(snap, new_unit="Myr")
+            clusters[j].snap_num = bgs.general.get_snapshot_number(snapfile)
             bgs.analysis.basic_snapshot_centring(snap)
-            data["r"][j] = snap.bh["r"].flatten()
+            clusters[j].bh_rad = snap.bh["r"].flatten()
             try:
                 strong_bound_ids, energy, amb_sigma = (
                     bgs.analysis.find_strongly_bound_particles(snap, return_extra=True)
                 )
-                data["ambient_sigma"][j] = amb_sigma
+                clusters[j].ambient_vel_disp = amb_sigma
                 bound_id_mask = pygad.IDMask(strong_bound_ids)
-                data["bound_mass"][j] = np.sum(snap.stars[bound_id_mask]["mass"])
-                data["ids"][j] = strong_bound_ids
-                data["rhalf"][j] = float(
-                    pygad.analysis.half_mass_radius(snap.stars[bound_id_mask])
+                clusters[j].intrinsic_properties["bound_mass"] = np.sum(
+                    snap.stars[bound_id_mask]["mass"]
+                )
+                clusters[j].ids = strong_bound_ids
+                clusters[j].intrinsic_properties["vel_disp"] = np.linalg.norm(
+                    np.nanstd(snap.stars[bound_id_mask]["vel"], axis=0)
+                )
+                clusters[j].intrinsic_properties["rhalf"] = float(
+                    pygad.analysis.half_mass_radius(
+                        snap.stars[bound_id_mask], center=snap.bh["pos"].flatten()
+                    )
+                )
+                clusters[j].LOS_properties["vel_disp"] = float(
+                    pygad.analysis.los_velocity_dispersion(
+                        snap.stars[bound_id_mask], proj=1
+                    )
+                )
+                clusters[j].LOS_properties["rhalf"] = float(
+                    pygad.analysis.half_mass_radius(
+                        snap.stars[bound_id_mask],
+                        proj=1,
+                        center=snap.bh["pos"].flatten(),
+                    )
                 )
             except AssertionError as err:
                 SL.exception(err)
@@ -132,9 +144,10 @@ if args.extract:
             f"Completed extraction for {file_name_only} in {datetime.now()-start_kick_time}"
         )
         bgs.utils.save_data(
-            data, os.path.join(main_data_dir, f"{file_name_only}-bound.pickle")
+            {"data": clusters},
+            os.path.join(main_data_dir, f"{file_name_only}-bound.pickle"),
         )
-        del data
+        del clusters
 
 # load the data files
 data_files = bgs.utils.get_files_in_dir(main_data_dir, ".pickle")
@@ -152,41 +165,16 @@ def data_grabber():
 
     Yields
     ------
-    return_dict : dict
+    : RecoilClusterSeries
         plotting data
     """
     for i, df in enumerate(data_files):
-        data = bgs.utils.load_data(df)
-        # XXX temp fix
-        vk = float(
-            os.path.splitext(os.path.basename(df))[0]
-            .replace("kick-vel-", "")
-            .replace("-bound", "")
-        )
-        if i == 0:
-            m_bh = data["other"]["mbh"]
-        # need to find first pericentre
-        return_dict = {
-            "vk": vk,
-            "bound_a": np.nan,
-            "bound_p": np.nan,
-            "r_a": np.nan,
-            "r_p": np.nan,
-            "m_bh": m_bh,
-        }
-        try:
-            return_dict["bound_a"] = data["bound_mass"][0]
-            return_dict["bound_p"] = data["bound_mass"][1]
-            return_dict["r_a"] = data["r"][0]
-            return_dict["r_p"] = data["r"][1]
-        except ValueError as err:
-            SL.warning(f"Skipping: {vk}")
-            SL.debug(err)
-        diff_ids = list(set(data["ids"][0]).difference(set(data["ids"][1])))
+        clusters = bgs.utils.load_data(df)["data"]
+        diff_ids = list(set(clusters[0].ids).difference(set(clusters[1].ids)))
         SL.debug(
-            f"{len(diff_ids)/len(data['ids'][0]):.3f} of particles are different between apo and peri centres"
+            f"{len(diff_ids)/len(clusters[0].ids):.3f} of particles are different between apo and peri centres"
         )
-        yield return_dict
+        yield RecoilClusterSeries(*clusters)
 
 
 def load_obs_cluster_data():
@@ -215,7 +203,7 @@ def load_obs_cluster_data():
 
 
 grab_data = data_grabber()
-max_r = np.nanmax(list(d["r_a"] for d in grab_data))
+max_r = np.nanmax(list(c.max_rad for c in grab_data))
 SL.debug(f"Maximum radius is {max_r}")
 r_col_mapper, sm = bgs.plotting.create_normed_colours(
     1e-3, max_r, cmap="rocket", norm="LogNorm"
@@ -225,37 +213,33 @@ r_col_mapper, sm = bgs.plotting.create_normed_colours(
 grab_data = data_grabber()
 reff_vel = None
 for d in grab_data:
-    if d["vk"] < 1 or d["vk"] > args.maxvel:
-        m_bh = d["m_bh"]
+    if d.kick_vel < 1 or d.kick_vel > args.maxvel:
+        m_bh = d.clusters[0].particle_masses["bh"]
         continue
     ax.semilogy(
-        d["vk"],
-        d["bound_p"],
+        d.kick_vel,
+        d.peri.intrinsic_properties["bound_mass"],
         marker="s",
         ls="",
         mew="0.5",
         mec="k",
-        c=r_col_mapper(d["r_p"]),
+        c=r_col_mapper(d.peri.bh_rad),
     )
     ax.semilogy(
-        d["vk"],
-        d["bound_a"],
+        d.kick_vel,
+        d.apo.intrinsic_properties["bound_mass"],
         marker="o",
         ls="",
         mew="0.5",
         mec="k",
-        c=r_col_mapper(d["r_a"]),
+        c=r_col_mapper(d.apo.bh_rad),
     )
-    if d["r_a"] > eff_radius and reff_vel is None:
-        reff_vel = d["vk"]
+    if d.apo.bh_rad > eff_radius and reff_vel is None:
+        reff_vel = d.kick_vel
 plt.colorbar(sm, ax=ax, label=r"$r/\mathrm{kpc}$", location="top")
 
-ax.scatter(
-    [], [], marker="o", c="gray", lw="0.5", ec="k", label=r"$\mathrm{apocentre}$"
-)
-ax.scatter(
-    [], [], marker="s", c="gray", lw="0.5", ec="k", label=r"$\mathrm{pericentre}$"
-)
+ax.scatter([], [], marker="o", c="gray", lw=0.5, ec="k", label=r"$\mathrm{apocentre}$")
+ax.scatter([], [], marker="s", c="gray", lw=0.5, ec="k", label=r"$\mathrm{pericentre}$")
 
 # XXX plot the observed mass
 obs_data = load_obs_cluster_data()
@@ -263,7 +247,7 @@ for i, dat in enumerate(obs_data):
     ax.plot(dat[0], dat[1], c=r_col_mapper(dat[2]), ls="", marker="^", mec="k", mew=0.5)
 
 ax.scatter(
-    [], [], marker="^", c="gray", lw="0.5", ec="k", label=r"$\mathrm{LOS\,integrated}$"
+    [], [], marker="^", c="gray", lw=0.5, ec="k", label=r"$\mathrm{LOS\,integrated}$"
 )
 
 # set dual y axis on second plot
@@ -299,3 +283,54 @@ ax.set_xlim(xlim)
 ax.legend(fontsize="small")
 
 bgs.plotting.savefig(figure_config.fig_path("bound.pdf"), force_ext=True)
+plt.close()
+
+# XXX: plots for intrinsic properties
+fig, ax = plt.subplots(1, 2, sharex="all")
+fig.set_figwidth(2 * fig.get_figwidth())
+grab_data = data_grabber()
+for d in grab_data:
+    if d.kick_vel > args.maxvel:
+        continue
+    for cn, marker in zip(("peri", "apo"), ("s", "o")):
+        c = getattr(d, cn)
+        SL.debug(
+            (
+                c.kick_vel,
+                c.intrinsic_properties["rhalf"],
+                c.intrinsic_properties["vel_disp"],
+            )
+        )
+        ax[0].semilogy(
+            c.kick_vel,
+            c.intrinsic_properties["rhalf"],
+            marker=marker,
+            ls="",
+            mew="0.5",
+            mec="k",
+            c=r_col_mapper(c.bh_rad),
+        )
+        ax[1].semilogy(
+            c.kick_vel,
+            c.intrinsic_properties["vel_disp"],
+            marker=marker,
+            ls="",
+            mew="0.5",
+            mec="k",
+            c=r_col_mapper(c.bh_rad),
+        )
+for axi in ax:
+    axi.set_xlabel(r"$v_\mathrm{kick}/\mathrm{km\,s}^{-1}$")
+ax[0].set_ylabel(r"$r_{1/2}/\mathrm{kpc}$")
+ax[1].set_ylabel(r"$\sigma_\star/\mathrm{km\,s}^{-1}$")
+plt.colorbar(sm, ax=ax.flatten(), label="r/kpc", location="top")
+ax[0].scatter(
+    [], [], marker="o", c="gray", lw=0.5, ec="k", label=r"$\mathrm{apocentre}$"
+)
+ax[0].scatter(
+    [], [], marker="s", c="gray", lw=0.5, ec="k", label=r"$\mathrm{pericentre}$"
+)
+ax[0].legend()
+bgs.plotting.savefig(
+    os.path.join(bgs.FIGDIR, "kicksurvey-study/intrinsic_properties.png"), fig=fig
+)
