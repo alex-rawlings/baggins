@@ -923,7 +923,7 @@ class VkickApocentreGP(_GPBase):
             bins=bins,
             density=False,
             weights=weights / N,
-            label=r"$\mathrm{BCSS\; not\; occulted}$",
+            label=r"$\mathrm{BRC\; not\; occulted}$",
             color=cols[1],
             **kwargs,
         )

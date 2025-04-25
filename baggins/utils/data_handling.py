@@ -5,7 +5,7 @@ import shutil
 import h5py
 from datetime import datetime, timezone
 from multiprocessing import managers
-from baggins.env_config import _cmlogger, git_hash
+from baggins.env_config import _cmlogger, git_hash, TMPDIRs
 
 
 __all__ = [
@@ -250,7 +250,17 @@ def create_file_copy(f, suffix="_cp", exist_ok=True):
     # only copy file if the modification timestamp is more recent than an
     # already existing copy
     if not os.path.exists(new_f) or (os.path.getmtime(new_f) < os.path.getmtime(f)):
-        shutil.copyfile(f, new_f)
+        try:
+            shutil.copyfile(f, new_f)
+        except PermissionError as e:
+            # copy to a temporary directory
+            if not TMPDIRs.register:
+                TMPDIRs.make_new_dir()
+            _logger.debug(
+                f"{e}\n > Value error trying to copy {f}: copying to temporary directory {TMPDIRs.register[-1]}"
+            )
+            new_f = os.path.join(TMPDIRs.register[-1], new_f.replace("/", "_"))
+            shutil.copyfile(f, new_f)
     return new_f
 
 

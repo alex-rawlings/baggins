@@ -116,7 +116,7 @@ class ProjectedDensityObject:
 
     def add_extras(self, ax, pos):
         # mark BH position
-        annotate_str = r"$\mathrm{BCSS}$"
+        annotate_str = r"$\mathrm{BRC}$"
         ax.annotate(
             annotate_str,
             (pos[0, 0] + 0.25, pos[0, 2] - 0.25),

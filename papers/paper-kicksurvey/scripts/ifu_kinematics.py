@@ -249,7 +249,7 @@ for mi, cbar_ticks in zip(micado_inset, ([200, 400], [200, 600])):
         lw=1,
     )
     axins.annotate(
-        r"$\mathrm{BCSS}$",
+        r"$\mathrm{BRC}$",
         (0, 0),
         (-0.1, 0.2),
         color="k",
