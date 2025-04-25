@@ -5,7 +5,7 @@ import scipy.stats
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from ketjugw.units import km_per_s
-from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
+from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_ketju import get_bound_binary
 from baggins.env_config import _cmlogger
 from baggins.general.units import kpc

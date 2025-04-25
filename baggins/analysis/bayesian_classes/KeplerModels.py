@@ -5,8 +5,8 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_1D
-from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
+from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_1D
+from baggins.analysis.data_classes.HMQuantitiesBinaryData import (
     HMQuantitiesBinaryData,
 )
 from baggins.analysis.analyse_ketju import find_idxs_of_n_periods

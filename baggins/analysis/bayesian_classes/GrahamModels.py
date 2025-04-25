@@ -5,11 +5,11 @@ import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
-from baggins.analysis.analysis_classes.StanModel import (
+from baggins.analysis.bayesian_classes.StanModel import (
     HierarchicalModel_2D,
     FactorModel_2D,
 )
-from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
+from baggins.analysis.data_classes.HMQuantitiesBinaryData import (
     HMQuantitiesBinaryData,
     HMQuantitiesSingleData,
 )
