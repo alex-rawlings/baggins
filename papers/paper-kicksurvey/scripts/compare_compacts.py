@@ -252,6 +252,12 @@ ax[0].text(1e7, 7, r"$\mathrm{UCDs}$", **region_kwargs)
 ax[0].text(4e4, 11, r"$\mathrm{Clusters}$", **region_kwargs)
 ax[0].text(5e4, 700, r"$\mathrm{Dwarfs}$", **region_kwargs)
 ax[0].text(2e10, 1e4, r"$\mathrm{Bulges}$", **region_kwargs)
+ax[0].annotate(
+    r"$\mathrm{BRCs}$",
+    (2e8, 90),
+    (1e9, 30),
+    arrowprops={"fc": "k", "ec": "k", "arrowstyle": "wedge"},
+)
 
 ax[0].set_xlim(1e3, ax[0].get_xlim()[1])
 ax[0].set_ylim(1, ax[0].get_ylim()[1])
@@ -293,6 +299,12 @@ siljeg24.scatter(
 # label some regions of the plot
 ax[1].text(0.5, 4, r"$\mathrm{GCs}$", **region_kwargs)
 ax[1].text(1, 1e3, r"$\mathrm{Dwarfs}$", **region_kwargs)
+ax[1].annotate(
+    r"$\mathrm{BRCs}$",
+    (180, 1e2),
+    (70, 30),
+    arrowprops={"fc": "k", "ec": "k", "arrowstyle": "wedge"},
+)
 
 ax[1].set_xlabel(r"$\sigma_\star/\mathrm{km\,s}^{-1}$")
 ax[1].set_ylabel("")
