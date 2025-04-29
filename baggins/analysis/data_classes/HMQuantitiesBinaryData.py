@@ -1,5 +1,5 @@
 import warnings
-from baggins.analysis.analysis_classes.HMQuantitiesSingleData import (
+from baggins.analysis.data_classes.HMQuantitiesSingleData import (
     HMQuantitiesSingleData,
 )
 from baggins.general import get_idx_in_array

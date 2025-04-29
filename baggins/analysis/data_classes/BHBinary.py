@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pygad
 import ketjugw
-from baggins.analysis.analysis_classes.BHBinaryData import BHBinaryData
+from baggins.analysis.data_classes.BHBinaryData import BHBinaryData
 from baggins.analysis.analyse_snap import (
     influence_radius,
     enclosed_mass_radius,
@@ -312,8 +312,9 @@ class BHBinary(BHBinaryData):
         )
         for k, q in zip(("lower", "median", "upper"), self.param_estimate_e_quantiles):
             ttemp, atemp, op["e"][k] = self.compute_predict_orbital_params(q)
-            op["t"][k], op["a"][k] = pygad.UnitArr(ttemp, units="Myr"), pygad.UnitArr(
-                atemp, units="pc"
+            op["t"][k], op["a"][k] = (
+                pygad.UnitArr(ttemp, units="Myr"),
+                pygad.UnitArr(atemp, units="pc"),
             )
         return op
 

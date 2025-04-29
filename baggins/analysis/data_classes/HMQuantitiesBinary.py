@@ -3,10 +3,10 @@ import numpy as np
 import h5py
 import ketjugw
 import pygad
-from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
+from baggins.analysis.data_classes.HMQuantitiesBinaryData import (
     HMQuantitiesBinaryData,
 )
-from baggins.analysis.analysis_classes.HMQuantitiesSingle import HMQuantitiesSingle
+from baggins.analysis.data_classes.HMQuantitiesSingle import HMQuantitiesSingle
 from baggins.analysis.analyse_snap import (
     influence_radius,
     hardening_radius,

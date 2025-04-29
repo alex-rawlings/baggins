@@ -4,7 +4,7 @@ import numpy as np
 import datetime
 import h5py
 import pygad
-from baggins.analysis.analysis_classes.HMQuantitiesSingleData import (
+from baggins.analysis.data_classes.HMQuantitiesSingleData import (
     HMQuantitiesSingleData,
 )
 from baggins.analysis.analyse_snap import (

@@ -1,4 +1,4 @@
-from baggins.analysis.analysis_classes.HDF5Base import HDF5Base
+from baggins.analysis.data_classes.HDF5Base import HDF5Base
 from baggins.env_config import _cmlogger
 from baggins.mathematics import radial_separation
 

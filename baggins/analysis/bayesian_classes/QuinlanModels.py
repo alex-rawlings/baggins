@@ -8,10 +8,10 @@ from arviz.labels import MapLabeller
 from arviz import plot_kde
 import dask
 from datetime import datetime
-from baggins.analysis.analysis_classes.HMQuantitiesBinaryData import (
+from baggins.analysis.data_classes.HMQuantitiesBinaryData import (
     HMQuantitiesBinaryData,
 )
-from baggins.analysis.analysis_classes.StanModel import HierarchicalModel_2D
+from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_ketju import determine_merger_timescale
 from baggins.env_config import _cmlogger, date_format
 from baggins.general import units
