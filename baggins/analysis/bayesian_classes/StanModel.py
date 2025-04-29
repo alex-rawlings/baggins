@@ -1639,7 +1639,11 @@ class HierarchicalModel_2D(_StanModel):
         levels.sort(reverse=True)
         if ax is None:
             fig, ax = plt.subplots(1, 1)
-        ys = self.sample_generated_quantity(ymodel, state=state)
+        if isinstance(ymodel, str):
+            ys = self.sample_generated_quantity(ymodel, state=state)
+        else:
+            _logger.warning("Plotting an array outside of generated_quantities")
+            ys = ymodel
         cmapper, sm = self._make_default_hdi_colours(levels)
         for lev in levels:
             _logger.debug(f"Fitting level {lev}")

@@ -3,45 +3,84 @@ import os.path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from cmdstanpy import CmdStanModel
 import baggins as bgs
 
+bgs.plotting.check_backend()
+
+def generate_mock_data(G=6, N_per_group=20, seed=42):
+    np.random.seed(seed)
+    N_total = G * N_per_group
+    group_id = np.repeat(np.arange(1, G + 1), N_per_group)
+    np.random.shuffle(group_id)
 
 
-parser = argparse.ArgumentParser(description="Run stan model for Quinlan evolution.", allow_abbrev=False)
-parser.add_argument(type=str, help="file of observed quantities", dest="obs_file")
-parser.add_argument(type=str, help="quantity to autoregress", dest="var")
-args = parser.parse_args()
+    x = np.linspace(0, 10, N_total)
+    f = np.zeros(N_total)
+    y = np.zeros(N_total)
 
-# set up pandas data frame to hold autoregression values
-autoregress_df = pd.DataFrame(columns=["name", "slope", "intercept", "scatter"])
+    for g in range(1, G + 1):
+        idx = np.where(group_id == g)[0]
+        xg = x[idx]
+        lengthscale = np.random.uniform(0.5, 1.5)
+        sigma_f = np.random.uniform(0.5, 1.0)
+        K = sigma_f**2 * np.exp(-0.5 * (np.subtract.outer(xg, xg)**2) / lengthscale**2)
+        K += np.eye(N_per_group) * 1e-6
+        f[idx] = np.random.multivariate_normal(np.zeros(N_per_group), K)
+        y[idx] = f[idx] + np.random.normal(0, 0.1, N_per_group)
 
-# set up Stan Model
-my_stan = bgs.analysis.StanModel("stan/ar.stan", "stan/ar.stan", args.obs_file, figname_base=f"stats/autoregress/{args.var}", autoregress=True)#, random_select_obs={"num":200, "group":"name"})
+    return {
+        'N_groups': G,
+        #'N': [N_per_group] * G,
+        'N_tot': N_total,
+        'x': x,
+        'y': y,
+        'ids': group_id.astype(int)
+    }
 
-# do data transformations
-my_stan.transform_obs("a", "inv_a", lambda a:1/a)
+def compile_and_run_stan(stan_file_path, data_dict):
+    model = CmdStanModel(stan_file=stan_file_path)
+    fit = model.sample(data=data_dict, chains=4, parallel_chains=4)
+    return fit
 
-names =  np.unique(my_stan.obs.loc[:, "name"])
+def plot_posterior_predictive(fit, data_dict):
+    y_rep = fit.stan_variable('posterior_pred')
+    x = data_dict['x']
+    y = data_dict['y']
+    id = data_dict['group_id']
+    cmapper, sm = bgs.plotting.create_normed_colours(0, max(id), cmap="flare")
 
-for n in names:
-    # set up observed data
-    print(f"Group: {n}")
-    my_stan.observation_mask = my_stan.obs.loc[:, "name"] == n
-    data = dict(
-        N_tot = np.sum(my_stan.observation_mask),
-        observed_data = my_stan.obs.loc[my_stan.observation_mask, args.var]
-    )
-    my_stan.figname_base = f"{my_stan.figname_base}_{n}"
-    my_stan.build_model()
-    my_stan.sample_model(data=data, save=False, sample_kwargs={"output_dir":os.path.join(baggins._backend.env_config.data_dir, "stan_files")})
-    my_stan.parameter_plot(["alpha", "beta", "sigma"])
-    my_stan.posterior_plot(args.var, args.var, "posterior_pred")
-    plt.close()
+    mean_pred = np.nanmean(y_rep, axis=0)
+    lower = np.nanpercentile(y_rep, 2.5, axis=0)
+    upper = np.nanpercentile(y_rep, 97.5, axis=0)
 
-    autoregress_df = pd.concat([autoregress_df, pd.DataFrame.from_dict({"name":[n], "slope":[np.nanmedian(my_stan._fit.stan_variable("beta"))], "intercept":[np.nanmedian(my_stan._fit.stan_variable("alpha"))], "scatter":[np.nanmedian(my_stan._fit.stan_variable("sigma"))]})])
-    my_stan.figname_base = my_stan.figname_base.rstrip(f"_{n}")
+    plt.figure(figsize=(10, 5))
+    plt.fill_between(x[1:], lower, upper, color='lightblue', alpha=0.5, label='95% CI')
+    #plt.plot(x[1:], mean_pred, label='Posterior Mean', color='blue')
+    plt.scatter(x, y, color=cmapper(id), s=10, label='Observed Data')
+    for _id in np.unique(id):
+        mask = _id == id
+        plt.plot(x[mask][1:], y[mask][1:], c=cmapper(_id))
+    plt.plot(x, y, '-o', c='k')
+    plt.title("Posterior Predictive Distribution")
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig("autoregress.png", dpi=300)
 
-#plt.show()
-print(autoregress_df)
+# ---- Step 4: Wrap it all up ----
 
-autoregress_df.to_csv(f"{args.var}_autoregress.csv", index=False)
+def run_pipeline(stan_file_path):
+    data_dict = generate_mock_data()
+    fit = compile_and_run_stan(stan_file_path, data_dict)
+    plot_posterior_predictive(fit, data_dict)
+
+# ---- Entry point ----
+
+if __name__ == "__main__":
+    # Provide path to your Stan file here
+    stan_file = "stan/ar.stan"
+    if not os.path.exists(stan_file):
+        raise FileNotFoundError(f"Stan file not found: {stan_file}")
+    run_pipeline(stan_file)

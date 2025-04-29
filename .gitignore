@@ -222,6 +222,8 @@ baggins/stan/core-sersic/*
 baggins/stan/gaussian-process/*
 !baggins/stan/gaussian-process/*.stan
 !baggins/stan/gaussian-process/*.py
+baggins/stan/autoregression/*
+!baggins/stan/autoregression/*.stan
 
 # code logging
 baggins/logs

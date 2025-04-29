@@ -206,6 +206,7 @@ def get_idx_in_array(t, tarr):
         value to search for
     tarr : array-like
         array to search within
+
     Returns
     -------
     idx : int
