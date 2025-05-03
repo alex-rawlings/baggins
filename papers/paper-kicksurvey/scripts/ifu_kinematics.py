@@ -1,4 +1,5 @@
 import argparse
+from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
@@ -39,8 +40,10 @@ SL = bgs.setup_logger("script", args.verbosity)
 
 x_axis, y_axis = args.axes
 LOS_axis = list(set({0, 1, 2}).difference({x_axis, y_axis}))[0]
-muse_data_file = figure_config.data_path(f"ifu_mock_{x_axis}{y_axis}.pickle")
-micado_data_file = figure_config.data_path(f"micado_ifu_mock_{x_axis}{y_axis}.pickle")
+muse_data_file = figure_config.data_path(f"ifu/muse_ifu_mock_{x_axis}{y_axis}.pickle")
+harmoni_data_file = figure_config.data_path(
+    f"ifu/harmoni_ifu_mock_{x_axis}{y_axis}.pickle"
+)
 
 # set up the instruments
 # MUSE
@@ -50,26 +53,29 @@ seeing = {"num": 25, "sigma": muse_nfm.resolution_kpc}
 ifu_mask = pygad.ExprMask(
     f"abs(pos[:,{x_axis}]) <= {0.5 * muse_nfm.extent}"
 ) & pygad.ExprMask(f"abs(pos[:,{y_axis}]) <= {0.5 * muse_nfm.extent}")
-# MICADO
-micado_nfm = bgs.analysis.MICADO_NFM()
-micado_nfm.redshift = args.redshift
-micado_extent = 1.5
-micado_nfm.max_extent = micado_extent
-seeing = {"num": 25, "sigma": micado_nfm.resolution_kpc}
-micado_mask = pygad.ExprMask(
-    f"abs(pos[:,{x_axis}]) <= {0.5 * micado_nfm.extent}"
-) & pygad.ExprMask(f"abs(pos[:,{y_axis}]) <= {0.5 * micado_nfm.extent}")
+# HARMONI
+harmoni = bgs.analysis.HARMONI_SPATIAL()
+harmoni.redshift = args.redshift
+harmoni_extent = 1.5
+harmoni.max_extent = harmoni_extent
+seeing = {"num": 25, "sigma": harmoni.resolution_kpc}
+harmoni_mask = pygad.ExprMask(
+    f"abs(pos[:,{x_axis}]) <= {0.5 * harmoni.extent}"
+) & pygad.ExprMask(f"abs(pos[:,{y_axis}]) <= {0.5 * harmoni.extent}")
+
+SL.debug(muse_nfm)
+SL.debug(harmoni)
 
 # set the specific snaps to create IFU images for
 ifu_snaps = {"0000": [2, 6, 40], "0540": [9, 16, 23], "0720": [22, 38, 55]}
-micado_inset = [3, 8]
+harmoni_inset = [3, 8]
 
 if args.extract:
     data_muse = dict.fromkeys(ifu_snaps, None)
     # have to this way so we don't have a self-referencing copy
     for k in data_muse.keys():
         data_muse[k] = {"t": [], "voronoi": [], "bhpos": [], "bhvel": []}
-    data_micado = dict(voronoi=[], parts_per_bin=[30, 30, 30, 30, 30, 30, 30, 30, 20])
+    data_harmoni = dict(voronoi=[], parts_per_bin=[60] * 9)
 
 # fitted equation for theoretical detectability radius
 core_sig = 270
@@ -109,44 +115,53 @@ if args.extract:
             voronoi.binned_LOSV_statistics()
             data_muse[k]["voronoi"].append(voronoi.dump_to_dict())
             data_muse[k]["bhpos"].append(
-                [snap.bh["pos"][:, x_axis], snap.bh["pos"][:, y_axis]]
+                [
+                    deepcopy(snap.bh["pos"][:, x_axis].view(np.ndarray)),
+                    deepcopy(snap.bh["pos"][:, y_axis].view(np.ndarray)),
+                ]
             )
             data_muse[k]["bhvel"].append(
-                [snap.bh["vel"][:, x_axis], snap.bh["vel"][:, y_axis]]
+                [
+                    deepcopy(snap.bh["vel"][:, x_axis].view(np.ndarray)),
+                    deepcopy(snap.bh["vel"][:, y_axis].view(np.ndarray)),
+                ]
             )
 
-            if i * 3 + j in micado_inset:
-                # do separate zoom for MICADO
+            if i * 3 + j in harmoni_inset:
+                # do separate zoom for HARMONI
                 # centre on the BH
                 pygad.Translation(-snap.bh["pos"].flatten()).apply(snap, total=True)
                 pygad.Boost(-snap.bh["vel"].flatten()).apply(snap, total=True)
+                assert np.allclose(
+                    snap.bh["pos"].flatten(), np.zeros(3)
+                ) and np.allclose(snap.bh["vel"].flatten(), np.zeros(3))
                 voronoi = bgs.analysis.VoronoiKinematics(
-                    x=snap.stars[micado_mask]["pos"][:, x_axis],
-                    y=snap.stars[micado_mask]["pos"][:, y_axis],
-                    V=snap.stars[micado_mask]["vel"][:, LOS_axis],
-                    m=snap.stars[micado_mask]["mass"],
-                    Npx=micado_nfm.number_pixels,
+                    x=snap.stars[harmoni_mask]["pos"][:, x_axis],
+                    y=snap.stars[harmoni_mask]["pos"][:, y_axis],
+                    V=snap.stars[harmoni_mask]["vel"][:, LOS_axis],
+                    m=snap.stars[harmoni_mask]["mass"],
+                    Npx=harmoni.number_pixels,
                     seeing=seeing,
                 )
                 voronoi.make_grid(
-                    part_per_bin=data_micado["parts_per_bin"][i * 3 + j] ** 2
+                    part_per_bin=data_harmoni["parts_per_bin"][i * 3 + j] ** 2
                 )
                 voronoi.binned_LOSV_statistics()
-                data_micado["voronoi"].append(voronoi.dump_to_dict())
+                data_harmoni["voronoi"].append(voronoi.dump_to_dict())
             else:
-                data_micado["voronoi"].append([])
+                data_harmoni["voronoi"].append([])
 
             # conserve memory
             snap.delete_blocks()
             del snap
             pygad.gc_full_collect()
-    # bgs.utils.save_data(data_muse, muse_data_file, exist_ok=True)
-    bgs.utils.save_data(data_micado, micado_data_file, exist_ok=True)
-else:
-    data_muse = bgs.utils.load_data(muse_data_file)
-    data_micado = bgs.utils.load_data(micado_data_file)
-    if args.verbosity == "DEBUG":
-        bgs.general.print_dict_summary(data_muse)
+    bgs.utils.save_data(data_muse, muse_data_file, exist_ok=True)
+    bgs.utils.save_data(data_harmoni, harmoni_data_file, exist_ok=True)
+
+data_muse = bgs.utils.load_data(muse_data_file)
+data_harmoni = bgs.utils.load_data(harmoni_data_file)
+if args.verbosity == "DEBUG":
+    bgs.general.print_dict_summary(data_muse)
 
 # set up the figure
 fig, ax = plt.subplots(3, 3, sharex="all", sharey="all")
@@ -213,17 +228,17 @@ for i, k in enumerate(data_muse.keys()):
         transform=ax[i, 0].transAxes,
     )
 
-# add MICADO inset panel
-for mi, cbar_ticks in zip(micado_inset, ([200, 400], [200, 600])):
-    SL.debug(f"Doing MICADO inset {mi}")
-    axins = ax.flatten()[mi].inset_axes(
+# add HARMONI inset panel
+for hi, cbar_ticks in zip(harmoni_inset, ([200, 240], [200, 240])):
+    SL.debug(f"Doing HARMONI inset {hi}")
+    axins = ax.flatten()[hi].inset_axes(
         [0.53, 0.0, 0.45, 0.48],
         xticklabels=[],
         yticklabels=[],
     )
     axins.set_xticks([])
     axins.set_yticks([])
-    voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(data_micado["voronoi"][mi])
+    voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(data_harmoni["voronoi"][hi])
     voronoi.plot_kinematic_maps(
         ax=axins,
         moments="2",
@@ -234,14 +249,14 @@ for mi, cbar_ticks in zip(micado_inset, ([200, 400], [200, 600])):
     axins.set_xlim(-0.5, 0.5)
     axins.set_ylim(-0.3, 0.65)
 
-    bhx, bhy = list(data_muse.values())[mi // 3]["bhpos"][mi % 3]
+    bhx, bhy = list(data_muse.values())[hi // 3]["bhpos"][hi % 3]
 
-    ax.flatten()[mi].indicate_inset(
+    ax.flatten()[hi].indicate_inset(
         bounds=[
-            bhx[0] - micado_extent / 2,
-            bhy[0] - micado_extent / 2,
-            micado_extent,
-            micado_extent,
+            bhx[0] - harmoni_extent / 2,
+            bhy[0] - harmoni_extent / 2,
+            harmoni_extent,
+            harmoni_extent,
         ],
         inset_ax=axins,
         alpha=1,

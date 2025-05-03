@@ -1,13 +1,16 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 import os.path
 import numpy as np
+from scipy.stats import binned_statistic
 from copy import copy
 import unyt
 from synthesizer import grid, instruments
 from astropy import cosmology
+from pygad import ExprMask
 from baggins.env_config import _cmlogger, synthesizer_data
 from baggins.utils import get_files_in_dir
 from baggins.cosmology import angular_scale
+from baggins.mathematics import get_histogram_bin_centres
 
 __all__ = [
     "set_luminosity",
@@ -18,10 +21,14 @@ __all__ = [
     "get_flux_from_magnitude",
     "MUSE_NFM",
     "MUSE_WFM",
+    "HARMONI_SENSITIVE",
+    "HARMONI_BALANCED",
+    "HARMONI_SPATIAL",
     "Euclid_NISP",
     "Euclid_VIS",
     "MICADO_WFM",
     "MICADO_NFM",
+    "VLT_FORS2",
 ]
 
 
@@ -295,6 +302,9 @@ class BasicInstrument(ABC):
     def name(self):
         return type(self).__name__
 
+    def __repr__(self):
+        return f'{self.name}:\n FoV: {self.field_of_view}"\n sampling: {self.sampling}"/pix\n angular resolution: {self.angular_resolution}"\n pixel width: {self.pixel_width:.3e}kpc\n # pixels: {self.number_pixels}\n extent: {self.extent}'
+
 
 class MUSE_NFM(BasicInstrument):
     def __init__(self):
@@ -302,7 +312,7 @@ class MUSE_NFM(BasicInstrument):
         MUSE narrow field mode instrument. Parameters taken from:
         https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
         """
-        super().__init__(fov=7.42, sampling=0.025, res=55e-3)
+        super().__init__(fov=7.42, sampling=0.025, res=0.2)
 
 
 class MUSE_WFM(BasicInstrument):
@@ -312,6 +322,33 @@ class MUSE_WFM(BasicInstrument):
         https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
         """
         super().__init__(fov=60, sampling=0.2, res=0.4)
+
+
+class HARMONI_SENSITIVE(BasicInstrument):
+    def __init__(self):
+        """
+        HARMONI optimised for sensitivity. Parameters taken from:
+        https://elt.eso.org/instrument/HARMONI/
+        """
+        super().__init__(fov=3.04, sampling=20e-3, res=20e-3)
+
+
+class HARMONI_BALANCED(BasicInstrument):
+    def __init__(self):
+        """
+        HARMONI balanced for sensitivity and spatial. Parameters taken from:
+        https://elt.eso.org/instrument/HARMONI/
+        """
+        super().__init__(fov=1.52, sampling=10e-3, res=20e-3)
+
+
+class HARMONI_SPATIAL(BasicInstrument):
+    def __init__(self):
+        """
+        HARMONI optimised for sensitivity. Parameters taken from:
+        https://elt.eso.org/instrument/HARMONI/
+        """
+        super().__init__(fov=0.61, sampling=4e-3, res=20e-3)
 
 
 class Euclid_NISP(BasicInstrument):
@@ -332,19 +369,131 @@ class Euclid_VIS(BasicInstrument):
         super().__init__(fov=0.709 * 3600, sampling=0.101, res=0.23)
 
 
-class MICADO_WFM(BasicInstrument):
-    def __init__(self):
+class LongSlitInstrument(BasicInstrument):
+    @abstractmethod
+    def __init__(self, fov, sampling, slit_width, slit_length, res=None, rng=None):
+        """
+        Base class for long slit spectroscopy instruments.
+
+        Parameters
+        ----------
+        fov : float
+            field of view in arcsecs
+        sampling : float
+            spatial sampling of instrument in arcsec/pixel
+        slit_width : float
+            width of slit in arcsecs
+        slit_length : float
+            length of slit in arcsecs
+        res : float, optional
+            angular resolution in arcsec, by default None
+        """
+        super().__init__(fov, sampling, res)
+        self.slit_width = slit_width
+        self.slit_length = slit_length
+        if rng is None:
+            self._rng = np.random.default_rng()
+
+    def get_slit_mask(self, xaxis=0, yaxis=2):
+        """
+        Mask for those particles in the slit.
+
+        Parameters
+        ----------
+        xaxis : int, optional
+            spatial x axis, by default 0
+        yaxis : int, optional
+            spatial y axis, by default 2
+
+        Returns
+        -------
+        mask : ExprMask
+            pygad mask to select those particles within the slit
+        : np.array
+            pixels (equivalently) bins that divide the slit lengthwise
+        """
+        sl_phys = self.slit_length * self._ang_scale
+        if sl_phys > self.extent:
+            _logger.warning(
+                f"Truncating slit length ({sl_phys:.1e}) to maximum extent ({self.extent:.1e})!"
+            )
+            sl_phys = self.extent
+        sw_phys = self.slit_width * self._ang_scale
+        mask = ExprMask(f"abs(pos[:,{xaxis}]) <= {0.5 * sl_phys}") & ExprMask(
+            f"abs(pos[:,{yaxis}]) <= {0.5 * sw_phys}"
+        )
+        num_pixels_along_slit = int(np.floor(sl_phys / self.pixel_width) + 1)
+        return mask, np.linspace(-0.5 * sl_phys, 0.5 * sl_phys, num_pixels_along_slit)
+
+    def get_LOS_velocity_dispersion_profile(self, snap, N=100, xaxis=0, yaxis=2):
+        """
+        Calculate a 1D velocity dispersion profile using the slit. Note that no
+        centring is done.
+
+        Parameters
+        ----------
+        snap : pygad.Snapshot
+            snapshot to analyse
+        N : int, optional
+            number of pseudoparticles per particle to generate, by default 100
+        xaxis : int, optional
+            spatial x axis, by default 0
+        yaxis : int, optional
+            spatial y axis, by default 2
+
+        Returns
+        -------
+        : np.array
+            centres of pixels that define the slit
+        vel_disp : np.array
+            velocity dispersion along the long side of the slit
+        """
+        LOS_axis = list(set({0, 1, 2}).difference({xaxis, yaxis}))[0]
+        mask, bins = self.get_slit_mask(xaxis=xaxis, yaxis=yaxis)
+        x = np.array(
+            [
+                xx + self._rng.normal(0, self.resolution_kpc, size=N)
+                for xx in snap.stars[mask]["pos"][:, xaxis]
+            ]
+        ).flatten()
+        V = np.repeat(snap.stars[mask]["vel"][:, LOS_axis], N).flatten()
+        vel_disp, *_ = binned_statistic(x, V, bins=bins, statistic="std")
+        return get_histogram_bin_centres(bins), vel_disp
+
+
+class MICADO_WFM(LongSlitInstrument):
+    def __init__(self, rng=None):
         """
         MICADO for ELT
         https://elt.eso.org/instrument/MICADO/
         """
-        super().__init__(fov=50.5, sampling=4e-3, res=50e-6)
+        super().__init__(
+            fov=50.5, sampling=4e-3, res=50e-6, slit_width=16e-3, slit_length=3, rng=rng
+        )
 
 
-class MICADO_NFM(BasicInstrument):
-    def __init__(self):
+class MICADO_NFM(LongSlitInstrument):
+    def __init__(self, rng=None):
         """
         MICADO for ELT
         https://elt.eso.org/instrument/MICADO/
         """
-        super().__init__(fov=18, sampling=1.5e-3, res=50e-6)
+        super().__init__(
+            fov=18, sampling=1.5e-3, res=20e-3, slit_width=16e-3, slit_length=3, rng=rng
+        )
+
+
+class VLT_FORS2(LongSlitInstrument):
+    def __init__(self, rng=None):
+        """
+        VLT FORS2 instrument for long slit spectroscopy
+        https://www.eso.org/sci/facilities/paranal/instruments/fors/doc/VLT-MAN-ESO-13100-1543_P116.2.pdf
+        """
+        super().__init__(
+            fov=7.1 * 60,
+            sampling=0.125,
+            slit_width=0.28,
+            slit_length=6.8 * 60,
+            res=None,
+            rng=rng,
+        )
