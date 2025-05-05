@@ -18,6 +18,9 @@ fors2.max_extent = micado.extent
 # read in snapshot, centre on BH
 snapfile = bgs.utils.get_snapshots_in_dir("/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0600/output")[5]
 snap = pygad.Snapshot(snapfile, physical=True)
+bgs.analysis.basic_snapshot_centring(snap)
+bhr = snap.bh['r'].flatten()
+print(f"BH pos {bhr}")
 pygad.Translation(-snap.bh["pos"].flatten()).apply(snap, total=True)
 pygad.Boost(-snap.bh["vel"].flatten()).apply(snap, total=True)
 
@@ -27,6 +30,7 @@ for instr in (fors2, micado):
 
     lp = plt.plot(bin_centres, vel_disp, alpha=0.5)
     plt.plot(bin_centres, np.sqrt(uniform_filter1d(vel_disp**2, 20, mode="nearest")), c=lp[-1].get_color(), label=instr.name)
+plt.axvline(-bhr, ls=":", c="k", label="gal centre")
 plt.legend()
 plt.xlabel("pos/kpc (rel. BH)")
 plt.ylabel("vel disp [km/s]")

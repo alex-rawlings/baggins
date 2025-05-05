@@ -170,13 +170,17 @@ fig.set_figheight(2 * fig.get_figheight())
 
 
 # get the colour limits
-def vor_generator(d):
-    for v in d.values():
+def vor_generator(d1, d2):
+    for v in d1.values():
         for vv in v["voronoi"]:
             yield vv
+    for v in d2["voronoi"]:
+        if not v:
+            continue
+        yield v
 
 
-vor_gen = vor_generator(data_muse)
+vor_gen = vor_generator(data_muse, data_harmoni)
 clims = bgs.analysis.unify_IFU_colour_scheme(vor_gen)
 
 # plot the data
@@ -193,7 +197,11 @@ for i, (k, v) in enumerate(data_muse.items()):
         ax[i, j].set_ylim(-0.48 * muse_nfm.extent, 0.48 * muse_nfm.extent)
         voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(vor)
         voronoi.plot_kinematic_maps(
-            ax=ax[i, j], moments=args.moment, cbar="inset", clims=clims
+            ax=ax[i, j],
+            moments=args.moment,
+            cbar="inset",
+            clims=clims,
+            cbar_kwargs={"ticks": [200, 240]},
         )
         ax[i, j].scatter(bhx[0], bhx[1], marker="o", fc="none", ec="k", lw=1)
         if float(k) > core_sig:
@@ -229,7 +237,7 @@ for i, k in enumerate(data_muse.keys()):
     )
 
 # add HARMONI inset panel
-for hi, cbar_ticks in zip(harmoni_inset, ([200, 240], [200, 240])):
+for hi in harmoni_inset:
     SL.debug(f"Doing HARMONI inset {hi}")
     axins = ax.flatten()[hi].inset_axes(
         [0.53, 0.0, 0.45, 0.48],
@@ -243,7 +251,7 @@ for hi, cbar_ticks in zip(harmoni_inset, ([200, 240], [200, 240])):
         ax=axins,
         moments="2",
         cbar="inset",
-        cbar_kwargs={"label": "", "aspect": 40, "ticks": cbar_ticks},
+        cbar_kwargs={"label": "", "aspect": 40, "ticks": [200, 240]},
     )
     # XXX these need to be set by hand
     axins.set_xlim(-0.5, 0.5)
