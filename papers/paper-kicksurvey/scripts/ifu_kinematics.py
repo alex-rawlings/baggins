@@ -271,14 +271,5 @@ for hi in harmoni_inset:
         edgecolor="k",
         lw=1,
     )
-    axins.annotate(
-        r"$\mathrm{BRC}$",
-        (0, 0),
-        (-0.1, 0.2),
-        color="k",
-        arrowprops={"fc": "k", "ec": "k", "arrowstyle": "wedge"},
-        ha="right",
-        va="bottom",
-    )
 
 bgs.plotting.savefig(figure_config.fig_path("IFU_mock.pdf"), force_ext=True)
