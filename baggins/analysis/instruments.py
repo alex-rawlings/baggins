@@ -101,6 +101,12 @@ class BasicInstrument(ABC):
     def __repr__(self):
         return f'{self.name}:\n FoV: {self.field_of_view}"\n sampling: {self.sampling}"/pix\n angular resolution: {self.angular_resolution}"\n pixel width: {self.pixel_width:.3e}kpc\n # pixels: {self.number_pixels}\n extent: {self.extent}'
 
+    def get_fov_mask(self, xaxis, yaxis):
+        mask = ExprMask(f"abs(pos[:,{xaxis}]) <= {0.5 * self.extent}") & ExprMask(
+            f"abs(pos[:,{yaxis}]) <= {0.5 * self.extent}"
+        )
+        return mask
+
 
 class MUSE_NFM(BasicInstrument):
     def __init__(self, z=None):
@@ -109,6 +115,7 @@ class MUSE_NFM(BasicInstrument):
         https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
         """
         super().__init__(fov=7.42, sampling=0.025, res=0.2, z=z)
+        self.label = r"$\mathrm{MUSE}$"
 
 
 class MUSE_WFM(BasicInstrument):
@@ -118,6 +125,7 @@ class MUSE_WFM(BasicInstrument):
         https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
         """
         super().__init__(fov=60, sampling=0.2, res=0.4, z=z)
+        self.label = r"$\mathrm{MUSE}$"
 
 
 class HARMONI_SENSITIVE(BasicInstrument):
@@ -127,6 +135,7 @@ class HARMONI_SENSITIVE(BasicInstrument):
         https://elt.eso.org/instrument/HARMONI/
         """
         super().__init__(fov=3.04, sampling=20e-3, res=20e-3, z=z)
+        self.label = r"$\mathrm{HARMONI}$"
 
 
 class HARMONI_BALANCED(BasicInstrument):
@@ -136,6 +145,7 @@ class HARMONI_BALANCED(BasicInstrument):
         https://elt.eso.org/instrument/HARMONI/
         """
         super().__init__(fov=1.52, sampling=10e-3, res=20e-3, z=z)
+        self.label = r"$\mathrm{HARMONI}$"
 
 
 class HARMONI_SPATIAL(BasicInstrument):
@@ -145,6 +155,7 @@ class HARMONI_SPATIAL(BasicInstrument):
         https://elt.eso.org/instrument/HARMONI/
         """
         super().__init__(fov=0.61, sampling=4e-3, res=20e-3, z=z)
+        self.label = r"$\mathrm{HARMONI}$"
 
 
 class Euclid_NISP(BasicInstrument):
@@ -154,6 +165,7 @@ class Euclid_NISP(BasicInstrument):
         https://sci.esa.int/web/euclid/-/euclid-nisp-instrument
         """
         super().__init__(fov=0.722 * 3600, sampling=0.3, res=None, z=z)
+        self.label = r"$\mathrm{Euclid}$"
 
 
 class Euclid_VIS(BasicInstrument):
@@ -163,6 +175,7 @@ class Euclid_VIS(BasicInstrument):
         https://sci.esa.int/web/euclid/-/euclid-vis-instrument
         """
         super().__init__(fov=0.709 * 3600, sampling=0.101, res=0.23, z=z)
+        self.label = r"$\mathrm{Euclid}$"
 
 
 class ERIS_IFU(BasicInstrument):
@@ -171,7 +184,8 @@ class ERIS_IFU(BasicInstrument):
         Eris IFU. Parameters taken from:
         https://www.eso.org/sci/facilities/paranal/instruments/eris/doc/ERIS_User_Manual_v116.0.pdf
         """
-        super().__init__(fov=0.8, sampling=25, res=0.1, z=z)
+        super().__init__(fov=0.8, sampling=25e-3, res=0.1, z=z)
+        self.label = r"$\mathrm{ERIS}$"
 
 
 class JWST_IFU(BasicInstrument):
@@ -181,6 +195,7 @@ class JWST_IFU(BasicInstrument):
         https://jwst-docs.stsci.edu/jwst-near-infrared-spectrograph#gsc.tab=0
         """
         super().__init__(fov=3, sampling=0.1, res=None, z=z)
+        self.label = r"$\mathrm{JWST}$"
 
 
 class LongSlitInstrument(BasicInstrument):
@@ -209,6 +224,23 @@ class LongSlitInstrument(BasicInstrument):
         self.slit_length = slit_length
         if rng is None:
             self._rng = np.random.default_rng()
+        self._slit_length_kpc = None
+
+    @property
+    def slit_length_kpc(self):
+        if self._slit_length_kpc is None:
+            sl = self.slit_length * self._ang_scale
+            if sl > self.extent:
+                _logger.warning(
+                    f"Truncating {self.name} slit length ({sl:.1e}) to maximum extent ({self.extent:.1e})!"
+                )
+                sl = self.extent
+            self._slit_length_kpc = sl
+        return self._slit_length_kpc
+
+    @property
+    def slit_width_kpc(self):
+        return self.slit_width * self._ang_scale
 
     def get_slit_mask(self, xaxis=0, yaxis=2):
         """
@@ -226,16 +258,9 @@ class LongSlitInstrument(BasicInstrument):
         mask : ExprMask
             pygad mask to select those particles within the slit
         """
-        sl_phys = self.slit_length * self._ang_scale
-        if sl_phys > self.extent:
-            _logger.warning(
-                f"Truncating slit length ({sl_phys:.1e}) to maximum extent ({self.extent:.1e})!"
-            )
-            sl_phys = self.extent
-        sw_phys = self.slit_width * self._ang_scale
-        mask = ExprMask(f"abs(pos[:,{xaxis}]) <= {0.5 * sl_phys}") & ExprMask(
-            f"abs(pos[:,{yaxis}]) <= {0.5 * sw_phys}"
-        )
+        mask = ExprMask(
+            f"abs(pos[:,{xaxis}]) <= {0.5 * self.slit_length_kpc}"
+        ) & ExprMask(f"abs(pos[:,{yaxis}]) <= {0.5 * self.slit_width_kpc}")
         return mask
 
     def get_LOS_velocity_dispersion_profile(
@@ -265,6 +290,7 @@ class LongSlitInstrument(BasicInstrument):
         """
         LOS_axis = list(set({0, 1, 2}).difference({xaxis, yaxis}))[0]
         mask = self.get_slit_mask(xaxis=xaxis, yaxis=yaxis)
+        _logger.debug(f"Slit length is {self.slit_length_kpc:.2e}")
         x = np.array(
             [
                 xx + self._rng.normal(0, self.resolution_kpc, size=N)
@@ -272,6 +298,12 @@ class LongSlitInstrument(BasicInstrument):
             ]
         ).flatten()
         V = np.repeat(snap.stars[mask]["vel"][:, LOS_axis], N).flatten()
+
+        # ensure pseudo-particles are not generated outside slit
+        pseudo_mask = np.abs(x) < 0.5 * self.slit_length_kpc
+        x = x[pseudo_mask]
+        V = V[pseudo_mask]
+
         bins = np.quantile(x, np.linspace(0, 1, int(len(x) / N_per_bin) + 1))
         _logger.debug(f"Starting with {len(bins)} bins for LSS")
         # if bin difference is less than instrument sampling, join bins
@@ -316,6 +348,7 @@ class MICADO_WFM(LongSlitInstrument):
             rng=rng,
             z=z,
         )
+        self.label = r"$\mathrm{MICADO}$"
 
 
 class MICADO_NFM(LongSlitInstrument):
@@ -333,6 +366,7 @@ class MICADO_NFM(LongSlitInstrument):
             rng=rng,
             z=z,
         )
+        self.label = r"$\mathrm{MICADO}$"
 
 
 class VLT_FORS2(LongSlitInstrument):
@@ -350,6 +384,7 @@ class VLT_FORS2(LongSlitInstrument):
             rng=rng,
             z=z,
         )
+        self.label = r"$\mathrm{FORS2}$"
 
 
 class ERIS_NIX_NFM(LongSlitInstrument):
@@ -367,6 +402,7 @@ class ERIS_NIX_NFM(LongSlitInstrument):
             z=z,
             rng=rng,
         )
+        self.label = r"$\mathrm{ERIS}$"
 
 
 class JWST_LSS(LongSlitInstrument):
@@ -378,3 +414,4 @@ class JWST_LSS(LongSlitInstrument):
         super().__init__(
             fov=3.4 * 60, sampling=0.1, slit_width=0.2, slit_length=3.2, z=z, rng=rng
         )
+        self.label = r"$\mathrm{JWST}$"
