@@ -177,31 +177,6 @@ def data_grabber():
         yield RecoilClusterSeries(*clusters)
 
 
-def load_obs_cluster_data():
-    """
-    Load the mass data calculated from perfect_observability.py
-
-    Yields
-    ------
-    : tuple
-        kick velocity and apocentre mass
-    """
-    dat_files = bgs.utils.get_files_in_dir(
-        os.path.join(figure_config.reduced_data_dir, "perfect_obs"),
-        ".pickle",
-    )
-    for f in dat_files:
-        vk = float(os.path.splitext(os.path.basename(f))[0].replace("perf_obs_", ""))
-        if vk > args.maxvel:
-            continue
-        cluster = bgs.utils.load_data(f)["cluster_props"]
-        m = cluster[-1]["cluster_mass"]
-        apo = cluster[-1]["r_centres_cluster"][0]
-        if m is None:
-            m = np.nan
-        yield vk, m, apo
-
-
 grab_data = data_grabber()
 max_r = np.nanmax(list(c.max_rad for c in grab_data))
 SL.debug(f"Maximum radius is {max_r}")
@@ -241,15 +216,6 @@ plt.colorbar(sm, ax=ax, label=r"$r/\mathrm{kpc}$", location="top")
 ax.scatter([], [], marker="o", c="gray", lw=0.5, ec="k", label=r"$\mathrm{apocentre}$")
 ax.scatter([], [], marker="s", c="gray", lw=0.5, ec="k", label=r"$\mathrm{pericentre}$")
 
-# XXX plot the observed mass
-obs_data = load_obs_cluster_data()
-for i, dat in enumerate(obs_data):
-    ax.plot(dat[0], dat[1], c=r_col_mapper(dat[2]), ls="", marker="^", mec="k", mew=0.5)
-
-ax.scatter(
-    [], [], marker="^", c="gray", lw=0.5, ec="k", label=r"$\mathrm{LOS\,integrated}$"
-)
-
 # set dual y axis on second plot
 SL.debug(f"BH mass is {m_bh:.2e} Msol")
 ax.tick_params(axis="y", which="both", right=False)
@@ -258,25 +224,27 @@ axr.set_ylabel(r"$M/M_\bullet$")
 
 # show core dispersion
 xlim = ax.get_xlim()
-ax.axvspan(
-    xlim[0], core_dispersion, zorder=1, hatch="//", fc="none", ec="dimgray", lw=1
-)
+ax.axvspan(xlim[0], core_dispersion, zorder=1, color="gray", alpha=0.6)
 ax.text(
     0.1,
-    0.7,
+    0.4,
     r"$v_\mathrm{kick}< \sigma_{\star,0}$",
     rotation="vertical",
     transform=ax.transAxes,
     va="center",
-    bbox={"fc": "w", "ec": "none"},
+    # bbox={"fc": "w", "ec": "none"},
 )
 
 # show were r_apo > Re
-ax.axvspan(reff_vel, xlim[1], alpha=0.6, zorder=1, fc="gray")
+# ax.axvspan(reff_vel, xlim[1], alpha=0.6, zorder=1, fc="gray", hatch=".....")
+ax.axvline(reff_vel, c="gray", lw=1, ls=":")
 ax.text(
     1.1 * reff_vel,
-    2.5e6,
+    2.8e6,
     r"$r_\mathrm{apo} > R_\mathrm{e}$",
+)
+ax.annotate(
+    "", (700, 3.2e6), (reff_vel, 3.2e6), arrowprops={"arrowstyle": "-|>", "fc": "k"}
 )
 ax.set_xlim(xlim)
 

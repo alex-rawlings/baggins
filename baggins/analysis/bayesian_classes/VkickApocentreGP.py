@@ -81,7 +81,7 @@ class VkickApocentreGP(_GPBase):
             fnames = d
         except TypeError:
             fnames = d[0]
-        obs = {"vkick": [], "rapo": []}
+        obs = {"vkick": [], "rapo": [], "tapo": []}
         for f in fnames:
             _logger.info(f"Loading file: {f}")
             # get kick velocity from file name
@@ -99,15 +99,19 @@ class VkickApocentreGP(_GPBase):
             if _v <= 1:
                 # for very low vkick, we have ~0 displacement
                 obs["rapo"].append([1e-3])
+                obs["tapo"].append([1e-3])
             else:
                 # XXX skip the first few snapshots, in most use cases we expect
                 # there to be many more than just 3 snapshots before apocentre
                 # anyway
-                _r = np.loadtxt(f, skiprows=1)[3:, 1]
+                _dat = np.loadtxt(f, skiprows=1)[3:, :2]
+                _t = _dat[:, 0]
+                _r = _dat[:, 1]
                 if np.any(np.diff(_r) < 0):
                     # we have an instance where the distance of the BH to
                     # centre is decreasing
                     obs["rapo"].append([np.nanmax(_r)])
+                    obs["tapo"].append([_t[np.argmax(_r)] * 1e3])  # convert to Myr
                 else:
                     _logger.warning(
                         f"Velocity {_v} km/s did not reach an apocentre! Skipping"
@@ -120,7 +124,9 @@ class VkickApocentreGP(_GPBase):
         self.obs = obs
         self.transform_obs("vkick", "log10_vkick", lambda x: np.log10(x))
         self.transform_obs("rapo", "log10_rapo", lambda x: np.log10(x))
-        self.collapse_observations(["vkick", "rapo", "log10_vkick", "log10_rapo"])
+        self.collapse_observations(
+            ["vkick", "rapo", "log10_vkick", "log10_rapo", "tapo"]
+        )
         # extract BH data at the timestep before merger
         kfile = get_ketjubhs_in_dir(self.premerger_ketjufile)[0]
         bh1, bh2, *_ = get_bound_binary(kfile)
@@ -212,6 +218,14 @@ class VkickApocentreGP(_GPBase):
         )
 
     def all_plots(self, figsize=None):
+        """
+        All standard plots for a model
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        """
         super().all_plots(figsize)
         ylims = (
             np.quantile(self.obs_collapsed["rapo"], 0.01),
@@ -320,6 +334,19 @@ class VkickApocentreGP(_GPBase):
         )
 
     def angle_to_exceed_threshold(self, threshold):
+        """
+        Determine the angle to exceed some threshold distance
+
+        Parameters
+        ----------
+        threshold : callable
+            distance threshold function
+
+        Returns
+        -------
+        : array-like
+            minimum angle
+        """
         r_apo = self.sample_generated_quantity("y", state="OOS")
         vk = np.tile(self.stan_data["x2"], r_apo.shape[0]).reshape(r_apo.shape)
         theta = np.arcsin(threshold(vk) / r_apo) * 180 / np.pi  # in degrees
@@ -454,6 +481,61 @@ class VkickApocentreGP(_GPBase):
 
         if save:
             ax.legend()
+            savefig(
+                self._make_fig_name(
+                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
+                ),
+                fig=fig,
+            )
+            self._gq_distribution_plot_counter += 1
+        return ax
+
+    def _interpolate_apo_to_time(self, r):
+        """
+        Interpolate apocentre distance to apocentre time.
+
+        Parameters
+        ----------
+        r : array-like
+            apocentres to sample
+
+        Returns
+        -------
+        : array-like
+            interpolated apocentre times
+        """
+        x = self.obs_collapsed["rapo"]
+        y = self.obs_collapsed["tapo"]
+        return np.interp(r, x, y)
+
+    def plot_apocentre_time_distribution(
+        self, ax=None, save=True, cumulative=False, **kwargs
+    ):
+        """
+        Plot the apocentre time distribution
+
+        Parameters
+        ----------
+        ax : matplotlib.Axes, optional
+            plotting axes, by default None
+        save : bool, optional
+            save plot, by default True
+        cumulative : bool, optional
+            plot cumulative distribution, by default False
+
+        Returns
+        -------
+        ax : matplotlib.Axes, optional
+            plotting axes
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+        ax.set_xlabel(r"$t_\mathrm{apo}/\mathrm{Myr}$")
+        ax.set_ylabel(r"$\mathrm{CDF}$" if cumulative else r"$\mathrm{PDF}$")
+        r_apo = self.sample_generated_quantity("y", state="OOS")
+        t_apo = self._interpolate_apo_to_time(r_apo)
+        plot_dist(t_apo, ax=ax, cumulative=cumulative, **kwargs)
+        if save:
             savefig(
                 self._make_fig_name(
                     self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"

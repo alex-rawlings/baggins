@@ -434,7 +434,7 @@ if __name__ == "__main__":
         # create images for a single snapshot
         # at three different redshifts
         redshifts = [0.2, 0.6, 1.0]
-        sigmas = [2.5, 0.5, 0.3]
+        sigmas = [2.5, 0.5, 0.5]
         SL.warning("Ignoring CL argument '-z'")
         fig, ax = plt.subplots(3, 3)
         fig.set_figwidth(2.5 * fig.get_figwidth())

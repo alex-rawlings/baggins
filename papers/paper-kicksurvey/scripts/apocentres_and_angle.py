@@ -101,10 +101,12 @@ print(
 )
 
 # make the plots
-fig, ax = plt.subplots(2, 2, sharex="all")
+fig, ax = plt.subplots(3, 2)
 ax = ax.flatten()
+for axi in ax[3:]:
+    axi.sharex(ax[0])
 fig.set_figwidth(2 * fig.get_figwidth())
-fig.set_figheight(2 * fig.get_figheight())
+fig.set_figheight(2.5 * fig.get_figheight())
 hdi_levels = [50, 75, 99]
 
 # XXX plot 1: vkick - r_apo relation from GP
@@ -143,27 +145,59 @@ ax[0].legend(loc="upper left")
 ax[0].indicate_inset_zoom(axins, ec="k")
 axins.set_xticks([])
 axins.set_yticks([], minor=True)
-ax[0].text(900, threshold_dist(900), r"$r_\mathrm{d}$", va="top")
+ax[0].text(980, threshold_dist(980), r"$r_\mathrm{d}$", va="top")
 ax[0].text(750, 8, f"{(1-frac_above_X)*100:.1f}%", va="bottom")
 ax[0].text(700, 30, f"{(frac_above_X)*100:.1f}%", va="bottom")
 ax[0].set_ylim(0.1, ylims[1])
 
-# XXX plot 2: vkick - angle offset relation from GP
-ax[1].set_xlabel(gp.input_qtys_labs[0])
-ax[1].set_ylabel(r"$\theta_\mathrm{min}$")
+# XXX plot 2: marginal distribution of apocentre
+fill_kwargs = {"alpha": 1, "ec": "k", "lw": 0.2}
+gp.plot_generated_quantity_dist(
+    ["y"],
+    bounds=[(0, 2e2)],
+    state="OOS",
+    xlabels=gp.folded_qtys_labs,
+    ax=ax[1],
+    cumulative=True,
+    save=False,
+    quantiles=[0.5],
+    fill_kwargs=fill_kwargs,
+)
+ax[1].set_xscale("log")
+xlim = ax[1].get_xlim()
+# show the core region
+ax[1].axvspan(ax[1].get_xlim()[0], core_rad, ec="none", fc="lightgray")
+ax[1].text(
+    0.12,
+    0.5,
+    r"$r_\mathrm{apo}< r_\mathrm{b,0}$",
+    rotation="vertical",
+    va="center",
+)
+ax[1].set_xlim(*xlim)
+
+
+# XXX plot 3: distribution of apocentre times
+gp.plot_apocentre_time_distribution(
+    ax=ax[2], cumulative=True, save=False, quantiles=[0.5], fill_kwargs=fill_kwargs
+)
+
+# XXX plot 4: vkick - angle offset relation from GP
+ax[3].set_xlabel(gp.input_qtys_labs[0])
+ax[3].set_ylabel(r"$\theta_\mathrm{min}$")
 gp.plot_angle_to_exceed_threshold(
     threshold_dist,
     levels=hdi_levels,
-    ax=ax[1],
+    ax=ax[3],
     save=False,
     smooth_kwargs={"mode": "nearest", "window_length": 5},
 )
-ax[1].set_xlim(0.8 * core_sig, np.max(gp.stan_data["x2"]))
-ax[1].set_ylim(0, 90)
-ax[1].text(800, 60, r"$\mathrm{Detectable}$")
-ax[1].text(500, 15, r"$\mathrm{Not\; detectable}$")
+ax[3].set_xlim(0.8 * core_sig, np.max(gp.stan_data["x2"]))
+ax[3].set_ylim(0, 90)
+ax[3].text(800, 60, r"$\mathrm{Detectable}$")
+ax[3].text(500, 15, r"$\mathrm{Not\; detectable}$")
 
-# XXX plot 3&4: probability of distribution of observable vkicks
+# XXX plot 5&6: probability of distribution of observable vkicks
 bin_width = 100
 bins = np.arange(
     -bin_width / 2,  # bin_width*np.ceil(core_sig/bin_width)-bin_width/2,
@@ -172,39 +206,40 @@ bins = np.arange(
 )
 cols = bgs.plotting.mplColours()[:2][::-1]
 gp.plot_observable_fraction(
-    threshold_dist, bins=bins, ax=ax[2], cols=cols, save=False, edgecolor="k", lw=0.2
+    threshold_dist, bins=bins, ax=ax[4], cols=cols, save=False, edgecolor="k", lw=0.2
 )
 gp.plot_observable_fraction(
     threshold_dist,
     bins=bins,
-    ax=ax[3],
+    ax=ax[5],
     cols=cols,
     save=False,
     edgecolor="k",
     lw=0.2,
     cumulative=True,
 )
-ax[2].set_xlim(-bin_width / 2, bins[-1])
-ax[2].set_xlabel(gp.input_qtys_labs[0])
-ax[2].set_ylabel(r"$f(v_\mathrm{kick})$")
-ax[3].set_xlabel(gp.input_qtys_labs[0])
-ax[3].set_ylabel(r"$F(v<v_\mathrm{kick})$")
-ax[3].legend()
+ax[4].set_xlim(-bin_width / 2, bins[-1])
+ax[4].set_xlabel(gp.input_qtys_labs[0])
+ax[4].set_ylabel(r"$f(v_\mathrm{kick})$")
+ax[5].set_xlabel(gp.input_qtys_labs[0])
+ax[5].set_ylabel(r"$F(v<v_\mathrm{kick})$")
+ax[5].legend()
 
 # add a hash region to indicate velocities for v < sigcore
-for axi in ax[:2]:
+for axi, ytext in zip((ax[0], ax[3]), (1, 45)):
     axi.axvspan(axi.get_xlim()[0], core_sig, ec="none", fc="lightgray")
     axi.text(
-        0.15,
-        0.5,
+        100,
+        ytext,
         r"$v_\mathrm{kick}< \sigma_{\star,0}$",
         rotation="vertical",
-        transform=axi.transAxes,
         va="center",
     )
 
 # set dual y axis on second plot
-for axi in ax:
+for i, axi in enumerate(ax):
+    if i in [1, 2]:
+        continue
     axi.tick_params(axis="x", which="both", top=False, labelbottom=True)
     axr = axi.secondary_xaxis("top", functions=(lambda x: x / 1800, lambda x: x * 1800))
     axr.set_xlabel(r"$v_\mathrm{kick}/v_\mathrm{esc}$")

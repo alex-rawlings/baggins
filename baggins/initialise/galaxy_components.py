@@ -15,7 +15,7 @@ from baggins.literature import (
     zlochower_dry_spins,
     zlochower_hot_spins,
 )
-from baggins.cosmology import cosmology
+from baggins.cosmology import cosmology_pars
 from baggins.general import BasicQuantityConverter, sersic_b_param
 from baggins.mathematics import uniform_sample_sphere
 from baggins.utils import read_parameters
@@ -70,7 +70,7 @@ class _GalaxyICBase:
         except AssertionError:
             _logger.exception("Only redshift 0 is currently supported", exc_info=True)
             raise
-        self.cosmology = cosmology
+        self.cosmology = cosmology_pars
         self.mass_units = "msol"
         # make output directories if not already existing
         os.makedirs(self.save_location, exist_ok=True)
