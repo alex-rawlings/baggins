@@ -74,20 +74,21 @@ if args.extract:
             # we have the special 0km/s case
             peri_snap_num = 10
             apo_snap_num = 5
-        clusters = [RecoilCluster(), RecoilCluster()]
 
         start_kick_time = datetime.now()
         SL.info(f"Doing kick velocity {file_name_only.replace('kick-vel-','')}")
-        snapfiles = (
+        snapfiles = [
             bgs.utils.get_snapshots_in_dir(
                 os.path.join(snapshot_dir, file_name_only, "output")
             )[sn]
-            for sn in [apo_snap_num, peri_snap_num]
-        )
+            for sn in [apo_snap_num - 1, apo_snap_num, apo_snap_num + 1, peri_snap_num]
+        ]
+        clusters = [RecoilCluster() for _ in range(len(snapfiles))]
         for j, snapfile in tqdm(
             enumerate(snapfiles),
             desc="Analysing snapshots",
-            total=2,
+            total=len(snapfiles),
+            disable=True,
         ):
             snap = pygad.Snapshot(snapfile, physical=True)
             if len(snap.bh) != 1:
@@ -119,18 +120,33 @@ if args.extract:
                         snap.stars[bound_id_mask], center=snap.bh["pos"].flatten()
                     )
                 )
-                clusters[j].LOS_properties["vel_disp"] = float(
-                    pygad.analysis.los_velocity_dispersion(
-                        snap.stars[bound_id_mask], proj=1
+                _rhalf = np.full(3, np.nan)
+                _LOS_sig = np.full(3, np.nan)
+                for proj in range(3):
+                    _rhalf[proj] = float(
+                        pygad.analysis.half_mass_radius(
+                            snap.stars[bound_id_mask],
+                            proj=proj,
+                            center=snap.bh["pos"].flatten(),
+                        )
                     )
-                )
-                clusters[j].LOS_properties["rhalf"] = float(
-                    pygad.analysis.half_mass_radius(
-                        snap.stars[bound_id_mask],
-                        proj=1,
-                        center=snap.bh["pos"].flatten(),
+                    cyl_mask = bgs.analysis.get_cylindrical_mask(
+                        _rhalf[proj], proj=proj, centre=snap.bh["pos"].flatten()
                     )
-                )
+                    compound_mask = bound_id_mask & cyl_mask
+                    _LOS_sig[proj] = np.sqrt(
+                        float(
+                            bgs.mathematics.smooth_bootstrap(
+                                snap.stars[compound_mask]["vel"][:, proj][
+                                    :, np.newaxis
+                                ],
+                                sigma=0,
+                                statistic=np.nanvar,
+                            )[1]
+                        )
+                    )
+                clusters[j].LOS_properties["rhalf"] = _rhalf
+                clusters[j].LOS_properties["vel_disp"] = _LOS_sig
             except AssertionError as err:
                 SL.exception(err)
                 continue
