@@ -116,3 +116,13 @@ class RecoilClusterSeries:
                 continue
             sigma[i, :] = c.LOS_properties["vel_disp"]
         return np.linalg.norm(np.sqrt(np.nanmean(sigma**2, axis=0)))
+
+    @property
+    def ambient_sigma_series(self):
+        s = []
+        for c in self.clusters:
+            s.append(c.ambient_vel_disp)
+        return s
+
+    def __len__(self):
+        return len(self.clusters)

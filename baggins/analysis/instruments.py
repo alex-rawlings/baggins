@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy.stats import binned_statistic
+from astropy.units import Unit
 from pygad import ExprMask
 from baggins.env_config import _cmlogger
 from baggins.cosmology import angular_scale
@@ -42,13 +43,13 @@ class BasicInstrument(ABC):
         z : float, optional
             redshift of observations, by default None
         """
-        self.field_of_view = fov
-        self.sampling = sampling
+        self.field_of_view = fov * Unit("arcsec")
+        self.sampling = sampling * Unit("arcsec")
         if res is None:
             res = 1e-6
-        self.angular_resolution = res
+        self.angular_resolution = res * Unit("arcsec")
         self._ang_scale = None
-        self.max_extent = 40.0
+        self.max_extent = 40.0 * Unit("kpc")
         if z is not None:
             self.redshift = z
 
@@ -194,7 +195,7 @@ class JWST_IFU(BasicInstrument):
         JWST IFU. Parameters taken from:
         https://jwst-docs.stsci.edu/jwst-near-infrared-spectrograph#gsc.tab=0
         """
-        super().__init__(fov=3, sampling=0.1, res=None, z=z)
+        super().__init__(fov=3, sampling=0.1, res=68e-3, z=z)
         self.label = r"$\mathrm{JWST}$"
 
 
@@ -220,8 +221,8 @@ class LongSlitInstrument(BasicInstrument):
             angular resolution in arcsec, by default None
         """
         super().__init__(fov, sampling, res, z=z)
-        self.slit_width = slit_width
-        self.slit_length = slit_length
+        self.slit_width = slit_width * Unit("arcsec")
+        self.slit_length = slit_length * Unit("arcsec")
         if rng is None:
             self._rng = np.random.default_rng()
         self._slit_length_kpc = None
@@ -259,8 +260,8 @@ class LongSlitInstrument(BasicInstrument):
             pygad mask to select those particles within the slit
         """
         mask = ExprMask(
-            f"abs(pos[:,{xaxis}]) <= {0.5 * self.slit_length_kpc}"
-        ) & ExprMask(f"abs(pos[:,{yaxis}]) <= {0.5 * self.slit_width_kpc}")
+            f"abs(pos[:,{xaxis}]) <= {0.5 * self.slit_length_kpc.value}"
+        ) & ExprMask(f"abs(pos[:,{yaxis}]) <= {0.5 * self.slit_width_kpc.value}")
         return mask
 
     def get_LOS_velocity_dispersion_profile(
@@ -293,33 +294,33 @@ class LongSlitInstrument(BasicInstrument):
         _logger.debug(f"Slit length is {self.slit_length_kpc:.2e}")
         x = np.array(
             [
-                xx + self._rng.normal(0, self.resolution_kpc, size=N)
+                xx + self._rng.normal(0, self.resolution_kpc.value, size=N)
                 for xx in snap.stars[mask]["pos"][:, xaxis]
             ]
         ).flatten()
         V = np.repeat(snap.stars[mask]["vel"][:, LOS_axis], N).flatten()
 
         # ensure pseudo-particles are not generated outside slit
-        pseudo_mask = np.abs(x) < 0.5 * self.slit_length_kpc
+        pseudo_mask = np.abs(x) < 0.5 * self.slit_length_kpc.value
         x = x[pseudo_mask]
         V = V[pseudo_mask]
 
         bins = np.quantile(x, np.linspace(0, 1, int(len(x) / N_per_bin) + 1))
         _logger.debug(f"Starting with {len(bins)} bins for LSS")
         # if bin difference is less than instrument sampling, join bins
-        if np.any(np.diff(bins) < self.pixel_width):
+        if np.any(np.diff(bins) < self.pixel_width.value):
             # which bins are smaller than the pixel width
             _bins = np.full_like(bins, np.nan)
             _bins[0] = bins[0]
             offset = 0
             for i, b in enumerate(bins[1:]):
-                if b - _bins[i - offset] > self.pixel_width:
+                if b - _bins[i - offset] > self.pixel_width.value:
                     _bins[i - offset + 1] = b
                 else:
                     offset += 1
             bins = _bins[~np.isnan(_bins)]
         try:
-            assert np.all(np.diff(bins) >= self.pixel_width)
+            assert np.all(np.diff(bins) >= self.pixel_width.value)
         except AssertionError:
             _logger.exception(
                 "Some slit bins are narrower than the instrument resolution!",
@@ -412,6 +413,12 @@ class JWST_LSS(LongSlitInstrument):
         https://jwst-docs.stsci.edu/jwst-near-infrared-spectrograph#gsc.tab=0
         """
         super().__init__(
-            fov=3.4 * 60, sampling=0.1, slit_width=0.2, slit_length=3.2, z=z, rng=rng
+            fov=3.4 * 60,
+            sampling=0.1,
+            res=68e-3,
+            slit_width=0.2,
+            slit_length=3.2,
+            z=z,
+            rng=rng,
         )
         self.label = r"$\mathrm{JWST}$"

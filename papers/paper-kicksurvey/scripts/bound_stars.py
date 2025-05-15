@@ -186,7 +186,11 @@ def data_grabber():
     """
     for i, df in enumerate(data_files):
         clusters = bgs.utils.load_data(df)["data"]
-        diff_ids = list(set(clusters[0].ids).difference(set(clusters[1].ids)))
+        try:
+            diff_ids = list(set(clusters[0].ids).difference(set(clusters[1].ids)))
+        except TypeError:
+            SL.warning(f"No cluster data in {df}, skipping")
+            continue
         SL.debug(
             f"{len(diff_ids)/len(clusters[0].ids):.3f} of particles are different between apo and peri centres"
         )
@@ -252,8 +256,7 @@ ax.text(
 )
 
 # show were r_apo > Re
-# ax.axvspan(reff_vel, xlim[1], alpha=0.6, zorder=1, fc="gray", hatch=".....")
-ax.axvline(reff_vel, c="gray", lw=1, ls=":")
+ax.axvline(reff_vel, c="gray", lw=1, ls=":", zorder=0.2)
 ax.text(
     1.1 * reff_vel,
     2.8e6,
@@ -318,3 +321,18 @@ ax[0].legend()
 bgs.plotting.savefig(
     os.path.join(bgs.FIGDIR, "kicksurvey-study/intrinsic_properties.png"), fig=fig
 )
+plt.close()
+
+fig, ax = plt.subplots()
+grab_data = data_grabber()
+for d in grab_data:
+    if d.kick_vel > args.maxvel:
+        continue
+    ax.scatter(
+        [d.kick_vel] * len(d), d.ambient_sigma_series, c=r_col_mapper(d.bh_radii)
+    )
+plt.colorbar(sm, ax=ax, label="r/kpc", location="top")
+bgs.plotting.savefig(
+    os.path.join(bgs.FIGDIR, "kicksurvey-study/ambient_sigma.png"), fig=fig
+)
+plt.close()
