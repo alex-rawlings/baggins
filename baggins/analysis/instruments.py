@@ -49,7 +49,7 @@ class BasicInstrument(ABC):
             res = 1e-6
         self.angular_resolution = res * Unit("arcsec")
         self._ang_scale = None
-        self.max_extent = 40.0 * Unit("kpc")
+        self.max_extent = 40.0
         if z is not None:
             self.redshift = z
 
@@ -68,6 +68,14 @@ class BasicInstrument(ABC):
     def redshift(self, z):
         self._redshift = z
         self._ang_scale = angular_scale(z)
+
+    @property
+    def max_extent(self):
+        return self._max_extent
+
+    @max_extent.setter
+    def max_extent(self, R):
+        self._max_extent = R * Unit("kpc")
 
     @property
     def ang_scale(self):
@@ -103,8 +111,8 @@ class BasicInstrument(ABC):
         return f'{self.name}:\n FoV: {self.field_of_view}"\n sampling: {self.sampling}"/pix\n angular resolution: {self.angular_resolution}"\n pixel width: {self.pixel_width:.3e}kpc\n # pixels: {self.number_pixels}\n extent: {self.extent}'
 
     def get_fov_mask(self, xaxis, yaxis):
-        mask = ExprMask(f"abs(pos[:,{xaxis}]) <= {0.5 * self.extent}") & ExprMask(
-            f"abs(pos[:,{yaxis}]) <= {0.5 * self.extent}"
+        mask = ExprMask(f"abs(pos[:,{xaxis}]) <= {0.5 * self.extent.value}") & ExprMask(
+            f"abs(pos[:,{yaxis}]) <= {0.5 * self.extent.value}"
         )
         return mask
 

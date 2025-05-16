@@ -133,3 +133,7 @@ if True:
     print(f"volume: {vol:.3e}")
     number_mergers = number_mergers_per_Mpc3 * vol
     print(f"There are {number_mergers:.3e} mergers out to z={redshift}")
+    median_BRC_time = 30e-3 * Unit("Gyr")
+    print(f"Expected number of mergers visible: {number_mergers * median_BRC_time/Planck18.lookback_time(z=redshift)*0.2:.4e}")
+
+
