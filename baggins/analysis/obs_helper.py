@@ -1,4 +1,3 @@
-from abc import ABC
 import os.path
 import numpy as np
 from copy import copy
@@ -7,7 +6,6 @@ from synthesizer import grid, instruments
 from astropy import cosmology
 from baggins.env_config import _cmlogger, synthesizer_data
 from baggins.utils import get_files_in_dir
-from baggins.cosmology import angular_scale
 
 __all__ = [
     "set_luminosity",
@@ -16,12 +14,6 @@ __all__ = [
     "get_hst_filter_collection",
     "get_surface_brightness",
     "get_flux_from_magnitude",
-    "MUSE_NFM",
-    "MUSE_WFM",
-    "Euclid_NISP",
-    "Euclid_VIS",
-    "MICADO_WFM",
-    "MICADO_NFM",
 ]
 
 
@@ -232,119 +224,3 @@ def get_flux_from_magnitude(mag):
     """
     const = 2.5 * np.log10(3631)
     return 10 ** ((mag - const) / -2.5)
-
-
-class BasicInstrument(ABC):
-    def __init__(self, fov, sampling, res=None):
-        """
-        Template class for defining basic observation instrument properties
-
-        Parameters
-        ----------
-        fov : float
-            field of view in arcsecs
-        sampling : float
-            spatial sampling of instrument in arcsec/pixel
-        res : float, optional
-            angular resolution in arcsec, by default None
-        """
-        self.field_of_view = fov
-        self.sampling = sampling
-        if res is None:
-            res = sampling
-        self.angular_resolution = res
-        self._ang_scale = None
-        self.max_extent = 40.0
-
-    def _param_check(self):
-        try:
-            assert self._ang_scale is not None
-        except AssertionError:
-            _logger.exception("Redshift must be set first!", exc_info=True)
-            raise RuntimeError
-
-    @property
-    def redshift(self):
-        return self._redshift
-
-    @redshift.setter
-    def redshift(self, z):
-        self._redshift = z
-        self._ang_scale = angular_scale(z)
-
-    @property
-    def pixel_width(self):
-        self._param_check()
-        return self.sampling * self._ang_scale
-
-    @property
-    def resolution_kpc(self):
-        self._param_check()
-        return self.angular_resolution * self._ang_scale
-
-    @property
-    def extent(self):
-        self._param_check()
-        return min(self._ang_scale * self.field_of_view, self.max_extent)
-
-    @property
-    def number_pixels(self):
-        return int(self.extent / self.pixel_width)
-
-    @property
-    def name(self):
-        return type(self).__name__
-
-
-class MUSE_NFM(BasicInstrument):
-    def __init__(self):
-        """
-        MUSE narrow field mode instrument. Parameters taken from:
-        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
-        """
-        super().__init__(fov=7.42, sampling=0.025, res=55e-3)
-
-
-class MUSE_WFM(BasicInstrument):
-    def __init__(self):
-        """
-        MUSE wide field mode instrument. Parameters taken from:
-        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
-        """
-        super().__init__(fov=60, sampling=0.2, res=0.4)
-
-
-class Euclid_NISP(BasicInstrument):
-    def __init__(self):
-        """ "
-        "Euclid infrared bands. Parameters taken from:
-        https://sci.esa.int/web/euclid/-/euclid-nisp-instrument
-        """
-        super().__init__(fov=0.722 * 3600, sampling=0.3, res=None)
-
-
-class Euclid_VIS(BasicInstrument):
-    def __init__(self):
-        """
-        "Euclid visible bands. Parameters taken from:
-        https://sci.esa.int/web/euclid/-/euclid-vis-instrument
-        """
-        super().__init__(fov=0.709 * 3600, sampling=0.101, res=0.23)
-
-
-class MICADO_WFM(BasicInstrument):
-    def __init__(self):
-        """
-        MICADO for ELT
-        https://elt.eso.org/instrument/MICADO/
-        """
-        super().__init__(fov=50.5, sampling=4e-3, res=50e-6)
-
-
-class MICADO_NFM(BasicInstrument):
-    def __init__(self):
-        """
-        MICADO for ELT
-        https://elt.eso.org/instrument/MICADO/
-        """
-        super().__init__(fov=18, sampling=1.5e-3, res=50e-6)

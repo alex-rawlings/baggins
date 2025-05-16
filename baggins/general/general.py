@@ -50,34 +50,34 @@ class BasicQuantityConverter:
             mass-light ratio, by default 4.
         """
         if z is not None:
-            _logger.info("Redshift given, 'dist' and 'dist_mod' will be ignored")
+            _logger.debug("Redshift given, 'dist' and 'dist_mod' will be ignored")
             if isinstance(z, (float, int)):
                 z = np.array([z])
             self.z = z
             self.dist = np.full_like(z, np.nan)
             self.dist_ang = np.full_like(z, np.nan)
             for i, zz in enumerate(z):
-                self.dist[i] = luminosity_distance(zz) * 1e3
-                self.dist_ang[i] = angular_diameter_distance(zz) * 1e3
+                self.dist[i] = luminosity_distance(zz, "pc").value
+                self.dist_ang[i] = angular_diameter_distance(zz, "pc").value
             self._convert_pc_to_modulus()
         elif dist is not None:
-            _logger.info("Distance given, 'z' and 'dist_mod' will be ignored")
+            _logger.debug("Distance given, 'z' and 'dist_mod' will be ignored")
             self.z = np.zeros_like(dist)
             self.dist = dist
             self.dist_ang = dist
             self._convert_pc_to_modulus()
         else:
-            _logger.info("Distance modulus given, 'z' and 'dist' will be ignored")
+            _logger.debug("Distance modulus given, 'z' and 'dist' will be ignored")
             self.z = np.zeros_like(dist)
             self.dist_mod = dist_mod
             self._convert_modulus_to_pc()
             self.dist_ang = self.dist
         if abs_mag is not None:
-            _logger.info("Absolute magnitude given, 'app_mag' will be ignored")
+            _logger.debug("Absolute magnitude given, 'app_mag' will be ignored")
             self.abs_mag = abs_mag
             self.app_mag = self.convert_abs_mag_to_app_mag(self.abs_mag)
         else:
-            _logger.info("Apparent magnitude given, 'abs_mag' will be ignored")
+            _logger.debug("Apparent magnitude given, 'abs_mag' will be ignored")
             self.app_mag = app_mag
             self.abs_mag = self.convert_app_mag_to_abs_mag(self.app_mag)
         self.mass_light_ratio = mass_light_ratio

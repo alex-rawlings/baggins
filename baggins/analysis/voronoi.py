@@ -419,7 +419,7 @@ class VoronoiKinematics:
             elif i == 1:
                 return "sigma", asc_cols, r"$\sigma/\mathrm{km}\,\mathrm{s}^{-1}$"
             else:
-                return f"h{i}", div_cols, f"$h_{p}$"
+                return f"h{i+1}", div_cols, f"$h_{{{i+1}}}$"
 
         # get 0-based indexing for the moments in base 10
         moment_idxs = np.array([int(m, 17) - 1 for m in moments])
@@ -568,9 +568,11 @@ class VoronoiKinematics:
         d : dict
             necessary data
         """
-        d = dict(x_bin=self._grid["x_bin"], y_bin=self._grid["y_bin"])
+        d = {}
+        d.update(self._grid)
         d.update(self.stats)
         d["extent"] = self.extent
+        d["vz"] = self.vz
         return d
 
     @classmethod
@@ -595,7 +597,7 @@ class VoronoiKinematics:
             "x_bin",
             "y_bin",
             "xedges",
-            "xedges",
+            "yedges",
         ]
         stat_keys = list(set(d.keys()).difference(set(grid_keys)))
         try:
@@ -605,6 +607,9 @@ class VoronoiKinematics:
         except ValueError:
             # there are no h moments
             C._hermite_order = 2
+        C._hermite_polys = [
+            scipy.special.hermite(i, monic=True) for i in range(3, C._hermite_order + 1)
+        ]
         C._grid = {}
         C._stats = {}
         for k in grid_keys:
@@ -618,6 +623,7 @@ class VoronoiKinematics:
             except KeyError:
                 C._stats[k] = None
         C._extent = d["extent"]
+        C.vz = d["vz"]
         return C
 
 

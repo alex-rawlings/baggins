@@ -1185,9 +1185,10 @@ class _StanModel(ABC):
                     exc_info=True,
                 )
                 raise
-            az.plot_dist(ys, ax=ax[i], **kwargs)
+            cumulative = kwargs.pop("cumulative", False)
+            az.plot_dist(ys, ax=ax[i], cumulative=cumulative, **kwargs)
             ax[i].set_xlabel(lab)
-            ax[i].set_ylabel("PDF")
+            ax[i].set_ylabel(r"$\mathrm{CDF}$" if cumulative else r"$\mathrm{PDF}$")
         ax.reshape(ax_shape)
         if save:
             savefig(

@@ -7,3 +7,4 @@ from baggins.analysis.obs_helper import *  # noqa
 from baggins.analysis.data_classes import *  # noqa
 from baggins.analysis.bayesian_classes import *  # noqa
 from baggins.analysis.analysis_classes import *  # noqa
+from baggins.analysis.instruments import *  # noqa

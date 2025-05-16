@@ -1,12 +1,36 @@
+import argparse
 import os.path
 import numpy as np
 from scipy.stats import bernoulli
 import matplotlib.pyplot as plt
 import baggins as bgs
+from data_classes import RecoilClusterSeries
 import figure_config
 
 bgs.plotting.check_backend()
 
+parser = argparse.ArgumentParser(
+    description="Compare to compact objects",
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+)
+parser.add_argument(
+    "-l", "--lower", help="lower velocity", type=float, dest="minvel", default=270
+)
+parser.add_argument(
+    "-u", "--upper", help="upper velocity", type=float, dest="maxvel", default=1080
+)
+parser.add_argument(
+    "-v",
+    "--verbosity",
+    type=str,
+    default="INFO",
+    choices=bgs.VERBOSITY,
+    dest="verbosity",
+    help="set verbosity level",
+)
+args = parser.parse_args()
+
+SL = bgs.setup_logger("script", args.verbosity)
 
 cols = figure_config.custom_colors_shuffled
 fig, ax = plt.subplots(1, 2, sharey="all")
@@ -14,6 +38,9 @@ fig.set_figwidth(2 * fig.get_figwidth())
 fig.set_figheight(1.2 * fig.get_figheight())
 rng = np.random.default_rng(42)
 vk_cols = figure_config.VkickColourMap()
+data_files = bgs.utils.get_files_in_dir(
+    os.path.join(figure_config.reduced_data_dir, "bound_stars"), ".pickle"
+)
 
 
 def scatter_kwargs_maker():
@@ -145,6 +172,30 @@ def load_cluster_data():
         yield cluster_mass, cluster_Re, cluster_vsig, vk_cols.get_colour(vk)
 
 
+def data_grabber():
+    """
+    Generator to get the data to plot
+
+    Yields
+    ------
+    : RecoilClusterSeries
+        plotting data
+    """
+    for i, df in enumerate(data_files):
+        clusters = bgs.utils.load_data(df)["data"]
+        try:
+            diff_ids = list(set(clusters[0].ids).difference(set(clusters[1].ids)))
+        except TypeError:
+            SL.warning(f"No cluster data in {df}, skipping")
+            continue
+        SL.debug(
+            f"{len(diff_ids)/len(clusters[0].ids):.3f} of particles are different between apo and peri centres"
+        )
+        yield RecoilClusterSeries(*clusters)
+
+
+grab_data = data_grabber()
+
 cluster_plot_kwargs = {
     "fmt": "o",
     "markersize": 4,
@@ -163,27 +214,66 @@ mcconnachie12 = bgs.literature.LiteratureTables.load_mcconnachie_2012_data()
 siljeg24 = bgs.literature.LiteratureTables.load_siljeg_2024_data()
 
 sk_gen = scatter_kwargs_maker()
-cluster_gen = load_cluster_data()
+
+# inset to left panel
+axins0 = ax[0].inset_axes(
+    [0.6, 0.05, 0.35, 0.2],
+    xlim=(1e6, 1.1e7),
+    ylim=(32, 75),
+    xticklabels=[],
+    yticklabels=[],
+)
+_, connectors = ax[0].indicate_inset_zoom(axins0, edgecolor="k", alpha=1, lw=1)
+for i, c in enumerate(connectors):
+    c.set_visible(i in [0, 3])
+    c.set_linewidth(0.5)
+
+# inset to second panel
+axins1 = ax[1].inset_axes(
+    [0.6, 0.65, 0.35, 0.3],
+    xlim=(700, 1200),
+    ylim=(30, 70),
+    xticklabels=[],
+    yticklabels=[],
+)
+_, connectors = ax[1].indicate_inset_zoom(axins1, edgecolor="k", alpha=1, lw=1)
+for i, c in enumerate(connectors):
+    c.set_visible(i in [0, 3])
+    c.set_linewidth(0.5)
+
+for axins in (axins0, axins1):
+    axins.set_xticks([])
+    axins.set_yticks([])
+
 needs_label = True
-for i, props in enumerate(cluster_gen):
-    try:
-        ax[0].errorbar(
-            **make_cluster_median_and_error(props[0], "x"),
-            **make_cluster_median_and_error(props[1], "y"),
-            **cluster_plot_kwargs,
-            c=props[3],
+for d in grab_data:
+    if d.kick_vel > args.maxvel or d.kick_vel < args.minvel:
+        continue
+    SL.debug(f"Adding vk={d.kick_vel}")
+    c = d.apo
+    for ax0, ax1 in zip((ax[0], axins0), (ax[1], axins1)):
+        ax0.plot(
+            c.intrinsic_properties["bound_mass"],
+            c.effective_radius,
+            marker="o",
+            ls="",
+            mew="0.5",
+            mec="k",
+            c=vk_cols.get_colour(c.kick_vel),
             label=r"$\mathrm{BRC}$" if needs_label else "",
         )
-        ax[1].errorbar(
-            **make_cluster_median_and_error(props[2], "x"),
-            **make_cluster_median_and_error(props[1], "y"),
-            **cluster_plot_kwargs,
-            c=props[3],
+        ax1.plot(
+            d.LOS_velocity_dispersion_near_apo,
+            c.effective_radius,
+            marker="o",
+            ls="",
+            mew="0.5",
+            mec="k",
+            c=vk_cols.get_colour(c.kick_vel),
         )
-        needs_label = False
-    except IndexError:
-        continue
+    needs_label = False
 
+# XXX: add observations
 misgeld09.scatter(
     "mass",
     "Re_pc",
@@ -248,16 +338,10 @@ _, s24p = siljeg24.scatter(
 # label some regions of the plot
 region_kwargs = {}
 ax[0].text(5e3, 4, r"$\mathrm{GCs}$", **region_kwargs)
-ax[0].text(1e7, 7, r"$\mathrm{UCDs}$", **region_kwargs)
+ax[0].text(3e7, 15, r"$\mathrm{UCDs}$", **region_kwargs)
 ax[0].text(4e4, 11, r"$\mathrm{Clusters}$", **region_kwargs)
 ax[0].text(5e4, 700, r"$\mathrm{Dwarfs}$", **region_kwargs)
 ax[0].text(2e10, 1e4, r"$\mathrm{Bulges}$", **region_kwargs)
-ax[0].annotate(
-    r"$\mathrm{BRCs}$",
-    (2e8, 90),
-    (1e9, 30),
-    arrowprops={"fc": "k", "ec": "k", "arrowstyle": "wedge"},
-)
 
 ax[0].set_xlim(1e3, ax[0].get_xlim()[1])
 ax[0].set_ylim(1, ax[0].get_ylim()[1])
@@ -299,12 +383,6 @@ siljeg24.scatter(
 # label some regions of the plot
 ax[1].text(0.5, 4, r"$\mathrm{GCs}$", **region_kwargs)
 ax[1].text(1, 1e3, r"$\mathrm{Dwarfs}$", **region_kwargs)
-ax[1].annotate(
-    r"$\mathrm{BRCs}$",
-    (180, 1e2),
-    (70, 30),
-    arrowprops={"fc": "k", "ec": "k", "arrowstyle": "wedge"},
-)
 
 ax[1].set_xlabel(r"$\sigma_\star/\mathrm{km\,s}^{-1}$")
 ax[1].set_ylabel("")

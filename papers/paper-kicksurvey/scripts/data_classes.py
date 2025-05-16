@@ -18,6 +18,14 @@ class RecoilCluster:
         self.particle_masses = dict(bh=None, stars=None)
         self.snap_num = None
 
+    @property
+    def LOS_velocity_dispersion(self):
+        return np.linalg.norm(self.LOS_properties["vel_disp"])
+
+    @property
+    def effective_radius(self):
+        return np.median(self.LOS_properties["rhalf"]) * 1e3
+
 
 class RecoilClusterSeries:
     def __init__(self, *clusters):
@@ -33,6 +41,7 @@ class RecoilClusterSeries:
         kick_vels = [c.kick_vel for c in self.clusters]
         assert np.all(np.abs(np.diff(kick_vels)) < 1e-10)
         self.kick_vel = float(kick_vels[0])
+        self.snap_nums = [c.snap_num for c in self.clusters]
 
     @property
     def bh_radii(self):
@@ -81,3 +90,39 @@ class RecoilClusterSeries:
             pericentre cluster
         """
         return self.clusters[np.argmin(self.bh_radii)]
+
+    @property
+    def LOS_velocity_dispersion_near_apo(self):
+        """
+        Determine LOS velocity dispersion near apocentre by averaging over a
+        few snapshots.
+
+        Returns
+        -------
+        : float
+            LOS velocity dispersion
+        """
+        sigma = np.full((3, 3), np.nan)
+        apo_idx = np.argmax(self.bh_radii)
+        for i, idx in enumerate((-1, 0, 1)):
+            c = self.clusters[apo_idx + idx]
+            try:
+                assert np.abs(int(c.snap_num) - int(self.apo.snap_num)) < 2
+            except AssertionError:
+                # raise AssertionError(f"Snapshot numbers are {self.snap_nums} - apocentre is {self.apo.snap_num} - BH radii are {self.bh_radii}")
+                print(
+                    f"WARNING: not using snapshot {c.snap_num} as it is too far from apocentre"
+                )
+                continue
+            sigma[i, :] = c.LOS_properties["vel_disp"]
+        return np.linalg.norm(np.sqrt(np.nanmean(sigma**2, axis=0)))
+
+    @property
+    def ambient_sigma_series(self):
+        s = []
+        for c in self.clusters:
+            s.append(c.ambient_vel_disp)
+        return s
+
+    def __len__(self):
+        return len(self.clusters)

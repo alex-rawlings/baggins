@@ -121,16 +121,11 @@ def smooth_bootstrap(
     bootstrap_stat = np.full((number_resamples, data.shape[-1]), np.nan)
     if rng is None:
         rng = np.random.default_rng()
-    for i in range(number_resamples):
-        print(
-            f"Bootstrapping {i/(number_resamples-1)*100:.2f}% complete           ",
-            end="\r",
-        )
+    for i in trange(number_resamples, desc="Bootstrapping"):
         # resample data columnwise
         resampled_data = rng.choice(data, data.shape[0], replace=True, axis=0)
         bootstrap_data = rng.normal(resampled_data, sigma)
         bootstrap_stat[i, :] = statistic(bootstrap_data, axis=0)
-    _logger.info("Bootstrap complete                                ")
     return bootstrap_stat, np.nanmean(bootstrap_stat, axis=0)
 
 
