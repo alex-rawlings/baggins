@@ -303,6 +303,8 @@ def get_cylindrical_mask(R, proj=2, length=None, centre=None):
         axis along which the long side of the cylinder is, by default 2
     length : float, optional
         height of cylinder, by default None
+    centre : array-like, optional
+        centre of mask, by default None
 
     Returns
     -------
@@ -312,6 +314,8 @@ def get_cylindrical_mask(R, proj=2, length=None, centre=None):
     xy = list(set({0, 1, 2}).difference({proj}))
     if centre is None:
         centre = [0, 0]
+    elif len(centre) == 3:
+        centre = centre[xy]
     else:
         assert len(centre) == 2
     mask = pygad.ExprMask(

@@ -168,12 +168,12 @@ class HDF5Base:
         ----------
         g : h5py.Group
             group to add elements to
-        l : list
+        L : list
             attribute names to add to group
         """
         # attributes defined with the @property method are not in __dict__,
         # but their _members are. Append an underscore to all things in l
-        L = ["_" + x for x in L]
+        L.extend([f"_{x}" for x in L])
         saved_list = []
         for _attr in self.__dict__:
             if _attr not in L:
@@ -192,8 +192,8 @@ class HDF5Base:
                     if isinstance(attr_val, pygad.UnitArr):
                         dset.attrs["special_type"] = "pygad_UnitArr"
                         dset.attrs["units"] = unit_as_str(attr_val.units)
-                elif attr is None:
-                    g.create_dataset(attr, "NONE_TYPE")
+                elif attr_val is None:
+                    g.create_dataset(attr, data="NONE_TYPE")
                 else:
                     self._recursive_dict_save(g, attr_val, attr)
             except AssertionError:

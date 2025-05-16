@@ -74,20 +74,21 @@ if args.extract:
             # we have the special 0km/s case
             peri_snap_num = 10
             apo_snap_num = 5
-        clusters = [RecoilCluster(), RecoilCluster()]
 
         start_kick_time = datetime.now()
         SL.info(f"Doing kick velocity {file_name_only.replace('kick-vel-','')}")
-        snapfiles = (
+        snapfiles = [
             bgs.utils.get_snapshots_in_dir(
                 os.path.join(snapshot_dir, file_name_only, "output")
             )[sn]
-            for sn in [apo_snap_num, peri_snap_num]
-        )
+            for sn in [apo_snap_num - 1, apo_snap_num, apo_snap_num + 1, peri_snap_num]
+        ]
+        clusters = [RecoilCluster() for _ in range(len(snapfiles))]
         for j, snapfile in tqdm(
             enumerate(snapfiles),
             desc="Analysing snapshots",
-            total=2,
+            total=len(snapfiles),
+            disable=True,
         ):
             snap = pygad.Snapshot(snapfile, physical=True)
             if len(snap.bh) != 1:
@@ -119,18 +120,33 @@ if args.extract:
                         snap.stars[bound_id_mask], center=snap.bh["pos"].flatten()
                     )
                 )
-                clusters[j].LOS_properties["vel_disp"] = float(
-                    pygad.analysis.los_velocity_dispersion(
-                        snap.stars[bound_id_mask], proj=1
+                _rhalf = np.full(3, np.nan)
+                _LOS_sig = np.full(3, np.nan)
+                for proj in range(3):
+                    _rhalf[proj] = float(
+                        pygad.analysis.half_mass_radius(
+                            snap.stars[bound_id_mask],
+                            proj=proj,
+                            center=snap.bh["pos"].flatten(),
+                        )
                     )
-                )
-                clusters[j].LOS_properties["rhalf"] = float(
-                    pygad.analysis.half_mass_radius(
-                        snap.stars[bound_id_mask],
-                        proj=1,
-                        center=snap.bh["pos"].flatten(),
+                    cyl_mask = bgs.analysis.get_cylindrical_mask(
+                        _rhalf[proj], proj=proj, centre=snap.bh["pos"].flatten()
                     )
-                )
+                    compound_mask = bound_id_mask & cyl_mask
+                    _LOS_sig[proj] = np.sqrt(
+                        float(
+                            bgs.mathematics.smooth_bootstrap(
+                                snap.stars[compound_mask]["vel"][:, proj][
+                                    :, np.newaxis
+                                ],
+                                sigma=0,
+                                statistic=np.nanvar,
+                            )[1]
+                        )
+                    )
+                clusters[j].LOS_properties["rhalf"] = _rhalf
+                clusters[j].LOS_properties["vel_disp"] = _LOS_sig
             except AssertionError as err:
                 SL.exception(err)
                 continue
@@ -170,36 +186,15 @@ def data_grabber():
     """
     for i, df in enumerate(data_files):
         clusters = bgs.utils.load_data(df)["data"]
-        diff_ids = list(set(clusters[0].ids).difference(set(clusters[1].ids)))
+        try:
+            diff_ids = list(set(clusters[0].ids).difference(set(clusters[1].ids)))
+        except TypeError:
+            SL.warning(f"No cluster data in {df}, skipping")
+            continue
         SL.debug(
             f"{len(diff_ids)/len(clusters[0].ids):.3f} of particles are different between apo and peri centres"
         )
         yield RecoilClusterSeries(*clusters)
-
-
-def load_obs_cluster_data():
-    """
-    Load the mass data calculated from perfect_observability.py
-
-    Yields
-    ------
-    : tuple
-        kick velocity and apocentre mass
-    """
-    dat_files = bgs.utils.get_files_in_dir(
-        os.path.join(figure_config.reduced_data_dir, "perfect_obs"),
-        ".pickle",
-    )
-    for f in dat_files:
-        vk = float(os.path.splitext(os.path.basename(f))[0].replace("perf_obs_", ""))
-        if vk > args.maxvel:
-            continue
-        cluster = bgs.utils.load_data(f)["cluster_props"]
-        m = cluster[-1]["cluster_mass"]
-        apo = cluster[-1]["r_centres_cluster"][0]
-        if m is None:
-            m = np.nan
-        yield vk, m, apo
 
 
 grab_data = data_grabber()
@@ -241,15 +236,6 @@ plt.colorbar(sm, ax=ax, label=r"$r/\mathrm{kpc}$", location="top")
 ax.scatter([], [], marker="o", c="gray", lw=0.5, ec="k", label=r"$\mathrm{apocentre}$")
 ax.scatter([], [], marker="s", c="gray", lw=0.5, ec="k", label=r"$\mathrm{pericentre}$")
 
-# XXX plot the observed mass
-obs_data = load_obs_cluster_data()
-for i, dat in enumerate(obs_data):
-    ax.plot(dat[0], dat[1], c=r_col_mapper(dat[2]), ls="", marker="^", mec="k", mew=0.5)
-
-ax.scatter(
-    [], [], marker="^", c="gray", lw=0.5, ec="k", label=r"$\mathrm{LOS\,integrated}$"
-)
-
 # set dual y axis on second plot
 SL.debug(f"BH mass is {m_bh:.2e} Msol")
 ax.tick_params(axis="y", which="both", right=False)
@@ -258,25 +244,26 @@ axr.set_ylabel(r"$M/M_\bullet$")
 
 # show core dispersion
 xlim = ax.get_xlim()
-ax.axvspan(
-    xlim[0], core_dispersion, zorder=1, hatch="//", fc="none", ec="dimgray", lw=1
-)
+ax.axvspan(xlim[0], core_dispersion, zorder=1, color="gray", alpha=0.6)
 ax.text(
     0.1,
-    0.7,
+    0.4,
     r"$v_\mathrm{kick}< \sigma_{\star,0}$",
     rotation="vertical",
     transform=ax.transAxes,
     va="center",
-    bbox={"fc": "w", "ec": "none"},
+    # bbox={"fc": "w", "ec": "none"},
 )
 
 # show were r_apo > Re
-ax.axvspan(reff_vel, xlim[1], alpha=0.6, zorder=1, fc="gray")
+ax.axvline(reff_vel, c="gray", lw=1, ls=":", zorder=0.2)
 ax.text(
     1.1 * reff_vel,
-    2.5e6,
+    2.8e6,
     r"$r_\mathrm{apo} > R_\mathrm{e}$",
+)
+ax.annotate(
+    "", (700, 3.2e6), (reff_vel, 3.2e6), arrowprops={"arrowstyle": "-|>", "fc": "k"}
 )
 ax.set_xlim(xlim)
 
@@ -334,3 +321,18 @@ ax[0].legend()
 bgs.plotting.savefig(
     os.path.join(bgs.FIGDIR, "kicksurvey-study/intrinsic_properties.png"), fig=fig
 )
+plt.close()
+
+fig, ax = plt.subplots()
+grab_data = data_grabber()
+for d in grab_data:
+    if d.kick_vel > args.maxvel:
+        continue
+    ax.scatter(
+        [d.kick_vel] * len(d), d.ambient_sigma_series, c=r_col_mapper(d.bh_radii)
+    )
+plt.colorbar(sm, ax=ax, label="r/kpc", location="top")
+bgs.plotting.savefig(
+    os.path.join(bgs.FIGDIR, "kicksurvey-study/ambient_sigma.png"), fig=fig
+)
+plt.close()

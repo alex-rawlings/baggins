@@ -1,15 +1,17 @@
-import numpy as np
-import scipy.constants
-import scipy.integrate
+from astropy import cosmology, units
 
 __all__ = [
+    "Hubble_parameter",
+    "comoving_radial_distance",
     "cosmology_pars",
     "angular_diameter_distance",
     "luminosity_distance",
     "distance_modulus",
-    "angular_scale"
+    "angular_scale",
 ]
 
+
+cosmo = cosmology.Planck18
 
 """
 Define the assumed cosmology constants, taken from planck 2018
@@ -21,11 +23,53 @@ omega_L: cosmic density parameter for dark energy
 omega_M: cosmic density parameter for non-relativistic matter
 zeq: redshift of radiation-matter equality
 """
-cosmology_pars = dict(h=0.6736, omega_M=0.3153, zeq=3402)
+cosmology_pars = dict(h=cosmo.h, omega_M=cosmo.Om0, zeq=3402)
 cosmology_pars["omega_L"] = 1 - cosmology_pars["omega_M"]
 
 
-def get_a0r(z, cosmo_p=cosmology_pars):
+def _output_unit_formatter(q, u):
+    """
+    Helper to convert correct output units
+
+    Parameters
+    ----------
+    q : astropy.units.Quantity
+        quantity to convert
+    u : str
+        unit to conver to
+
+    Returns
+    -------
+    q : astropy.units.Quantity
+        quantity
+    """
+    if u is None:
+        return q
+    else:
+        return q.to(units.Unit(u))
+
+
+def Hubble_parameter(z, unit="1/Gyr"):
+    """
+    Hubble parameter as a function of redshift
+
+    Parameters
+    ----------
+    z : float
+        redshift to evaluate at
+    unit : str, optional
+        unit to convert to, by default "1/Gyr
+
+    Returns
+    -------
+    : astropy.unit.Quantity
+        Hubble parameter
+    """
+    H = cosmo.H(z=z)
+    return _output_unit_formatter(H, unit)
+
+
+def comoving_radial_distance(z, unit="kpc"):
     """
     Determine the value a_0*r from MBW eq. 3.106, for use in cosmological
     distance calculations. a0 is the scale factor at the present day, which
@@ -35,27 +79,19 @@ def get_a0r(z, cosmo_p=cosmology_pars):
     ----------
     z : float
         redshift
-    cosmo_p : dict, optional
-        cosmological parameters, by default cosmology
+    unit : str, optional
+        unit to convert to, by default "kpc"
 
     Returns
     -------
-    : float
-        a0*r [kpc]
-
-    Raises
-    ------
-    AssertionError
-        redshift larger than redshift of matter radiation equality
+    : astropy.unit.Quantity
+        comoving radial distance
     """
-    assert z < cosmo_p["zeq"]
-    inv_Ez = lambda z1: 1 / np.sqrt(cosmo_p["omega_L"] + cosmo_p["omega_M"] * (1 + z1) ** 3)
-    # want the answer in kpc
-    # c [m/s] / (km/s / Mpc) = c/1e3 [km/s] / (km/s / (kpc*1e3)) = kpc
-    return scipy.integrate.quad(inv_Ez, 0, z)[0] * scipy.constants.c / (100 * cosmo_p["h"])
+    d = cosmo.comoving_distance(z=z)
+    return _output_unit_formatter(d, unit)
 
 
-def angular_diameter_distance(z, cosmo_p=cosmology_pars):
+def angular_diameter_distance(z, unit="kpc"):
     """
     Determine the angular diameter distance for a flat universe
 
@@ -63,18 +99,19 @@ def angular_diameter_distance(z, cosmo_p=cosmology_pars):
     ----------
     z : float
         redshift
-    cosmo_p : dict, optional
-        cosmological parameters, by default cosmology_pars
+    unit : str, optional
+        unit to convert to, by default "kpc"
 
     Returns
     -------
-    : float
-        angular diameter distance [kpc]
+    : astropy.unit.Quantity
+        angular diameter distance
     """
-    return get_a0r(z, cosmo_p) / (1 + z)
+    d = cosmo.angular_diameter_distance(z=z)
+    return _output_unit_formatter(d, unit)
 
 
-def luminosity_distance(z, cosmo_p=cosmology_pars):
+def luminosity_distance(z, unit="kpc"):
     """
     Determine the luminosity distance for a flat universe
 
@@ -82,18 +119,19 @@ def luminosity_distance(z, cosmo_p=cosmology_pars):
     ----------
     z : float
         redshift
-    cosmo_p : dict, optional
-        cosmological parameters, by default cosmology_pars
+    unit : str, optional
+        unit to convert to, by default "kpc"
 
     Returns
     -------
-    : float
-        luminosity distance [kpc]
+    : astropy.unit.Quantity
+        luminosity distance
     """
-    return get_a0r(z, cosmo_p) * (1 + z)
+    d = cosmo.luminosity_distance(z=z)
+    return _output_unit_formatter(d, unit)
 
 
-def distance_modulus(z, cosmo_p=cosmology_pars):
+def distance_modulus(z, unit=None):
     """
     Determine the distance modulus, Eq 3.6 of Carroll & Ostlie 2017
 
@@ -101,19 +139,19 @@ def distance_modulus(z, cosmo_p=cosmology_pars):
     ----------
     z : float
         redshift
-    cosmo_p : dict, optional
-        cosmological parameters, by default cosmology_pars
+    unit : str, optional
+        unit to convert to, by default None
 
     Returns
     -------
-    : float
-        distance modulus [mag]
+    : astropy.unit.Quantity
+        distance modulus
     """
-    # divide by 1e-2 as this is 10pc in kpc
-    return 5 * np.log10(luminosity_distance(z=z, cosmo_p=cosmo_p) / 1e-2)
+    d = cosmo.distmod(z=z)
+    return _output_unit_formatter(d, unit)
 
 
-def angular_scale(z, cosmo_p=cosmology_pars):
+def angular_scale(z, unit="kpc/arcsec"):
     """
     Determine angular scale
 
@@ -121,12 +159,13 @@ def angular_scale(z, cosmo_p=cosmology_pars):
     ----------
     z : float
         redshift
-    cosmo_p : dict, optional
-        cosmological parameters, by default cosmology_pars
+    unit : str, optional
+        unit to convert to, by default "kpc/arcsec"
 
     Returns
     -------
-    : float
-        angular scale [phys. kpc / arcsec]
+    : astropy.unit.Quantity
+        physical angular scale
     """
-    return angular_diameter_distance(z=z, cosmo_p=cosmo_p) * np.pi / (180 * 3600)
+    s = 1 / cosmo.arcsec_per_kpc_proper(z=z)
+    return _output_unit_formatter(s, unit)
