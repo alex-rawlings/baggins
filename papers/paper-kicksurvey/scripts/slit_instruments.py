@@ -66,7 +66,7 @@ if args.extract:
     bgs.utils.save_data(ifu_data, ifu_data_file, exist_ok=True)
 ifu_data = bgs.utils.load_data(ifu_data_file)
 
-fig, ax = plt.subplots(3, 3)  # , sharex="row", sharey="row")
+fig, ax = plt.subplots(3, 3)
 for i in range(2):
     ax[0, i + 1].sharex(ax[0, 0])
     ax[0, i + 1].sharey(ax[0, 0])
@@ -98,25 +98,27 @@ ax[0, 0].set_ylabel(r"$\sigma/\mathrm{km\,s}^{-1}$")
 counter = 0
 sbw = [0.1, 0.2, 0.25, 0.2, 0.3, 0.35]
 for axi, (k, v) in zip(ax[1:, :], ifu_data.items()):
-    for axii, vv in zip(axi, v):
+    for axii, vv, z in zip(axi, v, redshifts):
         voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(vv)
         voronoi.plot_kinematic_maps(
             ax=axii,
             moments="2",
             cbar="inset",
             clims={"sigma": [180, 220]},
-            cbar_kwargs={"ticks": [190, 210]},
+            cbar_kwargs={"ticks": [190, 210], "ha": "left"},
         )
         axii.set_xticks([])
         axii.set_yticks([])
+        _text = axii.text(0.75, 0.9, f"$z={z:.1f}$", transform=axii.transAxes)
+        _text.set_bbox({"fc": "w", "alpha": 0.4, "ec": "none"})
         bgs.plotting.draw_sizebar(
             ax=axii,
             length=2,
             units="kpc",
             size_vertical=sbw[counter],
             remove_ticks=False,
+            location="lower left",
         )
-        axii.set_facecolor("lightgray")
         counter += 1
     if "JWST" in k:
         axi[0].set_ylabel(r"$\mathrm{JWST}$")
