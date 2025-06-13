@@ -797,6 +797,7 @@ class _StanModel(ABC):
         levels=None,
         combine_dims=None,
         backend_kwargs=None,
+        divergences=True,
     ):
         """
         Base method to create parameter corner plots. This method should not be
@@ -817,7 +818,8 @@ class _StanModel(ABC):
         backend_kwargs : dict, optional
             keyword arguments to be passed to pyplot.subplots() as per arviz
             docs, by default None
-
+        divergences : bool, optional
+            plot divergences, by default True
 
         Returns
         -------
@@ -831,7 +833,7 @@ class _StanModel(ABC):
         # show divergences on plots where no dimension combination has
         # occurred: combining dimensions changes the length of boolean mask
         # "diverging_mask" in arviz --> index mismatch error
-        divergences = True if combine_dims is None else False
+        divergences = divergences if combine_dims is None else False
         if "prior" in self._fit_for_az.groups():
             group = "prior"
             divergences = False

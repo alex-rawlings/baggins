@@ -207,7 +207,6 @@ TSWLatexianTemp*
 code/misc/stats/*
 !code/misc/stats/**/*.py
 !code/misc/stats/**/*.stan
-#!code/analysis_scripts/hierarchical_models/stan_reports/*.out
 code/analysis_scripts/hierarchical_models/stan/*/*
 !code/analysis_scripts/hierarchical_models/stan/*/*.stan
 code/analysis_scripts/gaussian_processes/stan/*
@@ -224,6 +223,8 @@ baggins/stan/gaussian-process/*
 !baggins/stan/gaussian-process/*.py
 baggins/stan/autoregression/*
 !baggins/stan/autoregression/*.stan
+baggins/stan/dehnen/*
+!baggins/stan/dehnen/*.stan
 
 # code logging
 baggins/logs

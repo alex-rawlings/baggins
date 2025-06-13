@@ -164,7 +164,7 @@ class HARMONI_BALANCED(BasicInstrument):
 class HARMONI_SPATIAL(BasicInstrument):
     def __init__(self, z=None):
         """
-        HARMONI optimised for sensitivity. Parameters taken from:
+        HARMONI optimised for spatial. Parameters taken from:
         https://elt.eso.org/instrument/HARMONI/
         """
         super().__init__(fov=0.61, sampling=4e-3, res=20e-3, z=z)

@@ -18,17 +18,35 @@ class Trajectory_Langrangian:
         bh.t /= bgs.general.units.Myr
         bh.x -= bh.x[0, :]
         # TODO return appropriate Lagrangian data
-        lang_data = np.loadtxt(lf, skiprows=1, dtype=float)
-        # need the Gadget time conversion factor
-        GADGET_FACTOR = 0.978 * 1e3
-        return bh, lambda t: np.interp(
-            t, lang_data[:, 0] * GADGET_FACTOR, lang_data[:, 4]
-        )
+        if lf is None:
+            ldat = lambda x: 0
+        else:
+            lang_data = np.loadtxt(lf, skiprows=1, dtype=float)
+            # need the Gadget time conversion factor
+            GADGET_FACTOR = 0.978 * 1e3
+            ldat = lambda t: np.interp(
+                t, lang_data[:, 0] * GADGET_FACTOR, lang_data[:, 4]
+            )
+        return bh, ldat
 
     def _init_lists(self):
         self.xdata, self.ydata = [[], []], [[], []]
 
-    def __init__(self, kf, lf, maxN=None, step=100):
+    def __init__(self, kf, lf=None, maxN=None, step=100):
+        """
+        Plotting class for animation of recoil kick
+
+        Parameters
+        ----------
+        kf : str
+            relevant ketju_bhs.hdf5 file
+        lf : str, optional
+            corresponding lagrangian file
+        maxN : int, optional
+            max number of points to animate, by default None
+        step : int, optional
+            plot every nth point, by default 100
+        """
         self.step = int(step)
         self.bh, self.lang = self._data_init(kf, lf)
         if maxN is None:
@@ -39,7 +57,13 @@ class Trajectory_Langrangian:
         self._rb0 = 0.58
 
         # set up the figure
-        self.fig, self.ax = plt.subplots(1, 2, figsize=(5, 3))
+        self.has_lf = False
+        if lf is None:
+            self.fig, ax = plt.subplots(1, 1, figsize=(3, 3))
+            self.ax = np.array([ax])
+        else:
+            self.fig, self.ax = plt.subplots(1, 2, figsize=(5, 3))
+            self.has_lf = True
         self.ax[0].set_facecolor("#303030")
         self.ax[0].set_aspect("equal")
         self.ax[0].set_xlim(-22, 22)
@@ -52,10 +76,11 @@ class Trajectory_Langrangian:
             ax=self.ax[0], units="kpc", color="w", fmt=".0f", location="lower left"
         )
         self.sizebar = bgs.plotting.draw_sizebar(length=5, **self._sizebar_kw)
-        self.ax[1].set_xlim(0, 1.01 * self.bh.t[self.maxN])
-        self.ax[1].set_ylim(1, 2)
-        self.ax[1].set_xlabel(r"$t/\mathrm{Myr}$")
-        self.ax[1].set_ylabel(r"$r(M_\star=M_\bullet)/\mathrm{kpc}$")
+        if self.has_lf:
+            self.ax[1].set_xlim(0, 1.01 * self.bh.t[self.maxN])
+            self.ax[1].set_ylim(1, 2)
+            self.ax[1].set_xlabel(r"$t/\mathrm{Myr}$")
+            self.ax[1].set_ylabel(r"$r(M_\star=M_\bullet)/\mathrm{kpc}$")
 
         self.frames = np.arange(0, self.maxN + 1, self.step)
         self._init_lists()
@@ -72,7 +97,10 @@ class Trajectory_Langrangian:
             mew=0.5,
             lw=2,
         )
-        (self.line2,) = self.ax[1].plot([], [], lw=2)
+        if self.has_lf:
+            (self.line2,) = self.ax[1].plot([], [], lw=2)
+        else:
+            self.line2 = None
 
         # add circle to show binary core radius
         core_circle = Circle((0, 0), self._rb0, ec="w", ls=":", lw=1, fill=None)
@@ -134,7 +162,8 @@ class Trajectory_Langrangian:
             self.xdata[1].append(self.bh.t[i - self._zoom_count])
             self.ydata[1].append(self.lang(self.xdata[1][-1]))
             self.line1.set_data(self.xdata[0], self.ydata[0])
-            self.line2.set_data(self.xdata[1], self.ydata[1])
+            if self.has_lf:
+                self.line2.set_data(self.xdata[1], self.ydata[1])
             return self.line1, self.line2
 
 
@@ -142,7 +171,7 @@ if __name__ == "__main__":
     ketju_file = bgs.utils.get_ketjubhs_in_dir(
         "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick/kick-vel-0780"
     )[0]
-    lagrangian_file = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/kick-vel-0780.txt"
+    lagrangian_file = None  # "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/kick-vel-0780.txt"
 
     # start timer
     tstart = datetime.now()
@@ -152,6 +181,10 @@ if __name__ == "__main__":
     ani = animation.FuncAnimation(
         TL.fig, TL, frames=TL.frames, repeat=True, interval=20, repeat_delay=500
     )
-    ani.save(os.path.join(bgs.DATADIR, "visualisations/traj_lang.gif"))
+    if lagrangian_file is None:
+        suffix = "no_lang"
+    else:
+        suffix = "lang"
+    ani.save(os.path.join(bgs.DATADIR, f"visualisations/traj_{suffix}.gif"))
 
     print(f"Animation ran in {datetime.now() - tstart}")
