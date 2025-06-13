@@ -1,6 +1,11 @@
 import numpy as np
 
-__all__ = ["get_histogram_bin_centres", "assert_all_unique", "get_pixel_value_in_image"]
+__all__ = [
+    "get_histogram_bin_centres",
+    "equal_count_bins",
+    "assert_all_unique",
+    "get_pixel_value_in_image",
+]
 
 
 def get_histogram_bin_centres(bins):
@@ -18,6 +23,25 @@ def get_histogram_bin_centres(bins):
         bin centres, has len = len(bins)-1
     """
     return (bins[:-1] + bins[1:]) / 2.0
+
+
+def equal_count_bins(x, N_per_bin):
+    """
+    Create histogram bins with equal counts in each bin
+
+    Parameters
+    ----------
+    x : array-like
+        values to bin
+    N_per_bin : int
+        number of counts per bin
+
+    Returns
+    -------
+    : array-like
+        bin edges
+    """
+    return np.quantile(x, np.linspace(0, 1, int(len(x) / N_per_bin) + 1))
 
 
 def assert_all_unique(a, axis=None):

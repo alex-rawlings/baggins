@@ -451,13 +451,17 @@ class VoronoiKinematics:
                 norm=norm,
             )
             label = cbar_kwargs.pop("label", label)
+            if "horizontal_alignment" in cbar_kwargs:
+                cbar_kwargs["ha"] = cbar_kwargs["horizontal_alignment"]
+            ha = cbar_kwargs.pop("ha", "right")
             if cbar == "adj":
                 divider = make_axes_locatable(axi)
                 cax = divider.append_axes("right", size="5%", pad=0.1)
                 cb = plt.colorbar(p1, cax=cax, **cbar_kwargs)
                 cb.set_label(label=label, size=fontsize)
             elif cbar == "inset":
-                cax = axi.inset_axes([0.4, 0.94, 0.55, 0.04])
+                alignment = 0.4 if ha == "right" else 0.05
+                cax = axi.inset_axes([alignment, 0.94, 0.55, 0.04])
                 cax.set_xticks([])
                 cax.set_yticks([])
                 cax.patch.set_alpha(0)
@@ -623,7 +627,13 @@ class VoronoiKinematics:
             except KeyError:
                 C._stats[k] = None
         C._extent = d["extent"]
-        C.vz = d["vz"]
+        try:
+            C.vz = d["vz"]
+        except KeyError:
+            _logger.warning(
+                "File was created before pseudo-particle velocity information was saved: only LOSVD information accessible."
+            )
+            C.vz = None
         return C
 
 

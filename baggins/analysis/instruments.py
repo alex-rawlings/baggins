@@ -5,7 +5,7 @@ from astropy.units import Unit
 from pygad import ExprMask
 from baggins.env_config import _cmlogger
 from baggins.cosmology import angular_scale
-from baggins.mathematics import get_histogram_bin_centres
+from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
 
 __all__ = [
     "MUSE_NFM",
@@ -49,7 +49,7 @@ class BasicInstrument(ABC):
             res = 1e-6
         self.angular_resolution = res * Unit("arcsec")
         self._ang_scale = None
-        self.max_extent = 40.0
+        self.max_extent = 40.0 * Unit("kpc")
         if z is not None:
             self.redshift = z
 
@@ -75,7 +75,11 @@ class BasicInstrument(ABC):
 
     @max_extent.setter
     def max_extent(self, R):
-        self._max_extent = R * Unit("kpc")
+        self._max_extent = R
+        try:
+            self._max_extent.value
+        except AttributeError:
+            self._max_extent = self._max_extent * Unit("kpc")
 
     @property
     def ang_scale(self):
@@ -160,7 +164,7 @@ class HARMONI_BALANCED(BasicInstrument):
 class HARMONI_SPATIAL(BasicInstrument):
     def __init__(self, z=None):
         """
-        HARMONI optimised for sensitivity. Parameters taken from:
+        HARMONI optimised for spatial. Parameters taken from:
         https://elt.eso.org/instrument/HARMONI/
         """
         super().__init__(fov=0.61, sampling=4e-3, res=20e-3, z=z)
@@ -313,7 +317,7 @@ class LongSlitInstrument(BasicInstrument):
         x = x[pseudo_mask]
         V = V[pseudo_mask]
 
-        bins = np.quantile(x, np.linspace(0, 1, int(len(x) / N_per_bin) + 1))
+        bins = equal_count_bins(x, N_per_bin)
         _logger.debug(f"Starting with {len(bins)} bins for LSS")
         # if bin difference is less than instrument sampling, join bins
         if np.any(np.diff(bins) < self.pixel_width.value):

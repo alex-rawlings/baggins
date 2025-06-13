@@ -39,7 +39,9 @@ def Dehnen(r, a, g, M):
 
 
 # TODO should fitting routines be incorporated into a more general method?
-def fit_Dehnen_profile(radii, density, total_mass, bounds=([1, 0], [1000, 3])):
+def fit_Dehnen_profile(
+    radii, density, total_mass, bounds=([1, 0], [1000, 3]), **kwargs
+):
     """
     Fit a Dehnen profile to some data using the scipy.optimize library.
 
@@ -58,7 +60,11 @@ def fit_Dehnen_profile(radii, density, total_mass, bounds=([1, 0], [1000, 3])):
     """
     # fit the curve
     param_best, param_cov = scipy.optimize.curve_fit(
-        lambda r, a, g: Dehnen(r, a, g, total_mass), radii, density, bounds=bounds
+        lambda r, a, g: Dehnen(r, a, g, total_mass),
+        radii,
+        density,
+        bounds=bounds,
+        **kwargs,
     )
     return param_best
 
