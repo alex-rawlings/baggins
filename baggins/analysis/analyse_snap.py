@@ -1213,9 +1213,7 @@ def count_new_hypervelocity_particles(snap, prev=[], vesc=None, family="stars"):
     return len(new_hyper_ids), prev
 
 
-def velocity_anisotropy(
-    snap, r_edges, xcom=[0, 0, 0], vcom=[0, 0, 0], qcut=1.0, eps=1e-16
-):
+def velocity_anisotropy(snap, r_edges, xcom=None, vcom=None, qcut=1.0, eps=1e-16):
     """
     Determine the beta profile for a snapshot.
 
@@ -1226,9 +1224,9 @@ def velocity_anisotropy(
     r_edges : array-like
         edges of radial bins for beta profile
     xcom : list or array-like, optional
-        positional centre of mass, by default [0,0,0]
+        positional centre of mass, by default None
     vcom : list or array-like, optional
-        velocity centre of mass, by default [0,0,0]
+        velocity centre of mass, by default None
     qcut : float, optional
         filter out particles above qcut quantile in velocity magnitude, by
         default 1.0
@@ -1242,12 +1240,10 @@ def velocity_anisotropy(
     np.ndarray
         number of particles per radial bin
     """
-    if isinstance(xcom, list):
-        xcom = np.array(xcom)
-    if isinstance(vcom, list):
-        vcom = np.array(vcom)
-    pygad.Translation(-xcom).apply(snap)
-    pygad.Boost(-vcom).apply(snap)
+    if xcom is not None:
+        pygad.Translation(-xcom).apply(snap)
+    if vcom is not None:
+        pygad.Boost(-vcom).apply(snap)
     r = pygad.utils.geo.dist(snap["pos"])
     v_sphere = spherical_components(snap["pos"], snap["vel"])
     if qcut < 1:

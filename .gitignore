@@ -225,6 +225,8 @@ baggins/stan/autoregression/*
 !baggins/stan/autoregression/*.stan
 baggins/stan/dehnen/*
 !baggins/stan/dehnen/*.stan
+baggins/stan/terzic-density/*
+!baggins/stan/terzic-density/*.stan
 
 # code logging
 baggins/logs

@@ -932,9 +932,6 @@ class _StanModel(ABC):
         """
         # XXX: LaTeX labels will not render if the label is longer than the
         # plotting axis
-        if figsize is None:
-            max_dim = max(rcParams["figure.figsize"])
-            figsize = (max_dim, max_dim)
         try:
             assert len(var_names) > 1
         except AssertionError:
@@ -1023,8 +1020,6 @@ class _StanModel(ABC):
             y axis labels, by default None
         """
         num_vars = len(var_names)
-        if figsize is None:
-            figsize = (6, num_vars)
         if levels is None:
             levels = self._default_hdi_levels
         levels = [lev / 100 for lev in levels]
