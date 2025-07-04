@@ -29,3 +29,4 @@ from baggins.analysis.bayesian_classes.VkickApocentreGP import VkickApocentreGP 
 from baggins.analysis.bayesian_classes.MergerAR import MergerAutoRegression  # noqa
 from baggins.analysis.bayesian_classes.Dehnen import DehnenModel  # noqa
 from baggins.analysis.bayesian_classes.TerzicModels import TerzicModelSimple  # noqa
+from baggins.analysis.bayesian_classes.ABGDensityModels import ABGDensityModelSimple  # noqa

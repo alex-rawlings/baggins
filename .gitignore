@@ -227,6 +227,8 @@ baggins/stan/dehnen/*
 !baggins/stan/dehnen/*.stan
 baggins/stan/terzic-density/*
 !baggins/stan/terzic-density/*.stan
+baggins/stan/abg-density/*
+!baggins/stan/abg-density/*.stan
 
 # code logging
 baggins/logs

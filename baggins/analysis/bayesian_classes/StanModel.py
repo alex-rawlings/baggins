@@ -949,7 +949,7 @@ class _StanModel(ABC):
             ]
         # limit to 4 variables per plot: figures will be saved with an
         # additional index in the name, e.g. 0-0.png
-        num_var_per_plot = 4
+        num_var_per_plot = 3 if len(var_names) == 5 else 4
         for i in range(0, len(var_names), num_var_per_plot):
             # plot trace
             ax = az.plot_trace(
