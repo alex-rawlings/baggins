@@ -39,7 +39,7 @@ clims_m = bgs.analysis.unify_IFU_colour_scheme(vor_gen_m)
 vor_gen = vor_generator()
 cbar_kwargs = {"labelsize":6}
 
-for i, vg in enumerate(vor_gen):
+for i, (vg, t) in enumerate(zip(vor_gen, chain(data_major["0540"]["t"], data_minor["0000"]["t"]))):
     voronoi = bgs.analysis.VoronoiKinematics.load_from_dict(vg)
     r = (i // 3) * 2
     c = i % 3
@@ -63,6 +63,9 @@ for i, vg in enumerate(vor_gen):
         ax[rr, c].set_xticks([])
         ax[rr, c].set_yticks([])
         bgs.plotting.draw_sizebar(ax=ax[rr,c], length=10, units="kpc", size_vertical=0.5)
+        ax[rr, c].text(
+            0.05, 0.9, f"${t:.3f}\,\mathrm{{Gyr}}$", transform=ax[rr, c].transAxes
+        )
 
 for i, t in enumerate(["Major", "Major", "Minor", "Minor"]):
     ax[i, 0].text(0.1, 0.1, t, transform=ax[i, 0].transAxes)
