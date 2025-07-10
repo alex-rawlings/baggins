@@ -157,6 +157,11 @@ def data_grabber(minor=False):
     """
     Generator to get the data to plot
 
+    Parameters
+    ----------
+    minor : bool, optional
+        grab minor merger data, by default False
+
     Yields
     ------
     : RecoilClusterSeries
@@ -179,36 +184,36 @@ def data_grabber(minor=False):
         yield RecoilClusterSeries(*clusters)
 
 
-def plot_BRC_point(grabbed_data, needs_label=True, minor=False):
-    marker = "s" if minor else "o"
+def plot_BRC_point(grabbed_data, minor=False):
+    if minor:
+        marker = "s"
+        label = r"$\mathrm{BRC}\;\mathrm{(minor)}$"
+    else:
+        marker = "o"
+        label = r"$\mathrm{BRC}\;\mathrm{(major)}$"
+    plot_kwargs = {"ls": "", "marker": marker, "mew": 0.5, "mec": "k"}
     for d in grabbed_data:
         if d.kick_vel > args.maxvel or d.kick_vel < args.minvel:
             continue
         SL.debug(f"Adding vk={d.kick_vel}")
+        SL.debug(f"3D density: {d.max_density_2D:.2e} Msol/pc^3")
         c = d.apo
         for ax0, ax1 in zip((ax[0], axins0), (ax[1], axins1)):
             ax0.plot(
                 c.intrinsic_properties["bound_mass"],
                 c.effective_radius,
-                marker=marker,
-                ls="",
-                mew="0.5",
-                mec="k",
                 c=vk_cols.get_colour(c.kick_vel),
-                label=r"$\mathrm{BRC}$" if needs_label else "",
+                **plot_kwargs,
             )
             ax1.plot(
                 d.LOS_velocity_dispersion_near_apo,
                 c.effective_radius,
-                marker=marker,
-                ls="",
-                mew="0.5",
-                mec="k",
                 c=vk_cols.get_colour(c.kick_vel),
+                **plot_kwargs,
             )
             if minor:
                 break
-        needs_label = False
+    ax[0].plot([], [], label=label, c="gray", **plot_kwargs)
 
 
 cluster_plot_kwargs = {
@@ -265,7 +270,7 @@ grab_data = data_grabber()
 plot_BRC_point(grab_data)
 if args.minor:
     grab_data_minor = data_grabber(minor=True)
-    plot_BRC_point(grab_data_minor, needs_label=False, minor=True)
+    plot_BRC_point(grab_data_minor, minor=True)
 
 
 # XXX: add observations
