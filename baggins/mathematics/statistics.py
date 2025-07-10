@@ -449,6 +449,22 @@ class EmpiricalCDF:
         idx = np.clip(idx, 0, len(self.x) - 1)
         return self.x[idx]
 
+    def sf(self, x_val):
+        """
+        Evaluate the survival function, 1-CDF
+
+        Parameters
+        ----------
+        x_val : array-like
+            points to evaluate CDF at
+
+        Returns
+        -------
+        : array-like
+            1-CDF values
+        """
+        return 1 - self.cdf(x_val)
+
     def sample(self, size=1, random_state=None):
         """
         Sample the ECDF.
@@ -507,6 +523,7 @@ class EmpiricalCDF:
         ax=None,
         ci_prob=None,
         npoints=100,
+        survival=False,
         n_bootstraps=500,
         ci_kwargs={},
         **kwargs,
@@ -523,6 +540,8 @@ class EmpiricalCDF:
             confidence interval, by default None
         npoints : int, optional
             number of points to evalute ECDF at, by default 100
+        survival : bool, optional
+            plot survival function, by default False
         n_bootstraps : int, optional
             number of bootstrap draws, by default 500
         ci_kwargs : dict, optional
@@ -538,7 +557,10 @@ class EmpiricalCDF:
         if ax is None:
             fig, ax = plt.subplots()
         x = np.linspace(np.nanmin(self.x), np.nanmax(self.x), npoints)
-        (lp,) = ax.plot(x, self.cdf(x), **kwargs)
+        if survival:
+            (lp,) = ax.plot(x, self.sf(x), **kwargs)
+        else:
+            (lp,) = ax.plot(x, self.cdf(x), **kwargs)
         if ci_prob is not None:
             try:
                 assert 0 < ci_prob < 1
@@ -548,7 +570,10 @@ class EmpiricalCDF:
                 )
                 raise
             boots = self.bootstrap_dirichlet(n_bootstraps=n_bootstraps)
-            cdf_vals_bootstrap = np.array([boot.cdf(x) for boot in boots])
+            if survival:
+                cdf_vals_bootstrap = np.array([boot.sf(x) for boot in boots])
+            else:
+                cdf_vals_bootstrap = np.array([boot.cdf(x) for boot in boots])
             ax.fill_between(
                 x,
                 np.nanquantile(cdf_vals_bootstrap, 0.5 - ci_prob / 2, axis=0),

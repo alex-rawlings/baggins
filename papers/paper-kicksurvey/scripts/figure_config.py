@@ -5,6 +5,7 @@ import numpy as np
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 reduced_data_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data"
+reduced_data_dir_minor = "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/minor_mergers"
 figure_dir = os.path.abspath(os.path.join(this_dir, "../figures/"))
 
 

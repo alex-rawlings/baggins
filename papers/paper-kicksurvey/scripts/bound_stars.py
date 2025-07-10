@@ -22,6 +22,9 @@ parser.add_argument(
     "-u", "--upper", help="upper velocity", type=float, dest="maxvel", default=1080
 )
 parser.add_argument(
+    "--minor", action="store_true", help="analysis for minor mergers", dest="minor"
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -36,19 +39,30 @@ SL = bgs.setup_logger("script", args.verbosity)
 
 # XXX: set the data files and constant quantities we'll need
 core_dispersion = 270  # km/s
-core_radius = 0.58  # kpc
 eff_radius = 5.65  # kpc
-# apocentre data
-apo_data_files = bgs.utils.get_files_in_dir(
-    "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/core-paper-data/lagrangian_files/data",
-    ext=".txt",
-)
-# snapshot data
-snapshot_dir = (
-    "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick"
-)
-# main data file
-main_data_dir = os.path.join(figure_config.reduced_data_dir, "bound_stars")
+
+if args.minor:
+    # apocentre data
+    apo_data_files = bgs.utils.get_files_in_dir(
+        os.path.join(figure_config.reduced_data_dir_minor, "lagrangian_files/data"),
+        ext=".txt",
+    )
+    # snapshot data
+    snapshot_dir = "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/minor_merger/children"
+    # main data file
+    main_data_dir = os.path.join(figure_config.reduced_data_dir_minor, "bound_stars")
+else:
+    # apocentre data
+    apo_data_files = bgs.utils.get_files_in_dir(
+        figure_config.data_path("lagrangian_files/data"),
+        ext=".txt",
+    )
+    # snapshot data
+    snapshot_dir = (
+        "/scratch/pjohanss/arawling/collisionless_merger/mergers/core-study/vary_vkick"
+    )
+    # main data file
+    main_data_dir = figure_config.data_path("bound_stars")
 
 if args.extract:
     snap_offset = 3
@@ -164,6 +178,10 @@ if args.extract:
             os.path.join(main_data_dir, f"{file_name_only}-bound.pickle"),
         )
         del clusters
+
+# XXX we don't want to go further for minor merger data
+if args.minor:
+    raise RuntimeError("Stopping! We will not plot minor merger data")
 
 # load the data files
 data_files = bgs.utils.get_files_in_dir(main_data_dir, ".pickle")

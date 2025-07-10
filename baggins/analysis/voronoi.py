@@ -1,11 +1,13 @@
 from tqdm.dask import TqdmCallback
 from tqdm import tqdm
+from copy import deepcopy
 import numpy as np
 import scipy.optimize
 import scipy.ndimage
 import scipy.special
 import scipy.integrate
 from scipy.stats import binned_statistic_2d
+import dask
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from matplotlib import colormaps
@@ -14,7 +16,6 @@ from voronoi_binning import voronoi_binned_image
 from baggins.env_config import _cmlogger
 from baggins.mathematics import get_histogram_bin_centres
 from pygad import UnitArr
-import dask
 
 __all__ = ["VoronoiKinematics", "unify_IFU_colour_scheme"]
 
@@ -450,7 +451,9 @@ class VoronoiKinematics:
                 cmap=cmap,
                 norm=norm,
             )
+            cbar_kwargs = deepcopy(cbar_kwargs)
             label = cbar_kwargs.pop("label", label)
+            labelsize = cbar_kwargs.pop("labelsize", None)
             if "horizontal_alignment" in cbar_kwargs:
                 cbar_kwargs["ha"] = cbar_kwargs["horizontal_alignment"]
             ha = cbar_kwargs.pop("ha", "right")
@@ -459,6 +462,7 @@ class VoronoiKinematics:
                 cax = divider.append_axes("right", size="5%", pad=0.1)
                 cb = plt.colorbar(p1, cax=cax, **cbar_kwargs)
                 cb.set_label(label=label, size=fontsize)
+                cb.ax.tick_params(labelsize=labelsize)
             elif cbar == "inset":
                 alignment = 0.4 if ha == "right" else 0.05
                 cax = axi.inset_axes([alignment, 0.94, 0.55, 0.04])
@@ -467,6 +471,7 @@ class VoronoiKinematics:
                 cax.patch.set_alpha(0)
                 cb = plt.colorbar(p1, cax=cax, orientation="horizontal", **cbar_kwargs)
                 cb.set_label(label=label, size=fontsize)
+                cb.ax.tick_params(labelsize=labelsize)
             else:
                 _logger.debug("No colour bar added")
         return ax
