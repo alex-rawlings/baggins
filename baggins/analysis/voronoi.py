@@ -643,6 +643,19 @@ class VoronoiKinematics:
 
 
 def unify_IFU_colour_scheme(vor_list):
+    """
+    Unify colour limits across multiple VoronoiKinematics instances.
+
+    Parameters
+    ----------
+    vor_list : list, generator
+        iterator that returns a dict representation of VoronoiKinematics
+
+    Returns
+    -------
+    clims : dict
+        colour limit dictionary
+    """
     clims = None
     for v in vor_list:
         voronoi = VoronoiKinematics.load_from_dict(v)
