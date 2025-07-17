@@ -26,6 +26,20 @@ class RecoilCluster:
     def effective_radius(self):
         return np.median(self.LOS_properties["rhalf"]) * 1e3
 
+    @property
+    def density_3D(self):
+        # in Msol / pc^3
+        return self.intrinsic_properties["bound_mass"] / (
+            4 / 3 * np.pi * (1e3 * self.intrinsic_properties["rhalf"]) ** 3
+        )
+
+    @property
+    def density_2D(self):
+        # in Msol / pc^2
+        return self.intrinsic_properties["bound_mass"] / (
+            4 * np.pi * self.effective_radius**2
+        )
+
 
 class RecoilClusterSeries:
     def __init__(self, *clusters):
@@ -123,6 +137,14 @@ class RecoilClusterSeries:
         for c in self.clusters:
             s.append(c.ambient_vel_disp)
         return s
+
+    @property
+    def max_density_3D(self):
+        return max([c.density_3D for c in self.clusters])
+
+    @property
+    def max_density_2D(self):
+        return max([c.density_2D for c in self.clusters])
 
     def __len__(self):
         return len(self.clusters)
