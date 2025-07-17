@@ -20,6 +20,9 @@ parser.add_argument(
     "-u", "--upper", help="upper velocity", type=float, dest="maxvel", default=1080
 )
 parser.add_argument(
+    "--minor", action="store_true", help="analysis for minor mergers", dest="minor"
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -39,7 +42,10 @@ fig.set_figheight(1.2 * fig.get_figheight())
 rng = np.random.default_rng(42)
 vk_cols = figure_config.VkickColourMap()
 data_files = bgs.utils.get_files_in_dir(
-    os.path.join(figure_config.reduced_data_dir, "bound_stars"), ".pickle"
+    figure_config.data_path("bound_stars"), ".pickle"
+)
+data_files_minor = bgs.utils.get_files_in_dir(
+    os.path.join(figure_config.reduced_data_dir_minor, "bound_stars"), ".pickle"
 )
 
 
@@ -147,41 +153,25 @@ def make_cluster_median_and_error(q, xy):
     }
 
 
-def load_cluster_data():
-    dat_files = bgs.utils.get_files_in_dir(
-        "/scratch/pjohanss/arawling/collisionless_merger/mergers/processed_data/kicksurvey-paper-data/perfect_obs/",
-        ".pickle",
-    )
-    for f in dat_files:
-        vk = float(os.path.splitext(os.path.basename(f))[0].replace("perf_obs_", ""))
-        if vk > 1080:
-            continue
-        cluster_mass = []
-        cluster_Re = []
-        cluster_vsig = []
-        cluster = bgs.utils.load_data(f)["cluster_props"]
-        for c in cluster:
-            if c["visible"]:
-                cluster_mass.append(c["cluster_mass"])
-                cluster_Re.append(c["cluster_Re_pc"])
-                if c["cluster_vsig"]:
-                    cluster_vsig.append(c["cluster_vsig"])
-        cluster_mass = np.asarray(cluster_mass)
-        cluster_Re = np.asarray(cluster_Re)
-        cluster_vsig = np.asarray(cluster_vsig)
-        yield cluster_mass, cluster_Re, cluster_vsig, vk_cols.get_colour(vk)
-
-
-def data_grabber():
+def data_grabber(minor=False):
     """
     Generator to get the data to plot
+
+    Parameters
+    ----------
+    minor : bool, optional
+        grab minor merger data, by default False
 
     Yields
     ------
     : RecoilClusterSeries
         plotting data
     """
-    for i, df in enumerate(data_files):
+    if minor:
+        _data_files = data_files_minor
+    else:
+        _data_files = data_files
+    for i, df in enumerate(_data_files):
         clusters = bgs.utils.load_data(df)["data"]
         try:
             diff_ids = list(set(clusters[0].ids).difference(set(clusters[1].ids)))
@@ -194,7 +184,37 @@ def data_grabber():
         yield RecoilClusterSeries(*clusters)
 
 
-grab_data = data_grabber()
+def plot_BRC_point(grabbed_data, minor=False):
+    if minor:
+        marker = "s"
+        label = r"$\mathrm{BRC}\;\mathrm{(minor)}$"
+    else:
+        marker = "o"
+        label = r"$\mathrm{BRC}\;\mathrm{(major)}$"
+    plot_kwargs = {"ls": "", "marker": marker, "mew": 0.5, "mec": "k"}
+    for d in grabbed_data:
+        if d.kick_vel > args.maxvel or d.kick_vel < args.minvel:
+            continue
+        SL.debug(f"Adding vk={d.kick_vel}")
+        SL.debug(f"3D density: {d.max_density_2D:.2e} Msol/pc^3")
+        c = d.apo
+        for ax0, ax1 in zip((ax[0], axins0), (ax[1], axins1)):
+            ax0.plot(
+                c.intrinsic_properties["bound_mass"],
+                c.effective_radius,
+                c=vk_cols.get_colour(c.kick_vel),
+                **plot_kwargs,
+            )
+            ax1.plot(
+                d.LOS_velocity_dispersion_near_apo,
+                c.effective_radius,
+                c=vk_cols.get_colour(c.kick_vel),
+                **plot_kwargs,
+            )
+            if minor:
+                break
+    ax[0].plot([], [], label=label, c="gray", **plot_kwargs)
+
 
 cluster_plot_kwargs = {
     "fmt": "o",
@@ -245,33 +265,13 @@ for axins in (axins0, axins1):
     axins.set_xticks([])
     axins.set_yticks([])
 
-needs_label = True
-for d in grab_data:
-    if d.kick_vel > args.maxvel or d.kick_vel < args.minvel:
-        continue
-    SL.debug(f"Adding vk={d.kick_vel}")
-    c = d.apo
-    for ax0, ax1 in zip((ax[0], axins0), (ax[1], axins1)):
-        ax0.plot(
-            c.intrinsic_properties["bound_mass"],
-            c.effective_radius,
-            marker="o",
-            ls="",
-            mew="0.5",
-            mec="k",
-            c=vk_cols.get_colour(c.kick_vel),
-            label=r"$\mathrm{BRC}$" if needs_label else "",
-        )
-        ax1.plot(
-            d.LOS_velocity_dispersion_near_apo,
-            c.effective_radius,
-            marker="o",
-            ls="",
-            mew="0.5",
-            mec="k",
-            c=vk_cols.get_colour(c.kick_vel),
-        )
-    needs_label = False
+# plot BRC points
+grab_data = data_grabber()
+plot_BRC_point(grab_data)
+if args.minor:
+    grab_data_minor = data_grabber(minor=True)
+    plot_BRC_point(grab_data_minor, minor=True)
+
 
 # XXX: add observations
 misgeld09.scatter(

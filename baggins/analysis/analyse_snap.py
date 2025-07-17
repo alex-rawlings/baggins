@@ -556,7 +556,7 @@ def influence_radius(snap, combined=False):
     Returns
     -------
     : dict
-        keys correspond to BH ID (or the more massive BH ID if binary=True),
+        keys correspond to BH ID (or the more massive BH ID if combined=True),
         and values to the influence radius
     """
     return enclosed_mass_radius(snap, combined, mass_frac=2)
