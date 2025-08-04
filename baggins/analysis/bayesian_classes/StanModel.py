@@ -857,7 +857,7 @@ class _StanModel(ABC):
                     figsize=figsize,
                     marginals=True,
                     kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0.5},
+                        "contour_kwargs": {"linewidths": 0, "levels": 0},
                         "hdi_probs": levels,
                         "contourf_kwargs": {"cmap": "Blues"},
                     },
@@ -880,7 +880,7 @@ class _StanModel(ABC):
                     figsize=figsize,
                     marginals=True,
                     kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0.5},
+                        "contour_kwargs": {"linewidths": 0, "levels": 0},
                         "contourf_kwargs": {"cmap": "Blues"},
                     },
                     point_estimate_marker_kwargs={"marker": ""},

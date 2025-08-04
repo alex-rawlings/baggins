@@ -25,8 +25,8 @@ transformed data {
 parameters {
     real<lower=0> rS;
     real<lower=0> a;
-    real<lower=0> b;
-    real<lower=0> g;
+    real b;
+    real g;
     real<lower=-5, upper=15> log10rhoS;
     real<lower=0> err;
 }
@@ -34,12 +34,12 @@ parameters {
 
 transformed parameters {
     array[6] real lprior;
-    lprior[1] = rayleigh_lpdf(rS | 1);
-    lprior[2] = normal_lpdf(a | 0, 8);
-    lprior[3] = normal_lpdf(b | 0, 8);
-    lprior[4] = normal_lpdf(g | 0, 8);
+    lprior[1] = rayleigh_lpdf(rS | 2);
+    lprior[2] = normal_lpdf(a | 0, 4);
+    lprior[3] = normal_lpdf(b | 0, 4);
+    lprior[4] = normal_lpdf(g | 0, 4);
     lprior[5] = normal_lpdf(log10rhoS | 3, 2);
-    lprior[6] = normal_lpdf(err | 0, 1);
+    lprior[6] = normal_lpdf(err | 0, 3);
 }
 
 

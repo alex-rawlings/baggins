@@ -19,11 +19,11 @@ transformed data {
 generated quantities {
     // latent quantities
     real rS = trunc_rayleigh_rng(0.5, 0, 2);
-    real a = lower_trunc_normal_rng(0, 4, 0);
-    real b = lower_trunc_normal_rng(0, 4, 0);
-    real g = lower_trunc_normal_rng(0, 4, 0);
-    real log10rhoS = trunc_normal_rng(3., 1., -5, 15);
-    real err = lower_trunc_normal_rng(0., 1., 0);
+    real a = lower_trunc_normal_rng(0, 5, 0);
+    real b = normal_rng(0, 5);
+    real g = normal_rng(0, 5);
+    real log10rhoS = trunc_normal_rng(3., 2., -5, 15);
+    real err = lower_trunc_normal_rng(0., 2., 0);
 
     // generate data replication
     vector[N] log10_rho_prior;

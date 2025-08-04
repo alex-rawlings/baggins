@@ -24,7 +24,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         self._folded_qtys = ["rho"]
         self._folded_qtys_labs = [r"$\rho(r)$/(M$_\odot$/kpc$^3$))"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = ["rS", "a", "b", "g", "log10rhoS"]
+        self._latent_qtys = ["rS", "a", "b", "g", "log10rhoS", "err"]
         self._latent_qtys_posterior = [f"{v}_posterior" for v in self.latent_qtys]
         self._latent_qtys_labs = [
             r"$r_\mathrm{S}/\mathrm{kpc}$",
@@ -32,6 +32,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             r"$\beta$",
             r"$\gamma$",
             r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+            r"$\tau$",
         ]
         self._labeller_latent = MapLabeller(
             dict(zip(self._latent_qtys, self._latent_qtys_labs))
