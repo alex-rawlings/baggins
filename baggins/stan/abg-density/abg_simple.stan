@@ -23,23 +23,31 @@ transformed data {
 
 
 parameters {
-    real<lower=0> rS;
-    real<lower=0> a;
-    real b;
-    real g;
-    real<lower=-5, upper=15> log10rhoS;
-    real<lower=0> err;
+    // non-centered parameterisation
+    real<lower=0> rS_raw;
+    real<lower=0> a_raw;
+    real b_raw;
+    real g_raw;
+    real<lower=-5, upper=15> log10rhoS_raw;
+    real<lower=0> err_raw;
 }
 
 
 transformed parameters {
     array[6] real lprior;
-    lprior[1] = rayleigh_lpdf(rS | 2);
-    lprior[2] = normal_lpdf(a | 0, 4);
-    lprior[3] = normal_lpdf(b | 0, 4);
-    lprior[4] = normal_lpdf(g | 0, 4);
-    lprior[5] = normal_lpdf(log10rhoS | 3, 2);
-    lprior[6] = normal_lpdf(err | 0, 3);
+    lprior[1] = normal_lpdf(rS_raw | 0, 1);
+    lprior[2] = normal_lpdf(a_raw | 0, 1);
+    lprior[3] = normal_lpdf(b_raw | 0, 1);
+    lprior[4] = normal_lpdf(g_raw | 0, 1);
+    lprior[5] = normal_lpdf(log10rhoS_raw | 0, 1);
+    lprior[6] = normal_lpdf(err_raw | 0, 1);
+
+    real rS = rS_raw * 4;
+    real a = a_raw * 4;
+    real b = b_raw * 4;
+    real g = g_raw * 4;
+    real log10rhoS = 3 + log10rhoS_raw * 2;
+    real err = err_raw * 3;
 }
 
 

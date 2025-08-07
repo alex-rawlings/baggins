@@ -1721,6 +1721,7 @@ class HierarchicalModel_2D(_StanModel):
             levels=levels,
             ax=ax,
             collapsed=collapsed,
+            smooth=smooth,
             show_legend=show_legend,
         )
         fig = ax.get_figure()
@@ -1755,6 +1756,53 @@ class HierarchicalModel_2D(_StanModel):
         fig = ax.get_figure()
         if save:
             savefig(self._make_fig_name(self.figname_base, f"OOS_{ymodel}"), fig=fig)
+
+    def posterior_OOS_specific_hdi_plot(
+        self, xmodel, ymodel, hdi=50, ax=None, **kwargs
+    ):
+        """
+        Plot a specific HDI interval for an out-of-sample quantity, most
+        frequently used to compare to different models.
+
+        Parameters
+        ----------
+        xmodel : str
+            dictionary key for modelled independent variable
+        ymodel : str
+            dictionary key for modelled dependent variable
+        hdi : float, optional
+            HDI intervals to plot, by default 50
+        ax : matplotlib.axes.Axes, optional
+            axis to plot to, by default None (creates new instance)
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            axis to plotted to
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+        kwargs.setdefault("smooth", False)
+        kwargs.setdefault("hdi_kwargs", {"skipna": True})
+        plot_kwargs = kwargs.pop("plot_kwargs", {})
+        plot_kwargs.setdefault("c", "")
+        fill_kwargs = kwargs.pop("fill_kwargs", {})
+        fill_kwargs.setdefault("alpha", 0.8)
+        fill_kwargs.setdefault("edgecolor", None)
+        fill_kwargs["label"] = kwargs.pop("label", None)
+        fill_kwargs.setdefault(
+            "color", plot_kwargs["c"] if plot_kwargs["c"] is not None else None
+        )
+        az.plot_hdi(
+            self.stan_data[xmodel],
+            self.sample_generated_quantity(ymodel, state="OOS"),
+            hdi_prob=hdi / 100,
+            ax=ax,
+            plot_kwargs=plot_kwargs,
+            fill_kwargs=fill_kwargs,
+            **kwargs,
+        )
+        return ax
 
 
 class FactorModel_2D(_StanModel):

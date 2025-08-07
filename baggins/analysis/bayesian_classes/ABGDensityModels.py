@@ -24,8 +24,17 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         self._folded_qtys = ["rho"]
         self._folded_qtys_labs = [r"$\rho(r)$/(M$_\odot$/kpc$^3$))"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = ["rS", "a", "b", "g", "log10rhoS", "err"]
-        self._latent_qtys_posterior = [f"{v}_posterior" for v in self.latent_qtys]
+        self._latent_qtys = [
+            "rS_raw",
+            "a_raw",
+            "b_raw",
+            "g_raw",
+            "log10rhoS_raw",
+            "err_raw",
+        ]
+        self._latent_qtys_posterior = [
+            f"{v.replace('_raw', '')}" for v in self.latent_qtys
+        ]
         self._latent_qtys_labs = [
             r"$r_\mathrm{S}/\mathrm{kpc}$",
             r"$\alpha$",
@@ -58,6 +67,10 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
     @property
     def latent_qtys_posterior(self):
         return self._latent_qtys_posterior
+
+    @property
+    def latent_qtys_labs(self):
+        return self._latent_qtys_labs
 
     @property
     def merger_id(self):
@@ -179,7 +192,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             self.rename_dimensions(_rename_dict)
             self._dims_prepped = True
 
-    def plot_latent_distributions(self, figsize=None):
+    def plot_latent_distributions(self, ax=None, figsize=None):
         """
         Plot distributions of the latent parameters of the model
 
@@ -194,7 +207,8 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             plotting axis
         """
         ncol = int(np.ceil(len(self.latent_qtys) / 2))
-        fig, ax = plt.subplots(2, ncol, figsize=figsize)
+        if ax is None:
+            fig, ax = plt.subplots(2, ncol, figsize=figsize)
         try:
             self.plot_generated_quantity_dist(
                 self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs
@@ -287,7 +301,10 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         """
         d = self._get_data_dir(fname)
         if self._loaded_from_file:
-            fname = d[0]
+            if os.path.isdir(d):
+                fname = d[0]
+            else:
+                fname = d
         _logger.info(f"Loading file: {fname}")
         data = np.loadtxt(fname, **kwargs)
         obs = {"r": [], "density": []}
