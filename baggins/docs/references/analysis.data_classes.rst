@@ -35,6 +35,7 @@ analysis.data\_classes.HMQuantitiesBinaryData submodule
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: get_idx_in_vec
 
 analysis.data\_classes.HMQuantitiesBinary submodule
 ---------------------------------------------------

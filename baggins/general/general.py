@@ -248,7 +248,7 @@ def get_unique_path_part(path_list):
 
     Parameters
     ----------
-    str_list : list
+    path_list : list
         list of paths
 
     Returns
@@ -269,6 +269,21 @@ def get_unique_path_part(path_list):
 
 
 def represent_numeric_in_scientific(v, mantissa_fmt=".1f"):
+    """
+    Represent a number in scientific format for LaTeX.
+
+    Parameters
+    ----------
+    v : float
+        value to represent
+    mantissa_fmt : str, optional
+        mantissa format, by default ".1f"
+
+    Returns
+    -------
+    : str
+        value representation
+    """
     if mantissa_fmt[-1] != "f":
         _logger.error(
             "Mantissa format must be of floating point type! Using default value '.1f'"

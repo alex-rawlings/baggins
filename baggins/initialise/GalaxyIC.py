@@ -488,8 +488,6 @@ class GalaxyIC(_GalaxyICBase):
 
         Parameters
         ----------
-        update_file : bool, optional
-            Allow updates to parameters in parameter file, by default False
         num_rots : int, optional
             number of rotations performed for projected quantities, by default 3
         """

@@ -5,3 +5,4 @@ plotting.specific\_plots submodule
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: voronoi_plot

@@ -23,6 +23,20 @@ class VkickCoreradiusGP(_GPBase):
         premerger_ketjufile=None,
         rng=None,
     ) -> None:
+        """
+        Gaussian process regression of the kick velocity - core radius relation.
+
+        Parameters
+        ----------
+        figname_base : str
+            path-like base name that all plots will share
+        escape_vel : float, optional
+            escape velocity of the system, by default None
+        premerger_ketjufile : str, optional
+            ketju_bhs file that has data on the merger of the two BHs, by default None
+        rng :  np.random._generator.Generator, optional
+            random number generator, by default None (creates a new instance)
+        """
         super().__init__(
             model_file=get_stan_file("gp_analytic"),
             prior_file="",
@@ -136,6 +150,14 @@ class VkickCoreradiusGP(_GPBase):
         )
 
     def all_plots(self, figsize=None):
+        """
+        All posterior predictive check and out-of-sample plots.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        """
         super().all_plots(figsize)
         ylims = (
             np.quantile(self.obs_collapsed["rb"], 0.01),
@@ -221,6 +243,16 @@ class VkickCoreradiusGP(_GPBase):
 
 class CoreradiusVkickGP(_GPBase):
     def __init__(self, figname_base, rng) -> None:
+        """
+        Gaussian process regression of the core radius - kick velocity relation.
+
+        Parameters
+        ----------
+        figname_base : str
+            path-like base name that all plots will share
+        rng :  np.random._generator.Generator, optional
+            random number generator, by default None (creates a new instance)
+        """
         super().__init__(
             model_file=get_stan_file("gp_analytic"),
             prior_file="",
@@ -296,6 +328,14 @@ class CoreradiusVkickGP(_GPBase):
         )
 
     def all_plots(self, figsize=None):
+        """
+        All posterior predictive check and out-of-sample plots.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        """
         super().all_plots(figsize)
         ylims = (
             np.quantile(self.obs_collapsed["vkick"], 0.01),

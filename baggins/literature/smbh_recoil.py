@@ -19,7 +19,7 @@ def ketju_calculate_bh_merger_remnant_properties(m1, m2, s1, s2, x1, x2, v1, v2)
     Determine the properties of a merger BH binary following the Zlochower &
     Lousto 2015 prescription.
     This code has been directly copied from the implementation in the Ketju
-    integrator, from the repo `ketju-integrator-dev', commit 7a43ef1, and
+    integrator, from the repo 'ketju-integrator-dev', commit 7a43ef1, and
     transformed from C into python code. The original code has the same function
     name as this one.
 

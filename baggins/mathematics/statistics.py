@@ -1,3 +1,4 @@
+from warnings import deprecated
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
@@ -344,7 +345,7 @@ def vertical_RMSE(x, y, return_linregress=False):
 
 def empirical_cdf(x, t):
     """
-    Determine the empirical cumulative distribution function of an array
+    Determine the empirical cumulative distribution function of an array.
 
     Parameters
     ----------

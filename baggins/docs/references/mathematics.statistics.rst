@@ -5,3 +5,4 @@ mathematics.statistics submodule
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: empirical_cdf

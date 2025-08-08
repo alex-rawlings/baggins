@@ -37,22 +37,6 @@ analysis.bayesian\_classes.GrahamModels submodule
    :undoc-members:
    :show-inheritance:
 
-analysis.bayesian\_classes.KeplerModels submodule
--------------------------------------------------
-
-.. automodule:: analysis.bayesian_classes.KeplerModels
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-analysis.bayesian\_classes.QuinlanModels submodule
---------------------------------------------------
-
-.. automodule:: analysis.bayesian_classes.QuinlanModels
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 analysis.bayesian\_classes.kick_core_gp submodule
 -------------------------------------------------
 

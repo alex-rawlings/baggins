@@ -11,6 +11,7 @@ analysis.analysis\_classes.BrownianData submodule
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: plot_projection, plot_time_series, print, load_from_file
 
 analysis.bayesian\_classes.Brownian submodule
 ---------------------------------------------
@@ -19,3 +20,4 @@ analysis.bayesian\_classes.Brownian submodule
    :members:
    :undoc-members:
    :show-inheritance:
+   :exclude-members: save
