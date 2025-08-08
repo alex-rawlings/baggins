@@ -44,9 +44,9 @@ class VkickCoreradiusGP(_GPBase):
         radius distribution for each kick velocity are assumed as an input
         pickle file. The structure of the file must be of the form:
         {'rb': {
-                "XXXX": [core radius values],
-                ...,
-                "YYYY": [core radius values]
+        "XXXX": [core radius values],
+        ...,
+        "YYYY": [core radius values]
         }}
         Where XXXX and YYYY are the kick velocities as strings, convertible to
         a float (e.g. "0060").
@@ -238,9 +238,9 @@ class CoreradiusVkickGP(_GPBase):
         radius distribution for each kick velocity are assumed as an input
         pickle file. The structure of the file must be of the form:
         {'rb': {
-                "XXXX": [core radius values],
-                ...,
-                "YYYY": [core radius values]
+        "XXXX": [core radius values],
+        ...,
+        "YYYY": [core radius values]
         }}
         Where XXXX and YYYY are the kick velocities as strings, convertible to
         a float (e.g. "0060").

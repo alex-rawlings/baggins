@@ -284,8 +284,8 @@ def uniform_sample_sphere(n, rng=None):
     """
     Uniformly sample points on the unit sphere assuming the physics standard,
     i.e.:
-        0 < theta < pi
-        0 < phi < 2*pi
+    0 < theta < pi
+    0 < phi < 2*pi
 
     Parameters
     ----------

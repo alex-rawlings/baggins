@@ -19,11 +19,3 @@ Submodules
    :members:
    :undoc-members:
    :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: _backend
-   :members:
-   :undoc-members:
-   :show-inheritance:

@@ -12,14 +12,13 @@ In addition to analysis of simulations, tools to set up different mergers, as we
 
 The tool has been primarily designed for isolated gas-free simulations, however a plan to extend the capability to work with isolated hydro-simulations, is in the works (BAGGInS+).
 
-
 .. toctree::
    :maxdepth: 1
    :caption: Available packages:
    :titlesonly:
 
-   backend <references/_backend>
    analysis <references/analysis>
+   backend <references/_backend>
    cosmology <references/cosmology>
    general <references/general>
    initialise <references/initialise>
@@ -34,4 +33,3 @@ Indices and tables
 ==================
 
 * :ref:`genindex`
-* :ref:`search`
