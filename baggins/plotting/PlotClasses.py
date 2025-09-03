@@ -173,11 +173,17 @@ class _GradientPlot(ABC):
 
 
 class GradientLinePlot(_GradientPlot):
-    """
-    Apply the _GradientPlot class for pyplot line plots
-    """
-
     def __init__(self, ax, cmap="viridis"):
+        """
+        Apply the _GradientPlot class for pyplot line plots.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axes
+        cmap : str, optional
+            colormap, by default "viridis"
+        """
         super().__init__(ax, cmap=cmap)
 
     def _make_segments(self, i):
@@ -233,6 +239,21 @@ class GradientLinePlot(_GradientPlot):
     ):
         """
         Plot the data for all data series, ensuring a consistent colour scheme.
+
+        Parameters
+        ----------
+        logcolour : bool, optional
+            use logarithmic colour mapping, by default False
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        vmin : float, optional
+            minimum colour value (overrides default value), by default None
+        vmax : float, optional
+            maximum colour value (ovverides default value), by default None
+        marker_idx : int
+            array index to place marker at
+        kwargs :
+            other keyword arguments to LineCollection()
         """
         if marker_idx is None:
             marker_idx = [-1 for _ in range(self.data_count)]
@@ -283,11 +304,17 @@ class GradientLinePlot(_GradientPlot):
 
 
 class GradientScatterPlot(_GradientPlot):
-    """
-    Apply the _GradientPlot class for pyplot scatter plots
-    """
-
     def __init__(self, ax, cmap="cividis"):
+        """
+        Apply the _GradientPlot class for pyplot scatter plots.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axes
+        cmap : str, optional
+            colormap, by default "viridis"
+        """
         super().__init__(ax, cmap=cmap)
 
     def _set_colours(self, log=False, vmin=None, vmax=None):
@@ -331,7 +358,21 @@ class GradientScatterPlot(_GradientPlot):
 
     def plot(self, logcolour=False, ax=None, vmin=None, vmax=None, **kwargs):
         """
-        Plot the data, ensuring a consistent colour scheme.
+        Plot the data for a single data series, ensuring colour scheme is
+        consistent with all stored data
+
+        Parameters
+        ----------
+        logcolour : bool, optional
+            use logarithmic colour mapping, by default False
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        vmin : float, optional
+            minimum colour value (overrides default value), by default None
+        vmax : float, optional
+            maximum colour value (ovverides default value), by default None
+        kwargs :
+            other keyword arguments to pyplot.scatter()
         """
         for i in range(self.data_count):
             self.plot_single_series(

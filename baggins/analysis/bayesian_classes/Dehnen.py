@@ -195,6 +195,19 @@ class DehnenModel(HierarchicalModel_2D):
         return ax
 
     def all_posterior_OOS_plots(self, figsize=None):
+        """
+        Create out-of-sample posterior plots
+
+        Parameters
+        ----------
+        ffigsize : tuple, optional
+            figure size, by default None
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
         # out of sample posterior
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         ax.set_xlabel(r"$r$/kpc")

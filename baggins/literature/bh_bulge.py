@@ -45,7 +45,7 @@ def Magorrian98(logMstar):
     return -1.79 + 0.96 * logMstar
 
 
-def Sahu19(logmstar, old_method=False):
+def Sahu19(logmstar):
     """
     define the Sahu+19 bulge mass - BH mass relation
     https://ui.adsabs.harvard.edu/abs/2019ApJ...876..155S/abstract
@@ -60,14 +60,7 @@ def Sahu19(logmstar, old_method=False):
     : np.ndarray
         predicted log of bh mass [log(M/Msol)]
     """
-    if old_method:
-        _logger.warning(
-            "BH mass generated using an incorrect calculation in the scaling! This method should only be used to generate BH masses when consistency with previously-run simulations is desired!"
-        )
-        uval = 10 ** (-0.06 * (logmstar - 10) - 0.06)
-        return 1.27 * (logmstar - np.log10(uval * 5e10)) + 8.41
-    else:
-        return 1.27 * (logmstar - np.log10(5e10)) + 8.41
+    return 1.27 * (logmstar - np.log10(5e10)) + 8.41
 
 
 def Scott13(logmstar, cored=False):

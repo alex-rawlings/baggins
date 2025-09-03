@@ -175,10 +175,16 @@ class _StanModel(ABC):
 
     @abstractmethod
     def set_stan_data(self):
+        """
+        Set the data the Stan model is conditioned on.
+        """
         pass
 
     @abstractmethod
     def _set_stan_data_OOS(self):
+        """
+        Set the data for out-of-sample generated quantities.
+        """
         pass
 
     def _make_fig_name(self, fname, tag):
@@ -612,6 +618,9 @@ class _StanModel(ABC):
 
     @abstractmethod
     def extract_data(self):
+        """
+        Extract data for the Stan model (parsed to set_stan_data()).
+        """
         pass
 
     def build_model(self, prior=False):
@@ -1084,6 +1093,39 @@ class _StanModel(ABC):
         collapsed=True,
         show_legend=True,
     ):
+        """
+        Plot predictive regressions - can be either for the conditioned data (in-sample) or new data (out-of-sample).
+
+        Parameters
+        ----------
+        xmodel :str
+            dictionary key for modelled independent variable
+        ymodel :str
+            dictionary key for modelled dependent variable
+        state : str
+            return generated quantities for predictive checks or out-of-sample
+            quantities
+        xobs :str
+            dictionary key for observed independent variable
+        yobs :str
+            dictionary key for observed dependent variable
+        yobs_err : str, optional
+            dictionary key for observed dependent variable scatter, by
+            default None
+        levels : list, optional
+            HDI intervals to plot, by default None
+        ax : matplotlib.axes.Axes, optional
+            axis to plot to, by default None (creates new instance)
+        collapsed : bool, optional
+            plotting collapsed observations?, by default True
+        show_legend : bool, optional
+            show the legend, by default True
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
         pass
 
     def plot_generated_quantity_dist(
@@ -1345,6 +1387,10 @@ class _StanModel(ABC):
 
 class HierarchicalModel_1D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        """
+        Hierarchical model for 1-dimensional models.
+        See the __init__ documentation for StanModel()
+        """
         super().__init__(model_file, prior_file, figname_base, rng)
 
     @abstractmethod
@@ -1495,6 +1541,10 @@ class HierarchicalModel_1D(_StanModel):
 
 class HierarchicalModel_2D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        """
+        Hierarchical model for 2-dimensional models (e.g. regression models).
+        See the __init__ documentation for StanModel()
+        """
         super().__init__(model_file, prior_file, figname_base, rng)
 
     @abstractmethod
@@ -1807,6 +1857,12 @@ class HierarchicalModel_2D(_StanModel):
 
 class FactorModel_2D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        """
+        Hierarchical model for 2-dimensional factor models.
+        These models are for when the exchangeability principle of latent 
+        parameters is not satisfied.
+        See the __init__ documentation for StanModel()
+        """
         super().__init__(model_file, prior_file, figname_base, rng)
 
     @abstractmethod

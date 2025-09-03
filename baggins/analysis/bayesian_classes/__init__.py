@@ -13,14 +13,6 @@ from baggins.analysis.bayesian_classes.GrahamModels import (  # noqa
     GrahamModelHierarchy,
     GrahamModelKick,
 )
-from baggins.analysis.bayesian_classes.KeplerModels import (  # noqa
-    KeplerModelSimple,
-    KeplerModelHierarchy,
-)
-from baggins.analysis.bayesian_classes.QuinlanModels import (  # noqa
-    QuinlanModelSimple,
-    QuinlanModelHierarchy,
-)
 from baggins.analysis.bayesian_classes.kick_core_gp import (  # noqa
     VkickCoreradiusGP,
     CoreradiusVkickGP,

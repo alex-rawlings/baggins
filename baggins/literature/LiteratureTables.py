@@ -16,18 +16,7 @@ class LiteratureTables:
     def __init__(self) -> None:
         """
         Convenience class for loading data included with the baggins
-        package. Cleaning/reformatting of the data is wrapped up into load()
-        functions.
-
-        Parameters
-        ----------
-        table_name : str
-            name of the data table to load
-
-        Raises
-        ------
-        ValueError
-            if an invalid table name is given
+        package. Note this object should not be instantiated directly.
         """
         self.table = None
         self._literature_dir = os.path.join(baggins_dir, "literature/literature_data")
@@ -286,6 +275,14 @@ class LiteratureTables:
 
     @classmethod
     def load_misgeld_2011_data(cls):
+        """
+        Load observations of dynamically hot stellar systems
+
+        Returns
+        -------
+        C : LiteratureTables
+            table instance
+        """
         C = cls()
         C.name = r"$\mathrm{Misgeld\; &\; Hilker\; 2011}$"
         data = pd.read_table(

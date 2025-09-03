@@ -5,7 +5,6 @@ __all__ = [
     "project_orthogonal",
     "set_spherical_basis",
     "spherical_components",
-    "radial_separation",
     "cartesian_components",
     "convert_cartesian_to_spherical",
     "convert_spherical_to_cartesian",
@@ -53,27 +52,27 @@ def set_spherical_basis(R):
 
     Returns
     -------
-    r_: np.ndarray
+    _r: np.ndarray
         radial component. This will be aligned with the Cartesian direction of
         input R
-    theta_: np.ndarray
-        angular inclination components orthogonal to r_. Definition as per the
+    _theta: np.ndarray
+        angular inclination components orthogonal to _r - Definition as per the
         "physicist's" (ISO) definition
-    phi_: np.ndarray
-        angular azimuth components orthogonal to r_. Definition as per the
+    _phi: np.ndarray
+        angular azimuth components orthogonal to _r - Definition as per the
         "physicist's" (ISO) definition
     """
     r = radial_separation(R)  # radial distance
-    r_ = R / r[:, np.newaxis]  # determine basis vectors
-    theta = np.arccos(r_[:, 2])  # arccos(z/r)
-    phi = np.arctan2(r_[:, 1], r_[:, 0])  # arctan(y/x)
+    _r = R / r[:, np.newaxis]  # determine basis vectors
+    theta = np.arccos(_r[:, 2])  # arccos(z/r)
+    phi = np.arctan2(_r[:, 1], _r[:, 0])  # arctan(y/x)
     cos_theta = np.cos(theta)
     sin_theta = np.sin(theta)
     cos_phi = np.cos(phi)
     sin_phi = np.sin(phi)
-    theta_ = np.stack([cos_theta * cos_phi, cos_theta * sin_phi, -sin_theta], axis=-1)
-    phi_ = np.stack([-sin_phi, cos_phi, np.zeros_like(phi)], axis=-1)
-    return r_, theta_, phi_
+    _theta = np.stack([cos_theta * cos_phi, cos_theta * sin_phi, -sin_theta], axis=-1)
+    _phi = np.stack([-sin_phi, cos_phi, np.zeros_like(phi)], axis=-1)
+    return _r, _theta, _phi
 
 
 def spherical_components(R, v):
@@ -93,12 +92,12 @@ def spherical_components(R, v):
         spherical components, with columns corresponding to radius, theta, and
         phi
     """
-    r_, theta_, phi_ = set_spherical_basis(R)
+    _r, _theta, _phi = set_spherical_basis(R)
     return np.stack(
         (
-            np.sum(r_ * v, axis=-1),
-            np.sum(theta_ * v, axis=-1),
-            np.sum(phi_ * v, axis=-1),
+            np.sum(_r * v, axis=-1),
+            np.sum(_theta * v, axis=-1),
+            np.sum(_phi * v, axis=-1),
         ),
         axis=-1,
     )
@@ -122,9 +121,9 @@ def cartesian_components(R, v):
     : (n,3) np.ndarray
         Cartesian components, with columns corresponding to x, y, and z
     """
-    r_, theta_, phi_ = set_spherical_basis(R)
+    _r, _theta, _phi = set_spherical_basis(R)
     xyz = [
-        r_[:, i] * v[:, 0] + theta_[:, i] * v[:, 1] + phi_[:, i] * v[:, 2]
+        _r[:, i] * v[:, 0] + _theta[:, i] * v[:, 1] + _phi[:, i] * v[:, 2]
         for i in range(3)
     ]
     return np.stack((xyz[0], xyz[1], xyz[2]), axis=-1)

@@ -557,6 +557,15 @@ class VoronoiKinematics:
         return ax
 
     def lambda_R_parameter(self):
+        """
+        Determine lambda spin parameter defined in Emsellem+07.
+
+        Returns
+        -------
+        : callable
+            function that allows for calculating Lambda parameter at a given 
+            radius (uses interpolation)
+        """
         R = np.sqrt(self._grid["x_bin"] ** 2 + self._grid["y_bin"] ** 2)
         idx = np.argsort(R)
         R = R[idx]

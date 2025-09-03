@@ -751,10 +751,10 @@ def shell_com_motions_each_galaxy(
         apply a particle ID mask to separate the galaxies, by default True
     shell_kw : dict, optional
         dict to pass np.geomspace controlling the shell properties:
-            start: inner radius of inner shell
-            stop: outer radius of outer shell
-            num: number of shells
-            by default {"start":1e-6, "stop":500, "num":20}
+        start: inner radius of inner shell
+        stop: outer radius of outer shell
+        num: number of shells
+        by default {"start":1e-6, "stop":500, "num":20}
     family : str, optional
         particle family to do the analysis for, by default "stars"
     Gcom_kw : dict, optional
@@ -1671,8 +1671,8 @@ def find_strongly_bound_particles(snap, rfac=5, return_extra=False):
         ambient vel. dispersion determined within this many influence radii, by default 5
     return_extra : bool, optional
         return extra information, including:
-            - energies of particles within influence radius
-            - ambient velocity dispersion
+        - energies of particles within influence radius
+        - ambient velocity dispersion
         by default False
 
     Returns

@@ -183,6 +183,8 @@ class OrbitClassifier:
         ----------
         radbins : array-like, optional
             radial bin edges, by default None
+        supress_warnings : bool, optional
+            do not print warnings on IndexErrors, by default False
         """
         if radbins is None:
             radbins = np.geomspace(0.2, 30, 11)
@@ -294,6 +296,21 @@ class OrbitClassifier:
         return self.particleids[self.make_class_mask(fam)]
 
     def family_size_in_radius(self, fam, r):
+        """
+        Determine the number of particles of an orbital class within a radius.
+
+        Parameters
+        ----------
+        fam : str
+            family name
+        r : float
+            enclosing radius
+
+        Returns
+        -------
+        : int
+            number of stars
+        """
         self.radial_frequency(radbins=np.array([0, r]))
         class_count = np.einsum("ij,i->ij", self.classfrequency, self.radbincount)
         return class_count[0, self.mergemask.get_family(fam)]

@@ -34,7 +34,7 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL, exist_ok=False):
         filename to save to
     protocol : pickle.protocol, optional
         saving protocol, by default pickle.HIGHEST_PROTOCOL
-    exist_ok = bool, optional
+    exist_ok : bool, optional
         allow files to be overwritten, by default False
 
     Raises

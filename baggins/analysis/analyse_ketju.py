@@ -645,9 +645,9 @@ def impact_parameter(bh1, bh2):
     Parameters
     ----------
     bh1 : ketjugw.Particle
-        BH 1
+        bh 1
     bh2 : ketjugw.Particle
-        BH 2
+        bh 2
 
     Returns
     -------
@@ -705,10 +705,10 @@ def deflection_angle(bh1, bh2, peri_idx=None):
 
     Parameters
     ----------
-     bh1 : ketjugw.Particle
-        BH 1
+    bh1 : ketjugw.Particle
+        bh 1
     bh2 : ketjugw.Particle
-        BH 2
+        bh 2
     peri_idx : int, optional
         indices of pericentre, by default None (calculates new)
 
