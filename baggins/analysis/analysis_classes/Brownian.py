@@ -19,6 +19,16 @@ _logger = _cmlogger.getChild(__name__)
 
 class Brownian(BrownianData):
     def __init__(self, analysis_parfile, data_dir) -> None:
+        """
+        Class to analyse Brownian motion of a series of snapshots.
+
+        Parameters
+        ----------
+        analysis_parfile : str
+            path to analysis .yml file
+        data_dir : str
+            path to snapshot data directory
+        """
         super().__init__()
         self._analysis_pars = read_parameters(analysis_parfile)
         self.data_directory = data_dir

@@ -27,13 +27,8 @@ def draw_sizebar(
     ax,
     length,
     units,
-    location="lower right",
-    pad=0.1,
-    borderpad=0.5,
-    frameon=False,
     unitconvert="base",
     remove_ticks=True,
-    textsize=None,
     fmt=".1f",
     **kwargs,
 ):
@@ -48,21 +43,10 @@ def draw_sizebar(
         length of scale bar in data units
     units : str
         unit name
-    location : str, optional
-        where to place bar (standard pyplot location string), by default "lower
-        right"
-    pad : float, optional
-        padding around label, by default 0.1
-    borderpad : float, optional
-        padding around border, by default 0.5
-    frameon : bool, optional
-        draw box around scale bar?, by default False
     unitconvert : str, optional
         convert units of scalebar, by default base (no conversion)
     remove_ticks : bool, optional
         remove tick labels on axis?, by default True
-    textsize : str, optional
-        size of text, by default None
     fmt : str, optional
         formatter for numeric part of label, by default ".1f"
     kwargs :
@@ -81,15 +65,18 @@ def draw_sizebar(
         "mega2base": 1e6,
     }
     label = f"$\mathrm{{{length*factors[unitconvert]:{fmt}}\,{units}}}$"
+    if "loc" not in kwargs:
+        loc = kwargs.pop("location", "lower right")
+    kwargs.setdefault("loc", loc)
+    kwargs.setdefault("pad", 0.1)
+    kwargs.setdefault("borderpad", 0.5)
+    kwargs.setdefault("frameon", False)
+    textsize = kwargs.pop("textsize", None)
+    kwargs.setdefault("fontproperties", {"size": textsize})
     asb = AnchoredSizeBar(
         ax.transData,
         length,
         label,
-        loc=location,
-        pad=pad,
-        borderpad=borderpad,
-        frameon=frameon,
-        fontproperties={"size": textsize},
         **kwargs,
     )
     ax.add_artist(asb)
@@ -342,6 +329,8 @@ def nice_log10_scale(ax, axis="y"):
     ----------
     ax : matplotlib.axes.Axes
         axis to plot to
+    axis : str, optional
+        edit done to x or y axis, by default "y"
     """
     if "y" in axis:
         ylims = ax.get_ylim()

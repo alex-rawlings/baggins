@@ -24,6 +24,18 @@ class VkickApocentreGP(_GPBase):
         premerger_ketjufile=None,
         rng=None,
     ) -> None:
+        """
+        Gaussian process regression of the kick velocity - apocentre relation.
+
+        Parameters
+        ----------
+        figname_base : str
+            path-like base name that all plots will share
+        premerger_ketjufile : str, optional
+            ketju_bhs file that has data on the merger of the two BHs, by default None
+        rng :  np.random._generator.Generator, optional
+            random number generator, by default None (creates a new instance)
+        """
         super().__init__(
             model_file=get_stan_file("gp_analytic"),
             prior_file="",
@@ -364,6 +376,8 @@ class VkickApocentreGP(_GPBase):
         ----------
         threshold : callable
             distance threshold function the BH must exceed
+        levels : list
+            HDI levels to plot, by default None
         ax : matplotlib.Axes, optional
             plotting axes, by default None
         save : bool, optional
@@ -425,12 +439,12 @@ class VkickApocentreGP(_GPBase):
         ----------
         threshold : callable
             distance threshold function the BH must exceed
-        min_v : float, optional
-            lower cut for velocity, by default None
-        n_bootstrap : int, optional
-            number of ECDF bootstrap samples, by default 100
+        bins : int, list
+            histogram bins, by default None
         ax : matplotlib.Axes, optional
             plotting axes, by default None
+        cols : list
+            plotting colours, by default None
         save : bool, optional
             save figure, by default True
 

@@ -329,8 +329,20 @@ class BHBinary(BHBinaryData):
 
     # public functions
     def predict_gw_dominant_semimajoraxis(self, q):
-        # predict where GW emission dominates, given the eccentricity quantile q,
-        # starting from where a=a_h
+        """
+        Predict where GW emission dominates, given some eccentricity quantile.
+        Quantile is determined for a<a_h.
+
+        Parameters
+        ----------
+        q : float
+            eccentricity quantile
+
+        Returns
+        -------
+        : pygad.UnitScalar
+            semimajor axis where hardening-to-GW emission rate equal
+        """
         e0 = np.nanquantile(
             self.orbit_params["e_t"][self.r_hard_time_idx : self.a_more_Xpc_idx], q
         )
@@ -345,7 +357,21 @@ class BHBinary(BHBinaryData):
         return pygad.UnitScalar(a_gr, units="pc"), pygad.UnitScalar(t_agr, units="Myr")
 
     def compute_predict_orbital_params(self, q, idxs=None):
-        """compute orbital params for a given initial eccentricity quantile"""
+        """
+        Compute orbital params for a given initial eccentricity quantile.
+
+        Parameters
+        ----------
+        q : float
+            eccentricity quantile
+        idxs : list, optional
+            index range to determine quantile over, by default None
+
+        Returns
+        -------
+        : tuple
+            time, semimajor axis, eccentricity from Peter's Quinlan evolution
+        """
         if idxs is None:
             idxs = [self.r_hard_time_idx, self.a_more_Xpc_idx]
         assert isinstance(idxs, list)
@@ -368,6 +394,23 @@ class BHBinary(BHBinaryData):
         return t, a, e
 
     def plot(self, ax=None, add_radii=True, add_op_estimates=True, **kwargs):
+        """
+        Plot the binary evolution, with points showing notable times.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        add_radii : bool, optional
+            add influence and hardening radii to plot, by default True
+        add_op_estimates : bool, optional
+            add predicted orbital parameters, by default True
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes, optional
+            plotting axes
+        """
         # plot the binary evolution, with points showing [r_infl, r_hard,
         # analytical_tspan, gw radius] if add_radii==True, and estimates for
         # the orbital parameters if add_op_estimates==True
@@ -451,7 +494,9 @@ class BHBinary(BHBinaryData):
         return ax
 
     def print(self):
-        # Print some of the key binary quantities
+        """
+        Print some of the key binary quantities.
+        """
         print("BH Binary Quantities:")
         print(f"  Perturbation applied at {self.time_offset:.1f} Myr")
         print(f"  H determined over a span of {self.analytical_tspan:.1f} Myr")
@@ -508,6 +553,21 @@ class BHBinary(BHBinaryData):
         meta.create_dataset("logs", data=self._log)
 
     def make_hdf5(self, fname, exist_ok=False):
+        """
+        Save to a HDF5 file.
+
+        Parameters
+        ----------
+        fname : str
+            file name
+        exist_ok : bool, optional
+            allow overwriting, by default False
+
+        Raises
+        ------
+        ValueError
+            if file exists and overwriting is not permitted
+        """
         if os.path.isfile(fname) and not exist_ok:
             raise ValueError("HDF5 file already exists!")
         with h5py.File(fname, mode="w") as f:

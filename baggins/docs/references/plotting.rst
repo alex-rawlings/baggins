@@ -3,51 +3,16 @@ plotting package
 
 Submodules
 ----------
+.. toctree::
+   :maxdepth: 2
 
-plotting.PlotClasses module
----------------------------
+   plotting.PlotClasses
+   plotting.general
+   plotting.utils
+   plotting.specific_plots
 
-.. automodule:: plotting.PlotClasses
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
-plotting.custom\_cmaps module
------------------------------
 
-.. automodule:: plotting.custom_cmaps
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-plotting.general module
------------------------
-
-.. automodule:: plotting.general
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-plotting.plot\_utils module
----------------------------
-
-.. automodule:: plotting.plot_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-plotting.specific\_plots module
--------------------------------
-
-.. automodule:: plotting.specific_plots
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: plotting
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Other
+-----
+Custom colour maps are available for Voronoi plots

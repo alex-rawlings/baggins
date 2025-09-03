@@ -335,6 +335,17 @@ class _GrahamModelBase(HierarchicalModel_2D):
 
 class GrahamModelSimple(_GrahamModelBase):
     def __init__(self, figname_base, rng=None):
+        """
+        Model core-Sersic projected density profile, assuming non-hierarchical 
+        structure of data.
+
+        Parameters
+        ----------
+        figname_base : str
+            path-like base name that all plots will share
+        rng :  np.random._generator.Generator, optional
+            random number generator, by default None (creates a new instance)
+        """
         super().__init__(
             model_file=get_stan_file("graham_simple"),
             prior_file=get_stan_file("graham_simple_prior"),
@@ -344,7 +355,7 @@ class GrahamModelSimple(_GrahamModelBase):
 
     def extract_data(self, pars, d=None, binary=True):
         """
-        See docs for `_GrahamModelBase.extract_data()"
+        See docs for _GrahamModelBase.extract_data()
         Update figname_base to include merger ID and keyword 'simple'
         """
         super().extract_data(pars, d, binary)
@@ -392,7 +403,7 @@ class GrahamModelSimple(_GrahamModelBase):
         self.stan_data.update(dict(N_OOS=self.num_OOS, R_OOS=rs))
 
     def set_stan_data(self):
-        """See docs for `_GrahamModelBase.set_stan_data()"""
+        """See docs for _GrahamModelBase.set_stan_data()"""
         super().set_stan_data()
         self.stan_data.update(
             dict(log10_surf_rho=self.obs_collapsed["log10_proj_density"])
@@ -468,6 +479,17 @@ class GrahamModelSimple(_GrahamModelBase):
 
 class GrahamModelHierarchy(_GrahamModelBase):
     def __init__(self, figname_base, rng=None) -> None:
+        """
+        Model core-Sersic projected density profile, assuming hierarchical 
+        structure of data (i.e. from different projections).
+
+        Parameters
+        ----------
+        figname_base : str
+            path-like base name that all plots will share
+        rng :  np.random._generator.Generator, optional
+            random number generator, by default None (creates a new instance)
+        """
         super().__init__(
             model_file=get_stan_file("graham_hierarchy"),
             prior_file=get_stan_file("graham_hierarchy_prior"),
@@ -504,7 +526,7 @@ class GrahamModelHierarchy(_GrahamModelBase):
 
     def extract_data(self, pars, d=None, binary=True):
         """
-        See docs for `_GrahamModelBase.extract_data()"
+        See docs for _GrahamModelBase.extract_data()
         Update figname_base to include merger ID and keyword 'hierarchy'
         """
         super().extract_data(pars, d, binary)
@@ -531,7 +553,7 @@ class GrahamModelHierarchy(_GrahamModelBase):
         )
 
     def set_stan_data(self):
-        """See docs for `_GrahamModelBase.set_stan_data()"""
+        """See docs for _GrahamModelBase.set_stan_data()"""
         super().set_stan_data()
         self.stan_data.update(
             dict(log10_surf_rho=self.obs_collapsed["log10_proj_density"])

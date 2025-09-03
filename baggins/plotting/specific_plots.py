@@ -419,10 +419,16 @@ def heatmap(
         list or array of length N with the labels for the columns
     ax : matplotlib.axes.Axes, optional
         axis to which the heatmap is plotted, by default None
+    cmap : str, optional
+        colour map to use, by default "cividis"
+    show_cbar : bool, optional
+        show colour bar, by default True
     cbar_kw : dict, optional
         arguments to `matplotlib.Figure.colorbar`, by default None
     cbarlabel : str, optional
         label for the colorbar, by default ""
+    bad_colour : str, optional
+        colour for bad cells, by default "w"
     **kwargs
         All other arguments are forwarded to `imshow`
 

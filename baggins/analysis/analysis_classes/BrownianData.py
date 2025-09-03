@@ -9,6 +9,12 @@ _logger = _cmlogger.getChild(__name__)
 
 class BrownianData(HDF5Base):
     def __init__(self) -> None:
+        """
+        A class that defines the fields which constitute the variables of
+        interest for Brownian motion. These properties are accessible to all
+        child classes, and also correspond to the fields which are loadable
+        from a hdf5 file.
+        """
         super().__init__()
         self._data_loaded = False
 
@@ -76,9 +82,25 @@ class BrownianData(HDF5Base):
 
     # public methods
     def compute_pos_offset_magnitude(self):
+        """
+        Determine position offset from stellar CoM of BHs.
+
+        Returns
+        -------
+        : tuple
+            positional offset of BHs
+        """
         return self._offset_mag_helper("xoffset")
 
     def compute_vel_offset_magnitude(self):
+        """
+        Determine velocity offset from stellar CoM of BHs.
+
+        Returns
+        -------
+        : tuple
+            velocity offset of BHs
+        """
         return self._offset_mag_helper("voffset")
 
     def plot_time_series(self):

@@ -284,8 +284,8 @@ def uniform_sample_sphere(n, rng=None):
     """
     Uniformly sample points on the unit sphere assuming the physics standard,
     i.e.:
-        0 < theta < pi
-        0 < phi < 2*pi
+    0 < theta < pi
+    0 < phi < 2*pi
 
     Parameters
     ----------
@@ -344,7 +344,7 @@ def vertical_RMSE(x, y, return_linregress=False):
 
 def empirical_cdf(x, t):
     """
-    Determine the empirical cumulative distribution function of an array
+    Determine the empirical cumulative distribution function of an array.
 
     Parameters
     ----------
