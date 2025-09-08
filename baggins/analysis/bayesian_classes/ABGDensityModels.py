@@ -266,6 +266,31 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             fig=fig1,
         )
 
+    def save_density_data_to_npz(self, dname, exist_ok=False):
+        """
+        Save OOS density profile to a numpy .npz file with keys 'x' and 'y'.
+
+        Parameters
+        ----------
+        dname : directory to save data to
+            file to save data to
+        """
+        fname = os.path.join(dname, f"{self.merger_id}_density_fit.npz")
+        try:
+            assert not os.path.exists(fname) or exist_ok
+        except AssertionError:
+            _logger.exception(f"File {fname} already exists!", exc_info=True)
+            raise
+        r = self.stan_data["r_OOS"]
+        rho = self.sample_generated_quantity(self.folded_qtys_posterior[0], state="OOS")
+        pars = {}
+        for p in self.latent_qtys_posterior:
+            pars[p] = self.sample_generated_quantity(p)
+        _logger.debug(f"r has shape {r.shape}")
+        _logger.debug(f"rho has shape {rho.shape}")
+        np.savez(fname, r=r, rho=rho, **pars)
+        _logger.info(f"Saved OOS data to {fname}")
+
 
 class ABGDensityModelSimple(_ABGDensityModelBase):
     def __init__(self, figname_base, rng=None):
@@ -288,7 +313,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             self.figname_base, f"{self.merger_id}/{self.merger_id}-simple"
         )
 
-    def read_data_from_txt(self, fname, mergerid, **kwargs):
+    def read_data_from_txt(self, fname, **kwargs):
         """
         Read data from a txt file with columns `radius` and `surface density`.
 
@@ -296,8 +321,6 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         ----------
         fname : str, path-like
             data file
-        mergerid : str
-            merger id to be used in figure names etc.
         """
         d = self._get_data_dir(fname)
         if self._loaded_from_file:
@@ -310,7 +333,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         obs = {"r": [], "density": []}
         obs["r"] = [data[:, 0]]
         obs["density"] = [data[:, 1]]
-        self._merger_id = mergerid
+        self._merger_id = os.path.splitext(os.path.basename(fname))[0]
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
         self.obs = obs
