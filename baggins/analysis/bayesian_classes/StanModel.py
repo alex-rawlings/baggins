@@ -866,7 +866,7 @@ class _StanModel(ABC):
                     figsize=figsize,
                     marginals=True,
                     kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0.5},
+                        "contour_kwargs": {"linewidths": 0, "levels": 0},
                         "hdi_probs": levels,
                         "contourf_kwargs": {"cmap": "Blues"},
                     },
@@ -889,7 +889,7 @@ class _StanModel(ABC):
                     figsize=figsize,
                     marginals=True,
                     kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0.5},
+                        "contour_kwargs": {"linewidths": 0, "levels": 0},
                         "contourf_kwargs": {"cmap": "Blues"},
                     },
                     point_estimate_marker_kwargs={"marker": ""},
@@ -941,9 +941,6 @@ class _StanModel(ABC):
         """
         # XXX: LaTeX labels will not render if the label is longer than the
         # plotting axis
-        if figsize is None:
-            max_dim = max(rcParams["figure.figsize"])
-            figsize = (max_dim, max_dim)
         try:
             assert len(var_names) > 1
         except AssertionError:
@@ -961,7 +958,7 @@ class _StanModel(ABC):
             ]
         # limit to 4 variables per plot: figures will be saved with an
         # additional index in the name, e.g. 0-0.png
-        num_var_per_plot = 4
+        num_var_per_plot = 3 if len(var_names) == 5 else 4
         for i in range(0, len(var_names), num_var_per_plot):
             # plot trace
             ax = az.plot_trace(
@@ -1032,8 +1029,6 @@ class _StanModel(ABC):
             y axis labels, by default None
         """
         num_vars = len(var_names)
-        if figsize is None:
-            figsize = (6, num_vars)
         if levels is None:
             levels = self._default_hdi_levels
         levels = [lev / 100 for lev in levels]
@@ -1776,6 +1771,7 @@ class HierarchicalModel_2D(_StanModel):
             levels=levels,
             ax=ax,
             collapsed=collapsed,
+            smooth=smooth,
             show_legend=show_legend,
         )
         fig = ax.get_figure()
@@ -1810,6 +1806,53 @@ class HierarchicalModel_2D(_StanModel):
         fig = ax.get_figure()
         if save:
             savefig(self._make_fig_name(self.figname_base, f"OOS_{ymodel}"), fig=fig)
+
+    def posterior_OOS_specific_hdi_plot(
+        self, xmodel, ymodel, hdi=50, ax=None, **kwargs
+    ):
+        """
+        Plot a specific HDI interval for an out-of-sample quantity, most
+        frequently used to compare to different models.
+
+        Parameters
+        ----------
+        xmodel : str
+            dictionary key for modelled independent variable
+        ymodel : str
+            dictionary key for modelled dependent variable
+        hdi : float, optional
+            HDI intervals to plot, by default 50
+        ax : matplotlib.axes.Axes, optional
+            axis to plot to, by default None (creates new instance)
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            axis to plotted to
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+        kwargs.setdefault("smooth", False)
+        kwargs.setdefault("hdi_kwargs", {"skipna": True})
+        plot_kwargs = kwargs.pop("plot_kwargs", {})
+        plot_kwargs.setdefault("c", "")
+        fill_kwargs = kwargs.pop("fill_kwargs", {})
+        fill_kwargs.setdefault("alpha", 0.8)
+        fill_kwargs.setdefault("edgecolor", None)
+        fill_kwargs["label"] = kwargs.pop("label", None)
+        fill_kwargs.setdefault(
+            "color", plot_kwargs["c"] if plot_kwargs["c"] is not None else None
+        )
+        az.plot_hdi(
+            self.stan_data[xmodel],
+            self.sample_generated_quantity(ymodel, state="OOS"),
+            hdi_prob=hdi / 100,
+            ax=ax,
+            plot_kwargs=plot_kwargs,
+            fill_kwargs=fill_kwargs,
+            **kwargs,
+        )
+        return ax
 
 
 class FactorModel_2D(_StanModel):
