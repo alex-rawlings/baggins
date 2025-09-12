@@ -1,5 +1,6 @@
 import argparse
 import os.path
+import matplotlib.pyplot as plt
 import baggins as bgs
 
 
@@ -8,7 +9,6 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(help="data file", dest="files", type=str)
-# parser.add_argument(help="ID", dest="ID", type=str)
 parser.add_argument("-s", "--save", help="save location", dest="save", type=str)
 parser.add_argument(
     "--saveOOS", help="save sampled density data", dest="saveOOS", type=str
@@ -37,7 +37,7 @@ if args.verbose == "DEBUG":
     abgdens.print_obs_summary()
 
 # initialise the data dictionary
-abgdens.set_stan_data()
+abgdens.set_stan_data(rmin=1e-2)
 if args.prior:
     abgdens.sample_prior(sample_kwargs=sample_kwargs)
 
@@ -46,7 +46,15 @@ else:
     abgdens.sample_model(sample_kwargs=sample_kwargs)
 
     abgdens.all_posterior_pred_plots()
-    abgdens.all_posterior_OOS_plots()
+
+    # set up guiding Plummer lines
+    fig, ax = plt.subplots()
+    abgdens.add_data_to_predictive_plot(ax=ax, xobs="r", yobs="density")
+    abgdens.add_guiding_Plummer(ax=ax, rS=0.2)
+    bgs.plotting.add_log_guiding_gradients(
+        ax=ax, x0=0.085, x1=0.2, y1=1e3, b=[-2, -1, 0, 1, 2], offset=-0.01
+    )
+    abgdens.all_posterior_OOS_plots(ax=ax)
 abgdens.print_parameter_percentiles(abgdens.latent_qtys)
 
 if args.saveOOS is not None:

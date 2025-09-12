@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import os
 from operator import itemgetter
 import numpy as np
@@ -62,11 +63,11 @@ class _StanModel(ABC):
         self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {
-            "marker": "o",
-            "linewidth": 0.5,
-            "edgecolor": "k",
-            "label": "Sims.",
+            "marker": ".",
+            "mew": 0.2,
+            "mec": "k",
             "cmap": "PuRd",
+            "zorder": 2,
         }
         self._default_hdi_levels = [99, 75, 50, 25]
         self._num_groups = 0
@@ -918,6 +919,7 @@ class _StanModel(ABC):
             levels=levels,
             combine_dims=combine_dims,
             backend_kwargs=backend_kwargs,
+            divergences=False,
         )
         self._parameter_corner_plot_counter += 1
         return ax
@@ -1711,34 +1713,9 @@ class HierarchicalModel_2D(_StanModel):
                 hdi_kwargs={"skipna": True},
             )
         if xobs is not None and yobs is not None:
-            # overlay data
-            obs = self.obs_collapsed if collapsed else self.obs
-            if self._num_groups < 2:
-                self._plot_obs_data_kwargs["cmap"] = "Set1"
-            if yobs_err is None:
-                ax.scatter(
-                    obs[xobs], obs[yobs], c=obs["label"], **self._plot_obs_data_kwargs
-                )
-            else:
-                colvals = np.unique(obs["label"])
-                ncols = len(colvals)
-                cmapper, sm = create_normed_colours(
-                    np.min(colvals),
-                    np.max(colvals),
-                    cmap=self._plot_obs_data_kwargs["cmap"],
-                )
-                for i, c in enumerate(colvals):
-                    col = cmapper(c)
-                    mask = obs["label"] == c
-                    ax.errorbar(
-                        obs[xobs][mask],
-                        obs[yobs][mask],
-                        yerr=obs[yobs_err][mask],
-                        c=col,
-                        zorder=20,
-                        fmt=".",
-                        label=("Sims." if i == ncols - 1 else ""),
-                    )
+            self.add_data_to_predictive_plot(
+                ax=ax, xobs=xobs, yobs=yobs, yobs_err=yobs_err, collapsed=collapsed
+            )
         if show_legend:
             ax.legend()
         return ax
@@ -1854,12 +1831,78 @@ class HierarchicalModel_2D(_StanModel):
         )
         return ax
 
+    def add_data_to_predictive_plot(
+        self, ax, xobs, yobs, yobs_err=None, collapsed=True
+    ):
+        """
+        Add data a model has been conditioned on to a plot.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            axis to plot to
+        xobs : str, optional
+            dictionary key for observed independent variable, by default None
+        yobs : str, optional
+            dictionary key for observed dependent variable, by default None
+        yobs_err : str, optional
+             dictionary key for observed dependent variable scatter, by default
+             None
+        collapsed : bool, optional
+            plotting collapsed observations?, by default True
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            axis plotted to
+        """
+        plot_kwargs = deepcopy(self._plot_obs_data_kwargs)
+        # overlay data
+        obs = self.obs_collapsed if collapsed else self.obs
+        if self._num_groups < 2:
+            plot_kwargs["cmap"] = "Set1"
+
+        # helper function
+        def helper_plotting_func():
+            colvals = np.unique(obs["label"])
+            ncols = len(colvals)
+            cmapper, sm = create_normed_colours(
+                np.min(colvals),
+                np.max(colvals),
+                cmap=plot_kwargs.pop("cmap"),
+            )
+            for i, c in enumerate(colvals):
+                col = cmapper(c)
+                mask = obs["label"] == c
+                label = "Sims." if i == ncols - 1 else ""
+                yield mask, col, label
+
+        helper = helper_plotting_func()
+        if yobs_err is None:
+            for mask, col, label in helper:
+                ax.plot(
+                    obs[xobs][mask], obs[yobs][mask], c=col, label=label, **plot_kwargs
+                )
+        else:
+            fmt = plot_kwargs.pop("marker")
+            for mask, col, label in helper:
+                ax.errorbar(
+                    obs[xobs][mask],
+                    obs[yobs][mask],
+                    yerr=obs[yobs_err][mask],
+                    c=col,
+                    fmt=f"{fmt}-",
+                    label=label,
+                    **plot_kwargs,
+                )
+        return ax
+
 
 class FactorModel_2D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         """
         Hierarchical model for 2-dimensional factor models.
-        These models are for when the exchangeability principle of latent 
+        These models are for when the exchangeability principle of latent
         parameters is not satisfied.
         See the __init__ documentation for StanModel()
         """

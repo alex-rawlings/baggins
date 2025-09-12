@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
+from baggins.literature import AlphaBetaGamma_profile
 from baggins.plotting import savefig
 from baggins.utils import get_files_in_dir
 
@@ -25,29 +26,46 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         self._folded_qtys_labs = [r"$\rho(r)$/(M$_\odot$/kpc$^3$))"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
         self._latent_qtys = [
-            "rS_raw",
-            "a_raw",
-            "b_raw",
+            "log10rS",
+            "a",
+            "b",
             "g_raw",
-            "log10rhoS_raw",
-            "err_raw",
+            "log10rhoS",
+            "err0",
+            "err_grad",
         ]
         self._latent_qtys_posterior = [
-            f"{v.replace('_raw', '')}" for v in self.latent_qtys
+            "rS",
+            "a",
+            "b",
+            "g",
+            "log10rhoS",
+            "err0",
+            "err_grad",
         ]
         self._latent_qtys_labs = [
+            r"$\log_{10}(r_\mathrm{S}/\mathrm{kpc})$",
+            r"$\alpha$",
+            r"$\beta$",
+            r"$\gamma'$",
+            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+            r"$\tau_0$",
+            r"$\tau_\Delta$",
+        ]
+        self._latent_qtys_posterior_labs = [
             r"$r_\mathrm{S}/\mathrm{kpc}$",
             r"$\alpha$",
             r"$\beta$",
             r"$\gamma$",
             r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
-            r"$\tau$",
+            r"$\tau_0$",
+            r"$\tau_\Delta$",
         ]
         self._labeller_latent = MapLabeller(
             dict(zip(self._latent_qtys, self._latent_qtys_labs))
         )
         self._labeller_latent_posterior = MapLabeller(
-            dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
+            dict(zip(self._latent_qtys_posterior, self._latent_qtys_posterior_labs))
         )
         self._merger_id = None
         self._dims_prepped = False
@@ -150,7 +168,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         return rmin, rmax
 
     @abstractmethod
-    def set_stan_data(self):
+    def set_stan_data(self, **kwargs):
         """
         Set the Stan data dictionary used for sampling.
         """
@@ -161,7 +179,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             r=self.obs_collapsed["r"],
         )
         if not self._loaded_from_file:
-            self._set_stan_data_OOS()
+            self._set_stan_data_OOS(**kwargs)
 
     def sample_model(self, sample_kwargs={}, diagnose=True):
         """
@@ -211,14 +229,16 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             fig, ax = plt.subplots(2, ncol, figsize=figsize)
         try:
             self.plot_generated_quantity_dist(
-                self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs
+                self.latent_qtys_posterior,
+                ax=ax,
+                xlabels=self._latent_qtys_posterior_labs,
             )
         except ValueError:  # TODO check this
             _logger.warning(
                 "Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
             )
             self.plot_generated_quantity_dist(
-                self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs
+                self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys
             )
         return ax
 
@@ -345,17 +365,24 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         )
         self.collapse_observations(["r", "log10_r", "density", "log10_density"])
 
-    def _set_stan_data_OOS(self, r_count=None):
-        rmin, rmax = super()._set_stan_data_OOS()
+    def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None):
+        _rmin, _rmax = super()._set_stan_data_OOS()
+        if rmin is None:
+            rmin = _rmin
+        if rmax is None:
+            rmax = _rmax
         if r_count is None:
             r_count = max([len(rs) for rs in self.obs["r"]]) * 10
         self._num_OOS = r_count
+        _logger.debug(
+            f"OOS will have radial values from {rmin:.2e} - {rmax:.2e} in {r_count} bins"
+        )
         rs = np.geomspace(rmin, rmax, r_count)
         self.stan_data.update(dict(N_OOS=self.num_OOS, r_OOS=rs))
 
-    def set_stan_data(self):
-        """See docs for `_GrahamModelBase.set_stan_data()"""
-        super().set_stan_data()
+    def set_stan_data(self, **kwargs):
+        """See docs for `_ABGDensityModelBase.set_stan_data()"""
+        super().set_stan_data(**kwargs)
         self.stan_data.update(dict(density=self.obs_collapsed["density"]))
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
@@ -405,9 +432,9 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         self.plot_latent_distributions(figsize=figsize)
 
         ax = self.parameter_corner_plot(
-            self.latent_qtys,
+            self.latent_qtys_posterior,
             figsize=(len(self.latent_qtys), len(self.latent_qtys)),
-            labeller=self._labeller_latent,
+            labeller=self._labeller_latent_posterior,
         )
         fig = ax.flatten()[0].get_figure()
         savefig(
@@ -418,13 +445,72 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         )
         return ax
 
-    def all_posterior_OOS_plots(self, figsize=None):
+    def all_posterior_OOS_plots(self, figsize=None, ax=None):
         # out of sample posterior
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
         ax.set_xlabel(r"$r$/kpc")
+        ax.set_ylabel(self._folded_qtys_labs[0])
         ax.set_xscale("log")
         ax.set_yscale("log")
         self.posterior_OOS_plot(
             xmodel="r_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
         )
         return ax
+
+    def add_guiding_profiles(self, ax, a, b, g, rS, N=5, offset=0.5, **kwargs):
+        """
+        Plot some ABG profiles, varying the normalising density, to guide the eye.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        a : float
+            transition index
+        b : float
+            outer region slope
+        g : float
+            inner region slope
+        rS : float
+            scale radius
+        N : int, optional
+            number of lines, by default 5
+        offset : float, optional
+            half vertical spacing between lowest and highest profile, by default 0.5
+        """
+        kwargs.setdefault("lw", 1)
+        kwargs.setdefault("c", "gray")
+        kwargs.setdefault("zorder", 0.2)
+        kwargs.setdefault("label", f"({a:.1f},{b:.1f},{g:.1f})")
+        dens_pivot = np.max(self.obs["log10_density"])
+        log10dens = np.linspace(dens_pivot - offset, dens_pivot + offset, N)
+        r = np.geomspace(
+            np.min(self.stan_data["r_OOS"]), np.max(self.stan_data["r_OOS"]), 500
+        )
+        for p in 10**log10dens:
+            label = kwargs.pop("label", None)
+            ax.plot(
+                r,
+                AlphaBetaGamma_profile(r, rs=rS, ps=p, a=a, b=b, g=g),
+                label=label,
+                **kwargs,
+            )
+
+    def add_guiding_Plummer(self, ax, rS, N=5, offset=0.5, **kwargs):
+        """
+        Plot Plummer profile to guide eye. See add_guiding_profiles() for details.
+        """
+        kwargs.setdefault("label", "Plummer")
+        self.add_guiding_profiles(
+            ax=ax, a=2, b=5, g=0, rS=rS, N=N, offset=offset, **kwargs
+        )
+
+    def add_guiding_NFW(self, ax, rS, N=5, offset=0.5, **kwargs):
+        """
+        Plot NFW profile to guide eye. See add_guiding_profiles() for details.
+        """
+        kwargs.setdefault("label", "NFW")
+        self.add_guiding_profiles(
+            ax=ax, a=1, b=3, g=1, rS=rS, N=N, offset=offset, **kwargs
+        )
