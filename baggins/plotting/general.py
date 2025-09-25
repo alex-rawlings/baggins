@@ -18,6 +18,7 @@ __all__ = [
     "create_odd_number_subplots",
     "nice_log10_scale",
     "arrow_on_line",
+    "add_log_guiding_gradients",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -381,3 +382,39 @@ def arrow_on_line(ln, xpos=None, direction="right", size=15, arrowprops={}):
         arrowprops=arrowprops,
         size=size,
     )
+
+
+def add_log_guiding_gradients(ax, x0, x1, y1, b, offset=0, fmt="+.0f", **kwargs):
+    """
+    Add guiding gradient lines to a log-log plot.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        axis to plot to_
+    x0 : float
+        lower x limit of line
+    x1 : float
+        upper x limit of line
+    y1 : float
+        y-intersection point of lines
+    b : list
+        gradients to plot
+    offset : float, optional
+        text offset, by default 0
+    fmt : str, optional
+        label formatting string, by default "+.0f"
+    """
+    xlines = np.array([x0, x1])
+    kwargs.setdefault("ls", "-")
+    kwargs.setdefault("c", "k")
+    kwargs.setdefault("lw", 1)
+    for _b in b:
+        ax.plot(xlines, y1 * (xlines / x1) ** _b, **kwargs)
+        ax.text(
+            x0 + offset,
+            y1 * ((x0 + offset) / x1) ** _b,
+            rf"$\propto {_b:{fmt}}$",
+            ha="right",
+            va="center",
+        )

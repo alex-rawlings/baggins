@@ -1,14 +1,15 @@
 from abc import abstractmethod
 import os.path
+import numpy as np
 import matplotlib.pyplot as plt
 from arviz.labels import MapLabeller
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.plotting import savefig
-from baggins.utils import save_data
+from baggins.utils import save_data, get_files_in_dir
 
 
-__all__ = ["_GPBase"]
+__all__ = ["_GPBase", "GeneralGP"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -68,7 +69,7 @@ class _GPBase(HierarchicalModel_2D):
             self._set_stan_data_OOS(*pars)
         _logger.debug(f"Setting {self.stan_data['N1']} training points")
 
-    def sample_model(self, sample_kwargs=..., diagnose=True):
+    def sample_model(self, sample_kwargs={}, diagnose=True):
         super().sample_model(
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=False
         )
@@ -161,3 +162,146 @@ class _GPBase(HierarchicalModel_2D):
             ),
         }
         save_data(data, fname)
+
+
+class GeneralGP(_GPBase):
+    def __init__(self, figname_base, rng):
+        """
+        General purpose GP that allows fits a regression to some data stored as a text file.
+
+        Parameters
+        ----------
+        figname_base : str
+            path-like base name that all plots will share
+        rng : np.random.Generator
+            random number generator, by default None (creates a new instance)
+        """
+        super().__init__(
+            model_file=get_stan_file("gp_analytic"),
+            prior_file="",
+            figname_base=figname_base,
+            rng=rng,
+        )
+        self._input_qtys_labs = [r"$x$"]
+        self._folded_qtys_labs = [r"$y$"]
+
+    @property
+    def input_qtys_labs(self):
+        return self._input_qtys_labs
+
+    @property
+    def folded_qtys_labs(self):
+        return self._folded_qtys_labs
+
+    def extract_data(self, d=None, skiprows=0, logx=False, logy=False):
+        """
+        Read data in from txt file.
+
+        Parameters
+        ----------
+        d : str, path-like, optional
+            file to read, by default None
+        skiprows : int, optional
+            rows to skip, by default 0
+        logx : bool, optional
+            fit x in log10 space, by default False
+        logy : bool, optional
+            fit y in log10 space, by default False
+
+        Raises
+        ------
+        RuntimeError
+            if non-txt file supplied
+        """
+        d = self._get_data_dir(d)
+        try:
+            fnames = get_files_in_dir(d, ext=".txt")
+        except NotADirectoryError:
+            # the individual file names are saved to the input_data_*.yml file
+            _ext = os.path.splitext(d)[-1]
+            _logger.debug(f"Loading from {_ext} file")
+            if _ext == ".yml":
+                fnames = d
+            elif _ext == ".txt":
+                fnames = [d]
+            else:
+                raise RuntimeError(f"Unknown file type {_ext}")
+        except TypeError:
+            _logger.debug("TypeError -> taking the first instance")
+            fnames = d[0]
+        obs = {"x": [], "y": []}
+        _logger.debug(f"Files to load {fnames}")
+        for f in fnames:
+            _logger.info(f"Loading file: {f}")
+            _dat = np.loadtxt(f, skiprows=skiprows)
+            if _dat.shape[0] == 2 and _dat.shape[1] != 2:
+                # convert to column-major
+                _dat = _dat.T
+            _logger.debug(f"Input data has shape {_dat.shape}")
+            # TODO check for 2x2 case
+            if logx:
+                obs["x"].append(np.log10(_dat[:, 0]))
+            else:
+                obs["x"].append(_dat[:, 0])
+            if logy:
+                obs["y"].append(np.log10(_dat[:, 1]))
+            else:
+                obs["y"].append(_dat[:, 1])
+
+            if not self._loaded_from_file:
+                self._add_input_data_file(f)
+        self.obs = obs
+        self.collapse_observations(["x", "y"])
+
+    def _set_stan_data_OOS(self, N=None):
+        """
+        Set the out-of-sample Stan data variables.
+        Parameters
+        ----------
+        N : int, optional
+            number of OOS points, by default None
+        """
+        if N is None:
+            N = max([len(x) for x in self.obs["x"]]) * 10
+        self._num_OOS = N
+        xmin = min([np.min(x) for x in self.obs["x"]])
+        xmax = max([np.max(x) for x in self.obs["x"]])
+        x2 = np.linspace(xmin, xmax, self.num_OOS)
+        self.stan_data.update({"x2": x2, "N2": self.num_OOS})
+
+    def set_stan_data(self, *pars):
+        """
+        Set the data for Stan
+        """
+        super().set_stan_data(*pars)
+        self.stan_data.update(
+            {"x1": self.obs_collapsed["x"], "y1": self.obs_collapsed["y"]}
+        )
+
+    def posterior_OOS_plot(self, figsize=None):
+        """
+        Plots for posterior.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axes
+        """
+        ylims = (
+            np.quantile(self.obs_collapsed["y"], 0.01),
+            np.quantile(self.obs_collapsed["y"], 0.99),
+        )
+        fig, ax = plt.subplots(1, 1, figsize=figsize)
+        self.add_data_to_predictive_plot(ax=ax, xobs="x", yobs="y")
+        ax.set_ylim(*ylims)
+        ax.set_xlabel(self._input_qtys_labs[0])
+        ax.set_ylabel(self._folded_qtys_labs[0])
+        self.posterior_OOS_plot(
+            xmodel="x2", ymodel=self.folded_qtys_posterior[0], ax=ax, smooth=True
+        )
+        return ax
