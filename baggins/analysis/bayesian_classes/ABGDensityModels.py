@@ -8,6 +8,7 @@ from baggins.env_config import _cmlogger, baggins_dir
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.literature import AlphaBetaGamma_profile
 from baggins.plotting import savefig
+from baggins.utils import get_files_in_dir
 
 __all__ = ["ABGDensityModelSimple", "ABGDensityModelHierarchy"]
 
@@ -483,8 +484,18 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
 
 class ABGDensityModelHierarchy(_ABGDensityModelBase):
     def __init__(self, figname_base, rng=None):
+        """
+        Construct hierarchical model for ABG density profile.
+
+        Parameters
+        ----------
+        figname_base : str
+            base name for figures
+        rng : numpy.random.Generator, optional
+            random number generator, by default None
+        """
         super().__init__(
-            model_file=get_stan_file("abg_hierarchy_2"),
+            model_file=get_stan_file("abg_hierarchy"),
             prior_file=get_stan_file("abg_hierarchy_prior"),
             figname_base=figname_base,
             rng=rng,
@@ -532,23 +543,41 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         )
 
     def extract_data(self, fname=None, **kwargs):
-        d = self._get_data_dir(fname)
-        if self._loaded_from_file:
-            if os.path.isdir(d):
-                fname = d[0]
-            else:
-                fname = d
-        _logger.info(f"Loading file: {fname}")
-        data = np.loadtxt(fname, **kwargs)
+        """
+        Extract data from .txt file or a directory containing .txt files.
+        Last data point is not used for the fitting.
+
+        Parameters
+        ----------
+        fname : str, optional
+            path to file(s), by default None
+        """
         obs = {"r": [], "density": []}
-        sample_ids = np.unique(data[:, 2])
-        for _sid in sample_ids:
-            mask = _sid == data[:, 2]
-            obs["r"].append(data[mask, 0])
-            obs["density"].append(data[mask, 1])
-        self._merger_id = os.path.splitext(os.path.basename(fname))[0]
-        if not self._loaded_from_file:
+        fname = fname.rstrip("/")
+        fname = self._get_data_dir(fname)
+        if self._loaded_from_file:
+            fnames = fname[0]
+        elif os.path.isfile(fname):
+            _logger.info(f"Loading file: {fname}")
+            data = np.loadtxt(fname, **kwargs)
+            sample_ids = np.unique(data[:, 2])
+            for _sid in sample_ids:
+                mask = _sid == data[:, 2]
+                # TODO how to exclude last point efficiently?
+                obs["r"].append(data[mask, 0])
+                obs["density"].append(data[mask, 1])
             self._add_input_data_file(fname)
+        else:
+            fnames = get_files_in_dir(fname, ".txt")
+            for _fname in fnames:
+                _logger.info(f"Loading file: {_fname}")
+                data = np.loadtxt(_fname, **kwargs)
+                # XXX here we exclude the last point
+                obs["r"].append(data[:-1, 0])
+                obs["density"].append(data[:-1, 1])
+                if not self._loaded_from_file:
+                    self._add_input_data_file(_fname)
+        self._merger_id = os.path.splitext(os.path.basename(fname))[0]
         self.obs = obs
         # some transformations we need
         self.transform_obs("r", "log10_r", lambda x: np.log10(x))
@@ -559,6 +588,20 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         self.collapse_observations(["r", "log10_r", "density", "log10_density"])
 
     def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None, ngroups=None):
+        """
+        _summary_
+
+        Parameters
+        ----------
+        r_count : int, optional
+            Number of radii for OOS plots, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+        ngroups : int, optional
+            number of level groups (i.e. profiles), by default None
+        """
         rs = super()._set_stan_data_OOS(r_count=r_count, rmin=rmin, rmax=rmax)
         if ngroups is None:
             ngroups = 2 * self.stan_data["N_group"]
@@ -574,9 +617,22 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         )
 
     def set_stan_data(self, **kwargs):
+        """
+        Set Stan data for the model.
+        """
         return super().set_stan_data(**kwargs)
 
     def all_prior_plots(self, figsize=None, ylim=None):
+        """
+        Make prior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ylim : tuple, optional
+            y-limits for prior predictive plot, by default None
+        """
         self._prep_dims()
         ax = self.parameter_corner_plot(
             self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
@@ -591,6 +647,19 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         super().all_prior_plots(figsize, ylim)
 
     def all_posterior_pred_plots(self, figsize=None):
+        """
+        Make posterior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+
+        Returns
+        -------
+        : matplotlib.axes.Axes
+            plotting axes for latent parameter corner plot
+        """
         self._prep_dims()
         self.plot_latent_distributions(figsize=figsize, from_hyper=True)
         # latent parameter plots (corners, chains, etc)
@@ -600,5 +669,20 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         return super().all_posterior_pred_plots(figsize)
 
     def all_posterior_OOS_plots(self, figsize=None, ax=None):
+        """
+        Make posterior OOS plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+
+        Returns
+        -------
+         matplotlib.axes.Axes, optional
+            plotting axes
+        """
         self._prep_dims()
         return super().all_posterior_OOS_plots(figsize, ax)

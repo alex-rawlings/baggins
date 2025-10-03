@@ -26,6 +26,9 @@ parser.add_argument(
     "-p", "--prior", help="prior analysis", dest="prior", action="store_true"
 )
 parser.add_argument(
+    "-L", "--loaded", action="store_true", dest="loaded", help="loaded from previous"
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -36,10 +39,24 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+SL = bgs.setup_logger("script", console_level=args.verbose)
+
 if args.model == "s":
-    abgdens = bgs.analysis.ABGDensityModelSimple("abg_density_simple")
+    figname_base = "abg_density_simple"
+    if args.loaded:
+        abgdens = bgs.analysis.ABGDensityModelSimple.load_fit(
+            args.files, figname_base=figname_base
+        )
+    else:
+        abgdens = bgs.analysis.ABGDensityModelSimple(figname_base=figname_base)
 else:
-    abgdens = bgs.analysis.ABGDensityModelHierarchy("abg_density_hierarchy")
+    figname_base = "abg_density_hierarchy"
+    if args.loaded:
+        abgdens = bgs.analysis.ABGDensityModelHierarchy.load_fit(
+            args.files, figname_base=figname_base
+        )
+    else:
+        abgdens = bgs.analysis.ABGDensityModelHierarchy(figname_base=figname_base)
 abgdens.extract_data(args.files, skiprows=1)
 sample_kwargs = {"adapt_delta": 0.995, "max_treedepth": 15}
 if args.save is not None:
