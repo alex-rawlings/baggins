@@ -10,7 +10,7 @@ import cmdstanpy
 import arviz as az
 import yaml
 from baggins.plotting import savefig, create_normed_colours
-from baggins.env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
+from baggins.env_config import figure_dir, TMPDIRs, _cmlogger
 from baggins.utils import get_mod_time
 
 __all__ = [
@@ -565,29 +565,21 @@ class _StanModel(ABC):
             self._sample_diagnosis = self._fit.diagnose()
             return self._fit
         else:
-            default_sample_kwargs = {
-                "chains": 4,
-                "iter_sampling": 2000,
-                "show_progress": True,
-                "max_treedepth": 12,
-            }
+            sample_kwargs.setdefault("chains", 4)
+            sample_kwargs.setdefault("iter_sampling", 2000)
+            sample_kwargs.setdefault("show_progress", True)
+            sample_kwargs.setdefault("max_treedepth", 12)
             if not prior:
-                default_sample_kwargs["output_dir"] = os.path.join(
-                    data_dir, "stan_files"
-                )
-                default_sample_kwargs["threads_per_chain"] = 4
+                sample_kwargs.setdefault("threads_per_chain", 4)
             else:
                 # protect against inability to parallelise, for prior model
                 # this shouldn't be so expensive anyway
-                default_sample_kwargs["force_one_process_per_chain"] = True
-            # update user given sample kwargs
-            for k, v in sample_kwargs.items():
-                default_sample_kwargs[k] = v
-            if "output_dir" in default_sample_kwargs:
-                os.makedirs(default_sample_kwargs["output_dir"], exist_ok=True)
+                sample_kwargs.setdefault("force_one_process_per_chain", True)
+            if "output_dir" in sample_kwargs:
+                os.makedirs(sample_kwargs["output_dir"], exist_ok=True)
             start_time = datetime.now()
             if prior:
-                fit = self._prior_model.sample(self.stan_data, **default_sample_kwargs)
+                fit = self._prior_model.sample(self.stan_data, **sample_kwargs)
             else:
                 _logger.debug(f"exe info: {self._model.exe_info()}")
                 try:
@@ -603,9 +595,7 @@ class _StanModel(ABC):
                         f"Stan pathfinder failed: normal initialisation will be used! Reason: {e}"
                     )
                     inits = None
-                fit = self._model.sample(
-                    self.stan_data, inits=inits, **default_sample_kwargs
-                )
+                fit = self._model.sample(self.stan_data, inits=inits, **sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.info(f"Sampling completed in {datetime.now()-start_time}")
             _logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")

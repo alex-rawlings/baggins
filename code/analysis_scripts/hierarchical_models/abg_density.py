@@ -9,6 +9,15 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(help="data file", dest="files", type=str)
+parser.add_argument(
+    "-m",
+    "--model",
+    help="simple or hierarchical model",
+    choices=["s", "h"],
+    default="s",
+    type=str,
+    dest="model",
+)
 parser.add_argument("-s", "--save", help="save location", dest="save", type=str)
 parser.add_argument(
     "--saveOOS", help="save sampled density data", dest="saveOOS", type=str
@@ -27,8 +36,11 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-abgdens = bgs.analysis.ABGDensityModelSimple("abg_density")
-abgdens.read_data_from_txt(args.files, skiprows=1)
+if args.model == "s":
+    abgdens = bgs.analysis.ABGDensityModelSimple("abg_density_simple")
+else:
+    abgdens = bgs.analysis.ABGDensityModelHierarchy("abg_density_hierarchy")
+abgdens.extract_data(args.files, skiprows=1)
 sample_kwargs = {"adapt_delta": 0.995, "max_treedepth": 15}
 if args.save is not None:
     sample_kwargs["output_dir"] = os.path.join(args.save, abgdens.merger_id)
