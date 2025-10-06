@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 import os
 from operator import itemgetter
+from itertools import groupby
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams, collections, patches, ticker
@@ -11,7 +13,7 @@ import arviz as az
 import yaml
 from baggins.plotting import savefig, create_normed_colours
 from baggins.env_config import figure_dir, TMPDIRs, _cmlogger
-from baggins.utils import get_mod_time
+from baggins.utils import get_mod_time, get_files_in_dir
 
 __all__ = [
     "_StanModel",
@@ -1325,12 +1327,12 @@ class _StanModel(ABC):
     @classmethod
     def load_fit(cls, fit_files, figname_base, rng=None):
         """
-        Restore a stan model from a previously-saved set of csv files
+        Restore a stan model from a previously-saved set of csv files. Accepts either a glob pattern or a directory. In the latter case, the most recent fits will be used.
 
         Parameters
         ----------
         fit_files : str, path-like
-            path to previously saved csv files
+            path to previously saved csv files (may be a directory)
         figname_base : str
             path-like base name that all plots will share
         rng : np.random._generator.Generator, optional
@@ -1341,6 +1343,20 @@ class _StanModel(ABC):
 
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
+
+        # handle if a directory is given instead of a glob pattern
+        def _get_prefix(fname):
+            _match = re.match(r"(.*)_\d+\.csv", fname)
+            return _match.group(1) if _match else fname
+
+        if os.path.isdir(fit_files):
+            file_list = get_files_in_dir(fit_files, ".csv")
+            fit_prefix, fit_files = [
+                (prefix, list(group))
+                for prefix, group in groupby(file_list, key=_get_prefix)
+            ][-1]
+            _logger.warning(f"Using the most recent Stan run, prefix is: {fit_prefix}")
+
         C._fit = cmdstanpy.from_csv(fit_files)
         fit_time = datetime.strptime(
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"

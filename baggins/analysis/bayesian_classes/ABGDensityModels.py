@@ -375,6 +375,16 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
 
 class ABGDensityModelSimple(_ABGDensityModelBase):
     def __init__(self, figname_base, rng=None):
+        """
+        Construct simple model for ABG density profile.
+
+        Parameters
+        ----------
+        figname_base : str
+            base name for figures
+        rng : numpy.random.Generator, optional
+            random number generator, by default None
+        """
         super().__init__(
             model_file=get_stan_file("abg_simple"),
             prior_file=get_stan_file("abg_simple_prior"),
@@ -459,6 +469,20 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         self.collapse_observations(["r", "log10_r", "density", "log10_density"])
 
     def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None):
+        """
+        Set OOS Stan data.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            Number of radii for OOS plots, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+        ngroups : int, optional
+            number of level groups (i.e. profiles), by default None
+        """
         rs = super()._set_stan_data_OOS(r_count=r_count, rmin=rmin, rmax=rmax)
         self.stan_data.update(dict(N_OOS=self.num_OOS, r_OOS=rs))
 
@@ -467,6 +491,16 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         super().set_stan_data(**kwargs)
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
+        """
+        Make prior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ylim : tuple, optional
+            y-limits for prior predictive plot, by default None
+        """
         self.rename_dimensions(
             dict.fromkeys(
                 [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
@@ -475,6 +509,19 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         return super().all_prior_plots(figsize, ylim)
 
     def all_posterior_pred_plots(self, figsize=None):
+        """
+        Make posterior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+
+        Returns
+        -------
+        : matplotlib.axes.Axes
+            plotting axes for latent parameter corner plot
+        """
         # latent parameter plots (corners, chains, etc)
         self.parameter_diagnostic_plots(
             self.latent_qtys, labeller=self._labeller_latent, figsize=(5, 5)
@@ -554,10 +601,9 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         """
         obs = {"r": [], "density": []}
         fname = fname.rstrip("/")
-        fname = self._get_data_dir(fname)
         if self._loaded_from_file:
-            fnames = fname[0]
-        elif os.path.isfile(fname):
+            fname = self._get_data_dir(None)[0]
+        if not isinstance(fname, list) and os.path.isfile(fname):
             _logger.info(f"Loading file: {fname}")
             data = np.loadtxt(fname, **kwargs)
             sample_ids = np.unique(data[:, 2])
@@ -568,7 +614,9 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
                 obs["density"].append(data[mask, 1])
             self._add_input_data_file(fname)
         else:
-            fnames = get_files_in_dir(fname, ".txt")
+            fnames = (
+                fname if self._loaded_from_file else get_files_in_dir(fname, ".txt")
+            )
             for _fname in fnames:
                 _logger.info(f"Loading file: {_fname}")
                 data = np.loadtxt(_fname, **kwargs)
@@ -577,7 +625,10 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
                 obs["density"].append(data[:-1, 1])
                 if not self._loaded_from_file:
                     self._add_input_data_file(_fname)
-        self._merger_id = os.path.splitext(os.path.basename(fname))[0]
+        try:
+            self._merger_id = os.path.splitext(os.path.basename(fname))[0]
+        except TypeError:
+            self._merger_id = os.path.splitext(os.path.basename(fname[0]))[0]
         self.obs = obs
         # some transformations we need
         self.transform_obs("r", "log10_r", lambda x: np.log10(x))
@@ -589,7 +640,7 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
 
     def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None, ngroups=None):
         """
-        _summary_
+        Set OOS Stan data.
 
         Parameters
         ----------
