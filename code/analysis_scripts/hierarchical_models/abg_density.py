@@ -9,12 +9,24 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(help="data file", dest="files", type=str)
+parser.add_argument(
+    "-m",
+    "--model",
+    help="simple or hierarchical model",
+    choices=["s", "h"],
+    default="s",
+    type=str,
+    dest="model",
+)
 parser.add_argument("-s", "--save", help="save location", dest="save", type=str)
 parser.add_argument(
     "--saveOOS", help="save sampled density data", dest="saveOOS", type=str
 )
 parser.add_argument(
     "-p", "--prior", help="prior analysis", dest="prior", action="store_true"
+)
+parser.add_argument(
+    "-L", "--loaded", action="store_true", dest="loaded", help="loaded from previous"
 )
 parser.add_argument(
     "-v",
@@ -27,8 +39,25 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-abgdens = bgs.analysis.ABGDensityModelSimple("abg_density")
-abgdens.read_data_from_txt(args.files, skiprows=1)
+SL = bgs.setup_logger("script", console_level=args.verbose)
+
+if args.model == "s":
+    figname_base = "abg_density_simple"
+    if args.loaded:
+        abgdens = bgs.analysis.ABGDensityModelSimple.load_fit(
+            args.files, figname_base=figname_base
+        )
+    else:
+        abgdens = bgs.analysis.ABGDensityModelSimple(figname_base=figname_base)
+else:
+    figname_base = "abg_density_hierarchy"
+    if args.loaded:
+        abgdens = bgs.analysis.ABGDensityModelHierarchy.load_fit(
+            args.files, figname_base=figname_base
+        )
+    else:
+        abgdens = bgs.analysis.ABGDensityModelHierarchy(figname_base=figname_base)
+abgdens.extract_data(args.files, skiprows=1)
 sample_kwargs = {"adapt_delta": 0.995, "max_treedepth": 15}
 if args.save is not None:
     sample_kwargs["output_dir"] = os.path.join(args.save, abgdens.merger_id)
