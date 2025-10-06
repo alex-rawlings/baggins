@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 import os
 from operator import itemgetter
+from itertools import groupby
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams, collections, patches, ticker
@@ -10,8 +12,8 @@ import cmdstanpy
 import arviz as az
 import yaml
 from baggins.plotting import savefig, create_normed_colours
-from baggins.env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
-from baggins.utils import get_mod_time
+from baggins.env_config import figure_dir, TMPDIRs, _cmlogger
+from baggins.utils import get_mod_time, get_files_in_dir
 
 __all__ = [
     "_StanModel",
@@ -565,29 +567,21 @@ class _StanModel(ABC):
             self._sample_diagnosis = self._fit.diagnose()
             return self._fit
         else:
-            default_sample_kwargs = {
-                "chains": 4,
-                "iter_sampling": 2000,
-                "show_progress": True,
-                "max_treedepth": 12,
-            }
+            sample_kwargs.setdefault("chains", 4)
+            sample_kwargs.setdefault("iter_sampling", 2000)
+            sample_kwargs.setdefault("show_progress", True)
+            sample_kwargs.setdefault("max_treedepth", 12)
             if not prior:
-                default_sample_kwargs["output_dir"] = os.path.join(
-                    data_dir, "stan_files"
-                )
-                default_sample_kwargs["threads_per_chain"] = 4
+                sample_kwargs.setdefault("threads_per_chain", 4)
             else:
                 # protect against inability to parallelise, for prior model
                 # this shouldn't be so expensive anyway
-                default_sample_kwargs["force_one_process_per_chain"] = True
-            # update user given sample kwargs
-            for k, v in sample_kwargs.items():
-                default_sample_kwargs[k] = v
-            if "output_dir" in default_sample_kwargs:
-                os.makedirs(default_sample_kwargs["output_dir"], exist_ok=True)
+                sample_kwargs.setdefault("force_one_process_per_chain", True)
+            if "output_dir" in sample_kwargs:
+                os.makedirs(sample_kwargs["output_dir"], exist_ok=True)
             start_time = datetime.now()
             if prior:
-                fit = self._prior_model.sample(self.stan_data, **default_sample_kwargs)
+                fit = self._prior_model.sample(self.stan_data, **sample_kwargs)
             else:
                 _logger.debug(f"exe info: {self._model.exe_info()}")
                 try:
@@ -603,9 +597,7 @@ class _StanModel(ABC):
                         f"Stan pathfinder failed: normal initialisation will be used! Reason: {e}"
                     )
                     inits = None
-                fit = self._model.sample(
-                    self.stan_data, inits=inits, **default_sample_kwargs
-                )
+                fit = self._model.sample(self.stan_data, inits=inits, **sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.info(f"Sampling completed in {datetime.now()-start_time}")
             _logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
@@ -1335,12 +1327,12 @@ class _StanModel(ABC):
     @classmethod
     def load_fit(cls, fit_files, figname_base, rng=None):
         """
-        Restore a stan model from a previously-saved set of csv files
+        Restore a stan model from a previously-saved set of csv files. Accepts either a glob pattern or a directory. In the latter case, the most recent fits will be used.
 
         Parameters
         ----------
         fit_files : str, path-like
-            path to previously saved csv files
+            path to previously saved csv files (may be a directory)
         figname_base : str
             path-like base name that all plots will share
         rng : np.random._generator.Generator, optional
@@ -1351,6 +1343,20 @@ class _StanModel(ABC):
 
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
+
+        # handle if a directory is given instead of a glob pattern
+        def _get_prefix(fname):
+            _match = re.match(r"(.*)_\d+\.csv", fname)
+            return _match.group(1) if _match else fname
+
+        if os.path.isdir(fit_files):
+            file_list = get_files_in_dir(fit_files, ".csv")
+            fit_prefix, fit_files = [
+                (prefix, list(group))
+                for prefix, group in groupby(file_list, key=_get_prefix)
+            ][-1]
+            _logger.warning(f"Using the most recent Stan run, prefix is: {fit_prefix}")
+
         C._fit = cmdstanpy.from_csv(fit_files)
         fit_time = datetime.strptime(
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"
