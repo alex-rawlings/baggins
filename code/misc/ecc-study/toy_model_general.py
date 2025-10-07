@@ -93,7 +93,8 @@ class System:
         : array-like
             dynamical friction contribution to acceleration
         """
-        v_single = v/2
+        # TODO set fraction from mass
+        v_single = v * m / self.mbin
         v_single_norm = np.linalg.norm(v_single,axis=0)
 
         def _df_taylor(m):
