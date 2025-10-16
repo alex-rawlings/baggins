@@ -9,6 +9,7 @@ from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.literature import AlphaBetaGamma_profile
 from baggins.plotting import savefig
 from baggins.utils import get_files_in_dir
+from baggins.general import common_string_subgroups
 
 __all__ = ["ABGDensityModelSimple", "ABGDensityModelHierarchy"]
 
@@ -391,42 +392,17 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             figname_base=figname_base,
             rng=rng,
         )
-        self._latent_qtys = [
-            "log10rS",
-            "a",
-            "b",
-            "g_raw",
-            "log10rhoS",
-            "err0",
-            "err_grad",
-        ]
-        self._latent_qtys_posterior = [
-            "rS",
-            "a",
-            "b",
-            "g",
-            "log10rhoS",
-            "err0",
-            "err_grad",
-        ]
+        self._latent_qtys = ["log10rS", "a", "b", "g", "log10rhoS", "err"]
+        self._latent_qtys_posterior = ["rS", "a", "b", "g", "log10rhoS", "err"]
         self._latent_qtys_labs = [
             r"$\log_{10}(r_\mathrm{S}/\mathrm{kpc})$",
             r"$\alpha$",
             r"$\beta$",
-            r"$\gamma'$",
-            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
-            r"$\tau_0$",
-            r"$\tau_\Delta$",
-        ]
-        self._latent_qtys_posterior_labs = [
-            r"$r_\mathrm{S}/\mathrm{kpc}$",
-            r"$\alpha$",
-            r"$\beta$",
             r"$\gamma$",
             r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
-            r"$\tau_0$",
-            r"$\tau_\Delta$",
+            r"$\tau$",
         ]
+        self._latent_qtys_posterior_labs = copy(self._latent_qtys_labs)
         self._make_latent_labellers()
 
     def extract_data(self, fname, **kwargs):
@@ -454,8 +430,8 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         _logger.info(f"Loading file: {fname}")
         data = np.loadtxt(fname, **kwargs)
         obs = {"r": [], "density": []}
-        obs["r"] = [data[:, 0]]
-        obs["density"] = [data[:, 1]]
+        obs["r"] = [data[:-1, 0]]
+        obs["density"] = [data[:-1, 1]]
         self._merger_id = os.path.splitext(os.path.basename(fname))[0]
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
@@ -609,10 +585,10 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
             sample_ids = np.unique(data[:, 2])
             for _sid in sample_ids:
                 mask = _sid == data[:, 2]
-                # TODO how to exclude last point efficiently?
                 obs["r"].append(data[mask, 0])
                 obs["density"].append(data[mask, 1])
             self._add_input_data_file(fname)
+            self._merger_id = os.path.splitext(os.path.basename(fname))[0]
         else:
             fnames = (
                 fname if self._loaded_from_file else get_files_in_dir(fname, ".txt")
@@ -620,15 +596,14 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
             for _fname in fnames:
                 _logger.info(f"Loading file: {_fname}")
                 data = np.loadtxt(_fname, **kwargs)
-                # XXX here we exclude the last point
-                obs["r"].append(data[:-1, 0])
-                obs["density"].append(data[:-1, 1])
+                obs["r"].append(data[:, 0])
+                obs["density"].append(data[:, 1])
                 if not self._loaded_from_file:
                     self._add_input_data_file(_fname)
-        try:
-            self._merger_id = os.path.splitext(os.path.basename(fname))[0]
-        except TypeError:
-            self._merger_id = os.path.splitext(os.path.basename(fname[0]))[0]
+            self._merger_id = os.path.splitext(
+                common_string_subgroups([os.path.basename(f) for f in fnames])
+            )[0]
+        _logger.debug(f"Merger ID is: {self.merger_id}")
         self.obs = obs
         # some transformations we need
         self.transform_obs("r", "log10_r", lambda x: np.log10(x))
