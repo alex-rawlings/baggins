@@ -16,6 +16,7 @@ __all__ = [
     "represent_numeric_in_scientific",
     "get_snapshot_number",
     "print_dict_summary",
+    "common_string_subgroups",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -339,3 +340,36 @@ def print_dict_summary(d, level=0):
             else:
                 extra_info = ""
             print(" " * level + f"> {k}: {type(v)} - {extra_info}")
+
+
+def common_string_subgroups(strings, sep="_"):
+    """
+    Given a list of underscore-separated strings, find the common
+    subgroups (tokens) that appear in all strings, preserving order.
+
+    Parameters
+    ----------
+    strings : list
+        list of strings to find common subgroups in
+    sep : str, optional
+        separator string, by default "_"
+
+    Returns
+    -------
+    : str
+        common subgroup string, with subgroups separated by 'sep'
+    """
+    if not strings:
+        return ""
+
+    # split all strings into lists of tokens
+    token_lists = [s.split(sep) for s in strings]
+    # start with the tokens from the first string
+    common = set(token_lists[0])
+    # keep only tokens that appear in all other strings
+    for tokens in token_lists[1:]:
+        common &= set(tokens)
+    # preserve the order from the first string
+    ordered_common = [tok for tok in token_lists[0] if tok in common]
+    # join back into a single string
+    return "_".join(ordered_common)

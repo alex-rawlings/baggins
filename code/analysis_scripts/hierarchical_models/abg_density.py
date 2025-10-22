@@ -29,6 +29,9 @@ parser.add_argument(
     "-L", "--loaded", action="store_true", dest="loaded", help="loaded from previous"
 )
 parser.add_argument(
+    "--no-plots", action="store_true", dest="noplots", help="don't make plots"
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -74,17 +77,20 @@ if args.prior:
 else:
     abgdens.sample_model(sample_kwargs=sample_kwargs)
 
-    abgdens.all_posterior_pred_plots()
+    if not args.noplots:
+        abgdens.all_posterior_pred_plots()
 
-    # set up guiding Plummer lines
-    fig, ax = plt.subplots()
-    abgdens.add_data_to_predictive_plot(ax=ax, xobs="r", yobs="density")
-    abgdens.add_guiding_Plummer(ax=ax, rS=0.2)
-    bgs.plotting.add_log_guiding_gradients(
-        ax=ax, x0=0.085, x1=0.2, y1=1e3, b=[-2, -1, 0, 1, 2], offset=-0.01
-    )
-    abgdens.all_posterior_OOS_plots(ax=ax)
+        # set up guiding Plummer lines
+        fig, ax = plt.subplots()
+        abgdens.add_data_to_predictive_plot(ax=ax, xobs="r", yobs="density")
+        abgdens.add_guiding_Plummer(ax=ax, rS=0.2)
+        bgs.plotting.add_log_guiding_gradients(
+            ax=ax, x0=0.085, x1=0.2, y1=1e3, b=[-2, -1, 0, 1, 2], offset=-0.01
+        )
+        abgdens.all_posterior_OOS_plots(ax=ax)
 abgdens.print_parameter_percentiles(abgdens.latent_qtys)
+if args.model == "h":
+    abgdens.print_parameter_percentiles(["g_mean", "g_std"])
 
 if args.saveOOS is not None:
     abgdens.save_density_data_to_npz(args.saveOOS)

@@ -1294,7 +1294,7 @@ def softened_inverse_r(r, h):
         -2.8 + u[mask] ** 2 * (16 / 3 + u[mask] ** 2 * (6.4 * u[mask] - 9.6))
     )
 
-    mask = np.logical_not(np.logical_and(u >= 1, u < 0.5))
+    mask = np.logical_and(u < 1, u >= 0.5)
     _inv_r_soft[mask] = -hinv * (
         -3.2
         + 2 / 30 / u[mask]
