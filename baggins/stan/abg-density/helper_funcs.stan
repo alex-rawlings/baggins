@@ -2,11 +2,12 @@ vector abg_density_vec(
     vector r,
     real log10rhoS,
     real log10rS,
-    real a,
+    real log10a,
     real b,
     real g
 ){
     vector[size(r)] x = r ./ pow(10, log10rS);
+    real a = pow(10, log10a);
     return log10rhoS - g * log10(x) + (g - b) / a * log10(1 + pow(x, a));
 }
 
@@ -15,11 +16,12 @@ vector abg_density_vec(
     vector r,
     vector log10rhoS,
     vector log10rS,
-    vector a,
+    vector log10a,
     vector b,
     vector g
 ){
     vector[size(r)] x = r ./ pow(10, log10rS);
+    vector[size(log10a)] a = pow(10, log10a);
     return log10rhoS - g .* log10(x) + (g - b) ./ a .* log10(1 + pow(x, a));
 }
 
@@ -33,24 +35,24 @@ vector radially_vary_err(vector r, real e0, real ek, real rp){
 }
 
 
-real partial_sum_hierarchy(array[] real y_slice, int start, int end, vector r, vector log10rhoS, vector log10rS, vector a, vector b, vector g, vector s, array[] int cidx){
+real partial_sum_hierarchy(array[] real y_slice, int start, int end, vector r, vector log10rhoS, vector log10rS, vector log10a, vector b, vector g, vector s, array[] int cidx){
     return normal_lpdf(y_slice | abg_density_vec(
                     r[start:end],
                     log10rhoS[cidx[start:end]],
                     log10rS[cidx[start:end]],
-                    a[cidx[start:end]],
+                    log10a[cidx[start:end]],
                     b[cidx[start:end]],
                     g[cidx[start:end]]),
                     s[start:end]);
 }
 
 
-real partial_sum_hierarchy(array[] real y_slice, int start, int end, vector r, vector log10rhoS, vector log10rS, vector a, vector b, vector g, real s, array[] int cidx){
+real partial_sum_hierarchy(array[] real y_slice, int start, int end, vector r, vector log10rhoS, vector log10rS, vector log10a, vector b, vector g, real s, array[] int cidx){
     return normal_lpdf(y_slice | abg_density_vec(
                     r[start:end],
                     log10rhoS[cidx[start:end]],
                     log10rS[cidx[start:end]],
-                    a[cidx[start:end]],
+                    log10a[cidx[start:end]],
                     b[cidx[start:end]],
                     g[cidx[start:end]]),
                     s);

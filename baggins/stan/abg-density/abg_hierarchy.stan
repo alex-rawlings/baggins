@@ -34,8 +34,8 @@ parameters {
     real<lower=0> log10rhoS_std;
     real log10rS_mean;
     real<lower=0> log10rS_std;
-    real<lower=0> a_mean;
-    real<lower=0> a_std;
+    real log10a_mean;
+    real<lower=0> log10a_std;
     real b_mean;
     real<lower=0> b_std;
     real g_mean;
@@ -57,8 +57,8 @@ transformed parameters {
     lprior[2] = normal_lpdf(log10rhoS_std | 0, 1);
     lprior[3] = normal_lpdf(log10rS_mean | 0, 1);
     lprior[4] = normal_lpdf(log10rS_std | 0, 0.5);
-    lprior[5] = normal_lpdf(a_mean | 0, 4);
-    lprior[6] = normal_lpdf(a_std | 0, 2);
+    lprior[5] = normal_lpdf(log10a_mean | 0, 0.5);
+    lprior[6] = normal_lpdf(log10a_std | 0, 0.5);
     lprior[7] = normal_lpdf(b_mean | 0, 4);
     lprior[8] = normal_lpdf(b_std | 0, 2);
     lprior[9] = normal_lpdf(g_mean | 0, 2);
@@ -66,10 +66,10 @@ transformed parameters {
     lprior[11] = normal_lpdf(obs_sigma | 0, 1);
 
     matrix[5, N_group] theta;
-    matrix[5,5] L = diag_pre_multiply([log10rhoS_std, log10rS_std, a_std, b_std, g_std], L_corr);
+    matrix[5,5] L = diag_pre_multiply([log10rhoS_std, log10rS_std, log10a_std, b_std, g_std], L_corr);
 
     // group-level parameters
-    theta = rep_matrix([log10rhoS_mean, log10rS_mean, a_mean, b_mean, g_mean]', N_group) + L * z;
+    theta = rep_matrix([log10rhoS_mean, log10rS_mean, log10a_mean, b_mean, g_mean]', N_group) + L * z;
 }
 
 model {
@@ -86,12 +86,13 @@ generated quantities {
     // --- Group-level parameters as vectors for clarity ---
     vector[N_group] log10rhoS  = theta[1]';   // transpose row -> column
     vector[N_group] log10rS = theta[2]';
-    vector[N_group] a  = theta[3]';
+    vector[N_group] log10a  = theta[3]';
     vector[N_group] b  = theta[4]';
     vector[N_group] g  = theta[5]';
 
     // transformed parameter not used in sampling
     vector[N_group] rS = pow(10., log10rS);
+    vector[N_group] a = pow(10., log10a);
 
     cov_matrix[5] Sigma = multiply_lower_tri_self_transpose(L);
     corr_matrix[5] Omega = tcrossprod(L_corr);
@@ -104,31 +105,34 @@ generated quantities {
     // posterior parameters
     vector[N_group_OOS] log10rhoS_posterior;
     vector[N_group_OOS] log10rS_posterior;
-    vector[N_group_OOS] a_posterior;
+    vector[N_group_OOS] log10a_posterior;
     vector[N_group_OOS] b_posterior;
     vector[N_group_OOS] g_posterior;
     vector[N_group_OOS] rS_posterior;
+    vector[N_group_OOS] a_posterior;
 
     // --- Posterior predictive for observed data ---
-    log10_rho_mean[1:N_obs] = abg_density_vec(r, log10rhoS[group_id], log10rS[group_id], a[group_id], b[group_id], g[group_id]);
+    log10_rho_mean[1:N_obs] = abg_density_vec(r, log10rhoS[group_id], log10rS[group_id], log10a[group_id], b[group_id], g[group_id]);
     log10_rho_posterior[1:N_obs] = to_vector(normal_rng(log10_rho_mean[1:N_obs], obs_sigma));
 
     // --- Population draws (hyper-level predictive) ---
     array[N_group_OOS] vector[5] theta_pop;
     for (s in 1:N_group_OOS) {
-        theta_pop[s] = multi_normal_cholesky_rng([log10rhoS_mean, log10rS_mean, a_mean, b_mean, g_mean]', L);
+        theta_pop[s] = multi_normal_cholesky_rng([log10rhoS_mean, log10rS_mean, log10a_mean, b_mean, g_mean]', L);
         log10rhoS_posterior[s] = theta_pop[s][1];
         log10rS_posterior[s] = theta_pop[s][2];
-        a_posterior[s] = theta_pop[s][3];
+        log10a_posterior[s] = theta_pop[s][3];
         b_posterior[s] = theta_pop[s][4];
         g_posterior[s] = theta_pop[s][5];
     }
+    rS_posterior = pow(10., log10rS_posterior);
+    a_posterior = pow(10., log10a_posterior);
 
     log10_rho_mean[N_obs+1:N_GQ] = abg_density_vec(
         r_OOS,
         log10rhoS_posterior[group_id_OOS],
         log10rS_posterior[group_id_OOS],
-        a_posterior[group_id_OOS],
+        log10a_posterior[group_id_OOS],
         b_posterior[group_id_OOS],
         g_posterior[group_id_OOS]
     );

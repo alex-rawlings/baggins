@@ -1,5 +1,4 @@
 from abc import abstractmethod
-from copy import copy
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -392,17 +391,24 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             figname_base=figname_base,
             rng=rng,
         )
-        self._latent_qtys = ["log10rS", "a", "b", "g", "log10rhoS", "err"]
+        self._latent_qtys = ["log10rS", "log10a", "b", "g", "log10rhoS", "err"]
         self._latent_qtys_posterior = ["rS", "a", "b", "g", "log10rhoS", "err"]
         self._latent_qtys_labs = [
             r"$\log_{10}(r_\mathrm{S}/\mathrm{kpc})$",
+            r"$\log_{10}\alpha$",
+            r"$\beta$",
+            r"$\gamma$",
+            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+            r"$\tau$",
+        ]
+        self._latent_qtys_posterior_labs = [
+            r"$r_\mathrm{S}/\mathrm{kpc}$",
             r"$\alpha$",
             r"$\beta$",
             r"$\gamma$",
             r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
             r"$\tau$",
         ]
-        self._latent_qtys_posterior_labs = copy(self._latent_qtys_labs)
         self._make_latent_labellers()
 
     def extract_data(self, fname, **kwargs):
@@ -528,34 +534,46 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
             "log10rhoS_std",
             "log10rS_mean",
             "log10rS_std",
-            "a_mean",
-            "a_std",
+            "log10a_mean",
+            "log10a_std",
             "b_mean",
             "b_std",
             "g_mean",
             "g_std",
             "obs_sigma",
         ]
-        self._latent_qtys = ["log10rS", "a", "b", "g", "log10rhoS"]
-        self._latent_qtys_posterior = [f"{k}_posterior" for k in self._latent_qtys]
+        self._latent_qtys = ["log10rS", "log10a", "b", "g", "log10rhoS"]
+        self._latent_qtys_posterior = [
+            "rS_posterior",
+            "a_posterior",
+            "b_posterior",
+            "g_posterior",
+            "log10rhoS_posterior",
+        ]
         self._latent_qtys_labs = [
             r"$\log_{10}(r_\mathrm{S}/\mathrm{kpc})$",
+            r"$\log_{10}\alpha$",
+            r"$\beta$",
+            r"$\gamma$",
+            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+        ]
+        self._latent_qtys_posterior_labs = [
+            r"$r_\mathrm{S}/\mathrm{kpc}$",
             r"$\alpha$",
             r"$\beta$",
             r"$\gamma$",
             r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
         ]
-        self._latent_qtys_posterior_labs = copy(self._latent_qtys_labs)
         self._make_latent_labellers()
         self._hyper_qtys_labs = [
             r"$\mu_{\log_{10}\rho_\mathrm{S}}$",
             r"$\sigma_{\log_{10}\rho_\mathrm{S}}$",
             r"$\mu_{\log_{10}r_\mathrm{S}}$",
             r"$\sigma_{\log_{10}r_\mathrm{S}}$",
-            r"$\mu_a$",
-            r"$\sigma_a$",
-            r"$\mu_b$",
-            r"$\sigma_b$",
+            r"$\mu_{\log_{10}\alpha}$",
+            r"$\sigma_{\log_{10}\alpha}$",
+            r"$\mu_\beta$",
+            r"$\sigma_\beta$",
             r"$\mu_\gamma$",
             r"$\sigma_\gamma$",
             r"$\tau$",
