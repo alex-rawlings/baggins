@@ -8,9 +8,133 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from scipy.integrate import solve_ivp
-from scipy.special import erf
+from math import erf
 import pickle
+from numba import njit
 
+
+# helper functions
+@njit
+def erf_array(x):
+    if isinstance(x, float):
+        return erf(x)
+    n = x.size
+    out = np.empty_like(x)
+    for i in range(n):
+        out[i] = erf(x[i])
+    return out
+
+@njit
+def euclid_norm(x):
+    return np.sqrt(np.sum(x**2, axis=0))
+
+@njit
+def dynamical_friction(v, G, m1, m2, rho, logL, stellar_sigma):
+    """
+    Determine dynamical friction contribution
+
+    Parameters
+    ----------
+    v : array-like
+        velocity vector
+
+    Returns
+    -------
+    : array-like
+        dynamical friction contribution to acceleration
+    """
+    mbin = m1 + m2
+    def _set_vel(m, v):
+        v_single = v * m / mbin
+        v_single_norm = euclid_norm(v_single)
+        return v_single, v_single_norm
+
+    def _df_taylor(m):
+        v_single, v_single_norm = _set_vel(m, v)
+        return -(v_single * 8*np.sqrt(np.pi) * m * rho * logL / (3*np.sqrt(2) * stellar_sigma**3))
+
+    def _df_general(m):
+        v_single, v_single_norm = _set_vel(m, v)
+        X = v_single_norm/(np.sqrt(2)*stellar_sigma) 
+        return -(4*np.pi * G**2 * m * rho * logL * (erf_array(X) - 2*X/np.sqrt(np.pi)*np.exp(-X**2)) * v_single/v_single_norm**3)
+
+    v1_norm = _set_vel(m1, v)[1]
+    v2_norm = _set_vel(m2, v)[1]
+    df1 = _df_taylor(m1) if v1_norm/stellar_sigma < 1e-3 else _df_general(m1)
+    df2 = _df_taylor(m2) if v2_norm/stellar_sigma < 1e-3 else _df_general(m2)
+    return df1 + df2
+
+@njit
+def ellipsoid_accel(x, G, rho, Avec):
+    """
+    Potential well modelled by spheroidal potential with some ellipticity
+
+    Parameters
+    ----------
+    x : array-like
+        position coordinates
+
+    Returns
+    -------
+    : array-like
+        acceleration from ellipsoid potential
+    """
+    return -2. * np.pi * G * rho * Avec * x
+
+@njit
+def df_decoupling_factor(x, v, a, a_hard):
+    """
+    Decoupling factor as SMBH separation decreases
+
+    Parameters
+    ----------
+    x : array-like
+        relative distance vector between BHs
+    v : array-like
+        velocity vector
+
+    Returns
+    -------
+    : array-like
+        cut-off factor
+    """
+    #a[a<0] = np.inf
+    cutoff_point = a_hard * 2
+    cutoff_scale = a_hard * 0.5
+    return 1/(1+np.exp(-(a-cutoff_point)/cutoff_scale))
+
+@njit
+def accel(x, v, G, m1, m2, rho, Avec, a, a_hard, stellar_sigma, logL):
+    """
+    Determine acceleration
+
+    Parameters
+    ----------
+    x : array-like
+        relative distance vector between BHs
+    v : array-like
+        velocity vector
+
+    Returns
+    -------
+    : array-like
+        acceleration vector
+    """
+    mbin = m1 + m2
+    r = euclid_norm(x)
+    return (-G * mbin/r**3 * x 
+            + ellipsoid_accel(x=x * m1/mbin, G=G, rho=rho, Avec=Avec)
+            + ellipsoid_accel(x=x * m2/mbin, G=G, rho=rho, Avec=Avec)
+            + dynamical_friction(v=v, G=G, m1=m1, m2=m2, rho=rho, logL=logL, stellar_sigma=stellar_sigma)*df_decoupling_factor(x,v, a, a_hard)
+            )
+
+@njit
+def integrate_dydt(t, y, G, m1, m2, rho, logL, stellar_sigma, a, a_hard, Avec):
+    dvdt = accel(y[:2], y[2:], G=G, m1=m1, m2=m2, rho=rho, logL=logL, stellar_sigma=stellar_sigma, a=a, a_hard=a_hard, Avec=Avec)
+    dy = np.full_like(y, np.nan)
+    dy[:2] = y[2:]
+    dy[2:] = dvdt
+    return dy
 
 class EccentricitySystem:
     def __init__(self, m1, m2, ellipticity=None, rho=None, stellar_sigma=None, rmax=None):
@@ -157,99 +281,6 @@ class EccentricitySystem:
         L = np.cross(x[:,i], v[:,i])
         return 2*np.arctan(self._G * self.mbin/(L*np.sqrt(2*E)))
 
-    def ellipsoid_accel(self, x):
-        """
-        Potential well modelled by spheroidal potential with some ellipticity
-
-        Parameters
-        ----------
-        x : array-like
-            position coordinates
-
-        Returns
-        -------
-        : array-like
-            acceleration from ellipsoid potential
-        """
-        return -2 * np.pi * self._G * self.rho * self.Avec * x
-
-    def dynamical_friction(self, v):
-        """
-        Determine dynamical friction contribution
-
-        Parameters
-        ----------
-        v : array-like
-            velocity vector
-
-        Returns
-        -------
-        : array-like
-            dynamical friction contribution to acceleration
-        """
-        def _set_vel(m, v):
-            v_single = v * m / self.mbin
-            v_single_norm = np.linalg.norm(v_single, axis=0)
-            return v_single, v_single_norm
-
-        def _df_taylor(m):
-            v_single, v_single_norm = _set_vel(m, v)
-            return -(v_single * 8*np.sqrt(np.pi) * m * self.rho * self.logL / (3*np.sqrt(2) * self.stellar_sigma**3))
-
-        def _df_general(m):
-            v_single, v_single_norm = _set_vel(m, v)
-            X = v_single_norm/(np.sqrt(2)*self.stellar_sigma) 
-            return -(4*np.pi * self._G**2 * m * self.rho * self.logL * (erf(X) - 2*X/np.sqrt(np.pi)*np.exp(-X**2)) * v_single/v_single_norm**3)
-
-        v1_norm = _set_vel(self.m1, v)[1]
-        v2_norm = _set_vel(self.m2, v)[1]
-        df1 = _df_taylor(self.m1) if v1_norm/self.stellar_sigma < 1e-3 else _df_general(self.m1)
-        df2 = _df_taylor(self.m2) if v2_norm/self.stellar_sigma < 1e-3 else _df_general(self.m2)
-        return df1 + df2
-
-    def df_decoupling_factor(self, x, v):
-        """
-        Decoupling factor as SMBH separation decreases
-
-        Parameters
-        ----------
-        x : array-like
-            relative distance vector between BHs
-        v : array-like
-            velocity vector
-
-        Returns
-        -------
-        : array-like
-            cut-off factor
-        """
-        a = self.semimajor_axis(x,v)
-        a[a<0] = np.inf
-        cutoff_point = self.a_hard * 2
-        cutoff_scale = self.a_hard * 0.5
-        return 1/(1+np.exp(-(a-cutoff_point)/cutoff_scale))
-
-    def accel(self, x, v):
-        """
-        Determine acceleration
-
-        Parameters
-        ----------
-        x : array-like
-            relative distance vector between BHs
-        v : array-like
-            velocity vector
-
-        Returns
-        -------
-        : array-like
-            acceleration vector
-        """
-        return (-self._G * self.mbin/np.linalg.norm(x,axis=0)**3 * x 
-                + self.ellipsoid_accel(x * self.m1 / self.mbin) + self.ellipsoid_accel(x * self.m2 / self.mbin)
-                + self.dynamical_friction(v)*self.df_decoupling_factor(x,v)
-                )
-
     def _integrate(self, x0, v0, ts):
         """
         Integrate system acceleration
@@ -272,17 +303,16 @@ class EccentricitySystem:
         v : array-like
             velocities
         """
-        def dydt(t,y):
-            dvdt = self.accel(y[:2], y[2:])
-            return np.append(y[2:], dvdt, axis=0)
+        def dydt_wrapper(t,y):
+            return integrate_dydt(t, y, G=self._G, m1=self.m1, m2=self.m2, rho=self.rho, logL=self.logL, stellar_sigma=self.stellar_sigma, a=self.semimajor_axis(y[:2], y[2:]), a_hard=self.a_hard, Avec=self.Avec)
 
         def min_E(t,y):
             E = self.orbital_energy(y[:2], y[2:])
             return E + self._G*self.mbin/(2*self.a_hard)
         min_E.terminal=True
 
-        res = solve_ivp(dydt, (ts[0], ts[-1]), np.append(x0,v0),
-                        t_eval=ts, vectorized=True,
+        res = solve_ivp(dydt_wrapper, (ts[0], ts[-1]), np.append(x0,v0),
+                        t_eval=ts, #vectorized=True,
                         method='DOP853',
                         events=[min_E],
                         rtol=1e-5, atol=1e-8)
@@ -568,7 +598,7 @@ class  EccentricitySystemScanner:
         else:
             raise TypeError(f"Unrecognised input {type(rmax)} for parameter 'rmax'!")
 
-    def save(self, exist_ok=False):
+    def save(self, exist_ok=True):
         """
         Save an instance of the system.
 
@@ -577,7 +607,7 @@ class  EccentricitySystemScanner:
         exist_ok : bool, optional
             allow overwriting of similarly-named files, by default True
         """
-        fname = os.path.join(self.data_path, f"scan_ellip{self.ecc_sys.ellipticity:.3f}_rmax{self.ecc_sys.rmax:.2f}.pickle")
+        fname = os.path.join(self.data_path, f"scan2_ellip{self.ecc_sys.ellipticity:.3f}_rmax{self.ecc_sys.rmax:.2f}.pickle")
         self.ecc_sys.save(fname, exist_ok=exist_ok)
 
     def scan(self, exist_ok=True):
@@ -602,6 +632,9 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--load", type=str, dest="datafile", help="load previous run", default=None)
     parser.add_argument("--velocity", type=float, dest="vel", help="initial velocity", default=450)
     args = parser.parse_args()
+
+    # warm up numba
+    _ = integrate_dydt(t=0, y=np.ones(4, dtype=float), G=1, m1=1, m2=1, rho=1, logL=1, stellar_sigma=1, a=np.array([12]), a_hard=1, Avec=np.array([1,1]))
 
     if args.datafile is None:
         # set up the base system here
