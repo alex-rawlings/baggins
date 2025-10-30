@@ -1,11 +1,13 @@
 import os
 import sys
+import warnings
 from matplotlib import rc_file, rcdefaults
 import subprocess
 import yaml
 from cmdstanpy import set_cmdstan_path
 from baggins._backend.Logging import setup_logger
 from baggins._backend.States import TmpDirRegister
+from baggins._backend.CustomWarnings import ExperimentalAPIWarning
 
 
 __all__ = [
@@ -22,6 +24,8 @@ __all__ = [
     "_cmlogger",
 ]
 
+warnings.simplefilter("always", ExperimentalAPIWarning)
+
 # set up some aliases
 baggins_dir = os.path.dirname(os.path.realpath(__file__))
 home_dir = os.path.expanduser("~")
@@ -35,11 +39,8 @@ fig_ext = user_params["figure_ext"].lstrip(".")
 synthesizer_data = user_params["synthesizer_data"]
 
 # make sure we have valid paths
-for p in (figure_dir,
-          data_dir,
-          synthesizer_data
-          ):
-          assert os.path.isdir(p)
+for p in (figure_dir, data_dir, synthesizer_data):
+    assert os.path.isdir(p)
 
 # set up the temporary directory register
 TMPDIRs = TmpDirRegister(os.path.join(data_dir, user_params["tmp_dir"]))
@@ -47,7 +48,7 @@ TMPDIRs = TmpDirRegister(os.path.join(data_dir, user_params["tmp_dir"]))
 # set the stan path
 set_cmdstan_path(user_params["cmdstan"])
 
-username = home_dir.rstrip("/").split("/")[-1]
+username = os.path.basename(home_dir)
 
 # create the logger
 os.makedirs(
