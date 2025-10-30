@@ -1,6 +1,4 @@
 import logging
-
-# sometimes handlers submodule not loaded
 from logging import handlers
 
 __all__ = ["setup_logger"]
@@ -8,15 +6,15 @@ __all__ = ["setup_logger"]
 
 class CustomLogger(logging.Logger):
     """
-    Custom logger class to override some methods
+    Custom logger class to override some methods.
     """
 
     def __init__(self, name: str, level=0) -> None:
         super().__init__(name, level)
 
-    def getChild(self, suffix: str) -> None:
+    def getChild(self, suffix: str) -> "CustomLogger":
         """
-        Remove the leading baggins. part from a child name
+        Remove the leading baggins. part from a child name.
 
         Parameters
         ----------
@@ -34,11 +32,11 @@ class CustomLogger(logging.Logger):
 
     def setLevel(self, level) -> None:
         """
-        Ensures a valid level is provided
+        Ensures a valid level is provided.
 
         Parameters
         ----------
-        level : str
+        level : str or int
             logging level
 
         Raises
@@ -53,6 +51,23 @@ class CustomLogger(logging.Logger):
         super().setLevel(level)
 
 
+def _forward_warnings_to_logger(log: CustomLogger):
+    """
+    Redirect the 'py.warnings' logger output into the provided CustomLogger.
+    """
+    warnings_logger = logging.getLogger("py.warnings")
+    warnings_logger.handlers.clear()
+    warnings_logger.setLevel("DEBUG")
+    warnings_logger.propagate = False
+
+    class _ForwardHandler(logging.Handler):
+        def emit(self, record):
+            # Forward warning messages to the main logger
+            log.handle(record)
+
+    warnings_logger.addHandler(_ForwardHandler())
+
+
 def setup_logger(
     name,
     console_level="WARNING",
@@ -61,7 +76,7 @@ def setup_logger(
     capture_warnings=True,
 ) -> CustomLogger:
     """
-    Set up a logger instance
+    Set up a logger instance.
 
     Parameters
     ----------
@@ -83,21 +98,25 @@ def setup_logger(
     """
     logging.setLoggerClass(CustomLogger)
     log = logging.getLogger(name)
+
+    # formatters
     cfmt = logging.Formatter(
         "%(asctime)s: %(name)s: %(levelname)s: %(message)s", "%H:%M:%S"
     )
     ffmt = logging.Formatter(
         "%(asctime)s: %(name)s: %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S"
     )
-    # allow all messages to be captured, and then printed only if desired
+
+    # base level (capture everything)
     log.setLevel("DEBUG")
-    # add the console handler
+
+    # console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_level)
     console_handler.setFormatter(cfmt)
     log.addHandler(console_handler)
 
-    # add a file handler if desired
+    # optional file handler
     if logfile is not None:
         file_handler = handlers.TimedRotatingFileHandler(
             logfile, when="midnight", interval=1, backupCount=10
@@ -105,7 +124,13 @@ def setup_logger(
         file_handler.setLevel(file_level)
         file_handler.setFormatter(ffmt)
         log.addHandler(file_handler)
-    logging.captureWarnings(capture_warnings)
+
+    # capture warnings and forward them to this logger
+    if capture_warnings:
+        logging.captureWarnings(True)
+        _forward_warnings_to_logger(log)
+
     # prevent duplicate messages
     log.propagate = False
+
     return log
