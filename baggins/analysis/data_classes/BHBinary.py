@@ -90,7 +90,7 @@ class BHBinary(BHBinaryData):
         self.gr_safe_radius = self.analysis_pars["bh_binary"]["target_semimajor_axis"][
             "value"
         ]
-        bh1, bh2, self.merged = get_bound_binary(self.bhfile)
+        bh1, bh2, self.merger_info = get_bound_binary(self.bhfile)
         self.orbit_params = ketjugw.orbit.orbital_parameters(bh1, bh2)
         self.time_offset = self.merger_pars["perturb_properties"]["perturb_time"][
             "value"
@@ -121,7 +121,7 @@ class BHBinary(BHBinaryData):
         self.binary_formation_time = self.time_offset + self.orbit_params["t"][0] / myr
 
         # merger timescale
-        if self.merged:
+        if self.merger_info:
             self.binary_lifetime_timescale = (
                 self.orbit_params["t"][-1] - self.orbit_params["t"][0]
             ) / myr
@@ -129,16 +129,16 @@ class BHBinary(BHBinaryData):
             self.binary_lifetime_timescale = np.nan
 
         # get the main properties of the binary remnant
-        if self.merged():
+        if self.merger_info.merged:
             self.binary_merger_remnant = dict(
-                merged=self.merged.merged,
-                mass=self.merged.mass,
-                chi=self.merged.chi,
-                kick=self.merged.kick_magnitude,
+                merged=self.merger_info.merged,
+                mass=self.merger_info.mass,
+                chi=self.merger_info.chi,
+                kick=self.merger_info.kick_magnitude,
             )
         else:
             self.binary_merger_remnant = dict(
-                merged=self.merged.merged, mass=np.nan, chi=np.nan, kick=np.nan
+                merged=self.merger_info.merged, mass=np.nan, chi=np.nan, kick=np.nan
             )
 
         # set the spin flip bool, defined as Lz changing sign (Nasim 2021)
@@ -504,8 +504,8 @@ class BHBinary(BHBinaryData):
         print(f"  Hardening rate H: {self.H:.4f}")
         print(f"  Eccentricity rate K: {self.K:.4f}")
         print(f"  Spin flip: {self.binary_spin_flip}")
-        if self.merged():
-            print(self.merged)
+        if self.merger_info.merged:
+            print(self.merger_info)
 
     def _make_hdf5_helper(self, f):
         # helper method for saving hdf5 files that works with inheritance

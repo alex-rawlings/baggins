@@ -129,13 +129,14 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False):
         performed)
     bh2 : ketjugw.Particle
         same as bh1, but for bh2
-    merged : MergerInfo
+    merger_info : MergerInfo
         class containing merger remnant info
     """
     bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
     len1, len2 = len(bh1), len(bh2)
+    print(f"BH data lengths are {len1} and {len2}")
     min_len = min(len1, len2)
-    merged = MergerInfo()
+    merger_info = MergerInfo()
     # first need to determine if time series are consistent between particles
     if interp and np.any(np.abs(bh1.t[:min_len] - bh2.t[:min_len]) > tol):
         # particle time series are not in sync, need to interpolate
@@ -151,18 +152,22 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False):
         )
         bh1interp = interpolate_particle_data(bh1, t_arr)
         bh2interp = interpolate_particle_data(bh2, t_arr)
-        return bh1interp, bh2interp, merged
+        return bh1interp, bh2interp, merger_info
     else:
         # particles are in sync, and we can return as normal
         if len1 > len2:
             # bh2 has merged into bh1
-            merged.update(bh1[len2])
+            print("BH2 -> BH1")
+            merger_info.update(bh1[len2])
             bh1 = bh1[:len2]
         elif len1 < len2:
+            print("BH1 -> BH2")
             # bh1 has merged into bh2
-            merged.update(bh2[len1])
+            merger_info.update(bh2[len1])
             bh2 = bh2[:len1]
-        return bh1, bh2, merged
+        else:
+            print("No merger")
+        return bh1, bh2, merger_info
 
 
 def get_bound_binary(ketju_file, tol=1e-15, interp=False):
@@ -185,10 +190,10 @@ def get_bound_binary(ketju_file, tol=1e-15, interp=False):
         object for bh1, where the particle has the same time domain as bh2
     bh2 : ketjugw.Particle
         same as bh1, but for bh2
-    merged: MergerInfo
+    merger_info: MergerInfo
         class containing merger remnant info
     """
-    bh1, bh2, merged = get_bh_particles(ketju_file, tol, interp)
+    bh1, bh2, merger_info = get_bh_particles(ketju_file, tol, interp)
     bhs = {0: bh1, 1: bh2}
     try:
         bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[
@@ -197,7 +202,7 @@ def get_bound_binary(ketju_file, tol=1e-15, interp=False):
     except IndexError:
         _logger.exception("No binaries found!", exc_info=True)
         raise
-    return bh1, bh2, merged
+    return bh1, bh2, merger_info
 
 
 def get_binary_before_bound(ketju_file, tol=1e-15):
@@ -221,7 +226,7 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
     bound_state : str
         how binary is behaving
     """
-    bh1, bh2, merged = get_bh_particles(ketju_file, tol, interp=True)
+    bh1, bh2, merger_info = get_bh_particles(ketju_file, tol, interp=True)
     energy_mask = ketjugw.orbital_energy(bh1, bh2) > 0
     try:
         bound_idx = len(energy_mask) - get_idx_in_array(1, energy_mask[::-1])
@@ -770,9 +775,6 @@ class MergerInfo:
         self._mass = np.nan
         self._kick = np.full(3, np.nan)
         self._spin = np.full(3, np.nan)
-
-    def __call__(self):
-        return self.merged
 
     def __str__(self):
         return f"BH Merger Remnant\n  Merged: {self.merged}\n  Time:   {self.time:<7.1f} Myr\n  Mass:   {self.mass:<7.1e} Msol\n  Kick:   {self.kick_magnitude:<7.1f} km/s\n  Chi:    {self.chi:<7.2f}"
