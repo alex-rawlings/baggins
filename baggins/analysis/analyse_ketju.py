@@ -166,14 +166,14 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False, merged_mass_frac=0.5):
             if m_diff_frac > merged_mass_frac:
                 # bh2 has merged into bh1
                 merger_info.update(bh1[len2])
-                bh1 = bh1[:len2]
+            bh1 = bh1[:len2]
         elif len1 < len2:
             m_diff_frac = (bh2.m[len1] - bh2.m[len1 - 1]) / bh1.m[-1]
             _logger.debug(f"BH mass difference fraction {m_diff_frac}")
             if m_diff_frac > merged_mass_frac:
                 # bh1 has merged into bh2
                 merger_info.update(bh2[len1])
-                bh2 = bh2[:len1]
+            bh2 = bh2[:len1]
         return bh1, bh2, merger_info
 
 
