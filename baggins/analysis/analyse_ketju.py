@@ -134,7 +134,7 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False):
     """
     bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
     len1, len2 = len(bh1), len(bh2)
-    print(f"BH data lengths are {len1} and {len2}")
+    _logger.debug(f"BH data lengths are {len1} and {len2}")
     min_len = min(len1, len2)
     merger_info = MergerInfo()
     # first need to determine if time series are consistent between particles
@@ -157,16 +157,12 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False):
         # particles are in sync, and we can return as normal
         if len1 > len2:
             # bh2 has merged into bh1
-            print("BH2 -> BH1")
             merger_info.update(bh1[len2])
             bh1 = bh1[:len2]
         elif len1 < len2:
-            print("BH1 -> BH2")
             # bh1 has merged into bh2
             merger_info.update(bh2[len1])
             bh2 = bh2[:len1]
-        else:
-            print("No merger")
         return bh1, bh2, merger_info
 
 
