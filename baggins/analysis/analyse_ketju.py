@@ -102,7 +102,7 @@ def interpolate_particle_data(p_old, t):
     return p_new
 
 
-def get_bh_particles(ketju_file, tol=1e-15, interp=False):
+def get_bh_particles(ketju_file, tol=1e-15, interp=False, merged_mass_frac=0.5):
     """
     Return the bh particles in the (usually-named) ketju_bhs.hdf5 file.
     This is really just a wrapper that ensures:
@@ -121,6 +121,8 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False):
         tolerance for equality testing, by default 1e-15
     interp : bool, optional
         iterpolate particle data to consistent time domain, by default False
+    merged_mass_frac : float, optional
+        check that the coalesced BH has this fraction of the secondary's mass to define a merger as having occurred, by default 0.5
 
     Returns
     -------
@@ -155,18 +157,27 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False):
         return bh1interp, bh2interp, merger_info
     else:
         # particles are in sync, and we can return as normal
+        # in addition to length of data, check that the coalesced BH mass has
+        # suddenly increased by a fraction comparable to the merged BH. This is
+        # not 100% of the merged BH mass due to GW emission
         if len1 > len2:
-            # bh2 has merged into bh1
-            merger_info.update(bh1[len2])
-            bh1 = bh1[:len2]
+            m_diff_frac = (bh1.m[len2] - bh1.m[len2 - 1]) / bh2.m[-1]
+            _logger.debug(f"BH mass difference fraction {m_diff_frac}")
+            if m_diff_frac > merged_mass_frac:
+                # bh2 has merged into bh1
+                merger_info.update(bh1[len2])
+                bh1 = bh1[:len2]
         elif len1 < len2:
-            # bh1 has merged into bh2
-            merger_info.update(bh2[len1])
-            bh2 = bh2[:len1]
+            m_diff_frac = (bh2.m[len1] - bh2.m[len1 - 1]) / bh1.m[-1]
+            _logger.debug(f"BH mass difference fraction {m_diff_frac}")
+            if m_diff_frac > merged_mass_frac:
+                # bh1 has merged into bh2
+                merger_info.update(bh2[len1])
+                bh2 = bh2[:len1]
         return bh1, bh2, merger_info
 
 
-def get_bound_binary(ketju_file, tol=1e-15, interp=False):
+def get_bound_binary(ketju_file, **kwargs):
     """
     Return the data from the ketju_bhs.hdf5 file corresponding to when the
     binary becomes (and remains) bound.
@@ -175,10 +186,8 @@ def get_bound_binary(ketju_file, tol=1e-15, interp=False):
     ----------
     ketju_file : str
         path to ketju_bhs.hdf5 file to analyse
-    tol : float, optional
-        tolerance for equality testing, by default 1e-15
-    interp : bool, optional
-        iterpolate particle data to consistent time domain, by default False
+    kwargs :
+        other options parsed to get_bh_particles()
 
     Returns
     -------
@@ -189,7 +198,7 @@ def get_bound_binary(ketju_file, tol=1e-15, interp=False):
     merger_info: MergerInfo
         class containing merger remnant info
     """
-    bh1, bh2, merger_info = get_bh_particles(ketju_file, tol, interp)
+    bh1, bh2, merger_info = get_bh_particles(ketju_file, **kwargs)
     bhs = {0: bh1, 1: bh2}
     try:
         bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[
