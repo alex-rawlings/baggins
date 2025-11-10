@@ -6,7 +6,7 @@ figure_dir: figures
 figure_ext: .png
 logging:
   console_level: INFO
-  file: logs/cm_funcs.log
+  file: logs/baggins.log
   file_level: WARNING
 mode: dev
 synthesizer_data: /scratch/pjohanss/arawling/ssp_models/synthesizer_data
