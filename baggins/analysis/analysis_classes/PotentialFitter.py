@@ -7,7 +7,11 @@ from matplotlib.lines import Line2D
 from scipy.interpolate import griddata, RectBivariateSpline
 import pygad
 from baggins.env_config import _cmlogger
-from baggins.analysis.analyse_snap import hardening_radius, influence_radius
+from baggins.analysis.analyse_snap import (
+    hardening_radius,
+    influence_radius,
+    get_inner_rho_and_sigma,
+)
 from baggins.mathematics import radial_separation, fit_ellipse, eccentricity
 from baggins.plotting import extract_contours_from_plot
 from baggins.utils import get_snapshots_in_dir
@@ -19,6 +23,18 @@ __all__ = ["PotentialFitter"]
 
 class PotentialFitter:
     def __init__(self, snapfile, oblate=False, major_axis="x"):
+        """
+        Class to fit an elliptical potential to a snapshot, and determine the other quantities such as stellar density and velocity dispersion, required to create the analytical expectation for a sinking SMBH binary.
+
+        Parameters
+        ----------
+        snapfile : path-like
+            path to snapshot
+        oblate : bool, optional
+            use an oblate system, by default False
+        major_axis : str, optional
+            major axis of ellipse, by default "x"
+        """
         self.a_hard = None
         if os.path.isfile(snapfile):
             self.snapfile = snapfile
@@ -133,6 +149,19 @@ class PotentialFitter:
         return s
 
     def _get_hard_binary_snap(self, sl):
+        """
+        Determine which snapshot corresponds to a hard SMBH binary.
+
+        Parameters
+        ----------
+        sl : list
+            list of snapshots
+
+        Returns
+        -------
+        : str
+            snapshot name
+        """
         a_hard = np.full(len(sl), np.nan)
         for i, sf in enumerate(sl):
             snap = pygad.Snapshot(sf, physical=True)
@@ -157,6 +186,19 @@ class PotentialFitter:
             return sl[-1]
 
     def _get_last_snap_with_binary(self, sl):
+        """
+        Determine which snapshot in a series is the last to have a SMBH binary.
+
+        Parameters
+        ----------
+        sl : list
+            list of snapshots
+
+        Returns
+        -------
+        : str
+            snapshot name
+        """
         for i, sf in enumerate(sl):
             with h5py.File(sf, "r") as f:
                 if len(f["/PartType5/ParticleIDs"][:]) < 2:
@@ -168,6 +210,21 @@ class PotentialFitter:
             return sl[-1]
 
     def _set_default_contour_kwargs(self, dt, da):
+        """
+        Set default contour keyword arguments for plots.
+
+        Parameters
+        ----------
+        dt : dict
+            kwargs for the true potential
+        da : dict
+            kwargs for the analytical potential
+
+        Returns
+        -------
+        : tuple
+            kwarg dictionaries
+        """
         for d in (dt, da):
             # for the true potential
             d.setdefault(
@@ -181,11 +238,45 @@ class PotentialFitter:
         return dt, da
 
     def _rotate(self, x, y, phi):
+        """
+        Rotate the potential anticlockwise by some angle from the +x axis.
+
+        Parameters
+        ----------
+        x : float, array-like
+            x coordinate
+        y : float, array-like
+            y coordinate
+        phi : float, array-like
+            rotation angle
+
+        Returns
+        -------
+        : tuple
+            new x-y coordinates for rotation
+        """
         xr = np.cos(phi) * x - np.sin(phi) * y
         yr = np.cos(phi) * y + np.sin(phi) * x
         return xr, yr
 
     def fit_potential(self, extent=1, levels=None):
+        """
+        Fit the potential of a snapshot in a thin plane about the SMBH binary.
+
+        Parameters
+        ----------
+        extent : float, optional
+            spatial extent of snapshot, by default 1
+        levels : int, foat, or str, optional
+            contour levels, by default None
+
+        Returns
+        -------
+        e_spheroid_vals : list
+            eccentricity of ellipsoids
+        phi_vals : list
+            rotation angle of ellipsoids
+        """
         self._X, self._Y = np.meshgrid(*2 * [np.linspace(-extent, extent, 400)])
         self._pot = np.array(
             griddata(self.stars["pos"][:, [0, 2]], self.stars["Epot"], (self.X, self.Y))
@@ -234,7 +325,40 @@ class PotentialFitter:
             self._fitted_ellipse = ellip
         return e_spheroid_vals, phi_vals
 
+    def get_galaxy_properties(self):
+        """
+        Determine the density and velocity dispersion interior to the hardening radius.
+        # TODO should this be for just stars, or DM as well?
+
+        Returns
+        -------
+        : tuple
+            density and velocity dispersion
+        """
+        snap = pygad.Snapshot(self.snapfile, physical=True)
+        pygad.Translation(-pygad.analysis.center_of_mass(snap.bh)).apply(snap)
+        return get_inner_rho_and_sigma(
+            snap.stars, extent=pygad.UnitScalar(self.a_hard, units=snap["r"].units)
+        )
+
     def plot(self, ax=None, tpkwargs={}, apkwargs={}):
+        """
+        Plot the true and analytical potentials.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+        tpkwargs : dict, optional
+            true potential kwargs, by default {}
+        apkwargs : dict, optional
+            analytical potential kwargs, by default {}
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axes
+        """
         if ax is None:
             fig, ax = plt.subplots()
         self._set_default_contour_kwargs(tpkwargs, apkwargs)
@@ -268,6 +392,19 @@ class PotentialFitter:
         return ax
 
     def plot_potential_1D(self, ax=None):
+        """
+        Plot the potential as a function of radius.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axes, by default None
+        """
         if ax is None:
             fig, ax = plt.subplots()
             ax.set_xlabel("r/kpc")

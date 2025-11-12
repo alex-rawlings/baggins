@@ -676,8 +676,11 @@ def get_inner_rho_and_sigma(snap, extent=None):
     else:
         _logger.warning("Inner quantities will be calculated for all stars!")
         subsnap = snap.stars
-    inner_density = density_sphere(np.sum(subsnap["mass"]), extent)
-    inner_sigma = np.nanmean(np.nanstd(subsnap["vel"], axis=0))
+    inner_density = pygad.UnitScalar(
+        density_sphere(np.sum(subsnap["mass"]), extent),
+        units=snap["mass"].units / snap["r"].units ** 3,
+    )
+    inner_sigma = np.sqrt(np.sum(np.nanvar(subsnap["vel"], axis=0)))
     return inner_density, inner_sigma
 
 
