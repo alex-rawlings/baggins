@@ -672,7 +672,7 @@ class EccentricitySystemScanner:
         """
         fname = os.path.join(
             self.data_path,
-            f"scan_ellip{self.ecc_sys.ellipticity:.3f}_rmax{self.ecc_sys.rmax:.2f}_m1{self.ecc_sys.m1:.3e}_m2{self.ecc_sys.m2:.3e}.pickle",
+            f"scan_ellip{self.ecc_sys.ellipticity:.3f}_rmax{self.ecc_sys.rmax:.2f}_{self.ecc_sys.m1:.3e}m1_{self.ecc_sys.m2:.3e}m2.pickle",
         )
         self.ecc_sys.save(fname, exist_ok=exist_ok)
 
