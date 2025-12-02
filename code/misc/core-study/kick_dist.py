@@ -59,19 +59,19 @@ v_mass_vary = np.sort(v_mass_vary)
 P = 1-np.cumsum(v_mass_constant)/np.sum(v_mass_constant)
 P = np.clip(P, 1e-7, None)
 
-if False:
+if True:
     for v, lab in zip((v_mass_constant, v_mass_vary), ("const", "vary")):
         print(f"Quantile corresponding to 1020 km/s is {bgs.mathematics.empirical_cdf(v, 1020)}")
         print(f"Quantile corresponding to 1800 km/s is {bgs.mathematics.empirical_cdf(v, 1800)}")
         plt.hist(v, 30, density=True, label=lab, alpha=0.7)
     plt.xlabel(r"$v_\mathrm{kick}$")
     plt.legend()
-    plt.show()
+    plt.savefig("kick_dist_2.png")
 
-if True:
+if False:
     plt.plot(v_mass_constant, P)
     plt.xlabel(r"$v_\mathrm{kick}$")
-    plt.show()
+    plt.savefig("kick_dist.png")
 
 if False:
     rb = lambda vv: 2.02 * (vv/1200)**0.42 + 1

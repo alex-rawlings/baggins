@@ -11,6 +11,7 @@ from baggins.analysis.analyse_snap import (
     hardening_radius,
     influence_radius,
     get_inner_rho_and_sigma,
+    find_individual_bound_particles,
 )
 from baggins.mathematics import radial_separation, fit_ellipse, eccentricity
 from baggins.plotting import extract_contours_from_plot
@@ -39,7 +40,7 @@ class PotentialFitter:
         if os.path.isfile(snapfile):
             self.snapfile = snapfile
         else:
-            self.snapfile = self._get_hard_binary_snap(get_snapshots_in_dir(snapfile))
+            self.snapfile = self._get_bound_binary_snap(get_snapshots_in_dir(snapfile))
         _logger.info(f"Fitting potential to {self.snapfile}")
         self.oblate = oblate
         self.major_axis = major_axis
@@ -147,6 +148,15 @@ class PotentialFitter:
     def __str__(self):
         s = f"{self.__class__.__name__}: e_spheroid={self.e_spheroid:.3f}, oblate={self.oblate}, phi={np.degrees(self.ellipse_angle):.3f}"
         return s
+
+    def _get_bound_binary_snap(self, sl):
+        for i, sf in enumerate(sl):
+            snap = pygad.Snapshot(sf, physical=True)
+            bound_ids = find_individual_bound_particles(snap)
+            if len(set(snap.bh["ID"]).intersection(set(bound_ids))) > 0:
+                return sf
+            snap.delete_blocks()
+            pygad.gc_full_collect()
 
     def _get_hard_binary_snap(self, sl):
         """

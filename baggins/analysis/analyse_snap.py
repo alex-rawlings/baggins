@@ -447,7 +447,7 @@ def _find_radius_for_mass(s, M, centre):
     try:
         assert np.any(cumul_mass > M)
     except AssertionError:
-        _logger.exceptio(
+        _logger.exception(
             f"There is not enough mass in stellar particles (max {cumul_mass[-1]:.1e}) to equal desired mass ({M:.1e})",
             exc_info=True,
         )
