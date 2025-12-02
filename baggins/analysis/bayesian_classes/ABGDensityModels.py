@@ -436,8 +436,8 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         _logger.info(f"Loading file: {fname}")
         data = np.loadtxt(fname, **kwargs)
         obs = {"r": [], "density": []}
-        obs["r"] = [data[:-1, 0]]
-        obs["density"] = [data[:-1, 1]]
+        obs["r"] = [data[:, 0]]
+        obs["density"] = [data[:, 1]]
         self._merger_id = os.path.splitext(os.path.basename(fname))[0]
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
