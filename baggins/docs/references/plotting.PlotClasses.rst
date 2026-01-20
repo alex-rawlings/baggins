@@ -1,7 +1,7 @@
 plotting.PlotClasses submodule
 ------------------------------
 
-.. automodule:: plotting.PlotClasses
+.. automodule:: baggins.plotting.PlotClasses
    :members:
    :undoc-members:
    :show-inheritance:

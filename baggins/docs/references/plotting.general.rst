@@ -1,7 +1,7 @@
 plotting.general submodule
 --------------------------
 
-.. automodule:: plotting.general
+.. automodule:: baggins.plotting.general
    :members:
    :undoc-members:
    :show-inheritance:

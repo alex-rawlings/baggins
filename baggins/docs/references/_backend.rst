@@ -1,13 +1,15 @@
 \_backend package
 =================
 
+These methods are internal to the BAGGInS toolset and should not be called directly - they are included here only as reference.
+
 Submodules
 ----------
 
 \_backend.Logging module
 ------------------------
 
-.. automodule:: _backend.Logging
+.. automodule:: baggins._backend.Logging
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +17,7 @@ Submodules
 \_backend.States module
 -----------------------
 
-.. automodule:: _backend.States
+.. automodule:: baggins._backend.States
    :members:
    :undoc-members:
    :show-inheritance:

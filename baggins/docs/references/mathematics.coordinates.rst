@@ -1,7 +1,7 @@
 mathematics.coordinates submodule
 ---------------------------------
 
-.. automodule:: mathematics.coordinates
+.. automodule:: baggins.mathematics.coordinates
    :members:
    :undoc-members:
    :show-inheritance:

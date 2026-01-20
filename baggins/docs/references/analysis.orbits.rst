@@ -1,7 +1,7 @@
 analysis.orbits submodule
 -------------------------
 
-.. automodule:: analysis.orbits
+.. automodule:: baggins.analysis.orbits
    :members:
    :undoc-members:
    :show-inheritance:
