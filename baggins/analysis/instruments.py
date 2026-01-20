@@ -115,6 +115,21 @@ class BasicInstrument(ABC):
         return f'{self.name}:\n FoV: {self.field_of_view}"\n sampling: {self.sampling}"/pix\n angular resolution: {self.angular_resolution}"\n pixel width: {self.pixel_width:.3e}kpc\n # pixels: {self.number_pixels}\n extent: {self.extent}'
 
     def get_fov_mask(self, xaxis, yaxis):
+        """
+        Get the field of view mask for the instrument, where x=0, y=1, z=2 as axis coordinates.
+
+        Parameters
+        ----------
+        xaxis : int
+            integer representation of x coordinate
+        yaxis : int
+            integer representation of y coordinate
+
+        Returns
+        -------
+        mask : pygad.ExprMask
+            mask to select subregion of snapshot
+        """
         mask = ExprMask(f"abs(pos[:,{xaxis}]) <= {0.5 * self.extent.value}") & ExprMask(
             f"abs(pos[:,{yaxis}]) <= {0.5 * self.extent.value}"
         )
@@ -173,8 +188,8 @@ class HARMONI_SPATIAL(BasicInstrument):
 
 class Euclid_NISP(BasicInstrument):
     def __init__(self, z=None):
-        """ "
-        "Euclid infrared bands. Parameters taken from:
+        """
+        Euclid infrared bands. Parameters taken from:
         https://sci.esa.int/web/euclid/-/euclid-nisp-instrument
         """
         super().__init__(fov=0.722 * 3600, sampling=0.3, res=None, z=z)
@@ -184,7 +199,7 @@ class Euclid_NISP(BasicInstrument):
 class Euclid_VIS(BasicInstrument):
     def __init__(self, z=None):
         """
-        "Euclid visible bands. Parameters taken from:
+        Euclid visible bands. Parameters taken from:
         https://sci.esa.int/web/euclid/-/euclid-vis-instrument
         """
         super().__init__(fov=0.709 * 3600, sampling=0.101, res=0.23, z=z)

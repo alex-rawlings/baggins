@@ -391,7 +391,7 @@ def add_log_guiding_gradients(ax, x0, x1, y1, b, offset=0, fmt="+.0f", **kwargs)
     Parameters
     ----------
     ax : matplotlib.axes.Axes
-        axis to plot to_
+        axis to plot to
     x0 : float
         lower x limit of line
     x1 : float

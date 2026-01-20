@@ -23,6 +23,7 @@ Submodules
    :maxdepth: 2
 
    plotting.PlotClasses
+   plotting.custom_cmaps
    plotting.general
    plotting.utils
    plotting.specific_plots

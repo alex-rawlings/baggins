@@ -18,7 +18,9 @@ Modules
 
    analysis.analyse_ketju
    analysis.analyse_snap
+   analysis.instruments
    analysis.masks
+   analysis.obs_helper
    analysis.orbits
    analysis.voronoi
 

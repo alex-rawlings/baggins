@@ -27,11 +27,11 @@ class NBodyUnits:
         """
         self._unit_length_in_kpc = pygad.UnitScalar(unit_length_in_kpc, "kpc")
         self._unit_mass_in_Msol = pygad.UnitScalar(unit_mass_in_Msol, "Msol")
-        self.unit_velocity = np.sqrt(
+        self._unit_velocity = np.sqrt(
             pygad.physics.G * self.unit_mass_in_Msol / self.unit_length_in_kpc
         )
-        self.unit_time = self.unit_length_in_kpc / self.unit_velocity
-        self.unit_J = self.unit_length_in_kpc * self.unit_velocity
+        self._unit_time = self.unit_length_in_kpc / self.unit_velocity
+        self._unit_J = self.unit_length_in_kpc * self.unit_velocity
 
     @property
     def unit_length_in_kpc(self):
@@ -40,3 +40,15 @@ class NBodyUnits:
     @property
     def unit_mass_in_Msol(self):
         return self._unit_mass_in_Msol
+
+    @property
+    def unit_velocity(self):
+        return self._unit_velocity
+
+    @property
+    def unit_time(self):
+        return self._unit_time
+
+    @property
+    def unit_J(self):
+        return self._unit_J

@@ -2,7 +2,7 @@ from matplotlib import colors
 from matplotlib import colormaps
 
 
-# create the default diverging Voronoi colour map
+#: create the default diverging Voronoi colour map
 voronoi_div = colors.LinearSegmentedColormap.from_list(
     "voronoi_div",
     [
@@ -25,7 +25,7 @@ voronoi_div = colors.LinearSegmentedColormap.from_list(
     ],
 )
 
-# create the desaturated diverging Voronoi colour map
+#: create the desaturated diverging Voronoi colour map
 voronoi_div_desat = colors.LinearSegmentedColormap.from_list(
     "voronoi_div_desat",
     [
@@ -48,7 +48,7 @@ voronoi_div_desat = colors.LinearSegmentedColormap.from_list(
     ],
 )
 
-# create the default sequential Voronoi colour map
+#: create the default sequential Voronoi colour map
 voronoi_seq = colors.LinearSegmentedColormap.from_list(
     "voronoi_seq",
     [
@@ -73,7 +73,7 @@ voronoi_seq = colors.LinearSegmentedColormap.from_list(
     ],
 )
 
-# create the desaturated sequential Voronoi colour map
+#: create the desaturated sequential Voronoi colour map
 voronoi_seq_desat = colors.LinearSegmentedColormap.from_list(
     "voronoi_seq_desat",
     [

@@ -6,6 +6,15 @@ These methods are internal to the BAGGInS toolset and should not be called direc
 Submodules
 ----------
 
+\_backend.CustomWarnings module
+-------------------------------
+
+.. automodule:: baggins._backend.CustomWarnings
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 \_backend.Logging module
 ------------------------
 
