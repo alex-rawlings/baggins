@@ -1,7 +1,7 @@
 analysis.masks submodule
 ------------------------
 
-.. automodule:: analysis.masks
+.. automodule:: baggins.analysis.masks
    :members:
    :undoc-members:
    :show-inheritance:

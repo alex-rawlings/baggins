@@ -157,7 +157,7 @@ class LiteratureTables:
     @classmethod
     def load_dullo_2019_data(cls):
         """
-        Load core radius, BH mass data from Thomas et al. 2016
+        Load core radius, BH mass data from Dullo et al. 2019
 
         Returns
         -------
