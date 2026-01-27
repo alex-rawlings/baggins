@@ -1,13 +1,28 @@
 literature package
 ==================
 
+The literature package encompasses select observational data from other studies that may be accessed through the `LiteratureTables` class.
+For example, to access data of dynamically hot stellar systems from Misgeld et al. 2011 and quickly make a scatter plot, one would do::
+
+   import baggins as bgs
+   lt = bgs.literature.load_misgeld_2011_data()
+   lt.scatter("mass", "Re_pc")
+
+Functional relations are also included here, such as the Moster et al. 2013 relation between stellar and halo mass.
+
+All methods and functions are called using::
+
+   baggins.literature.XXX
+
+where `XXX` is the method name.
+
 Submodules
 ----------
 
 literature.LiteratureTables submodule
 -------------------------------------
 
-.. automodule:: literature.LiteratureTables
+.. automodule:: baggins.literature.LiteratureTables
    :members:
    :undoc-members:
    :show-inheritance:
@@ -15,7 +30,7 @@ literature.LiteratureTables submodule
 literature.bh\_bulge submodule
 ------------------------------
 
-.. automodule:: literature.bh_bulge
+.. automodule:: baggins.literature.bh_bulge
    :members:
    :undoc-members:
    :show-inheritance:
@@ -23,7 +38,7 @@ literature.bh\_bulge submodule
 literature.density\_profiles submodule
 ---------------------------------------
 
-.. automodule:: literature.density_profiles
+.. automodule:: baggins.literature.density_profiles
    :members:
    :undoc-members:
    :show-inheritance:
@@ -31,7 +46,7 @@ literature.density\_profiles submodule
 literature.dm\_bulge submodule
 ------------------------------
 
-.. automodule:: literature.dm_bulge
+.. automodule:: baggins.literature.dm_bulge
    :members:
    :undoc-members:
    :show-inheritance:
@@ -39,7 +54,7 @@ literature.dm\_bulge submodule
 literature.radial\_relations submodule
 --------------------------------------
 
-.. automodule:: literature.radial_relations
+.. automodule:: baggins.literature.radial_relations
    :members:
    :undoc-members:
    :show-inheritance:
@@ -47,7 +62,7 @@ literature.radial\_relations submodule
 literature.smbh\_recoil submodule
 ---------------------------------
 
-.. automodule:: literature.smbh_recoil
+.. automodule:: baggins.literature.smbh_recoil
    :members:
    :undoc-members:
    :show-inheritance:
@@ -55,7 +70,7 @@ literature.smbh\_recoil submodule
 literature.smbh\_spins submodule
 --------------------------------
 
-.. automodule:: literature.smbh_spins
+.. automodule:: baggins.literature.smbh_spins
    :members:
    :undoc-members:
    :show-inheritance:

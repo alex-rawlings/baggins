@@ -1,7 +1,7 @@
 mathematics.statistics submodule
 --------------------------------
 
-.. automodule:: mathematics.statistics
+.. automodule:: baggins.mathematics.statistics
    :members:
    :undoc-members:
    :show-inheritance:
