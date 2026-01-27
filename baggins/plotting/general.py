@@ -19,6 +19,8 @@ __all__ = [
     "nice_log10_scale",
     "arrow_on_line",
     "add_log_guiding_gradients",
+    "extract_contours_from_plot",
+    "nice_equal_axes_aspect",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -391,7 +393,7 @@ def add_log_guiding_gradients(ax, x0, x1, y1, b, offset=0, fmt="+.0f", **kwargs)
     Parameters
     ----------
     ax : matplotlib.axes.Axes
-        axis to plot to_
+        axis to plot to
     x0 : float
         lower x limit of line
     x1 : float
@@ -418,3 +420,47 @@ def add_log_guiding_gradients(ax, x0, x1, y1, b, offset=0, fmt="+.0f", **kwargs)
             ha="right",
             va="center",
         )
+
+
+def extract_contours_from_plot(p):
+    """
+    Extract the x-y coordinates of contours from a contour plot.
+
+    Parameters
+    ----------
+    p : matplotlib.contour.QuadContourSet
+        output from a pyplot.contour() call
+
+    Returns
+    -------
+    x : list
+        list of x coordinates for contours
+    y : list
+        list of y coordinates for contours
+    """
+    x = []
+    y = []
+    for i, collection in enumerate(p.collections):
+        for path in collection.get_paths():
+            v = path.vertices
+            x.append(v[:, 0])
+            y.append(v[:, 1])
+    return x, y
+
+
+def nice_equal_axes_aspect(ax):
+    """
+    Set nice-looking equal aspect axis limits.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        axis to adjust
+    """
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    axmin = min(xlim[0], ylim[0])
+    axmax = max(xlim[1], ylim[1])
+    ax.set_xlim(axmin, axmax)
+    ax.set_ylim(axmin, axmax)
+    ax.set_aspect("equal")
