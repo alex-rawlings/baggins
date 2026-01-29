@@ -371,9 +371,7 @@ class _SMBH(_GalaxyICBase):
                 self._mass = self.parameters["calculated"]["bh"]["mass"]
                 _logger.info("BH Mass read from parameter file")
         except KeyError:
-            self._mass = 10 ** Sahu19(
-                self._log_stellar_mass, old_method=self._sahu_legacy
-            )
+            self._mass = 10 ** Sahu19(self._log_stellar_mass)
             _logger.info("BH Mass determined from Sahu+19 relation")
 
     @property

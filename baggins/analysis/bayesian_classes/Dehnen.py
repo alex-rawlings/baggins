@@ -1,4 +1,4 @@
-import os.path
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
@@ -7,6 +7,7 @@ from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_snap import basic_snapshot_centring
 from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
 from baggins.env_config import _cmlogger, baggins_dir
+from baggins.general import get_snapshot_number
 from baggins.plotting import savefig
 
 __all__ = ["DehnenModel"]
@@ -39,6 +40,7 @@ class DehnenModel(HierarchicalModel_2D):
         self._labeller_latent_posterior = MapLabeller(
             dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
         )
+        self._merger_id = None
 
     @property
     def folded_qtys(self):
@@ -56,32 +58,79 @@ class DehnenModel(HierarchicalModel_2D):
     def latent_qtys_posterior(self):
         return self._latent_qtys_posterior
 
-    def extract_data(self, snapfile=None):
+    @property
+    def merger_id(self):
+        return self._merger_id
+
+    @merger_id.setter
+    def merger_id(self, v):
+        self._merger_id = v
+
+    def _make_default_merger_id(self, snapfile):
+        """
+        Make the default merger ID for a system if not set manually.
+
+        Parameters
+        ----------
+        snapfile : str
+            snapshot file name
+        """
+        snapnum = get_snapshot_number(snapfile)
+        # use the directory name of the simulation, assumes file path is of the form:
+        # /path/to/simulation/dname/output/snap_XXX.hdf5
+        dname = os.path.abspath(snapfile).split("/")[-3]
+        self.merger_id = f"{dname}_{snapnum}"
+        _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
+
+    def extract_data(self, snapfile=None, extent=10, bin_count=2e5):
+        """
+        Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
+
+        Parameters
+        ----------
+        snapfile : str, path-like, optional
+            snapshot to fit, by default None
+        extent : float, optional
+            maximum radial extent to fit to [kpc], by default 10
+        bin_count : int, float, optional
+            number of stellar particles per bin, by default 2e5
+        """
         obs = {"r": [], "density": [], "mass": []}
         d = self._get_data_dir(snapfile)
         if self._loaded_from_file:
-            fnames = d[0]
+            fname = d[0][0]
+            extent = self._input_data_files["kwargs"]["extent"]
+            bin_count = self._input_data_files["kwargs"]["bin_count"]
         else:
-            fnames = [snapfile]
-        # is_single_file = len(fnames) == 1
-        # data_ext = os.path.splitext(fnames[0])[1].lstrip(".")
-        for f in fnames:
-            _logger.info(f"Loading file: {f}")
-        snap = pygad.Snapshot(f, physical=True)
+            fname = snapfile
+            self._input_data_files["kwargs"] = dict(extent=extent, bin_count=bin_count)
+        mask = pygad.BallMask(extent)
+        _logger.info(f"Loading file: {fname}")
+        if self.merger_id is None:
+            self._make_default_merger_id(fname)
+        snap = pygad.Snapshot(fname, physical=True)
         basic_snapshot_centring(snap)
         _logger.debug("snapshot loaded and centred")
-        # TODO make this dynamic
-        mask = pygad.BallMask(10)
-        r_edges = equal_count_bins(snap.stars[mask]["r"], 2e5)
+        r_edges = equal_count_bins(snap.stars[mask]["r"], bin_count)
         obs["density"].append(
             [pygad.analysis.profile_dens(snap.stars[mask], qty="mass", r_edges=r_edges)]
         )
         obs["r"].append(get_histogram_bin_centres(r_edges))
         obs["mass"].append([np.sum(snap.stars[mask]["mass"])])
+        if not self._loaded_from_file:
+            self._add_input_data_file(fname)
         self.obs = obs
         self.collapse_observations(["r", "density"])
 
     def _set_stan_data_OOS(self, r_count=None):
+        """
+        Set the OOS Stan data.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            number of radial points to sample, by default None
+        """
         rmin = np.max([r[0] for r in self.obs["r"]])
         rmax = np.min([r[-1] for r in self.obs["r"]])
         if r_count is None:
@@ -217,3 +266,31 @@ class DehnenModel(HierarchicalModel_2D):
             xmodel="r_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
         )
         return ax
+
+    def save_density_data_to_npz(self, dname, exist_ok=False):
+        """
+        Save OOS density profile to a numpy .npz file.
+
+        Parameters
+        ----------
+        dname : str
+            directory to save data to
+        exist_ok : bool, optional
+            allow overwriting
+        """
+        fname = os.path.join(dname, f"{self.merger_id}_density_fit.npz")
+        try:
+            assert not os.path.exists(fname) or exist_ok
+            os.makedirs(os.path.dirname(fname), exist_ok=True)
+        except AssertionError:
+            _logger.exception(f"File {fname} already exists!", exc_info=True)
+            raise
+        r = self.stan_data["r_OOS"]
+        rho = self.sample_generated_quantity(self.folded_qtys_posterior[0], state="OOS")
+        pars = {}
+        for p in self.latent_qtys_posterior:
+            pars[p] = self.sample_generated_quantity(p)
+        _logger.debug(f"r has shape {r.shape}")
+        _logger.debug(f"rho has shape {rho.shape}")
+        np.savez(fname, r=r, rho=rho, **pars)
+        _logger.info(f"Saved OOS data to {fname}")

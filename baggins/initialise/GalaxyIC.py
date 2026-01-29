@@ -250,7 +250,7 @@ class GalaxyIC(_GalaxyICBase):
         )
         for q in [0.16, 0.84]:
             mass_data.add_qauntile_to_plot(
-                q, "logMstar", ax[0], {"c": cols[2], "ls": ":"}
+                q, "logMstar", ax[0], lkwargs={"c": cols[2], "ls": ":"}
             )
         ax[0].legend(loc="upper left")
 

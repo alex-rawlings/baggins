@@ -102,18 +102,18 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         self._snap_counter = 0
 
         # #------------------- Determine merger properties -------------------##
-        bh1, bh2, merged = get_bh_particles(self.ketju_file)
+        bh1, bh2, merger_info = get_bh_particles(self.ketju_file)
         self.merger_remnant = {
             "merged": False,
             "mass": None,
             "spin": None,
             "kick": None,
         }
-        if merged():
+        if merger_info.merged:
             self.merger_remnant["merged"] = True
-            self.merger_remnant["mass"] = merged.mass
-            self.merger_remnant["spin"] = merged.chi
-            self.merger_remnant["kick"] = merged.kick_magnitude
+            self.merger_remnant["mass"] = merger_info.mass
+            self.merger_remnant["spin"] = merger_info.chi
+            self.merger_remnant["kick"] = merger_info.kick_magnitude
 
     @property
     def snaplist(self):
