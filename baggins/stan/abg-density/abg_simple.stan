@@ -25,7 +25,7 @@ parameters {
     real<lower=-5, upper=2> log10rS;         // log10 scale radius
     real log10a;      // inner slope transition sharpness
     real b;      // outer slope
-    real g;
+    real<lower=0> g;
     real<lower=0> err; // observation scatter
 }
 

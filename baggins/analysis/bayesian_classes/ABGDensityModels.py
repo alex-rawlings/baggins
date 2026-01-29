@@ -2,10 +2,14 @@ from abc import abstractmethod
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
+import pygad
 from arviz.labels import MapLabeller
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
+from baggins.analysis.analyse_snap import basic_snapshot_centring
+from baggins.general import get_snapshot_number
 from baggins.literature import AlphaBetaGamma_profile
+from baggins.mathematics import equal_count_bins, get_histogram_bin_centres
 from baggins.plotting import savefig
 from baggins.utils import get_files_in_dir
 from baggins.general import common_string_subgroups
@@ -59,6 +63,10 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
     @property
     def merger_id(self):
         return self._merger_id
+
+    @merger_id.setter
+    def merger_id(self, v):
+        self._merger_id = v
 
     def _make_latent_labellers(self):
         self._labeller_latent = MapLabeller(
@@ -246,11 +254,10 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         """
         # posterior predictive check
         fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
-        ax1.set_xlabel(r"log($R$/kpc)")
+        ax1.set_xlabel(r"$r$/kpc")
         ax1.set_ylabel(self._folded_qtys_labs[0])
         ax1.set_xscale("log")
         ax1.set_yscale("log")
-        # TODO scale of x axis??
         self.plot_predictive(
             xmodel="r",
             ymodel=f"{self._folded_qtys_posterior[0]}",
@@ -349,12 +356,14 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
 
     def save_density_data_to_npz(self, dname, exist_ok=False):
         """
-        Save OOS density profile to a numpy .npz file with keys 'x' and 'y'.
+        Save OOS density profile to a numpy .npz file.
 
         Parameters
         ----------
-        dname : directory to save data to
-            file to save data to
+        dname : str
+            directory to save data to
+        exist_ok : bool, optional
+            allow overwriting
         """
         fname = os.path.join(dname, f"{self.merger_id}_density_fit.npz")
         try:
@@ -411,12 +420,61 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         ]
         self._make_latent_labellers()
 
-    def extract_data(self, fname, **kwargs):
+    def _make_default_merger_id(self, snapfile):
         """
-        See docs for `_ABGDensityModelBase.extract_data()"
-        Update figname_base to include merger ID and keyword 'simple'
+        Make the default merger ID for a system if not set manually.
+
+        Parameters
+        ----------
+        snapfile : str
+            snapshot file name
         """
-        self.read_data_from_txt(fname=fname, **kwargs)
+        snapnum = get_snapshot_number(snapfile)
+        # use the directory name of the simulation, assumes file path is of the form:
+        # /path/to/simulation/dname/output/snap_XXX.hdf5
+        dname = os.path.abspath(snapfile).split("/")[-3]
+        self.merger_id = f"{dname}_{snapnum}"
+        _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
+
+    def extract_data(self, snapfile=None, extent=10, bin_count=2e5):
+        """
+        Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
+
+        Parameters
+        ----------
+        snapfile : str, path-like, optional
+            snapshot to fit, by default None
+        extent : float, optional
+            maximum radial extent to fit to [kpc], by default 10
+        bin_count : int, float, optional
+            number of stellar particles per bin, by default 2e5
+        """
+        obs = {"r": [], "density": [], "mass": []}
+        d = self._get_data_dir(snapfile)
+        if self._loaded_from_file:
+            fname = d[0][0]
+            extent = self._input_data_files["kwargs"]["extent"]
+            bin_count = self._input_data_files["kwargs"]["bin_count"]
+        else:
+            fname = snapfile
+            self._input_data_files["kwargs"] = dict(extent=extent, bin_count=bin_count)
+        mask = pygad.BallMask(extent)
+        _logger.info(f"Loading file: {fname}")
+        if self.merger_id is None:
+            self._make_default_merger_id(fname)
+        snap = pygad.Snapshot(fname, physical=True)
+        basic_snapshot_centring(snap)
+        _logger.debug("snapshot loaded and centred")
+        r_edges = equal_count_bins(snap.stars[mask]["r"], bin_count)
+        obs["density"].append(
+            [pygad.analysis.profile_dens(snap.stars[mask], qty="mass", r_edges=r_edges)]
+        )
+        obs["r"].append(get_histogram_bin_centres(r_edges))
+        obs["mass"].append([np.sum(snap.stars[mask]["mass"])])
+        if not self._loaded_from_file:
+            self._add_input_data_file(fname)
+        self.obs = obs
+        self.collapse_observations(["r", "density"])
 
     def read_data_from_txt(self, fname, **kwargs):
         """
