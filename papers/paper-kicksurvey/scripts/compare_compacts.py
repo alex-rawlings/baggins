@@ -232,6 +232,8 @@ misgeld11 = bgs.literature.LiteratureTables.load_misgeld_2011_data()
 price09 = bgs.literature.LiteratureTables.load_price_2009_data()
 mcconnachie12 = bgs.literature.LiteratureTables.load_mcconnachie_2012_data()
 siljeg24 = bgs.literature.LiteratureTables.load_siljeg_2024_data()
+# load Harris data here for legend ordering
+harris10 = bgs.literature.LiteratureTables.load_harris_2010_data()
 
 sk_gen = scatter_kwargs_maker()
 
@@ -289,6 +291,14 @@ price09.scatter(
     yerr="Re_err",
     scatter_kwargs=next(sk_gen),
     ax=ax[0],
+)
+harris10.scatter(
+    "sig_v",
+    "Re",
+    xerr="sig_v_err",
+    scatter_kwargs=next(sk_gen),
+    ax=ax[1],
+    use_label=True,
 )
 # do this data in two parts, as there are a large number of points below Re=10pc
 mask = misgeld11.table.loc[:, "Re_pc"] > 10
@@ -351,16 +361,6 @@ ax[0].set_xlabel(r"$M_\star/\mathrm{M}_\odot$")
 ax[0].set_ylabel(r"$R_\mathrm{e}/\mathrm{pc}$")
 
 # XXX: FIGURE 2 - SIGMA VS RE
-harris10 = bgs.literature.LiteratureTables.load_harris_2010_data()
-
-harris10.scatter(
-    "sig_v",
-    "Re",
-    xerr="sig_v_err",
-    scatter_kwargs=next(sk_gen),
-    ax=ax[1],
-    use_label=False,
-)
 mcconnachie12.scatter(
     "vsig",
     "rh",
@@ -390,6 +390,6 @@ ax[1].set_xscale("log")
 ax[1].set_yscale("log")
 vk_cols.make_cbar(ax=ax[1])
 
-fig.legend(loc="outside upper center", ncols=4)
+fig.legend(loc="outside upper center", ncols=5)
 
 bgs.plotting.savefig(figure_config.fig_path("compact.pdf"), force_ext=True)
