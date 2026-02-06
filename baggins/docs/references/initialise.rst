@@ -10,8 +10,8 @@ All methods and functions are called using::
 
 where `XXX` is the method name.
 
-Submodules
-----------
+Modules
+-------
 
 initialise.GalaxyIC submodule
 -----------------------------

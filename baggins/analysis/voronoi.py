@@ -364,8 +364,6 @@ class VoronoiKinematics:
 
         Parameters
         ----------
-        vdat : dict
-            voronoi values from baggins.analysis.voronoi_binned_los_V_statistics()
         ax : np.ndarray, optional
             numpy array of pyplot.Axes objects for plotting, by default None
         moments : str, optional
@@ -563,7 +561,7 @@ class VoronoiKinematics:
         Returns
         -------
         : callable
-            function that allows for calculating Lambda parameter at a given 
+            function that allows for calculating Lambda parameter at a given
             radius (uses interpolation)
         """
         R = np.sqrt(self._grid["x_bin"] ** 2 + self._grid["y_bin"] ** 2)

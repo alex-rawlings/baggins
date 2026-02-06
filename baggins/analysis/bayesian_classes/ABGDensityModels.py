@@ -478,7 +478,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
 
     def read_data_from_txt(self, fname, **kwargs):
         """
-        Read data from a txt file with columns `radius` and `surface density`.
+        Read data from a txt file with columns radius and surface density.
 
         Parameters
         ----------
@@ -527,7 +527,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         self.stan_data.update(dict(N_OOS=self.num_OOS, r_OOS=rs))
 
     def set_stan_data(self, **kwargs):
-        """See docs for `_ABGDensityModelBase.set_stan_data()"""
+        """See docs for _ABGDensityModelBase.set_stan_data()"""
         super().set_stan_data(**kwargs)
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):

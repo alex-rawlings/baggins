@@ -9,37 +9,29 @@ All methods and functions are called using::
 
 where `XXX` is the method name.
 
-Submodules
+Modules
 ----------
 
-general.general module
-----------------------
+general.general submodule
+-------------------------
 
 .. automodule:: baggins.general.general
    :members:
    :undoc-members:
    :show-inheritance:
 
-general.pygad\_helper module
-----------------------------
+general.pygad\_helper submodule
+-------------------------------
 
 .. automodule:: baggins.general.pygad_helper
    :members:
    :undoc-members:
    :show-inheritance:
 
-general.units module
---------------------
+general.units submodule
+-----------------------
 
 .. automodule:: baggins.general.units
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Module contents
----------------
-
-.. automodule:: baggins.general
    :members:
    :undoc-members:
    :show-inheritance:

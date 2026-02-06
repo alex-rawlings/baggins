@@ -13,6 +13,14 @@ analysis.bayesian\_classes.StanModel submodule
    :undoc-members:
    :show-inheritance:
 
+analysis.bayesian\_classes.ABGDensityModels submodule
+-----------------------------------------------------
+
+.. automodule:: baggins.analysis.bayesian_classes.ABGDensityModels
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 analysis.bayesian\_classes.CoreKick submodule
 ---------------------------------------------
 
@@ -25,6 +33,14 @@ analysis.bayesian\_classes.Dehnen submodule
 -------------------------------------------
 
 .. automodule:: baggins.analysis.bayesian_classes.Dehnen
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+analysis.bayesian\_classes.GaussianProcesses submodule
+------------------------------------------------------
+
+.. automodule:: baggins.analysis.bayesian_classes.GaussianProcesses
    :members:
    :undoc-members:
    :show-inheritance:

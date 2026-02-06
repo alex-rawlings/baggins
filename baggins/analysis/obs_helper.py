@@ -133,6 +133,21 @@ def get_euclid_filter_collection(g, new_lam_size=1000):
 
 
 def get_hst_filter_collection(g, new_lam_size=1000):
+    """
+    Convenience function to return all HST transmission filters.
+
+    Parameters
+    ----------
+    g : synthesizer.grid.Grid
+        grid object to query wavelengths from
+    new_lam_size : int, optional
+        resample grid with this many wavelength bins, by default 1000
+
+    Returns
+    -------
+    hst_filters : synthesizer.FilterCollection
+        collection of HST filters
+    """
     hst_filters = instruments.FilterCollection(
         filter_codes=["HST/ACS_HRC.F435W", "HST/ACS_HRC.F550W", "HST/ACS_HRC.F606W"],
         new_lam=g.lam,

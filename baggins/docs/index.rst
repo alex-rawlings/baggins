@@ -11,8 +11,8 @@ In addition to analysis of simulations, tools to set up different mergers, as we
 The tool has been primarily designed for isolated gas-free simulations, however a plan to extend the capability to work with isolated hydro-simulations, is in the works.
 
 This document details all the functions, classes, and methods available to users as part of the BAGGInS toolset. 
-There are eight main packages available to the user: `analysis`, `cosmology`, `general`, `initialise`, `literature`, `mathematics`, `plotting`, and `utils`.
-These packages must be called explicitly to access their methods and classes, similar to how `scipy` works.
+There are eight main modules available to the user: `analysis`, `cosmology`, `general`, `initialise`, `literature`, `mathematics`, `plotting`, and `utils`.
+These modules must be called explicitly to access their methods and classes, similar to how `scipy` works.
 For example, to create a mock MUSE instrument observation, one would need to do::
 
    import baggins as bgs
@@ -63,7 +63,7 @@ All questions should be directed to Alex Rawlings at: alexander.rawlings@helsink
 
 .. toctree::
    :maxdepth: 1
-   :caption: Available packages:
+   :caption: Available modules:
    :titlesonly:
 
    analysis <references/analysis>

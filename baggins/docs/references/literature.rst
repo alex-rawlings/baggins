@@ -16,61 +16,17 @@ All methods and functions are called using::
 
 where `XXX` is the method name.
 
-Submodules
-----------
+Modules
+-------
 
-literature.LiteratureTables submodule
--------------------------------------
+.. toctree::
+   :maxdepth: 2
 
-.. automodule:: baggins.literature.LiteratureTables
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-literature.bh\_bulge submodule
-------------------------------
-
-.. automodule:: baggins.literature.bh_bulge
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-literature.density\_profiles submodule
----------------------------------------
-
-.. automodule:: baggins.literature.density_profiles
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-literature.dm\_bulge submodule
-------------------------------
-
-.. automodule:: baggins.literature.dm_bulge
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-literature.radial\_relations submodule
---------------------------------------
-
-.. automodule:: baggins.literature.radial_relations
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-literature.smbh\_recoil submodule
----------------------------------
-
-.. automodule:: baggins.literature.smbh_recoil
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-literature.smbh\_spins submodule
---------------------------------
-
-.. automodule:: baggins.literature.smbh_spins
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   literature.LiteratureTables
+   literature.bh_bulge
+   literature.density_profiles
+   literature.dm_bulge
+   literature.radial_relations
+   literature.simulation_fits
+   literature.smbh_recoil
+   literature.smbh_spins
