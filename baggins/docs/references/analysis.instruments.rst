@@ -5,6 +5,10 @@ analysis.instruments submodule
    :members:
    :undoc-members:
 
+.. autoclass:: baggins.analysis.instruments.IFUInstrument
+   :members:
+   :undoc-members:
+
 .. autoclass:: baggins.analysis.instruments.LongSlitInstrument
    :members:
    :undoc-members:
