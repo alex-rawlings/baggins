@@ -1,6 +1,9 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 import os
 from operator import itemgetter
+from itertools import groupby
+import re
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import rcParams, collections, patches, ticker
@@ -9,8 +12,8 @@ import cmdstanpy
 import arviz as az
 import yaml
 from baggins.plotting import savefig, create_normed_colours
-from baggins.env_config import figure_dir, data_dir, TMPDIRs, _cmlogger
-from baggins.utils import get_mod_time
+from baggins.env_config import figure_dir, TMPDIRs, _cmlogger
+from baggins.utils import get_mod_time, get_files_in_dir
 
 __all__ = [
     "_StanModel",
@@ -62,11 +65,11 @@ class _StanModel(ABC):
         self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {
-            "marker": "o",
-            "linewidth": 0.5,
-            "edgecolor": "k",
-            "label": "Sims.",
+            "marker": ".",
+            "mew": 0.2,
+            "mec": "k",
             "cmap": "PuRd",
+            "zorder": 2,
         }
         self._default_hdi_levels = [99, 75, 50, 25]
         self._num_groups = 0
@@ -564,29 +567,21 @@ class _StanModel(ABC):
             self._sample_diagnosis = self._fit.diagnose()
             return self._fit
         else:
-            default_sample_kwargs = {
-                "chains": 4,
-                "iter_sampling": 2000,
-                "show_progress": True,
-                "max_treedepth": 12,
-            }
+            sample_kwargs.setdefault("chains", 4)
+            sample_kwargs.setdefault("iter_sampling", 2000)
+            sample_kwargs.setdefault("show_progress", True)
+            sample_kwargs.setdefault("max_treedepth", 12)
             if not prior:
-                default_sample_kwargs["output_dir"] = os.path.join(
-                    data_dir, "stan_files"
-                )
-                default_sample_kwargs["threads_per_chain"] = 4
+                sample_kwargs.setdefault("threads_per_chain", 4)
             else:
                 # protect against inability to parallelise, for prior model
                 # this shouldn't be so expensive anyway
-                default_sample_kwargs["force_one_process_per_chain"] = True
-            # update user given sample kwargs
-            for k, v in sample_kwargs.items():
-                default_sample_kwargs[k] = v
-            if "output_dir" in default_sample_kwargs:
-                os.makedirs(default_sample_kwargs["output_dir"], exist_ok=True)
+                sample_kwargs.setdefault("force_one_process_per_chain", True)
+            if "output_dir" in sample_kwargs:
+                os.makedirs(sample_kwargs["output_dir"], exist_ok=True)
             start_time = datetime.now()
             if prior:
-                fit = self._prior_model.sample(self.stan_data, **default_sample_kwargs)
+                fit = self._prior_model.sample(self.stan_data, **sample_kwargs)
             else:
                 _logger.debug(f"exe info: {self._model.exe_info()}")
                 try:
@@ -602,9 +597,7 @@ class _StanModel(ABC):
                         f"Stan pathfinder failed: normal initialisation will be used! Reason: {e}"
                     )
                     inits = None
-                fit = self._model.sample(
-                    self.stan_data, inits=inits, **default_sample_kwargs
-                )
+                fit = self._model.sample(self.stan_data, inits=inits, **sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.info(f"Sampling completed in {datetime.now()-start_time}")
             _logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
@@ -918,6 +911,7 @@ class _StanModel(ABC):
             levels=levels,
             combine_dims=combine_dims,
             backend_kwargs=backend_kwargs,
+            divergences=False,
         )
         self._parameter_corner_plot_counter += 1
         return ax
@@ -1333,12 +1327,12 @@ class _StanModel(ABC):
     @classmethod
     def load_fit(cls, fit_files, figname_base, rng=None):
         """
-        Restore a stan model from a previously-saved set of csv files
+        Restore a stan model from a previously-saved set of csv files. Accepts either a glob pattern or a directory. In the latter case, the most recent fits will be used.
 
         Parameters
         ----------
         fit_files : str, path-like
-            path to previously saved csv files
+            path to previously saved csv files (may be a directory)
         figname_base : str
             path-like base name that all plots will share
         rng : np.random._generator.Generator, optional
@@ -1349,6 +1343,20 @@ class _StanModel(ABC):
 
         # set up the model, be aware of changes between sampling and loading
         C.build_model()
+
+        # handle if a directory is given instead of a glob pattern
+        def _get_prefix(fname):
+            _match = re.match(r"(.*)_\d+\.csv", fname)
+            return _match.group(1) if _match else fname
+
+        if os.path.isdir(fit_files):
+            file_list = get_files_in_dir(fit_files, ".csv")
+            fit_prefix, fit_files = [
+                (prefix, list(group))
+                for prefix, group in groupby(file_list, key=_get_prefix)
+            ][-1]
+            _logger.warning(f"Using the most recent Stan run, prefix is: {fit_prefix}")
+
         C._fit = cmdstanpy.from_csv(fit_files)
         fit_time = datetime.strptime(
             C._fit.metadata.cmdstan_config["start_datetime"], "%Y-%m-%d %H:%M:%S %Z"
@@ -1711,34 +1719,9 @@ class HierarchicalModel_2D(_StanModel):
                 hdi_kwargs={"skipna": True},
             )
         if xobs is not None and yobs is not None:
-            # overlay data
-            obs = self.obs_collapsed if collapsed else self.obs
-            if self._num_groups < 2:
-                self._plot_obs_data_kwargs["cmap"] = "Set1"
-            if yobs_err is None:
-                ax.scatter(
-                    obs[xobs], obs[yobs], c=obs["label"], **self._plot_obs_data_kwargs
-                )
-            else:
-                colvals = np.unique(obs["label"])
-                ncols = len(colvals)
-                cmapper, sm = create_normed_colours(
-                    np.min(colvals),
-                    np.max(colvals),
-                    cmap=self._plot_obs_data_kwargs["cmap"],
-                )
-                for i, c in enumerate(colvals):
-                    col = cmapper(c)
-                    mask = obs["label"] == c
-                    ax.errorbar(
-                        obs[xobs][mask],
-                        obs[yobs][mask],
-                        yerr=obs[yobs_err][mask],
-                        c=col,
-                        zorder=20,
-                        fmt=".",
-                        label=("Sims." if i == ncols - 1 else ""),
-                    )
+            self.add_data_to_predictive_plot(
+                ax=ax, xobs=xobs, yobs=yobs, yobs_err=yobs_err, collapsed=collapsed
+            )
         if show_legend:
             ax.legend()
         return ax
@@ -1854,12 +1837,78 @@ class HierarchicalModel_2D(_StanModel):
         )
         return ax
 
+    def add_data_to_predictive_plot(
+        self, ax, xobs, yobs, yobs_err=None, collapsed=True
+    ):
+        """
+        Add data a model has been conditioned on to a plot.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            axis to plot to
+        xobs : str, optional
+            dictionary key for observed independent variable, by default None
+        yobs : str, optional
+            dictionary key for observed dependent variable, by default None
+        yobs_err : str, optional
+             dictionary key for observed dependent variable scatter, by default
+             None
+        collapsed : bool, optional
+            plotting collapsed observations?, by default True
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            axis plotted to
+        """
+        plot_kwargs = deepcopy(self._plot_obs_data_kwargs)
+        # overlay data
+        obs = self.obs_collapsed if collapsed else self.obs
+        if self._num_groups < 2:
+            plot_kwargs["cmap"] = "Set1"
+
+        # helper function
+        def helper_plotting_func():
+            colvals = np.unique(obs["label"])
+            ncols = len(colvals)
+            cmapper, sm = create_normed_colours(
+                np.min(colvals),
+                np.max(colvals),
+                cmap=plot_kwargs.pop("cmap"),
+            )
+            for i, c in enumerate(colvals):
+                col = cmapper(c)
+                mask = obs["label"] == c
+                label = "Sims." if i == ncols - 1 else ""
+                yield mask, col, label
+
+        helper = helper_plotting_func()
+        if yobs_err is None:
+            for mask, col, label in helper:
+                ax.plot(
+                    obs[xobs][mask], obs[yobs][mask], c=col, label=label, **plot_kwargs
+                )
+        else:
+            fmt = plot_kwargs.pop("marker")
+            for mask, col, label in helper:
+                ax.errorbar(
+                    obs[xobs][mask],
+                    obs[yobs][mask],
+                    yerr=obs[yobs_err][mask],
+                    c=col,
+                    fmt=f"{fmt}-",
+                    label=label,
+                    **plot_kwargs,
+                )
+        return ax
+
 
 class FactorModel_2D(_StanModel):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         """
         Hierarchical model for 2-dimensional factor models.
-        These models are for when the exchangeability principle of latent 
+        These models are for when the exchangeability principle of latent
         parameters is not satisfied.
         See the __init__ documentation for StanModel()
         """

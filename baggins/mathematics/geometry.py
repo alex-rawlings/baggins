@@ -14,6 +14,7 @@ __all__ = [
     "rotate_vec1_to_vec2",
     "fit_ellipse",
     "ellipticity",
+    "eccentricity",
 ]
 
 
@@ -195,6 +196,8 @@ def fit_ellipse(x, y, subsample=None, rng=None):
         semimajor axis of ellipse
     b : float
         semiminor axis of ellipse
+    theta : float
+        ellipse rotation angle
     """
     if not isinstance(x, np.ndarray) or not isinstance(y, np.ndarray):
         x = np.array(x)
@@ -206,8 +209,9 @@ def fit_ellipse(x, y, subsample=None, rng=None):
             "Input arrays must be 1-dimensional and of the same length!", exc_info=True
         )
     N = len(x)
-    x -= np.mean(x)
-    y -= np.mean(y)
+    centre = np.array([np.mean(x), np.mean(y)])
+    x = x - centre[0]
+    y = y - centre[1]
     if subsample is not None:
         # use a subset of the given x and y values
         if rng is None:
@@ -216,14 +220,26 @@ def fit_ellipse(x, y, subsample=None, rng=None):
         x = x[rand_idxs]
         y = y[rand_idxs]
         N = len(x)
+    # do the singular value decomposition
+    U, S, Vh = np.linalg.svd(np.stack((x, y), axis=0), full_matrices=False)
+    if np.linalg.det(U) < 0:
+        _logger.debug(
+            "Negative determinate in SVD - multiplying U column 1 and Vh row 1 by -1"
+        )
+        U[:, 1] *= -1
+        Vh[1, :] *= -1
+    a, b = S / np.sqrt(max(1, N - 1))
+    if b > a:
+        a, b = b, a
+        U[:, [0, 1]] = U[:, [1, 0]]
+    # transform the circle to an ellipse
     tt = np.linspace(0, 2 * np.pi, 1000)
     circle = np.stack((np.cos(tt), np.sin(tt)))
-    # do the singular value decomposition
-    U, S, V = np.linalg.svd(np.stack((x, y)))
-    a, b = np.sqrt(2 / N) * S
-    # transform the circle to an ellipse
-    ellipse = np.dot(np.sqrt(2 / N) * np.dot(U, np.diag(S)), circle)
-    return ellipse, a, b
+    ellipse = U @ np.diag([a, b]) @ circle
+    ellipse = ellipse + centre[:, None]
+    major_vec = U[:, 0]  # first column is major direction
+    theta = np.arctan2(major_vec[1], major_vec[0])
+    return ellipse, a, b, theta
 
 
 def ellipticity(a, b):
@@ -243,3 +259,22 @@ def ellipticity(a, b):
         ellipticity
     """
     return (a - b) / a
+
+
+def eccentricity(a, b):
+    """
+    Determine the eccentricity (flattening) of an ellipse.
+
+    Parameters
+    ----------
+    a : float, array-like
+        semimajor axis
+    b : float, array-like
+        semiminor axis
+
+    Returns
+    -------
+    : float, array-like
+        eccentricity
+    """
+    return np.sqrt(1 - (b / a) ** 2)

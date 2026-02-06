@@ -12,6 +12,7 @@ __all__ = [
     "Terzic05",
     "fit_Terzic05_profile",
     "core_Sersic_profile",
+    "AlphaBetaGamma_profile",
 ]
 
 
@@ -246,3 +247,31 @@ def core_Sersic_profile(r, Re, rb, Ib, n, gamma, alpha=10.0):
         * (1 + (rb / r) ** alpha) ** (gamma / alpha)
         * np.exp(-bn * ((r**alpha + rb**alpha) / Re**alpha) ** (1 / (alpha * n)))
     )
+
+
+def AlphaBetaGamma_profile(r, rs, ps, a, b, g):
+    """
+    Alpha Beta Gamma profile
+
+    Parameters
+    ----------
+    r : array-like
+        radii to evaluate at
+    rs : float
+        scale radius
+    ps : float
+        scale density
+    a : float
+        transition index
+    b : float
+        outer slope
+    g : float
+        inner slope
+
+    Returns
+    -------
+    : array-like
+        density profile
+    """
+    r_rs = r / rs
+    return ps / (r_rs**g * (1 + r_rs**a) ** ((b - g) / a))

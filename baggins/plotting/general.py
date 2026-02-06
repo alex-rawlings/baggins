@@ -18,6 +18,9 @@ __all__ = [
     "create_odd_number_subplots",
     "nice_log10_scale",
     "arrow_on_line",
+    "add_log_guiding_gradients",
+    "extract_contours_from_plot",
+    "nice_equal_axes_aspect",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -381,3 +384,83 @@ def arrow_on_line(ln, xpos=None, direction="right", size=15, arrowprops={}):
         arrowprops=arrowprops,
         size=size,
     )
+
+
+def add_log_guiding_gradients(ax, x0, x1, y1, b, offset=0, fmt="+.0f", **kwargs):
+    """
+    Add guiding gradient lines to a log-log plot.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        axis to plot to
+    x0 : float
+        lower x limit of line
+    x1 : float
+        upper x limit of line
+    y1 : float
+        y-intersection point of lines
+    b : list
+        gradients to plot
+    offset : float, optional
+        text offset, by default 0
+    fmt : str, optional
+        label formatting string, by default "+.0f"
+    """
+    xlines = np.array([x0, x1])
+    kwargs.setdefault("ls", "-")
+    kwargs.setdefault("c", "k")
+    kwargs.setdefault("lw", 1)
+    for _b in b:
+        ax.plot(xlines, y1 * (xlines / x1) ** _b, **kwargs)
+        ax.text(
+            x0 + offset,
+            y1 * ((x0 + offset) / x1) ** _b,
+            rf"$\propto {_b:{fmt}}$",
+            ha="right",
+            va="center",
+        )
+
+
+def extract_contours_from_plot(p):
+    """
+    Extract the x-y coordinates of contours from a contour plot.
+
+    Parameters
+    ----------
+    p : matplotlib.contour.QuadContourSet
+        output from a pyplot.contour() call
+
+    Returns
+    -------
+    x : list
+        list of x coordinates for contours
+    y : list
+        list of y coordinates for contours
+    """
+    x = []
+    y = []
+    for i, collection in enumerate(p.collections):
+        for path in collection.get_paths():
+            v = path.vertices
+            x.append(v[:, 0])
+            y.append(v[:, 1])
+    return x, y
+
+
+def nice_equal_axes_aspect(ax):
+    """
+    Set nice-looking equal aspect axis limits.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        axis to adjust
+    """
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    axmin = min(xlim[0], ylim[0])
+    axmax = max(xlim[1], ylim[1])
+    ax.set_xlim(axmin, axmax)
+    ax.set_ylim(axmin, axmax)
+    ax.set_aspect("equal")

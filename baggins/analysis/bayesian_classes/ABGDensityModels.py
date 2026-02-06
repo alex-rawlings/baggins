@@ -1,15 +1,20 @@
 from abc import abstractmethod
 import os.path
-import itertools
 import numpy as np
 import matplotlib.pyplot as plt
+import pygad
 from arviz.labels import MapLabeller
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
+from baggins.analysis.analyse_snap import basic_snapshot_centring
+from baggins.general import get_snapshot_number
+from baggins.literature import AlphaBetaGamma_profile
+from baggins.mathematics import equal_count_bins, get_histogram_bin_centres
 from baggins.plotting import savefig
 from baggins.utils import get_files_in_dir
+from baggins.general import common_string_subgroups
 
-__all__ = ["ABGDensityModelSimple"]
+__all__ = ["ABGDensityModelSimple", "ABGDensityModelHierarchy"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -24,33 +29,16 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         self._folded_qtys = ["rho"]
         self._folded_qtys_labs = [r"$\rho(r)$/(M$_\odot$/kpc$^3$))"]
         self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = [
-            "rS_raw",
-            "a_raw",
-            "b_raw",
-            "g_raw",
-            "log10rhoS_raw",
-            "err_raw",
-        ]
-        self._latent_qtys_posterior = [
-            f"{v.replace('_raw', '')}" for v in self.latent_qtys
-        ]
-        self._latent_qtys_labs = [
-            r"$r_\mathrm{S}/\mathrm{kpc}$",
-            r"$\alpha$",
-            r"$\beta$",
-            r"$\gamma$",
-            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
-            r"$\tau$",
-        ]
-        self._labeller_latent = MapLabeller(
-            dict(zip(self._latent_qtys, self._latent_qtys_labs))
-        )
-        self._labeller_latent_posterior = MapLabeller(
-            dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
-        )
+        self._latent_qtys = []
+        self._latent_qtys_labs = []
+        self._latent_qtys_labs = []
+        self._latent_qtys_posterior_labs = []
         self._merger_id = None
         self._dims_prepped = False
+
+    @property
+    def independent_var_lab(self):
+        return r"$r/\mathrm{kpc}$"
 
     @property
     def folded_qtys(self):
@@ -76,92 +64,62 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
     def merger_id(self):
         return self._merger_id
 
+    @merger_id.setter
+    def merger_id(self, v):
+        self._merger_id = v
+
+    def _make_latent_labellers(self):
+        self._labeller_latent = MapLabeller(
+            dict(zip(self._latent_qtys, self._latent_qtys_labs))
+        )
+        self._labeller_latent_posterior = MapLabeller(
+            dict(zip(self._latent_qtys_posterior, self._latent_qtys_posterior_labs))
+        )
+
     @abstractmethod
-    def extract_data(self, pars, d=None, binary=True):
+    def extract_data(self):
         """
         Data extraction and manipulation required for the ABGDensity model
-
-        Parameters
-        ----------
-        pars : dict
-            analysis parameters
-        d : path-like, optional
-            HMQ data directory, by default None (paths read from
-            `_input_data_files`)
-        binary: bool, optional
-            system before merger (2 BHs present), by default True
         """
         raise NotImplementedError
-        obs = {"r": [], "density": []}
-        d = self._get_data_dir(d)
-        if self._loaded_from_file:
-            fnames = d[0]
-        elif os.path.isfile(d):
-            fnames = [d]
-        else:
-            fnames = get_files_in_dir(d)
-            if not fnames:
-                fnames = get_files_in_dir(d, ext=".pickle")
-            _logger.debug(f"Reading from dir: {d}")
-        is_single_file = len(fnames) == 1
-        data_ext = os.path.splitext(fnames[0])[1].lstrip(".")
-        try:
-            assert fnames
-        except AssertionError:
-            _logger.exception(
-                f"Directory {d} has no files with extension {data_ext}", exc_info=True
-            )
-            raise
-        for f in fnames:
-            _logger.info(f"Loading file: {f}")
-            _data = np.loadtxt(f, skiprows=1)
-            obs["r"] = _data[:, 0]
-            obs["density"] = _data[:, 1]
-            if not self._loaded_from_file:
-                self._add_input_data_file(f)
-        if is_single_file:
-            # we have loaded a single file
-            # manipulate the data so it "looks" like multiple files
-            _obs = obs.copy()
-            obs = {"R": [], "density": []}
-            for i in range(_obs["density"][0].shape[0]):
-                obs["R"].append(_obs["R"][0])
-                obs["density"].append(_obs["density"][0][i, :])
-            _logger.warning(
-                "Observations from a single file have been converted to a hierarchy format"
-            )
-        self.obs = obs
-        # some transformations we need
-        self.transform_obs("r", "log10_r", lambda x: np.log10(x))
-        self.transform_obs("density", "log10_density", lambda x: np.log10(x))
-        # TODO how to set the merger ID?
-        self._merger_id = fnames[-1]
 
     @abstractmethod
-    def _set_stan_data_OOS(self):
+    def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None):
         """
         Set the out-of-sample Stan data variables.
         Each derived class will need its own implementation, however all will
         require knowledge of the minimum and maximum radius to model: let's
         do that here.
         """
-        rmin = np.max([r[0] for r in self.obs["r"]])
-        rmax = np.min([r[-1] for r in self.obs["r"]])
-        return rmin, rmax
+        _rmin = np.max([r[0] for r in self.obs["r"]])
+        _rmax = np.min([r[-1] for r in self.obs["r"]])
+        if rmin is None:
+            rmin = _rmin
+        if rmax is None:
+            rmax = _rmax
+        if r_count is None:
+            r_count = max([len(rs) for rs in self.obs["r"]]) * 10
+        self._num_OOS = r_count
+        _logger.debug(
+            f"OOS will have radial values from {rmin:.2e} - {rmax:.2e} in {r_count} bins"
+        )
+        rs = np.geomspace(rmin, rmax, r_count)
+        return rs
 
     @abstractmethod
-    def set_stan_data(self):
+    def set_stan_data(self, **kwargs):
         """
         Set the Stan data dictionary used for sampling.
         """
         self.stan_data = dict(
-            N=self.num_obs_collapsed,
-            N_groups=self.num_groups,
-            group_idx=self.obs_collapsed["label"],
+            N_obs=self.num_obs_collapsed,
+            N_group=self.num_groups,
+            group_id=self.obs_collapsed["label"],
             r=self.obs_collapsed["r"],
+            density=self.obs_collapsed["density"],
         )
         if not self._loaded_from_file:
-            self._set_stan_data_OOS()
+            self._set_stan_data_OOS(**kwargs)
 
     def sample_model(self, sample_kwargs={}, diagnose=True):
         """
@@ -186,40 +144,53 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         Rename dimensions for collapsing
         """
         if not self._dims_prepped:
-            _rename_dict = {}
-            for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
-                _rename_dict[f"{k}_dim_0"] = "group"
-            self.rename_dimensions(_rename_dict)
+            self.rename_dimensions(
+                dict.fromkeys([f"{k}_dim_0" for k in self.latent_qtys], "group")
+            )
+            self.rename_dimensions(
+                dict.fromkeys(
+                    [f"{k}_dim_0" for k in self.latent_qtys_posterior], "groupOOS"
+                )
+            )
             self._dims_prepped = True
 
-    def plot_latent_distributions(self, ax=None, figsize=None):
+    def plot_latent_distributions(self, ax=None, figsize=None, from_hyper=False):
         """
-        Plot distributions of the latent parameters of the model
+        Plot distributions of the latent parameters of the model.
 
         Parameters
         ----------
+        ax : matplotlib.axes.Axes, optional
+            plotting axis, by default None
         figsize : tuple, optional
             figure size, by default None
+        from_hyper : bool, optional
+            plot latent parameters as sampled from hyperdistribution, by default False
 
         Returns
         -------
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        ncol = int(np.ceil(len(self.latent_qtys) / 2))
+        if from_hyper:
+            lq = self.latent_qtys_posterior
+            lql = self._latent_qtys_posterior_labs
+            lqstr = "latent_qtys_posterior"
+        else:
+            lq = self.latent_qtys
+            lql = self.latent_qtys_labs
+            lqstr = "latent_qtys"
+        ncol = int(np.ceil(len(lq) / 2))
         if ax is None:
             fig, ax = plt.subplots(2, ncol, figsize=figsize)
         try:
             self.plot_generated_quantity_dist(
-                self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs
+                lq,
+                ax=ax,
+                xlabels=lql,
             )
         except ValueError:  # TODO check this
-            _logger.warning(
-                "Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
-            )
-            self.plot_generated_quantity_dist(
-                self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs
-            )
+            _logger.warning(f"Cannot plot latent distributions for '{lqstr}'.")
         return ax
 
     @abstractmethod
@@ -238,42 +209,161 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
         if ylim is not None:
             ax1.set_ylim(*ylim)
-        ax1.set_xlabel("r/kpc")
+        ax1.set_xlabel(self.independent_var_lab)
         ax1.set_ylabel(self._folded_qtys_labs[0])
         ax1.set_xscale("log")
-        # ax1.set_yscale("log")
+        ax1.set_yscale("log")
         self.plot_predictive(
             xmodel="r",
-            ymodel=f"log10_{self._folded_qtys[0]}_prior",
+            ymodel=f"{self._folded_qtys[0]}_prior",
             xobs="r",
-            yobs="log10_density",
+            yobs="density",
             ax=ax1,
         )
 
         # prior latent quantities
         self.plot_latent_distributions(figsize=figsize)
-        ax1 = self.parameter_corner_plot(
+        ax2 = self.parameter_corner_plot(
             self.latent_qtys,
             figsize=(len(self.latent_qtys), len(self.latent_qtys)),
             labeller=self._labeller_latent,
             combine_dims={"group"},
         )
-        fig1 = ax1[0, 0].get_figure()
+        fig2 = ax2[0, 0].get_figure()
         savefig(
             self._make_fig_name(
                 self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
             ),
-            fig=fig1,
+            fig=fig2,
+        )
+
+    @abstractmethod
+    def all_posterior_pred_plots(self, figsize=None):
+        """
+        Posterior plots generally required for predictive checks and parameter convergence
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        # posterior predictive check
+        fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
+        ax1.set_xlabel(r"$r$/kpc")
+        ax1.set_ylabel(self._folded_qtys_labs[0])
+        ax1.set_xscale("log")
+        ax1.set_yscale("log")
+        self.plot_predictive(
+            xmodel="r",
+            ymodel=f"{self._folded_qtys_posterior[0]}",
+            xobs="r",
+            yobs="density",
+            ax=ax1,
+        )
+
+        # latent parameter distributions
+        self.plot_latent_distributions(figsize=figsize)
+
+        ax = self.parameter_corner_plot(
+            self.latent_qtys_posterior,
+            figsize=(len(self.latent_qtys_posterior), len(self.latent_qtys_posterior)),
+            labeller=self._labeller_latent_posterior,
+            combine_dims={"groupOOS"},
+        )
+        fig = ax.flatten()[0].get_figure()
+        savefig(
+            self._make_fig_name(
+                self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
+            ),
+            fig=fig,
+        )
+        return ax
+
+    def all_posterior_OOS_plots(self, figsize=None, ax=None):
+        # out of sample posterior
+        if ax is None:
+            fig, ax = plt.subplots(1, 1, figsize=figsize)
+        ax.set_xlabel(r"$r$/kpc")
+        ax.set_ylabel(self._folded_qtys_labs[0])
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        self.posterior_OOS_plot(
+            xmodel="r_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
+        )
+        return ax
+
+    def add_guiding_profiles(self, ax, a, b, g, rS, N=5, offset=0.5, **kwargs):
+        """
+        Plot some ABG profiles, varying the normalising density, to guide the eye.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        a : float
+            transition index
+        b : float
+            outer region slope
+        g : float
+            inner region slope
+        rS : float
+            scale radius
+        N : int, optional
+            number of lines, by default 5
+        offset : float, optional
+            half vertical spacing between lowest and highest profile, by default 0.5
+        """
+        kwargs.setdefault("lw", 1)
+        kwargs.setdefault("c", "gray")
+        kwargs.setdefault("zorder", 0.2)
+        kwargs.setdefault("label", f"({a:.1f},{b:.1f},{g:.1f})")
+        dens_pivot = np.max(self.obs["log10_density"])
+        log10dens = np.linspace(dens_pivot - offset, dens_pivot + offset, N)
+        r = np.geomspace(
+            np.min(self.stan_data["r_OOS"]), np.max(self.stan_data["r_OOS"]), 500
+        )
+        for p in 10**log10dens:
+            label = kwargs.pop("label", None)
+            ax.plot(
+                r,
+                AlphaBetaGamma_profile(r, rs=rS, ps=p, a=a, b=b, g=g),
+                label=label,
+                **kwargs,
+            )
+
+    def add_guiding_Plummer(self, ax, rS, N=5, offset=0.5, **kwargs):
+        """
+        Plot Plummer profile to guide eye. See add_guiding_profiles() for details.
+        """
+        kwargs.setdefault("label", "Plummer")
+        self.add_guiding_profiles(
+            ax=ax, a=2, b=5, g=0, rS=rS, N=N, offset=offset, **kwargs
+        )
+
+    def add_guiding_NFW(self, ax, rS, N=5, offset=0.5, **kwargs):
+        """
+        Plot NFW profile to guide eye. See add_guiding_profiles() for details.
+        """
+        kwargs.setdefault("label", "NFW")
+        self.add_guiding_profiles(
+            ax=ax, a=1, b=3, g=1, rS=rS, N=N, offset=offset, **kwargs
         )
 
     def save_density_data_to_npz(self, dname, exist_ok=False):
         """
-        Save OOS density profile to a numpy .npz file with keys 'x' and 'y'.
+        Save OOS density profile to a numpy .npz file.
 
         Parameters
         ----------
-        dname : directory to save data to
-            file to save data to
+        dname : str
+            directory to save data to
+        exist_ok : bool, optional
+            allow overwriting
         """
         fname = os.path.join(dname, f"{self.merger_id}_density_fit.npz")
         try:
@@ -294,28 +384,101 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
 
 class ABGDensityModelSimple(_ABGDensityModelBase):
     def __init__(self, figname_base, rng=None):
+        """
+        Construct simple model for ABG density profile.
+
+        Parameters
+        ----------
+        figname_base : str
+            base name for figures
+        rng : numpy.random.Generator, optional
+            random number generator, by default None
+        """
         super().__init__(
             model_file=get_stan_file("abg_simple"),
             prior_file=get_stan_file("abg_simple_prior"),
             figname_base=figname_base,
             rng=rng,
         )
+        self._latent_qtys = ["log10rS", "log10a", "b", "g", "log10rhoS", "err"]
+        self._latent_qtys_posterior = ["rS", "a", "b", "g", "log10rhoS", "err"]
+        self._latent_qtys_labs = [
+            r"$\log_{10}(r_\mathrm{S}/\mathrm{kpc})$",
+            r"$\log_{10}\alpha$",
+            r"$\beta$",
+            r"$\gamma$",
+            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+            r"$\tau$",
+        ]
+        self._latent_qtys_posterior_labs = [
+            r"$r_\mathrm{S}/\mathrm{kpc}$",
+            r"$\alpha$",
+            r"$\beta$",
+            r"$\gamma$",
+            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+            r"$\tau$",
+        ]
+        self._make_latent_labellers()
 
-    def extract_data(self, pars, d=None, binary=True):
+    def _make_default_merger_id(self, snapfile):
         """
-        See docs for `_ABGDensityModelBase.extract_data()"
-        Update figname_base to include merger ID and keyword 'simple'
+        Make the default merger ID for a system if not set manually.
+
+        Parameters
+        ----------
+        snapfile : str
+            snapshot file name
         """
-        raise NotImplementedError
-        super().extract_data(pars, d, binary)
-        self.collapse_observations(["r", "log10_r", "density", "log10_density"])
-        self.figname_base = os.path.join(
-            self.figname_base, f"{self.merger_id}/{self.merger_id}-simple"
+        snapnum = get_snapshot_number(snapfile)
+        # use the directory name of the simulation, assumes file path is of the form:
+        # /path/to/simulation/dname/output/snap_XXX.hdf5
+        dname = os.path.abspath(snapfile).split("/")[-3]
+        self.merger_id = f"{dname}_{snapnum}"
+        _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
+
+    def extract_data(self, snapfile=None, extent=10, bin_count=2e5):
+        """
+        Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
+
+        Parameters
+        ----------
+        snapfile : str, path-like, optional
+            snapshot to fit, by default None
+        extent : float, optional
+            maximum radial extent to fit to [kpc], by default 10
+        bin_count : int, float, optional
+            number of stellar particles per bin, by default 2e5
+        """
+        obs = {"r": [], "density": [], "mass": []}
+        d = self._get_data_dir(snapfile)
+        if self._loaded_from_file:
+            fname = d[0][0]
+            extent = self._input_data_files["kwargs"]["extent"]
+            bin_count = self._input_data_files["kwargs"]["bin_count"]
+        else:
+            fname = snapfile
+            self._input_data_files["kwargs"] = dict(extent=extent, bin_count=bin_count)
+        mask = pygad.BallMask(extent)
+        _logger.info(f"Loading file: {fname}")
+        if self.merger_id is None:
+            self._make_default_merger_id(fname)
+        snap = pygad.Snapshot(fname, physical=True)
+        basic_snapshot_centring(snap)
+        _logger.debug("snapshot loaded and centred")
+        r_edges = equal_count_bins(snap.stars[mask]["r"], bin_count)
+        obs["density"].append(
+            [pygad.analysis.profile_dens(snap.stars[mask], qty="mass", r_edges=r_edges)]
         )
+        obs["r"].append(get_histogram_bin_centres(r_edges))
+        obs["mass"].append([np.sum(snap.stars[mask]["mass"])])
+        if not self._loaded_from_file:
+            self._add_input_data_file(fname)
+        self.obs = obs
+        self.collapse_observations(["r", "density"])
 
     def read_data_from_txt(self, fname, **kwargs):
         """
-        Read data from a txt file with columns `radius` and `surface density`.
+        Read data from a txt file with columns radius and surface density.
 
         Parameters
         ----------
@@ -345,31 +508,49 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         )
         self.collapse_observations(["r", "log10_r", "density", "log10_density"])
 
-    def _set_stan_data_OOS(self, r_count=None):
-        rmin, rmax = super()._set_stan_data_OOS()
-        if r_count is None:
-            r_count = max([len(rs) for rs in self.obs["r"]]) * 10
-        self._num_OOS = r_count
-        rs = np.geomspace(rmin, rmax, r_count)
+    def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None):
+        """
+        Set OOS Stan data.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            Number of radii for OOS plots, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+        ngroups : int, optional
+            number of level groups (i.e. profiles), by default None
+        """
+        rs = super()._set_stan_data_OOS(r_count=r_count, rmin=rmin, rmax=rmax)
         self.stan_data.update(dict(N_OOS=self.num_OOS, r_OOS=rs))
 
-    def set_stan_data(self):
-        """See docs for `_GrahamModelBase.set_stan_data()"""
-        super().set_stan_data()
-        self.stan_data.update(dict(density=self.obs_collapsed["density"]))
+    def set_stan_data(self, **kwargs):
+        """See docs for _ABGDensityModelBase.set_stan_data()"""
+        super().set_stan_data(**kwargs)
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
+        """
+        Make prior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ylim : tuple, optional
+            y-limits for prior predictive plot, by default None
+        """
         self.rename_dimensions(
             dict.fromkeys(
                 [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
             )
         )
-        # self._expand_dimension(["err"], "group")
         return super().all_prior_plots(figsize, ylim)
 
     def all_posterior_pred_plots(self, figsize=None):
         """
-        Posterior plots generally required for predictive checks and parameter convergence
+        Make posterior predictive plots for model.
 
         Parameters
         ----------
@@ -378,53 +559,232 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
-            plotting axis
+        : matplotlib.axes.Axes
+            plotting axes for latent parameter corner plot
         """
         # latent parameter plots (corners, chains, etc)
         self.parameter_diagnostic_plots(
             self.latent_qtys, labeller=self._labeller_latent, figsize=(5, 5)
         )
+        return super().all_posterior_pred_plots(figsize)
 
-        # posterior predictive check
-        fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
-        ax1.set_xlabel(r"log($R$/kpc)")
-        ax1.set_ylabel(self._folded_qtys_labs[0])
-        ax1.set_xscale("log")
-        ax1.set_yscale("log")
-        # TODO scale of x axis??
-        self.plot_predictive(
-            xmodel="r",
-            ymodel=f"{self._folded_qtys_posterior[0]}",
-            xobs="r",
-            yobs="density",
-            ax=ax1,
+
+class ABGDensityModelHierarchy(_ABGDensityModelBase):
+    def __init__(self, figname_base, rng=None):
+        """
+        Construct hierarchical model for ABG density profile.
+
+        Parameters
+        ----------
+        figname_base : str
+            base name for figures
+        rng : numpy.random.Generator, optional
+            random number generator, by default None
+        """
+        super().__init__(
+            model_file=get_stan_file("abg_hierarchy"),
+            prior_file=get_stan_file("abg_hierarchy_prior"),
+            figname_base=figname_base,
+            rng=rng,
+        )
+        self._hyper_qtys = [
+            "log10rhoS_mean",
+            "log10rhoS_std",
+            "log10rS_mean",
+            "log10rS_std",
+            "log10a_mean",
+            "log10a_std",
+            "b_mean",
+            "b_std",
+            "g_mean",
+            "g_std",
+            "obs_sigma",
+        ]
+        self._latent_qtys = ["log10rS", "log10a", "b", "g", "log10rhoS"]
+        self._latent_qtys_posterior = [
+            "rS_posterior",
+            "a_posterior",
+            "b_posterior",
+            "g_posterior",
+            "log10rhoS_posterior",
+        ]
+        self._latent_qtys_labs = [
+            r"$\log_{10}(r_\mathrm{S}/\mathrm{kpc})$",
+            r"$\log_{10}\alpha$",
+            r"$\beta$",
+            r"$\gamma$",
+            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+        ]
+        self._latent_qtys_posterior_labs = [
+            r"$r_\mathrm{S}/\mathrm{kpc}$",
+            r"$\alpha$",
+            r"$\beta$",
+            r"$\gamma$",
+            r"$\log_{10}\left(\rho_\mathrm{S}/(\mathrm{M}_\odot\mathrm{kpc}^{-3})\right)$",
+        ]
+        self._make_latent_labellers()
+        self._hyper_qtys_labs = [
+            r"$\mu_{\log_{10}\rho_\mathrm{S}}$",
+            r"$\sigma_{\log_{10}\rho_\mathrm{S}}$",
+            r"$\mu_{\log_{10}r_\mathrm{S}}$",
+            r"$\sigma_{\log_{10}r_\mathrm{S}}$",
+            r"$\mu_{\log_{10}\alpha}$",
+            r"$\sigma_{\log_{10}\alpha}$",
+            r"$\mu_\beta$",
+            r"$\sigma_\beta$",
+            r"$\mu_\gamma$",
+            r"$\sigma_\gamma$",
+            r"$\tau$",
+        ]
+        self._hyper_qtys_labs.extend(self._latent_qtys_labs[-2:])
+        self._labeller_hyper = MapLabeller(
+            dict(zip(self._hyper_qtys, self._hyper_qtys_labs))
         )
 
-        # latent parameter distributions
-        self.plot_latent_distributions(figsize=figsize)
+    def extract_data(self, fname=None, **kwargs):
+        """
+        Extract data from .txt file or a directory containing .txt files.
+        Last data point is not used for the fitting.
 
+        Parameters
+        ----------
+        fname : str, optional
+            path to file(s), by default None
+        """
+        obs = {"r": [], "density": []}
+        fname = fname.rstrip("/")
+        if self._loaded_from_file:
+            fname = self._get_data_dir(None)[0]
+        if not isinstance(fname, list) and os.path.isfile(fname):
+            _logger.info(f"Loading file: {fname}")
+            data = np.loadtxt(fname, **kwargs)
+            sample_ids = np.unique(data[:, 2])
+            for _sid in sample_ids:
+                mask = _sid == data[:, 2]
+                obs["r"].append(data[mask, 0])
+                obs["density"].append(data[mask, 1])
+            self._add_input_data_file(fname)
+            self._merger_id = os.path.splitext(os.path.basename(fname))[0]
+        else:
+            fnames = (
+                fname if self._loaded_from_file else get_files_in_dir(fname, ".txt")
+            )
+            for _fname in fnames:
+                _logger.info(f"Loading file: {_fname}")
+                data = np.loadtxt(_fname, **kwargs)
+                obs["r"].append(data[:, 0])
+                obs["density"].append(data[:, 1])
+                if not self._loaded_from_file:
+                    self._add_input_data_file(_fname)
+            self._merger_id = os.path.splitext(
+                common_string_subgroups([os.path.basename(f) for f in fnames])
+            )[0]
+        _logger.debug(f"Merger ID is: {self.merger_id}")
+        self.obs = obs
+        # some transformations we need
+        self.transform_obs("r", "log10_r", lambda x: np.log10(x))
+        self.transform_obs("density", "log10_density", lambda x: np.log10(x))
+        self.figname_base = os.path.join(
+            self.figname_base, f"{self.merger_id}/{self.merger_id}-hierarchy"
+        )
+        self.collapse_observations(["r", "log10_r", "density", "log10_density"])
+
+    def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None, ngroups=None):
+        """
+        Set OOS Stan data.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            Number of radii for OOS plots, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+        ngroups : int, optional
+            number of level groups (i.e. profiles), by default None
+        """
+        rs = super()._set_stan_data_OOS(r_count=r_count, rmin=rmin, rmax=rmax)
+        if ngroups is None:
+            ngroups = 2 * self.stan_data["N_group"]
+        # update num_OOS to account for different groups
+        self._num_OOS = self._num_OOS * ngroups
+        self.stan_data.update(
+            dict(
+                N_OOS=self.num_OOS,
+                r_OOS=np.tile(rs, ngroups),
+                N_group_OOS=ngroups,
+                group_id_OOS=np.repeat(np.arange(1, ngroups + 1), len(rs)),
+            )
+        )
+
+    def set_stan_data(self, **kwargs):
+        """
+        Set Stan data for the model.
+        """
+        return super().set_stan_data(**kwargs)
+
+    def all_prior_plots(self, figsize=None, ylim=None):
+        """
+        Make prior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ylim : tuple, optional
+            y-limits for prior predictive plot, by default None
+        """
+        self._prep_dims()
         ax = self.parameter_corner_plot(
-            self.latent_qtys,
-            figsize=(len(self.latent_qtys), len(self.latent_qtys)),
-            labeller=self._labeller_latent,
+            self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )
-        fig = ax.flatten()[0].get_figure()
+        fig = ax[0, 0].get_figure()
         savefig(
             self._make_fig_name(
-                self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
+                self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
             ),
             fig=fig,
         )
-        return ax
+        super().all_prior_plots(figsize, ylim)
 
-    def all_posterior_OOS_plots(self, figsize=None):
-        # out of sample posterior
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.set_xlabel(r"$r$/kpc")
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        self.posterior_OOS_plot(
-            xmodel="r_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
+    def all_posterior_pred_plots(self, figsize=None):
+        """
+        Make posterior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+
+        Returns
+        -------
+        : matplotlib.axes.Axes
+            plotting axes for latent parameter corner plot
+        """
+        self._prep_dims()
+        self.plot_latent_distributions(figsize=figsize, from_hyper=True)
+        # latent parameter plots (corners, chains, etc)
+        self.parameter_diagnostic_plots(
+            self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )
-        return ax
+        return super().all_posterior_pred_plots(figsize)
+
+    def all_posterior_OOS_plots(self, figsize=None, ax=None):
+        """
+        Make posterior OOS plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ax : matplotlib.axes.Axes, optional
+            plotting axes, by default None
+
+        Returns
+        -------
+         matplotlib.axes.Axes, optional
+            plotting axes
+        """
+        self._prep_dims()
+        return super().all_posterior_OOS_plots(figsize, ax)

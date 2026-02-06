@@ -1,7 +1,7 @@
 analysis.voronoi submodule
 --------------------------
 
-.. automodule:: analysis.voronoi
+.. automodule:: baggins.analysis.voronoi
    :members:
    :undoc-members:
    :show-inheritance:

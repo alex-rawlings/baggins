@@ -1,7 +1,7 @@
 analysis.analyse\_ketju submodule
 ---------------------------------
 
-.. automodule:: analysis.analyse_ketju
+.. automodule:: baggins.analysis.analyse_ketju
    :members:
    :undoc-members:
    :show-inheritance:

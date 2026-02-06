@@ -427,7 +427,7 @@ class EmpiricalCDF:
 
     def ppf(self, q):
         """
-        Evaluate the inverse CDF.
+        Evaluate the inverse CDF (quantile function).
 
         Parameters
         ----------
@@ -445,9 +445,7 @@ class EmpiricalCDF:
         except AssertionError:
             _logger.exception("Quantiles must be in [0, 1]", exc_info=True)
             raise
-        idx = np.searchsorted(self.cdf_vals, q, side="right")
-        idx = np.clip(idx, 0, len(self.x) - 1)
-        return self.x[idx]
+        return np.nanquantile(self.x, q)
 
     def sf(self, x_val):
         """

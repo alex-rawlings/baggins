@@ -3,32 +3,41 @@ functions {
     #include ../custom_rngs.stan
 }
 
-
 data {
-    int<lower=1> N;
-    vector<lower=0>[N] r;
-    vector<lower=0>[N] density;
+    int<lower=1> N;                  // number of data points
+    vector[N] r;                     // radii
+    vector[N] density;               // observed log10(density)
 }
-
 
 transformed data {
-    vector[N] log10_density = log10(density);
+    real median_r = quantile(r, 0.5);
+    real mean_log10_dens = mean(log10(density));
 }
 
-
 generated quantities {
-    // latent quantities
-    real rS = trunc_rayleigh_rng(0.5, 0, 2);
-    real a = lower_trunc_normal_rng(0, 5, 0);
-    real b = normal_rng(0, 5);
-    real g = normal_rng(0, 5);
-    real log10rhoS = trunc_normal_rng(3., 2., -5, 15);
-    real err = lower_trunc_normal_rng(0., 2., 0);
+    // prior distributions
+    real log10rhoS = normal_rng(mean_log10_dens, 2);
+    real log10rS = trunc_normal_rng(0.1, 1, -5, 2);
+    real a = lower_trunc_normal_rng(0, 4, 0);
+    real b = lower_trunc_normal_rng(0, 4, 0);
+    real g_raw = gamma_rng(3, 1.5);
+    real err0 = lower_trunc_normal_rng(0, 1, 0);
+    real err_grad = normal_rng(0, 1);
 
-    // generate data replication
-    vector[N] log10_rho_prior;
+    // transformed parameters
+    real rS = pow(10., log10rS);
+    real g = -(g_raw - 5);
+
+    vector[N] log10_rho_mean;   // mean model prediction
+    vector[N] log10_rho_prior;   // posterior predictive draw (with noise)  
     vector[N] rho_prior;
+    vector[N] err_prior = radially_vary_err(r, err0, err_grad, median_r);
 
-    log10_rho_prior = to_vector(normal_rng(abg_density_vec(r, log10rhoS, rS, a, b, g), err));
+    // push forward data
+    log10_rho_mean = abg_density_vec(r, log10rhoS, log10rS, a, b, g);
+    for(i in 1:N){
+        log10_rho_prior[i] = normal_rng(log10_rho_mean[i], err_prior[i]);
+    }
+
     rho_prior = pow(10., log10_rho_prior);
 }

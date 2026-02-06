@@ -447,7 +447,7 @@ def _find_radius_for_mass(s, M, centre):
     try:
         assert np.any(cumul_mass > M)
     except AssertionError:
-        _logger.exceptio(
+        _logger.exception(
             f"There is not enough mass in stellar particles (max {cumul_mass[-1]:.1e}) to equal desired mass ({M:.1e})",
             exc_info=True,
         )
@@ -676,8 +676,11 @@ def get_inner_rho_and_sigma(snap, extent=None):
     else:
         _logger.warning("Inner quantities will be calculated for all stars!")
         subsnap = snap.stars
-    inner_density = density_sphere(np.sum(subsnap["mass"]), extent)
-    inner_sigma = np.nanmean(np.nanstd(subsnap["vel"], axis=0))
+    inner_density = pygad.UnitScalar(
+        density_sphere(np.sum(subsnap["mass"]), extent),
+        units=snap["mass"].units / snap["r"].units ** 3,
+    )
+    inner_sigma = np.sqrt(np.sum(np.nanvar(subsnap["vel"], axis=0)))
     return inner_density, inner_sigma
 
 
@@ -1294,7 +1297,7 @@ def softened_inverse_r(r, h):
         -2.8 + u[mask] ** 2 * (16 / 3 + u[mask] ** 2 * (6.4 * u[mask] - 9.6))
     )
 
-    mask = np.logical_not(np.logical_and(u >= 1, u < 0.5))
+    mask = np.logical_and(u < 1, u >= 0.5)
     _inv_r_soft[mask] = -hinv * (
         -3.2
         + 2 / 30 / u[mask]

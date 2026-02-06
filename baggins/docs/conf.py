@@ -13,7 +13,8 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath("../../"))
+sys.path.insert(0, os.path.abspath("../.."))
+print(f"pythonpath is {sys.path}")
 
 
 # -- Project information -----------------------------------------------------
@@ -61,7 +62,7 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
-html_logo = "bagend.png"
+html_logo = "_static/bagend.png"
 
 # Napoleon settings
 napoleon_include_init_with_doc = True
@@ -79,6 +80,52 @@ autodoc_mock_imports = [
     "gadgetorbits",
     "cmdstanpy",
     "voronoi_binning",
-    "synthesizer"
+    "synthesizer",
 ]
 autodoc_default_options = {"member-order": "groupwise"}
+
+latex_logo = "_static/bagend.png"
+
+latex_elements = {
+    "preamble": r"""
+        \usepackage{xcolor}
+
+        \makeatletter
+        \AtBeginDocument{%
+        % Style function/class names IF the macro exists
+        \@ifundefined{sphinxstyleobjectname}{}{%
+            \renewcommand{\sphinxstyleobjectname}[1]{%
+            {\ttfamily\bfseries\color{blue!70!black}#1}%
+            }
+        }
+
+        % Fallback: style the entire signature if objectname is not available
+        \@ifundefined{sphinxstylesignature}{}{%
+            \renewcommand{\sphinxstylesignature}[1]{%
+            {\ttfamily\bfseries\color{blue!70!black}#1}%
+            }
+        }
+        }
+        \makeatother
+    """,
+    "maketitle": r"""
+        \begin{titlepage}
+        \centering
+
+        \vspace*{2cm}
+        \includegraphics[height=6cm]{bagend.png}
+
+        \vspace{0.8cm}
+        {\Huge\bfseries BAGGInS \par}
+
+        \vspace{0.5cm}
+        {\large Bayesian Analysis of Galaxy-Galaxy Interaction in Simulations \par}
+
+        \vspace{0.5cm}
+        {\large Alex Rawlings \par}
+
+        \vfill
+        {\large \today \par}
+        \end{titlepage}
+    """,
+}

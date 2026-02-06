@@ -7,16 +7,24 @@ Submodules
 analysis.bayesian\_classes.StanModel submodule
 ----------------------------------------------
 
-.. automodule:: analysis.bayesian_classes.StanModel
+.. automodule:: baggins.analysis.bayesian_classes.StanModel
    :members:
    :private-members:
+   :undoc-members:
+   :show-inheritance:
+
+analysis.bayesian\_classes.ABGDensityModels submodule
+-----------------------------------------------------
+
+.. automodule:: baggins.analysis.bayesian_classes.ABGDensityModels
+   :members:
    :undoc-members:
    :show-inheritance:
 
 analysis.bayesian\_classes.CoreKick submodule
 ---------------------------------------------
 
-.. automodule:: analysis.bayesian_classes.CoreKick
+.. automodule:: baggins.analysis.bayesian_classes.CoreKick
    :members:
    :undoc-members:
    :show-inheritance:
@@ -24,7 +32,15 @@ analysis.bayesian\_classes.CoreKick submodule
 analysis.bayesian\_classes.Dehnen submodule
 -------------------------------------------
 
-.. automodule:: analysis.bayesian_classes.Dehnen
+.. automodule:: baggins.analysis.bayesian_classes.Dehnen
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+analysis.bayesian\_classes.GaussianProcesses submodule
+------------------------------------------------------
+
+.. automodule:: baggins.analysis.bayesian_classes.GaussianProcesses
    :members:
    :undoc-members:
    :show-inheritance:
@@ -32,7 +48,7 @@ analysis.bayesian\_classes.Dehnen submodule
 analysis.bayesian\_classes.GrahamModels submodule
 -------------------------------------------------
 
-.. automodule:: analysis.bayesian_classes.GrahamModels
+.. automodule:: baggins.analysis.bayesian_classes.GrahamModels
    :members:
    :undoc-members:
    :show-inheritance:
@@ -40,7 +56,7 @@ analysis.bayesian\_classes.GrahamModels submodule
 analysis.bayesian\_classes.kick_core_gp submodule
 -------------------------------------------------
 
-.. automodule:: analysis.bayesian_classes.kick_core_gp
+.. automodule:: baggins.analysis.bayesian_classes.kick_core_gp
    :members:
    :undoc-members:
    :show-inheritance:
@@ -48,7 +64,7 @@ analysis.bayesian\_classes.kick_core_gp submodule
 analysis.bayesian\_classes.VkickApocentreGP submodule
 -----------------------------------------------------
 
-.. automodule:: analysis.bayesian_classes.VkickApocentreGP
+.. automodule:: baggins.analysis.bayesian_classes.VkickApocentreGP
    :members:
    :undoc-members:
    :show-inheritance:
