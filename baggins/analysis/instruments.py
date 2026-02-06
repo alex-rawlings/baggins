@@ -3,6 +3,7 @@ import numpy as np
 from scipy.stats import binned_statistic
 from astropy.units import Unit
 from pygad import ExprMask
+from baggins.analysis.voronoi import VoronoiKinematics
 from baggins.env_config import _cmlogger
 from baggins.cosmology import angular_scale
 from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
@@ -135,55 +136,43 @@ class BasicInstrument(ABC):
         )
         return mask
 
+    def _get_LOS_axis(self, xaxis, yaxis):
+        """
+        Get the LOS axis for an observation, orthogonal to spatial axes.
 
-class MUSE_NFM(BasicInstrument):
-    def __init__(self, z=None):
-        """
-        MUSE narrow field mode instrument. Parameters taken from:
-        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
-        """
-        super().__init__(fov=7.42, sampling=0.025, res=0.2, z=z)
-        self.label = r"$\mathrm{MUSE}$"
+        Parameters
+        ----------
+        xaxis : int, str
+            spatial x axis of observation
+        yaxis : int, str
+            spatial y axis of observation
 
-
-class MUSE_WFM(BasicInstrument):
-    def __init__(self, z=None):
+        Returns
+        -------
+        : int
+            LOS axis
         """
-        MUSE wide field mode instrument. Parameters taken from:
-        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
-        """
-        super().__init__(fov=60, sampling=0.2, res=0.4, z=z)
-        self.label = r"$\mathrm{MUSE}$"
-
-
-class HARMONI_SENSITIVE(BasicInstrument):
-    def __init__(self, z=None):
-        """
-        HARMONI optimised for sensitivity. Parameters taken from:
-        https://elt.eso.org/instrument/HARMONI/
-        """
-        super().__init__(fov=3.04, sampling=20e-3, res=20e-3, z=z)
-        self.label = r"$\mathrm{HARMONI}$"
-
-
-class HARMONI_BALANCED(BasicInstrument):
-    def __init__(self, z=None):
-        """
-        HARMONI balanced for sensitivity and spatial. Parameters taken from:
-        https://elt.eso.org/instrument/HARMONI/
-        """
-        super().__init__(fov=1.52, sampling=10e-3, res=20e-3, z=z)
-        self.label = r"$\mathrm{HARMONI}$"
-
-
-class HARMONI_SPATIAL(BasicInstrument):
-    def __init__(self, z=None):
-        """
-        HARMONI optimised for spatial. Parameters taken from:
-        https://elt.eso.org/instrument/HARMONI/
-        """
-        super().__init__(fov=0.61, sampling=4e-3, res=20e-3, z=z)
-        self.label = r"$\mathrm{HARMONI}$"
+        valid_str = "xyz"
+        if isinstance(xaxis, str):
+            try:
+                assert xaxis in valid_str
+                xaxis = valid_str.find(xaxis)
+            except AssertionError:
+                _logger.exception("x axis must 'x', 'y', or 'z'.", exc_info=True)
+                raise
+        if isinstance(yaxis, str):
+            try:
+                assert yaxis in valid_str
+                yaxis = valid_str.find(yaxis)
+            except AssertionError:
+                _logger.exception("y axis must 'x', 'y', or 'z'.", exc_info=True)
+                raise
+        try:
+            assert xaxis != yaxis
+        except AssertionError:
+            _logger.exception("xaxis and yaxis must be different!", exc_info=True)
+            raise
+        return list(set({0, 1, 2}).difference({xaxis, yaxis}))[0]
 
 
 class Euclid_NISP(BasicInstrument):
@@ -206,23 +195,177 @@ class Euclid_VIS(BasicInstrument):
         self.label = r"$\mathrm{Euclid}$"
 
 
-class ERIS_IFU(BasicInstrument):
-    def __init__(self, z=None):
+class IFUInstrument(BasicInstrument):
+    @abstractmethod
+    def __init__(self, fov, sampling, res=None, z=None, pseudo_particle_split=None):
+        """
+        Base class for IFU observations. The class has an attribute 'voronoi' which gives access to the underlying baggins.analysis.voronoi.VoronoiKinematics object, and all its methods (including plotting routines).
+
+        Parameters
+        ----------
+        fov : float
+            field of view in arcsecs
+        sampling : float
+            spatial sampling of instrument in arcsec/pixel
+        res : float, optional
+            angular resolution in arcsec, by default None
+        z : float, optional
+            redshift of observations, by default None
+        pseudo_particle_split : int, optional
+            number of pseudoparticles to generate for each star to mimic seeing, by default None
+        """
+        super().__init__(fov, sampling, res, z)
+        if pseudo_particle_split is None:
+            pseudo_particle_split = 25
+        self.pseudo_particle_split = pseudo_particle_split
+        self.voronoi = None
+
+    def make_observation(self, snap, xaxis=0, yaxis=2, part_per_bin=1000, moment=None):
+        """
+        Convenience method that wraps the instrument properties into the VoronoiKinematics interface.
+
+        Parameters
+        ----------
+        snap : pygad.Snapshot
+            snapshot to analyse
+        xaxis : int, optional
+            spatial x axis, by default 0
+        yaxis : int, optional
+            spatial y axis, by default 2
+        part_per_bin : int, float, optional
+            particles per voronoi bin (this is Poisson S/N), by default 1000
+        moment : int, optional
+            Gauss Hermite order to fit to, by default None
+        """
+        mask = self.get_fov_mask(xaxis=xaxis, yaxis=yaxis)
+        LOS_axis = self._get_LOS_axis(xaxis=xaxis, yaxis=yaxis)
+        self.voronoi = VoronoiKinematics(
+            x=snap.stars[mask]["pos"][:, xaxis],
+            y=snap.stars[mask]["pos"][:, yaxis],
+            V=snap.stars[mask]["vel"][:, LOS_axis],
+            m=snap.stars[mask]["mass"],
+            Npx=self.number_pixels,
+            seeing={
+                "num": self.pseudo_particle_split,
+                "sigma": self.resolution_kpc.value,
+            },
+        )
+        self.voronoi.make_grid(part_per_bin=int(part_per_bin**2))
+        kwargs = {}
+        if moment is not None:
+            kwargs["p"] = moment
+        self.voronoi.binned_LOSV_statistics(**kwargs)
+
+
+class MUSE_NFM(IFUInstrument):
+    def __init__(self, z=None, pseudo_particle_split=None):
+        """
+        MUSE narrow field mode instrument. Parameters taken from:
+        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
+        """
+        super().__init__(
+            fov=7.42,
+            sampling=0.025,
+            res=0.2,
+            z=z,
+            pseudo_particle_split=pseudo_particle_split,
+        )
+        self.label = r"$\mathrm{MUSE}$"
+
+
+class MUSE_WFM(IFUInstrument):
+    def __init__(self, z=None, pseudo_particle_split=None):
+        """
+        MUSE wide field mode instrument. Parameters taken from:
+        https://www.eso.org/sci/facilities/paranal/instruments/muse/overview.html
+        """
+        super().__init__(
+            fov=60,
+            sampling=0.2,
+            res=0.4,
+            z=z,
+            pseudo_particle_split=pseudo_particle_split,
+        )
+        self.label = r"$\mathrm{MUSE}$"
+
+
+class HARMONI_SENSITIVE(IFUInstrument):
+    def __init__(self, z=None, pseudo_particle_split=None):
+        """
+        HARMONI optimised for sensitivity. Parameters taken from:
+        https://elt.eso.org/instrument/HARMONI/
+        """
+        super().__init__(
+            fov=3.04,
+            sampling=20e-3,
+            res=20e-3,
+            z=z,
+            pseudo_particle_split=pseudo_particle_split,
+        )
+        self.label = r"$\mathrm{HARMONI}$"
+
+
+class HARMONI_BALANCED(IFUInstrument):
+    def __init__(self, z=None, pseudo_particle_split=None):
+        """
+        HARMONI balanced for sensitivity and spatial. Parameters taken from:
+        https://elt.eso.org/instrument/HARMONI/
+        """
+        super().__init__(
+            fov=1.52,
+            sampling=10e-3,
+            res=20e-3,
+            z=z,
+            pseudo_particle_split=pseudo_particle_split,
+        )
+        self.label = r"$\mathrm{HARMONI}$"
+
+
+class HARMONI_SPATIAL(IFUInstrument):
+    def __init__(self, z=None, pseudo_particle_split=None):
+        """
+        HARMONI optimised for spatial. Parameters taken from:
+        https://elt.eso.org/instrument/HARMONI/
+        """
+        super().__init__(
+            fov=0.61,
+            sampling=4e-3,
+            res=20e-3,
+            z=z,
+            pseudo_particle_split=pseudo_particle_split,
+        )
+        self.label = r"$\mathrm{HARMONI}$"
+
+
+class ERIS_IFU(IFUInstrument):
+    def __init__(self, z=None, pseudo_particle_split=None):
         """
         Eris IFU. Parameters taken from:
         https://www.eso.org/sci/facilities/paranal/instruments/eris/doc/ERIS_User_Manual_v116.0.pdf
         """
-        super().__init__(fov=0.8, sampling=25e-3, res=0.1, z=z)
+        super().__init__(
+            fov=0.8,
+            sampling=25e-3,
+            res=0.1,
+            z=z,
+            pseudo_particle_split=pseudo_particle_split,
+        )
         self.label = r"$\mathrm{ERIS}$"
 
 
-class JWST_IFU(BasicInstrument):
-    def __init__(self, z=None):
+class JWST_IFU(IFUInstrument):
+    def __init__(self, z=None, pseudo_particle_split=None):
         """
         JWST IFU. Parameters taken from:
         https://jwst-docs.stsci.edu/jwst-near-infrared-spectrograph#gsc.tab=0
         """
-        super().__init__(fov=3, sampling=0.1, res=68e-3, z=z)
+        super().__init__(
+            fov=3,
+            sampling=0.1,
+            res=68e-3,
+            z=z,
+            pseudo_particle_split=pseudo_particle_split,
+        )
         self.label = r"$\mathrm{JWST}$"
 
 
@@ -246,6 +389,10 @@ class LongSlitInstrument(BasicInstrument):
             length of slit in arcsecs
         res : float, optional
             angular resolution in arcsec, by default None
+        z : float, optional
+            redshift of observations, by default None
+        rng : np.random.Generator, optional
+            random number generator, by default None (creates a new instance)
         """
         super().__init__(fov, sampling, res, z=z)
         self.slit_width = slit_width * Unit("arcsec")
@@ -316,7 +463,7 @@ class LongSlitInstrument(BasicInstrument):
         vel_disp : np.array
             velocity dispersion along the long side of the slit
         """
-        LOS_axis = list(set({0, 1, 2}).difference({xaxis, yaxis}))[0]
+        LOS_axis = self._get_LOS_axis(xaxis=xaxis, yaxis=yaxis)
         mask = self.get_slit_mask(xaxis=xaxis, yaxis=yaxis)
         _logger.debug(f"Slit length is {self.slit_length_kpc:.2e}")
         x = np.array(
