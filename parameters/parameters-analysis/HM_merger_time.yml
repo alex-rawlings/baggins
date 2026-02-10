@@ -1,6 +1,0 @@
----
-family-H_1-000:
-  HMQ_files: /scratch/pjohanss/arawling/collisionless_merger/mergers/HMQcubes/MC_sample/H_0-500
-  stan_binary: /scratch/pjohanss/arawling/collisionless_merger/stan_files/binary/mcs/H_1-000/binary_hierarchy-20230310134355_*.csv
-  stan_quinlan: /scratch/pjohanss/arawling/collisionless_merger/stan_files/hardening/mcs/H_1-000/quinlan_hierarchy-20230310142611_*.csv
-...

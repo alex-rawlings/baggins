@@ -11,7 +11,6 @@ __pycache__
 *.pyc
 *.pkl
 *.pickle
-!papers/**/*.pickle
 .ruff_cache
 
 # Personal code testing directory
@@ -38,42 +37,11 @@ Thumbs.db
 *.flv
 *.mov
 *.wmv
+*.png
+*.pdf
 
 # Simulation outputs
 *.hdf5
-
-# Latex pdf
-paper*.pdf
-paper-diff*
-
-# Latex auxiliary files
-*.aux
-*.lof
-*.log
-*.lot
-*.fls
-*.out
-*.toc
-*.fmt
-*.fot
-*.cb
-*.cb2
-
-# Bibtex auxiliary files
-*.bbl
-*.bcf
-*.blg
-*-blx.aux
-*-blx.bib
-*.brf
-*.run.xml
-
-# Build tool auxiliary files:
-*.fdb_latexmk
-*.synctex
-*.synctex.gz
-*.synctex.gz(busy)
-*.pdfsync
 
 # Auxiliary and intermediate files from other packages:
 *.alg
@@ -242,7 +210,6 @@ baggins/env_params.yml
 # media files in specific directories
 code/misc/**/*.png
 code/misc/**/*.pdf
-papers/paper-corekick/figures/IFU*/
 
 # submission scripts for SLURM
 code/analysis_scripts/submission_scripts
