@@ -11,7 +11,6 @@ __all__ = [
     "sersic_b_param",
     "xval_of_quantity",
     "set_seed_time",
-    "get_idx_in_array",
     "get_unique_path_part",
     "represent_numeric_in_scientific",
     "get_snapshot_number",
@@ -194,53 +193,6 @@ def set_seed_time():
     """
     s = f"{int(time())}"[::-1]
     return int(s)
-
-
-def get_idx_in_array(t, tarr):
-    """
-    Get the index of a value within an array. If multiple matches are found,
-    the first is returned (following np.argmin method)
-
-    Parameters
-    ----------
-    t : int, float
-        value to search for
-    tarr : array-like
-        array to search within
-
-    Returns
-    -------
-    idx : int
-        index of t in tarr
-
-    Raises
-    ------
-    AssertionError
-        value to search for is a nan
-    AssertionError
-        if index is 0 or the last index of the array
-    """
-    try:
-        assert not np.isnan(t)
-    except AssertionError:
-        _logger.exception("t must not be nan", exc_info=True)
-        raise
-    try:
-        idx = np.nanargmin(np.abs(tarr - t))
-        if idx == len(tarr) - 1:
-            s = "large"
-            raise AssertionError
-        elif idx == 0:
-            s = "smalle"
-            raise AssertionError
-        else:
-            return idx
-    except AssertionError:
-        _logger.exception(f"Value is {s}r than the {s}st array value!", exc_info=True)
-        raise
-    except ValueError:
-        _logger.exception(f"Array tarr has value {np.unique(tarr)}")
-        raise
 
 
 def get_unique_path_part(path_list):
