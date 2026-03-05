@@ -5,7 +5,7 @@ import scipy.optimize
 import scipy.integrate
 import scipy.interpolate
 import ketjugw
-from baggins.general.general import get_idx_in_array
+from baggins.general.list_ops import get_idx_in_array
 from baggins.general import units
 from baggins.mathematics import (
     radial_separation,
