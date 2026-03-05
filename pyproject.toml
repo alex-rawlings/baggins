@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "baggins"
-version = "2024.04"
+version = "2026.02"
 requires-python = ">=3.10"
 
 authors = [
