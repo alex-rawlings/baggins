@@ -1,5 +1,6 @@
 import os.path
 from functools import cached_property
+from tqdm import tqdm
 import numpy as np
 import h5py
 import matplotlib.pyplot as plt
@@ -13,7 +14,7 @@ from baggins.analysis.analyse_snap import (
     get_inner_rho_and_sigma,
     find_individual_bound_particles,
 )
-from baggins.mathematics import radial_separation, fit_ellipse, eccentricity
+from baggins.mathematics import radial_separation, fit_ellipse, eccentricity, iqr
 from baggins.plotting import extract_contours_from_plot
 from baggins.utils import get_snapshots_in_dir
 
@@ -23,20 +24,21 @@ __all__ = ["PotentialFitter"]
 
 
 class PotentialFitter:
-    def __init__(self, snapfile, oblate=False, major_axis="x"):
+    def __init__(self, snapfile, oblate=False, major_axis="x", mask=None):
         """
         Class to fit an elliptical potential to a snapshot, and determine the other quantities such as stellar density and velocity dispersion, required to create the analytical expectation for a sinking SMBH binary.
 
         Parameters
         ----------
-        snapfile : path-like
-            path to snapshot
+        snapfile : path-like, list
+            path to snapshot or list of snapshots
         oblate : bool, optional
             use an oblate system, by default False
         major_axis : str, optional
             major axis of ellipse, by default "x"
+        mask : pygad.Mask, optional
+            mask to be applied to snapshot, by default None
         """
-        self.a_hard = None
         if os.path.isfile(snapfile):
             self.snapfile = snapfile
         else:
@@ -45,15 +47,15 @@ class PotentialFitter:
         self.oblate = oblate
         self.major_axis = major_axis
         snap = pygad.Snapshot(self.snapfile, physical=True)
+        if mask is not None:
+            snap = snap[mask]
+        _logger.debug(f"There are {len(snap)} particles")
         pygad.Translation(-pygad.analysis.center_of_mass(snap.bh)).apply(snap)
-        if self.a_hard is None:
-            # called only if a file was passed
-            rinfl = influence_radius(snap, combined=True)
-            self.a_hard = hardening_radius(
-                snap.bh["mass"], list(rinfl.values())[0]
-            ).view(np.ndarray)
+        self.rinfl = list(influence_radius(snap, combined=True).values())[0]
+        self.a_hard = hardening_radius(snap.bh["mass"], self.rinfl).view(np.ndarray)
         bh_sep = pygad.utils.geo.dist(np.diff(snap.bh["pos"], axis=0))
         _logger.info(f"BH separation is {bh_sep}")
+        _logger.debug(f"Influence radius is {self.rinfl}")
         _logger.debug(f"Hardening radius is {self.a_hard}")
 
         # grid the potential from those stars that are in the plane
@@ -61,6 +63,9 @@ class PotentialFitter:
         L = np.cross(np.diff(snap.bh["pos"], axis=0), np.diff(snap.bh["vel"], axis=0))
         Lhat = L / np.linalg.norm(L)
         self.stars = snap.stars[abs(np.dot(snap.stars["pos"], Lhat[0])) < 1e-2]
+        self.bh_sep = float(bh_sep)
+        if self.bh_sep > self.rinfl:
+            _logger.warning("BH separation is larger than the binary influence radius!")
         assert len(self.stars) > 10
         self.ellipse_angle = None
         self._fitted_ellipse = None
@@ -145,6 +150,10 @@ class PotentialFitter:
     def pot(self):
         return self._pot
 
+    @property
+    def pot_analytic(self):
+        return self.A3 * self.X**2 + self.A1 * self.Y**2
+
     def __str__(self):
         s = f"{self.__class__.__name__}: e_spheroid={self.e_spheroid:.3f}, oblate={self.oblate}, phi={np.degrees(self.ellipse_angle):.3f}"
         return s
@@ -157,43 +166,6 @@ class PotentialFitter:
                 return sf
             snap.delete_blocks()
             pygad.gc_full_collect()
-
-    def _get_hard_binary_snap(self, sl):
-        """
-        Determine which snapshot corresponds to a hard SMBH binary.
-
-        Parameters
-        ----------
-        sl : list
-            list of snapshots
-
-        Returns
-        -------
-        : str
-            snapshot name
-        """
-        a_hard = np.full(len(sl), np.nan)
-        for i, sf in enumerate(sl):
-            snap = pygad.Snapshot(sf, physical=True)
-            pygad.Translation(-pygad.analysis.center_of_mass(snap.bh)).apply(snap)
-            rinfl = influence_radius(snap, combined=True)
-            try:
-                a_hard[i] = hardening_radius(
-                    snap.bh["mass"], list(rinfl.values())[0]
-                ).view(np.ndarray)
-            except AssertionError:
-                self.a_hard = a_hard[i - 1]
-                return sl[i - 1]
-            if pygad.utils.geo.dist(np.diff(snap.bh["pos"], axis=0)) < a_hard[i]:
-                snap.delete_blocks()
-                pygad.gc_full_collect()
-                self.a_hard = a_hard[i - 1]
-                return sl[i - 1]
-        else:
-            snap.delete_blocks()
-            pygad.gc_full_collect()
-            self.a_hard = a_hard[-1]
-            return sl[-1]
 
     def _get_last_snap_with_binary(self, sl):
         """
@@ -292,15 +264,29 @@ class PotentialFitter:
             griddata(self.stars["pos"][:, [0, 2]], self.stars["Epot"], (self.X, self.Y))
         )
         if levels is None:
-            # take the median potential at the hardening radius
+            # take the potential at the BH separation
             pot_interp = RectBivariateSpline(
                 *2 * [np.linspace(-extent, extent, self._X.shape[0])], self.pot
             )
-            pot_vals = np.full(100, np.nan)
-            r = 2 * self.a_hard
-            for i, t in enumerate(np.linspace(0, 2 * np.pi, len(pot_vals))):
-                pot_vals[i] = pot_interp(r * np.cos(t), r * np.sin(t))
-            levels = [np.nanmedian(pot_vals)]
+            ecc_to_try = np.arange(0, 1, 0.1)
+            pot_vals = np.full((len(ecc_to_try), 100), np.nan)
+            a = min(self.rinfl, 0.5 * self.bh_sep)
+            _logger.debug(f"Trial ellipse semimajor axis set to {a:.2e} kpc")
+            # determine different ellipticities, find the one with the least variance
+            for i, ecc in tqdm(
+                enumerate(ecc_to_try),
+                total=pot_vals.shape[0],
+                desc="Trialling ellipticities",
+            ):
+                for j, t in enumerate(np.linspace(0, 2 * np.pi, pot_vals.shape[1])):
+                    rth = a * (1 - ecc**2) / (1 + ecc * np.cos(t))
+                    pot_vals[i, j] = pot_interp(rth * np.cos(t), rth * np.sin(t))
+            best_e_idx = np.argmin(iqr(pot_vals, axis=1))
+            _logger.debug(
+                f"Ellipse with e={ecc_to_try[best_e_idx]} has minimum potential IQR"
+            )
+            # median potential along the ellipse described by r
+            levels = [np.nanmedian(pot_vals[best_e_idx, :])]
         elif levels == "median":
             levels = [np.nanmedian(self.pot)]
         else:
@@ -313,8 +299,9 @@ class PotentialFitter:
                 )
                 raise
         _logger.debug(f"Using level {levels}")
-        p = plt.contour(self.X, self.Y, self.pot, levels=levels)
-        plt.close()
+        _fig, _ax = plt.subplots()  # plot to a temporary figure
+        p = _ax.contour(self.X, self.Y, self.pot, levels=levels)
+        plt.close(_fig)
         xc, yc = extract_contours_from_plot(p=p)
         try:
             assert xc
@@ -331,7 +318,9 @@ class PotentialFitter:
             phi_vals.append(phi)
         if len(e_spheroid_vals) == 1:
             self.e_spheroid = e_spheroid_vals[0]
-            self.ellipse_angle = phi + (np.pi / 2 if self.major_axis == "y" else 0)
+            self.ellipse_angle = phi_vals[-1] + (
+                np.pi / 2 if self.major_axis == "y" else 0
+            )
             self._fitted_ellipse = ellip
         return e_spheroid_vals, phi_vals
 
@@ -384,10 +373,11 @@ class PotentialFitter:
                 label="Fitted ellipse",
             )
 
-        potA = self.A3 * self.X**2 + self.A1 * self.Y**2
         if callable(apkwargs["levels"]):
-            apkwargs["levels"] = apkwargs["levels"](potA)
-        cpa = ax.contour(self.X, self.Y, potA, label="Analytic", **apkwargs)
+            apkwargs["levels"] = apkwargs["levels"](self.pot_analytic)
+        cpa = ax.contour(
+            self.X, self.Y, self.pot_analytic, label="Analytic", **apkwargs
+        )
         ax.set_title(f"es = {self.e_spheroid:.3f}")
         ax.legend()
         handles, labels = ax.get_legend_handles_labels()
