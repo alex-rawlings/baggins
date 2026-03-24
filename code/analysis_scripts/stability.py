@@ -28,6 +28,14 @@ parser.add_argument(
     "--stride", type=int, help="use every ith snapshot", dest="stride", default=None
 )
 parser.add_argument(
+    "-f",
+    "--family",
+    help="particle family",
+    choices=["stars", "dm"],
+    default="stars",
+    dest="fam",
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -77,6 +85,11 @@ for i, snapfile in tqdm(
     snap = pygad.Snapshot(snapfile, physical=True)
     bgs.analysis.basic_snapshot_centring(snap)
 
+    if args.fam == "stars":
+        snap = snap.stars
+    else:
+        snap = snap.dm
+
     for j, mf in enumerate(mass_fracs):
         lang_radii[i, j] = bgs.analysis.lagrangian_radius(snap, mass_frac=mf)
     t[i] = bgs.general.convert_gadget_time(snap)
@@ -96,6 +109,7 @@ for i, snapfile in tqdm(
 # plot lagrangian radii
 for i in range(lang_radii.shape[-1]):
     ax[0].plot(t, lang_radii[..., i], c=cmapperR(mass_fracs[i]))
+    SL.debug(list(map(lambda x: f"{x:.2e}", lang_radii[..., i])))
 
 ax[0].set_yscale("log")
 # let's keep the beta axis sensible

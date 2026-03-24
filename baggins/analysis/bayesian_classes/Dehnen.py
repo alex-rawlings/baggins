@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-from arviz.labels import MapLabeller
+from arviz_base.labels import MapLabeller
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_snap import basic_snapshot_centring
 from baggins.mathematics import get_histogram_bin_centres, equal_count_bins

@@ -3,7 +3,7 @@ import os.path
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
-from arviz.labels import MapLabeller
+from arviz_base.labels import MapLabeller
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_snap import basic_snapshot_centring

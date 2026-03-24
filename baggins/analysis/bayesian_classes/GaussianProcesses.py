@@ -2,7 +2,7 @@ from abc import abstractmethod
 import os.path
 import numpy as np
 import matplotlib.pyplot as plt
-from arviz.labels import MapLabeller
+from arviz_base.labels import MapLabeller
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.plotting import savefig

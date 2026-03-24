@@ -39,8 +39,10 @@ fig_ext = user_params["figure_ext"].lstrip(".")
 synthesizer_data = user_params["synthesizer_data"]
 
 # make sure we have valid paths
-for p in (figure_dir, data_dir, synthesizer_data):
+for p in (figure_dir, data_dir):
     assert os.path.isdir(p)
+if synthesizer_data is not None:
+    assert os.path.isdir(synthesizer_data)
 
 # set up the temporary directory register
 TMPDIRs = TmpDirRegister(os.path.join(data_dir, user_params["tmp_dir"]))

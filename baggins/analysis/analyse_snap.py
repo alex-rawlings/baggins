@@ -430,9 +430,9 @@ def get_massive_bh_ID(bhs):
     return bhs["ID"][massive_idx]
 
 
-def _find_radius_for_mass(s, M, centre):
+def _find_radius_for_mass(s, M):
     # determine the radius where the enclosed mass = desired mass M
-    r = pygad.utils.geo.dist(s["pos"], centre)
+    r = pygad.utils.geo.dist(s["pos"])
     sorted_idx = np.argsort(r)
     r = r[sorted_idx]
     try:
@@ -508,9 +508,9 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
     return r
 
 
-def lagrangian_radius(snap, mass_frac=0.1, centre=None):
+def lagrangian_radius(snap, mass_frac=0.1):
     """
-    Determine the Lagrangian radius of a system. Note that a single particle mass is assumed.
+    Determine the Lagrangian radius of a system. Note that a single particle mass is assumed. Note that no centring is done
 
     Parameters
     ----------
@@ -518,8 +518,6 @@ def lagrangian_radius(snap, mass_frac=0.1, centre=None):
         snapshot to analyse
     mass_frac : float, optional
         lagrangian radius, by default 0.1
-    centre : array-like, optional
-        centre position coordinates, by default None
 
     Returns
     -------
@@ -527,14 +525,8 @@ def lagrangian_radius(snap, mass_frac=0.1, centre=None):
         lagrangian radius from centre
     """
     assert 0 < mass_frac < 1
-    target_mass = mass_frac * np.sum(snap.stars["mass"])
-    if centre is None:
-        centre = pygad.analysis.shrinking_sphere(
-            snap.stars,
-            center=pygad.analysis.center_of_mass(snap.stars),
-            R=np.quantile(snap.stars["r"], 0.75),
-        )
-    return _find_radius_for_mass(snap.stars, target_mass, centre)
+    target_mass = mass_frac * np.sum(snap["mass"])
+    return _find_radius_for_mass(snap, target_mass)
 
 
 def influence_radius(snap, combined=False):
