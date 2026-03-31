@@ -17,8 +17,7 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(type=str, help="path to snapshot", dest="path")
 parser.add_argument(
-    "-m",
-    "--min",
+    "--min-part-count",
     type=int,
     help="minimum particle count per bin for beta",
     dest="min",
@@ -36,6 +35,14 @@ parser.add_argument(
     dest="fam",
 )
 parser.add_argument(
+    "--mass-fracs",
+    nargs="+",
+    type=float,
+    help="mass fractions",
+    dest="mass_fracs",
+    default=None,
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -51,7 +58,9 @@ SL = bgs.setup_logger("script", args.verbose)
 
 
 # mass fractions for Lagrangian radii
-mass_fracs = [0.1, 0.25, 0.5, 0.7, 0.9]
+if args.mass_fracs is None:
+    args.mass_fracs = [0.1, 0.25, 0.5, 0.7, 0.9]
+args.mass_fracs.sort()
 
 # radial bin edges for beta profile
 r_edges = np.geomspace(1e-2, 30, 10)
@@ -72,10 +81,10 @@ if args.stride is not None:
 
 # set up arrays to hold data
 t = np.full(len(snapfiles), np.nan)
-lang_radii = np.full((len(snapfiles), len(mass_fracs)), np.nan)
+lang_radii = np.full((len(snapfiles), len(args.mass_fracs)), np.nan)
 
 cmapperR, smR = bgs.plotting.create_normed_colours(
-    min(mass_fracs), max(mass_fracs), cmap="crest_r"
+    min(args.mass_fracs), max(args.mass_fracs), cmap="crest_r"
 )
 cmappert, smt = bgs.plotting.create_normed_colours(0, len(snapfiles))
 
@@ -90,7 +99,7 @@ for i, snapfile in tqdm(
     else:
         snap = snap.dm
 
-    for j, mf in enumerate(mass_fracs):
+    for j, mf in enumerate(args.mass_fracs):
         lang_radii[i, j] = bgs.analysis.lagrangian_radius(snap, mass_frac=mf)
     t[i] = bgs.general.convert_gadget_time(snap)
 
@@ -108,7 +117,7 @@ for i, snapfile in tqdm(
 
 # plot lagrangian radii
 for i in range(lang_radii.shape[-1]):
-    ax[0].plot(t, lang_radii[..., i], c=cmapperR(mass_fracs[i]))
+    ax[0].plot(t, lang_radii[..., i], c=cmapperR(args.mass_fracs[i]))
     SL.debug(list(map(lambda x: f"{x:.2e}", lang_radii[..., i])))
 
 ax[0].set_yscale("log")
