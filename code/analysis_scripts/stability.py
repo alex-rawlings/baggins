@@ -1,7 +1,6 @@
 import argparse
 import os
 from datetime import datetime
-from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 import pygad
@@ -21,7 +20,7 @@ parser.add_argument(
     type=int,
     help="minimum particle count per bin for beta",
     dest="min",
-    default=None,
+    default=1000,
 )
 parser.add_argument(
     "--stride", type=int, help="use every ith snapshot", dest="stride", default=None
@@ -43,6 +42,20 @@ parser.add_argument(
     default=None,
 )
 parser.add_argument(
+    "--num-bins",
+    type=int,
+    help="number radial bins for beta",
+    dest="nbins",
+    default=10,
+)
+parser.add_argument(
+    "--rmax",
+    type=float,
+    help="maximum radius for beta",
+    dest="rmax",
+    default=1e5,
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -62,11 +75,6 @@ if args.mass_fracs is None:
     args.mass_fracs = [0.1, 0.25, 0.5, 0.7, 0.9]
 args.mass_fracs.sort()
 
-# radial bin edges for beta profile
-r_edges = np.geomspace(1e-2, 30, 10)
-r_centres = bgs.mathematics.get_histogram_bin_centres(r_edges)
-
-
 fig, ax = plt.subplots(1, 2)
 fig.set_figwidth(1.5 * fig.get_figwidth())
 
@@ -75,25 +83,19 @@ ax[0].set_ylabel(r"$R_\mathrm{Lang.}/\mathrm{kpc}$")
 ax[1].set_xlabel(r"$r/\mathrm{kpc}$")
 ax[1].set_ylabel(r"$\beta$")
 
-snapfiles = bgs.utils.get_snapshots_in_dir(args.path)
-if args.stride is not None:
-    snapfiles = snapfiles[:: args.stride]
+
+snap_gen = bgs.analysis.SnapshotIterator(args.path, stride=args.stride)
 
 # set up arrays to hold data
-t = np.full(len(snapfiles), np.nan)
-lang_radii = np.full((len(snapfiles), len(args.mass_fracs)), np.nan)
+t = np.full(snap_gen.len, np.nan)
+lang_radii = np.full((snap_gen.len, len(args.mass_fracs)), np.nan)
 
 cmapperR, smR = bgs.plotting.create_normed_colours(
     min(args.mass_fracs), max(args.mass_fracs), cmap="crest_r"
 )
-cmappert, smt = bgs.plotting.create_normed_colours(0, len(snapfiles))
+cmappert, smt = bgs.plotting.create_normed_colours(0, snap_gen.len)
 
-for i, snapfile in tqdm(
-    enumerate(snapfiles), total=len(snapfiles), desc="Analysing snapshots"
-):
-    snap = pygad.Snapshot(snapfile, physical=True)
-    bgs.analysis.basic_snapshot_centring(snap)
-
+for i, _t, snap in snap_gen.make_generator():
     if args.fam == "stars":
         snap = snap.stars
     else:
@@ -101,14 +103,17 @@ for i, snapfile in tqdm(
 
     for j, mf in enumerate(args.mass_fracs):
         lang_radii[i, j] = bgs.analysis.lagrangian_radius(snap, mass_frac=mf)
-    t[i] = bgs.general.convert_gadget_time(snap)
+    t[i] = _t
 
+    # ensure bins of equal particle number for the first nbin bins and one
+    # final bin to rmax
+    N_per_bin = int(len(snap[pygad.BallMask(args.rmax)]) / args.nbins)
+    r_edges = bgs.mathematics.equal_count_bins(
+        snap[pygad.BallMask(args.rmax)]["r"], N_per_bin
+    )
     beta, bincounts = bgs.analysis.velocity_anisotropy(snap, r_edges=r_edges)
-    if args.min is not None:
-        mask = bincounts > args.min
-        ax[1].semilogx(r_centres[mask], beta[mask], c=cmappert(i))
-    else:
-        ax[1].semilogx(r_centres, beta, c=cmappert(i))
+    r_centres = bgs.mathematics.get_histogram_bin_centres(r_edges)
+    ax[1].semilogx(r_centres, beta, c=cmappert(i))
 
     # conserve memory
     snap.delete_blocks()
