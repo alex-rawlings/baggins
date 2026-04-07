@@ -1,4 +1,5 @@
 from tqdm import tqdm
+from operator import itemgetter
 import pygad
 from baggins.analysis.analyse_snap import basic_snapshot_centring
 from baggins.general.pygad_helper import convert_gadget_time
@@ -39,6 +40,14 @@ class SnapshotIterator:
     @property
     def len(self):
         return len(self.snapfiles)
+
+    def limit_to_snaps(self, *args):
+        """
+        Limit the snapshot generator to the specified snapshots in the directory.
+        """
+        self.snapfiles = itemgetter(*args)(self.snapfiles)
+        if len(args) == 1:
+            self.snapfiles = [self.snapfiles]
 
     def make_generator(self, hide_prog=False):
         """
