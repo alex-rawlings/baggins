@@ -12,6 +12,7 @@ __all__ = [
     "get_meta",
     "set_publishing_style",
     "get_figure_size",
+    "make_wide_figure",
     "check_backend",
 ]
 
@@ -133,6 +134,20 @@ def get_figure_size(publishing=False, full=False, multiplier=[1, 1]):
             m *= 2
         figsize = (m, m)
     return figsize
+
+
+def make_wide_figure(fig, multiplier=2):
+    """
+    Make a figure wider by multiplying the width by a given multiplier
+
+    Parameters
+    ----------
+    fig : matplotlib.Figure
+        figure to make wider
+    multiplier : float, optional
+        factor to multiply width by, by default 2
+    """
+    fig.set_figwidth(fig.get_figwidth() * multiplier)
 
 
 def check_backend(fallback="Agg"):

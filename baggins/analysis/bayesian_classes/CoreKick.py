@@ -3,7 +3,7 @@ from tqdm import tqdm
 import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
-from arviz.labels import MapLabeller
+from arviz_base.labels import MapLabeller
 from ketjugw.units import km_per_s
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_ketju import get_bound_binary

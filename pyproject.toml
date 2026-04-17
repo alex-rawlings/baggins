@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "baggins"
 version = "2026.02"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 
 authors = [
     {name = "Alex Rawlings", email = "alexander.rawlings@helsinki.fi"},
@@ -19,7 +19,7 @@ readme = "README.md"
 license = {text = "GNU General Public License v3"}
 
 dependencies = [
-    "arviz>=0.17",
+    "arviz>=1.0.0",
     "cmdstanpy>=1.2.0",
     "dask>=2022.4.1",
     "h5py>=3.6.0",

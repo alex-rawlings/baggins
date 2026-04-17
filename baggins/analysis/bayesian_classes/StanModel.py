@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import cmdstanpy
 import arviz as az
 import yaml
-from baggins.plotting import savefig, create_normed_colours
+from baggins.plotting import savefig, create_normed_colours, plot_hdi
 from baggins.env_config import figure_dir, TMPDIRs, _cmlogger
 from baggins.utils import get_mod_time, get_files_in_dir
 
@@ -1703,7 +1703,7 @@ class HierarchicalModel_2D(_StanModel):
         cmapper, sm = self._make_default_hdi_colours(levels)
         for lev in levels:
             _logger.debug(f"Fitting level {lev}")
-            az.plot_hdi(
+            plot_hdi(
                 self.stan_data[xmodel],
                 ys,
                 hdi_prob=lev / 100,
@@ -1826,7 +1826,7 @@ class HierarchicalModel_2D(_StanModel):
         fill_kwargs.setdefault(
             "color", plot_kwargs["c"] if plot_kwargs["c"] is not None else None
         )
-        az.plot_hdi(
+        plot_hdi(
             self.stan_data[xmodel],
             self.sample_generated_quantity(ymodel, state="OOS"),
             hdi_prob=hdi / 100,
@@ -2008,7 +2008,7 @@ class FactorModel_2D(_StanModel):
                 _logger.debug(f"Fitting level {lev}")
                 label = f"{lev}% HDI" if i == 0 else ""
                 # TODO will this indexing work for GQ values in posterior pred?
-                az.plot_hdi(
+                plot_hdi(
                     self.stan_data[xmodel][..., mask],
                     _ys,
                     hdi_prob=lev / 100,

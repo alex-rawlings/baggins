@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.optimize
 
-__all__ = ["Behroozi19", "Girelli20", "Moster10"]
+__all__ = ["Behroozi19", "Girelli20", "Moster10", "Duffy08"]
 
 
 # ---- HELPER FUNCTIONS ---- #
@@ -192,3 +192,27 @@ def Moster10(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
             _moster_helper, hm[0], hm[1], args=(sm, M1, mM0, b, g), xtol=1
         )
         return np.log10(h_mass)
+
+
+def Duffy08(M200, z=0):
+    """
+    Halo mass-concentration relation for a NFW profile, from Duffy et al. 2008 Eq. 4 relaxed sample z=0-2
+    https://ui.adsabs.harvard.edu/abs/2008MNRAS.390L..64D/abstract
+
+    Parameters
+    ----------
+    M200 : float, array-like
+        halo mass [Msol]
+    z : float, optional
+        redshift, by default 0
+
+    Returns
+    -------
+    : float
+        concentration
+    """
+    A = 6.71
+    B = -0.091
+    C = -0.44
+    Mpivot = 2e12
+    return A * (M200 / Mpivot) ** B * (1 + z) ** C

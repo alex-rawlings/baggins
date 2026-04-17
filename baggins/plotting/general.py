@@ -101,8 +101,6 @@ def create_normed_colours(
     """
     Convenience wrapper for creating colour normalisation and colourbar
     requirements for pyplot.plot()
-    # TODO this doesn't work with colors.CenteredNorm() due to different
-    # argument names
 
     Parameters
     ----------
@@ -139,8 +137,11 @@ def create_normed_colours(
     except AttributeError:
         _logger.warning(f"Normalisation {norm} is not valid. Using default (Linear).")
         _norm = colors.Normalize()
-    norm = _norm(vmin=vmin, vmax=vmax, **norm_kwargs)
-    mapcols = lambda x: cmapv(norm(x))
+    if norm == "CenteredNorm":
+        _norm = _norm(**norm_kwargs)
+    else:
+        _norm = _norm(vmin=vmin, vmax=vmax, **norm_kwargs)
+    mapcols = lambda x: cmapv(_norm(x))
     # we now have a colormap that maps (vmin, vmax) -> (0,1)
     # adjust if we want to truncate it
     if any([tt is not None for tt in trunc]):
@@ -148,12 +149,12 @@ def create_normed_colours(
         tmax = vmax if trunc[1] is None else trunc[1]
         col_arr = mapcols(np.linspace(tmin, tmax, 256))
         cmapv = colors.LinearSegmentedColormap.from_list("trunc", col_arr)
-        mapcols = lambda x: cmapv(norm(x))
-        norm = _norm(vmin=tmin, vmax=tmax, **norm_kwargs)
+        mapcols = lambda x: cmapv(_norm(x))
+        _norm = _norm(vmin=tmin, vmax=tmax, **norm_kwargs)
         _logger.debug(
             f"Truncating colormap from ({vmin:.2f},{vmax:.2f}) --> ({tmin:.2f},{tmax:.2f})"
         )
-    sm = plt.cm.ScalarMappable(norm=norm, cmap=cmapv)
+    sm = plt.cm.ScalarMappable(norm=_norm, cmap=cmapv)
     return mapcols, sm
 
 

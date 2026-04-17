@@ -1,11 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-from arviz import plot_hdi
 from baggins.analysis.bayesian_classes.GaussianProcesses import _GPBase, get_stan_file
 from baggins.analysis.analyse_ketju import get_bound_binary
 from baggins.env_config import _cmlogger
-from baggins.plotting import savefig
+from baggins.plotting import savefig, plot_hdi
 from baggins.utils import get_ketjubhs_in_dir
 
 

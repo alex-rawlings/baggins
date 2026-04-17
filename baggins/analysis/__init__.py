@@ -9,3 +9,4 @@ from baggins.analysis.bayesian_classes import *  # noqa
 from baggins.analysis.analysis_classes import *  # noqa
 from baggins.analysis.instruments import *  # noqa
 from baggins.analysis.chaos import *  # noqa
+from baggins.analysis.helpers import SnapshotIterator  # noqa

@@ -4,8 +4,8 @@ import itertools
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from arviz.labels import MapLabeller
-from arviz import plot_kde
+from arviz_base.labels import MapLabeller
+from arviz_plots import plot_kde
 import dask
 from datetime import datetime
 from baggins.analysis.data_classes.HMQuantitiesBinaryData import (

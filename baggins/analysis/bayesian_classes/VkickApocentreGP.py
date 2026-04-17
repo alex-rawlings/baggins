@@ -3,13 +3,13 @@ from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
 import ketjugw
-from arviz import plot_dist, plot_hdi
+from arviz_plots import plot_dist
 from baggins.analysis.bayesian_classes.GaussianProcesses import _GPBase, get_stan_file
 from baggins.analysis.analyse_ketju import get_bound_binary
 from baggins.env_config import _cmlogger
 from baggins.general.units import kpc
 from baggins.literature import SMBHSpins, ketju_calculate_bh_merger_remnant_properties
-from baggins.plotting import savefig
+from baggins.plotting import savefig, plot_hdi
 from baggins.utils import get_ketjubhs_in_dir, get_files_in_dir
 
 __all__ = ["VkickApocentreGP"]

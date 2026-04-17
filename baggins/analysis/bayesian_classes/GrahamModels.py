@@ -4,7 +4,7 @@ import re
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
-from arviz.labels import MapLabeller
+from arviz_base.labels import MapLabeller
 from baggins.analysis.bayesian_classes.StanModel import (
     HierarchicalModel_2D,
     FactorModel_2D,
@@ -336,7 +336,7 @@ class _GrahamModelBase(HierarchicalModel_2D):
 class GrahamModelSimple(_GrahamModelBase):
     def __init__(self, figname_base, rng=None):
         """
-        Model core-Sersic projected density profile, assuming non-hierarchical 
+        Model core-Sersic projected density profile, assuming non-hierarchical
         structure of data.
 
         Parameters
@@ -480,7 +480,7 @@ class GrahamModelSimple(_GrahamModelBase):
 class GrahamModelHierarchy(_GrahamModelBase):
     def __init__(self, figname_base, rng=None) -> None:
         """
-        Model core-Sersic projected density profile, assuming hierarchical 
+        Model core-Sersic projected density profile, assuming hierarchical
         structure of data (i.e. from different projections).
 
         Parameters
