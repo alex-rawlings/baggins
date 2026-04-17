@@ -16,7 +16,7 @@
 * Initialisation, Bayesian-focused analysis, and presentation of 
 collisionless merger simulations using the `KETJU` code developed by the 
 Helsinki Theoretical Astrophyiscs Group.  
-* Mostly the code is designed for use of *isolated* and *gas-free* mergers, however there are plans to extend the functionality of BAGGInS to isolated hydro sims, BAGGInS+.  
+* Mostly the code is designed for use of *isolated* and *gas-free* mergers.
 
 ## How do I get set up?  
 1. A few private repositories need to be installed and added to your python path. These are:  
@@ -29,11 +29,8 @@ Helsinki Theoretical Astrophyiscs Group.
 3. Next, `cd baggins`, and copy a `env_params.yml` file to `baggins` and edit as necessary. The fields under the second document are internal settings of the code, and should not be edited.  
 
 ## Directory Organisation  
-* all script code required to perform the simulation initialisations and analysis is located in `code/`.  
-* papers, including figure-specific scripts, can be found in `papers/`.  
-* parameter files (for initialisation and analysis) for all simulations can be found in `parameters/`.  
-These parameter files are expected to be used in conjunction with the 
-functions and scripts in `baggins/` `code/`.
+* all functions and classes can be found in `baggins/`.  
+* Some basic scripts are located in `code/`.  
 
 ## A Brief Note on the Scripts  
 A detailed description of each initialisation and analysis script is not 
@@ -47,4 +44,4 @@ A list of
 required inputs and optional inputs will be displayed.  
 
 ### Who do I talk to?  
-* Alex Rawlings (alexander.rawlings@helsinki.fi)
+* Alex Rawlings (rawlings@mpa-garching.mpg.de)
