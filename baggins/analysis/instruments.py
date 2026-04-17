@@ -67,6 +67,9 @@ class BasicInstrument(ABC):
 
     @redshift.setter
     def redshift(self, z):
+        if z < 1e-3:
+            # protect against cosmology methods failing at z=0
+            z = 1e-3
         self._redshift = z
         self._ang_scale = angular_scale(z)
 
@@ -102,7 +105,7 @@ class BasicInstrument(ABC):
     def extent(self):
         # in kpc
         self._param_check()
-        return min(self._ang_scale * self.field_of_view, self.max_extent)
+        return min(self.ang_scale * self.field_of_view, self.max_extent)
 
     @property
     def number_pixels(self):
@@ -113,7 +116,7 @@ class BasicInstrument(ABC):
         return type(self).__name__
 
     def __repr__(self):
-        return f'{self.name}:\n FoV: {self.field_of_view}"\n sampling: {self.sampling}"/pix\n angular resolution: {self.angular_resolution}"\n pixel width: {self.pixel_width:.3e}kpc\n # pixels: {self.number_pixels}\n extent: {self.extent}'
+        return f"{self.name}:\n FoV: {self.field_of_view}\n sampling: {self.sampling}/pix\n angular resolution: {self.angular_resolution}\n pixel width: {self.pixel_width:.3e}\n # pixels: {self.number_pixels}\n extent: {self.extent:.3e}"
 
     def get_fov_mask(self, xaxis, yaxis):
         """
@@ -240,10 +243,10 @@ class IFUInstrument(BasicInstrument):
         mask = self.get_fov_mask(xaxis=xaxis, yaxis=yaxis)
         LOS_axis = self._get_LOS_axis(xaxis=xaxis, yaxis=yaxis)
         self.voronoi = VoronoiKinematics(
-            x=snap.stars[mask]["pos"][:, xaxis],
-            y=snap.stars[mask]["pos"][:, yaxis],
-            V=snap.stars[mask]["vel"][:, LOS_axis],
-            m=snap.stars[mask]["mass"],
+            x=snap[mask]["pos"][:, xaxis],
+            y=snap[mask]["pos"][:, yaxis],
+            V=snap[mask]["vel"][:, LOS_axis],
+            m=snap[mask]["mass"],
             Npx=self.number_pixels,
             seeing={
                 "num": self.pseudo_particle_split,
