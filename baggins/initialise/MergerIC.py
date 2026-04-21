@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import pygad
 import merger_ic_generator as mg
-from baggins.initialise.mergers import e_from_rperi
+from baggins.initialise.ic_helpers import e_from_rperi
 from baggins.env_config import _cmlogger, date_format
 from baggins.utils import (
     read_parameters,

@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 
-def get_histogram_bin_centres(bins):
+def get_histogram_bin_centres(bins, x=None):
     """
     Convenience function to get the centres of some histogram bins.
 
@@ -17,13 +17,22 @@ def get_histogram_bin_centres(bins):
     ----------
     bins : np.ndarray
         bin edges
+    x : np.ndarray, optional
+        original data that was binned - if provided, the centre of a bin is the median value of the subset of elements in x which lie within the bin, by default None
 
     Returns
     -------
     : np.ndarray
         bin centres, has len = len(bins)-1
     """
-    return (bins[:-1] + bins[1:]) / 2.0
+    if x is None:
+        return (bins[:-1] + bins[1:]) / 2.0
+    else:
+        centres = np.full(len(bins) - 1, np.nan)
+        for i, (bi, bo) in enumerate(zip(bins[:-1], bins[1:])):
+            mask = np.logical_and(x > bi, x <= bo)
+            centres[i] = np.nanmedian(x[mask])
+        return centres
 
 
 def equal_count_bins(x, N_per_bin):
