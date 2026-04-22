@@ -1,5 +1,6 @@
 from tqdm import tqdm
 from operator import itemgetter
+from copy import copy
 import pygad
 from baggins.analysis.analyse_snap import basic_snapshot_centring
 from baggins.general.pygad_helper import convert_gadget_time
@@ -48,6 +49,8 @@ class SnapshotIterator:
         self.snapfiles = itemgetter(*args)(self.snapfiles)
         if len(args) == 1:
             self.snapfiles = [self.snapfiles]
+        else:
+            self.snapfiles = list(self.snapfiles)
 
     def make_generator(self, hide_prog=False):
         """
@@ -99,3 +102,21 @@ class SnapshotIterator:
             snap.delete_blocks()
             del snap
             pygad.gc_full_collect()
+
+    def get_min_max_times(self):
+        """
+        Get the minimum and maximum times of a series of snapshots.
+
+        Returns
+        -------
+        ts : list
+            minimum and maximum snapshot times, in Gyr
+        """
+        ts = [None, None]
+        # ensure snapshots are in order, as this might be changed if limit_to_snaps() has been called with non-consecutive inputs
+        sfiles = copy(self.snapfiles)
+        sfiles.sort()
+        for i, s in enumerate(itemgetter(0, -1)(sfiles)):
+            snap = pygad.Snapshot(s, physical=True)
+            ts[i] = convert_gadget_time(snap)
+        return ts

@@ -2,7 +2,7 @@ import os.path
 import numpy as np
 from copy import copy
 import unyt
-from synthesizer import grid, instruments
+from synthesizer import grid, instruments, GRID_DIR
 from astropy import cosmology
 from baggins.env_config import _cmlogger, synthesizer_data
 from baggins.utils import get_files_in_dir
@@ -28,16 +28,12 @@ def set_luminosity(snap, sed, z=0):
     ----------
     snap : pygad.Snapshot
         snapshot to set fields for
-    metallicity : float, array-like
-        metallicity values (must have same length as snap.stars if array)
-    age : float, array-like
-        age values (must have same length as snap.stars if array)
+    sed : synthesizer.Sed
+        spectral energy distribution object
     z : float, optional
         redshift of source (for cosmological dimming), by default 0
     age_units : str, optional
         units for age, by default "Gyr"
-    **kwargs
-        other keyword-arguments parsed to pygad.get_luminosities()
     """
     try:
         assert set(snap.stars.all_blocks()).isdisjoint({"lum", "metallicity", "age"})
@@ -47,7 +43,6 @@ def set_luminosity(snap, sed, z=0):
             exc_info=True,
         )
         raise
-    # TODO calculate cosmological dimming here or elsewhere?
     # sed object doesn't store unyt conversions, so manually obtain the
     # conversion from erg/s to Lsol
     _sed = copy(sed)
@@ -89,8 +84,11 @@ def get_spectrum_ssp(
         spectral energy distribution object
     """
     if grid_dir is None:
-        # use the default location for grids
+        # use the default location for grids from baggins config
         grid_dir = synthesizer_data
+        if grid_dir is None:
+            # use the default install location from synthesizer
+            grid_dir = GRID_DIR
     try:
         assert os.path.isfile(os.path.join(grid_dir, grid_name))
     except AssertionError:
@@ -99,11 +97,11 @@ def get_spectrum_ssp(
         raise
     _logger.info(f"Using data {os.path.join(grid_dir, grid_name)}")
     # create the grid
-    g = grid.Grid(grid_name, grid_dir=grid_dir, read_lines=False)
+    g = grid.Grid(grid_name, grid_dir=grid_dir, ignore_lines=True)
     log10age = np.log10(age)
     # extract the spectrum at the target age / metallicity
     grid_point = g.get_grid_point(log10ages=log10age, metallicity=metallicity)
-    sed = g.get_spectra(grid_point, spectra_id="incident")
+    sed = g.get_sed(grid_point, spectra_type="incident")
     return g, sed
 
 

@@ -4,6 +4,28 @@ from logging import handlers
 __all__ = ["setup_logger"]
 
 
+class _ANSIColourFormatter(logging.Formatter):
+    """
+    Helper class to colour terminal output.
+    """
+
+    def format(self, record: logging.LogRecord):
+        no_style = "\033[0m"
+        yellow = "\033[93m"
+        red_light = "\033[91m"
+        red = "\033[31m"
+        bold = "\033[91m"
+        start_style = {
+            "DEBUG": no_style,
+            "INFO": no_style,
+            "WARNING": yellow,
+            "ERROR": red,
+            "CRITICAL": red_light + bold,
+        }.get(record.levelname, no_style)
+        end_style = no_style
+        return f"{start_style}{super().format(record)}{end_style}"
+
+
 class CustomLogger(logging.Logger):
     """
     Custom logger class to override some methods.
@@ -100,7 +122,7 @@ def setup_logger(
     log = logging.getLogger(name)
 
     # formatters
-    cfmt = logging.Formatter(
+    cfmt = _ANSIColourFormatter(
         "%(asctime)s: %(name)s: %(levelname)s: %(message)s", "%H:%M:%S"
     )
     ffmt = logging.Formatter(
