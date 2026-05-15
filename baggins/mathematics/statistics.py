@@ -265,8 +265,9 @@ def stat_interval(x, y, itype="conf", conf_lev=0.68):
         )
         raise
     # clean data
-    x = x[~np.isnan(x) & ~np.isnan(y)]
-    y = y[~np.isnan(x) & ~np.isnan(y)]
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    x = x[mask]
+    y = y[mask]
     # quantities we will need later
     x_avg = np.mean(x)
     Sxx = np.sum((x - x_avg) ** 2)
@@ -332,8 +333,9 @@ def vertical_RMSE(x, y, return_linregress=False):
         inear regression intercept
     """
     # clean data
-    x = x[~np.isnan(x) & ~np.isnan(y)]
-    y = y[~np.isnan(x) & ~np.isnan(y)]
+    mask = ~np.isnan(x) & ~np.isnan(y)
+    x = x[mask]
+    y = y[mask]
     slope, intercept, *_ = scipy.stats.linregress(x, y)
     yhat = slope * x + intercept
     if return_linregress:

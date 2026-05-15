@@ -353,7 +353,7 @@ class VoronoiKinematics:
         ax=None,
         moments=None,
         figsize=(7, 4.7),
-        clims={},
+        clims=None,
         desat=False,
         cbar="adj",
         fontsize=None,
@@ -386,6 +386,8 @@ class VoronoiKinematics:
         """
         self._stat_is_calculated("V")
         # set the colour limits
+        if clims is None:
+            clims = {}
         clims.setdefault("V", None)
         clims.setdefault("sigma", [None, None])
         for p in range(3, self._hermite_order + 1):

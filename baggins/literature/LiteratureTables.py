@@ -42,7 +42,7 @@ class LiteratureTables:
             os.path.join(C._literature_dir, "sahu_20.txt"), sep=",", header=0
         )
         data["Re_maj_kpc"] = data.loc[:, "Re_maj"] * data.loc[:, "scale"]
-        data["logRe_maj_kpc"] = np.log10(data["Re_maj_kpc"])
+        data["log_Re_maj_kpc"] = np.log10(data["Re_maj_kpc"])
         # restrict to only ETGs (exclude also S0)
         # data = data.loc[np.logical_or(data.loc[:,"Type"]=="E", data.loc[:,"Type"]=="ES"), :]
         cored_galaxies = np.zeros(data.shape[0], dtype="bool")
@@ -462,7 +462,7 @@ class LiteratureTables:
         ax.hist(self.table.loc[:, var], label=self.name, **hist_kwargs)
         return ax
 
-    def add_qauntile_to_plot(self, q, var, ax, xaxis=True, lkwargs={}):
+    def add_qauntile_to_plot(self, q, var, ax, xaxis=True, **lkwargs):
         """
         Add a line to a plot representing a quantile
 
@@ -479,21 +479,19 @@ class LiteratureTables:
         lkwargs : dict, optional
             plotting parameters passed to axvline() or axhline(), by default {}
         """
-        default_lkwargs = {"c": "tab:red"}
+        lkwargs.setdefault("c", "tab:red")
         label = f"{q} Quantile" if q != 0.5 else "Median"
-        for k, v in lkwargs.items():
-            default_lkwargs[k] = v
         if xaxis:
             ax.axvline(
                 np.nanquantile(self.table.loc[:, var], q),
                 label=label,
-                **default_lkwargs,
+                **lkwargs,
             )
         else:
             ax.axhline(
                 np.nanquantile(self.table.loc[:, var], q),
                 label=label,
-                **default_lkwargs,
+                **lkwargs,
             )
 
     def scatter(
@@ -503,7 +501,7 @@ class LiteratureTables:
         xerr=None,
         yerr=None,
         ax=None,
-        scatter_kwargs={},
+        scatter_kwargs=None,
         mask=None,
         use_label=True,
     ):
@@ -540,7 +538,8 @@ class LiteratureTables:
             fig, ax = plt.subplots(1, 1)
         ax.set_xlabel(x)
         ax.set_ylabel(y)
-
+        if scatter_kwargs is None:
+            scatter_kwargs = {}
         scatter_kwargs.setdefault("fmt", ".")
         scatter_kwargs.setdefault("alpha", 1)
         scatter_kwargs.setdefault("c", "gray")
@@ -594,8 +593,9 @@ class LiteratureTables:
         ax=None,
         fit_in_log=False,
         mask=None,
+        plot_scatter=True,
         scatter_kwargs={},
-        fit_coeffs={},
+        fit_coeffs=None,
     ):
         """
         Convenience method to plot 2D data from a table as regression
@@ -619,6 +619,8 @@ class LiteratureTables:
             fit regression in log space, by default False
         mask : array-like, optional
             mask to fit regression to subset of data, by default None
+        plot_scatter : bool, optional
+            plot underlying scatter plot, by default True
         scatter_kwargs : dict, optional
             scatter parameters parsed to scatter() or errorbar(), by default {}
         fit_coeffs : dict, optional
@@ -634,11 +636,11 @@ class LiteratureTables:
         if mask is None:
             mask = np.ones(len(self.table), dtype=bool)
         if fit_in_log:
-            _x = self.table.loc[mask, f"log_{x}"]
-            _y = self.table.loc[mask, f"log_{y}"]
+            _x = self.table.loc[mask, f"log_{x}"].to_numpy(dtype=np.float64)
+            _y = self.table.loc[mask, f"log_{y}"].to_numpy(dtype=np.float64)
         else:
-            _x = self.table.loc[mask, x]
-            _y = self.table.loc[mask, y]
+            _x = self.table.loc[mask, x].to_numpy(dtype=np.float64)
+            _y = self.table.loc[mask, y].to_numpy(dtype=np.float64)
         stat_fun = stat_interval(_x, _y, itype=itype, conf_lev=conf_lev)
         if fit_coeffs is None:
             rmse, slope, intercept = vertical_RMSE(_x, _y, return_linregress=True)
@@ -650,7 +652,10 @@ class LiteratureTables:
             intercept = fit_coeffs["intercept"]
 
         # add scatter plot of data
-        ax = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
+        if plot_scatter:
+            ax, _ = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
+        elif ax is None:
+            fig, ax = plt.subplots()
         xhat = xhat_method(
             self.table.loc[mask, x].min(), self.table.loc[mask, x].max(), 1000
         )

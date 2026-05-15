@@ -156,7 +156,9 @@ def write_calculated_parameters(data, filepath):
             elif isinstance(v, np.ndarray):
                 new_d[k] = v.tolist()
             elif isinstance(v, UnitArr):
-                new_d[k] = {"unit": str(v.units).strip("[]"), "value": float(v)}
+                new_d[k] = {"unit": str(v.units).strip("[]"), "value": v.tolist()}
+            elif isinstance(v, tuple):
+                new_d[k] = list(v)
             elif isinstance(v, dict):
                 try:
                     new_d[k] = _type_converter(v, new_d[k])

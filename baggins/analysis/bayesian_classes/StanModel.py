@@ -539,7 +539,7 @@ class _StanModel(ABC):
             raise
         self._num_OOS = n[0]
 
-    def _sampler(self, prior=False, sample_kwargs={}, diagnose=True, pathfinder=True):
+    def _sampler(self, prior=False, sample_kwargs=None, diagnose=True, pathfinder=True):
         """
         Sample a stan model
 
@@ -567,6 +567,8 @@ class _StanModel(ABC):
             self._sample_diagnosis = self._fit.diagnose()
             return self._fit
         else:
+            if sample_kwargs is None:
+                sample_kwargs = {}
             sample_kwargs.setdefault("chains", 4)
             sample_kwargs.setdefault("iter_sampling", 2000)
             sample_kwargs.setdefault("show_progress", True)
