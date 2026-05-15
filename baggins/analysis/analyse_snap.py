@@ -1,4 +1,5 @@
 from datetime import datetime
+from warnings import deprecated
 import numpy as np
 import scipy.linalg
 import scipy.interpolate
@@ -32,6 +33,7 @@ __all__ = [
     "influence_radius",
     "hardening_radius",
     "gravitational_radiation_radius",
+    "velocity_dispersion_3d",
     "get_inner_rho_and_sigma",
     "get_G_rho_per_sigma",
     "shell_com_motions_each_galaxy",
@@ -77,6 +79,7 @@ def basic_snapshot_centring(snap):
     pygad.Boost(-vcom).apply(snap, total=True)
 
 
+@deprecated("Use basic_snapshot_centring instead")
 def get_com_of_each_galaxy(
     snap, method="ss", masks=None, family="all", initial_radius=20
 ):
@@ -163,6 +166,7 @@ def get_com_of_each_galaxy(
     return coms
 
 
+@deprecated("Use basic_snapshot_centring instead")
 def get_com_velocity_of_each_galaxy(
     snap, xcom, masks=None, min_particle_count=5e4, family="stars"
 ):
@@ -430,9 +434,9 @@ def get_massive_bh_ID(bhs):
     return bhs["ID"][massive_idx]
 
 
-def _find_radius_for_mass(s, M):
+def _find_radius_for_mass(s, M, centre=[0, 0, 0]):
     # determine the radius where the enclosed mass = desired mass M
-    r = pygad.utils.geo.dist(s["pos"])
+    r = pygad.utils.geo.dist(s["pos"], centre)
     sorted_idx = np.argsort(r)
     r = r[sorted_idx]
     try:
@@ -634,6 +638,23 @@ def gravitational_radiation_radius(bh_masses, ah, tah, H, Gps, e=0):
     return a.view(np.ndarray), time_a.view(np.ndarray)
 
 
+def velocity_dispersion_3d(snap):
+    """
+    Convenience function to determine 3-dimensional velocity dispersion
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        (sub) snapshot to determine quantity for
+
+    Returns
+    -------
+    : float
+        velocity dispersion
+    """
+    return np.linalg.norm(np.nanstd(snap["vel"], axis=0))
+
+
 def get_inner_rho_and_sigma(snap, extent=None):
     """
     Get the mean (3-dimensional) stellar density and velocity dispersion within
@@ -672,7 +693,7 @@ def get_inner_rho_and_sigma(snap, extent=None):
         density_sphere(np.sum(subsnap["mass"]), extent),
         units=snap["mass"].units / snap["r"].units ** 3,
     )
-    inner_sigma = np.sqrt(np.sum(np.nanvar(subsnap["vel"], axis=0)))
+    inner_sigma = velocity_dispersion_3d(subsnap)
     return inner_density, inner_sigma
 
 

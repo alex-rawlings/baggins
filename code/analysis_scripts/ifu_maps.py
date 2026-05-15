@@ -24,6 +24,9 @@ parser.add_argument(
     type=str,
 )
 parser.add_argument(
+    "-i", help="snapshot numbers", type=int, nargs="*", default=None, dest="snaps"
+)
+parser.add_argument(
     "--xy", dest="axes", help="position axes", type=int, nargs=2, default=[0, 1]
 )
 parser.add_argument(
@@ -53,7 +56,10 @@ SL.info(ifu)
 
 # get the list of snapshots we want to do
 snap_gen = bgs.analysis.SnapshotIterator(snapdir=args.snapdir)
-snap_gen.limit_to_snaps(0, -1)  # let's do the first and last snaps
+if args.snaps is None:
+    snap_gen.limit_to_snaps(0, -1)  # let's do the first and last snaps
+else:
+    snap_gen.limit_to_snaps(*args.snaps)
 for i, t, snap in snap_gen.make_generator(hide_prog=True):
     # create the mock observation -> this doesn't plot anything yet
     ifu.make_observation(
