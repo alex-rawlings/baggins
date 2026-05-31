@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.general import BasicQuantityConverter
 from baggins.mathematics import stat_interval, vertical_RMSE
-from baggins.utils import create_error_col
+from baggins.utils import create_error_col, convert_log_error
 
 __all__ = ["LiteratureTables"]
 
@@ -25,6 +25,32 @@ class LiteratureTables:
     @property
     def num_obs(self):
         return self.table.shape[0]
+
+    @property
+    def columns(self):
+        return list(self.table.columns)
+
+    @property
+    def table(self):
+        try:
+            return self.__dict__["table"]
+        except KeyError:
+            raise AttributeError("'table' has not been set.")
+
+    @table.setter
+    def table(self, t):
+        self.__dict__["table"] = t
+        if t is not None:
+            self._format_log_column_names()
+
+    def _format_log_column_names(self):
+        cols = [
+            s
+            if s.startswith("log_")
+            else (f"log_{s[3:]}" if s.startswith("log") else s)
+            for s in self.columns
+        ]
+        self.table.rename(columns=dict(zip(self.columns, cols)), inplace=True)
 
     @classmethod
     def load_sahu_2020_data(cls):
@@ -52,6 +78,8 @@ class LiteratureTables:
         data.insert(2, "Cored", cored_galaxies)
         create_error_col(data, "logM*_sph")
         create_error_col(data, "logMbh")
+        data["M*_sph"] = 10 ** (data["logM*_sph"])
+        convert_log_error(data, "logM*_sph", "logM*_sph_ERR")
         C.table = data
         return C
 
@@ -82,12 +110,12 @@ class LiteratureTables:
         """
         C = cls()
         C.name = "Jin+20"
-        C.table = pd.read_fwf(
+        data = pd.read_fwf(
             os.path.join(C._literature_dir, "jin_2020.dat"),
             comment="#",
             names=[
                 "MaNGAID",
-                "log(M*/Msun)",
+                "logM*",
                 "Re(kpc)",
                 "f_DM",
                 "p_e",
@@ -103,6 +131,8 @@ class LiteratureTables:
                 "f_SR",
             ],
         )
+        data["M*"] = 10 ** (data["logM*"])
+        C.table = data
         return C
 
     @classmethod
@@ -129,6 +159,10 @@ class LiteratureTables:
             data.loc[:, "e_logBHMass"] == data.loc[:, "logBHMass"], "e_logBHMass"
         ] = np.nan
         data.loc[data.loc[:, "logBHMass"] < 1, "logBHMass"] = np.nan
+        data["sigma"] = 10 ** data["logsigma"]
+        data["BHMass"] = 10 ** data["logBHMass"]
+        convert_log_error(data, "logsigma", "e_logsigma")
+        convert_log_error(data, "logBHMass", "e_logBHMass", "E_logBHMass")
         C.table = data
         return C
 
@@ -434,6 +468,37 @@ class LiteratureTables:
         C.table = data
         return C
 
+    @classmethod
+    def load_veale_2018_data(cls):
+        C = cls()
+        C.name = r"$\mathrm{Veale\; et\; al\; 2018}$"
+        data = pd.read_csv(
+            os.path.join(C._literature_dir, "veale_18.csv"),
+            sep=" ",
+            header=0,
+            skipinitialspace=True,
+            skiprows=np.arange(0, 19, dtype=int),
+        )
+        data.insert(len(data.columns), "mstar", 10 ** data.loc[:, "logmstar"])
+        data.insert(len(data.columns), "mhalo", 10 ** data.loc[:, "logmhalo"])
+        C.table = data
+        return C
+
+    @classmethod
+    def load_kauffman_2003_data(cls):
+        C = cls()
+        C.name = r"$\mathrm{Kauffman\; et. \; al\; 2003}$"
+        data = pd.read_csv(
+            os.path.join(C._literature_dir, "kauffman_03.csv"),
+            sep=",",
+            header=0,
+            skipinitialspace=True,
+        )
+        data.insert(len(data.columns), "mstar", 10 ** data.loc[:, "log_mstar"])
+        data.insert(len(data.columns), "log_sigma", np.log10(data.loc[:, "sigma"]))
+        C.table = data
+        return C
+
     def hist(self, var, ax=None, **hist_kwargs):
         """
         Histogram table data
@@ -594,7 +659,8 @@ class LiteratureTables:
         fit_in_log=False,
         mask=None,
         plot_scatter=True,
-        scatter_kwargs={},
+        line_kwargs=None,
+        scatter_kwargs=None,
         fit_coeffs=None,
     ):
         """
@@ -621,8 +687,10 @@ class LiteratureTables:
             mask to fit regression to subset of data, by default None
         plot_scatter : bool, optional
             plot underlying scatter plot, by default True
+        line_kwargs : dict, optional
+            line parameters parsed to plot(), by default None
         scatter_kwargs : dict, optional
-            scatter parameters parsed to scatter() or errorbar(), by default {}
+            scatter parameters parsed to scatter() or errorbar(), by default None
         fit_coeffs : dict, optional
             linear regression fit coefficients (keys must be 'slope' and
             'intercept') to be used instead of fitting coefficients
@@ -632,7 +700,14 @@ class LiteratureTables:
         -------
         ax : matplotlib.axes.Axes
             plotting axes
+        p : ErrorbarContainer
+            error bar object
         """
+        if scatter_kwargs is None:
+            scatter_kwargs = {}
+        if line_kwargs is None:
+            line_kwargs = {}
+        line_kwargs.setdefault("zorder", 1)
         if mask is None:
             mask = np.ones(len(self.table), dtype=bool)
         if fit_in_log:
@@ -652,8 +727,9 @@ class LiteratureTables:
             intercept = fit_coeffs["intercept"]
 
         # add scatter plot of data
+        p = None
         if plot_scatter:
-            ax, _ = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
+            ax, p = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
         elif ax is None:
             fig, ax = plt.subplots()
         xhat = xhat_method(
@@ -670,18 +746,18 @@ class LiteratureTables:
             y1 = 10**y1
             y2 = 10**y2
             xhat = 10**xhat
-        line1 = ax.plot(xhat, yhat, zorder=1)
+        line1 = ax.plot(xhat, yhat, **line_kwargs)
         ax.fill_between(
             xhat,
             y1=y1,
             y2=y2,
             fc=line1[-1].get_color(),
             alpha=0.3,
-            zorder=1,
+            zorder=line1[-1].get_zorder(),
             label=(
                 r"$1\sigma\mathrm{-confidence}$"
                 if itype == "conf"
                 else r"$1\sigma\mathrm{-predictive}$"
             ),
         )
-        return ax
+        return ax, p

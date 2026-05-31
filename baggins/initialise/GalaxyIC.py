@@ -1,4 +1,4 @@
-import os.path
+import os
 from datetime import datetime
 import numpy as np
 import scipy.stats
@@ -6,7 +6,11 @@ import matplotlib.pyplot as plt
 import merger_ic_generator as mg
 import pygad
 from baggins.env_config import _cmlogger, date_format
-from baggins.analysis import projected_quantities
+from baggins.analysis import (
+    projected_quantities,
+    velocity_anisotropy,
+    inner_DM_fraction,
+)
 from baggins.mathematics import (
     uniform_sample_sphere,
     EmpiricalCDF,
@@ -62,6 +66,8 @@ class GalaxyIC:
         self.hdf5_file_name = os.path.join(
             self.file_pars["save_location"], f"{self.name}/{self.name}.hdf5"
         )
+        os.makedirs(os.path.dirname(self.hdf5_file_name), exist_ok=True)
+        os.makedirs(os.path.dirname(self.fig_loc("")), exist_ok=True)
         try:
             self._rng = np.random.default_rng(self.pars["general"].pop("random_seed"))
         except KeyError:
@@ -79,6 +85,7 @@ class GalaxyIC:
             "mew": 0.5,
             "label": "IC",
         }
+        self.errorbar_kwargs = {"fmt": ".", "markersize": 2, "mew": 0, "zorder": 0.5}
 
     def _set_up(self):
         # set up components
@@ -339,6 +346,7 @@ class GalaxyIC:
         bulgeBHData = LiteratureTables.load_sahu_2020_data()
         fDMData = LiteratureTables.load_jin_2020_data()
         BHsigmaData = LiteratureTables.load_vdBosch_2016_data()
+        bulgesigmaData = LiteratureTables.load_kauffman_2003_data()
 
         # load IC file as snapshot
         snap, stellar_mass, log_stellar_mass, log_dm_mass = self._load_ic_file()
@@ -366,9 +374,9 @@ class GalaxyIC:
                         subsnap, "mass", r_edges=radial_bin_edges[fam]
                     ),
                 )
-            ax[axk].set_xlabel(r"$r\mathrm{kpc}$")
-            ax[axk].set_ylabel(r"$\rho / (\mathrm{M}_\odot\,\mathrm{kpc}^{-3}$")
-            ax[axk].set_title(f"{fam} density (3D)")
+            ax[axk].set_xlabel(r"$r/\mathrm{kpc}$")
+            ax[axk].set_ylabel(r"$\rho / (\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$")
+            ax[axk].set_title(rf"{fam} density $(3D)$", fontsize="small")
 
         # projected quantities
         eff_rad, vsig2_Re, *_ = projected_quantities(snap, obs=num_rots)
@@ -386,54 +394,48 @@ class GalaxyIC:
         }
 
         # plot of stellar mass against half mass radius
-        ax["C"].set_xlabel(r"log(R$_\mathrm{e, sph}/$kpc)")
-        ax["C"].set_ylabel(r"log(M$_\mathrm{*,sph}$ / M$_\odot$)")
-        ax["C"].set_title(r"R$_\mathrm{e}$ - log(M$_*$) Relation", fontsize="small")
-        _, eb = bulgeBHData.scatter(
-            "log_Re_maj_kpc",
-            "logM*_sph",
-            yerr="logM*_sph_ERR",
-            ax=ax["C"],
-        )
-        bulgeBHData.plot_lin_regress(
-            "log_Re_maj_kpc", "logM*_sph", ax=ax["C"], plot_scatter=False
+        _, eb = bulgeBHData.plot_lin_regress(
+            "Re_maj_kpc", "M*_sph", ax=ax["C"], plot_scatter=True, fit_in_log=True
         )
         hmr = pygad.analysis.half_mass_radius(snap.stars)
         self._calc_quants["kinematics"]["half_mass_radius"] = hmr
         ax["C"].plot(
-            np.log10(hmr),
-            log_stellar_mass,
+            hmr,
+            stellar_mass,
             zorder=eb.lines[0].get_zorder() + 0.2,
             **self.marker_kwargs,
         )
         ax["C"].legend()
+        ax["C"].set_xscale("log")
+        ax["C"].set_yscale("log")
+        ax["C"].set_xlabel(r"R$_\mathrm{e}/$kpc")
+        ax["C"].set_ylabel(r"M$_\mathrm{*,sph}$ / M$_\odot$")
+        ax["C"].set_title(r"R$_\mathrm{e}$ - log(M$_*$) Relation", fontsize="small")
 
         # inner dark matter
         ax["D"].set_ylim(0, 1)
-        ax["D"].set_xlabel(r"log(M$_*$/M$_\odot$)")
-        ax["D"].set_ylabel(r"f$_\mathrm{DM}(r<1\,$R$_\mathrm{e})$")
-        ax["D"].set_title("Inner DM Fraction", fontsize="small")
-
         binned_fdm = scipy.stats.binned_statistic(
-            fDMData.table.loc[:, "log(M*/Msun)"],
+            fDMData.table.loc[:, "log_M*"],
             values=fDMData.table.loc[:, "f_DM"],
             bins=5,
             statistic="median",
         )
-        _, eb = fDMData.scatter("log(M*/Msun)", "f_DM", ax=ax["D"])
-        fdm_radii = get_histogram_bin_centres(binned_fdm[1])
-        ax["D"].plot(fdm_radii, binned_fdm[0], "-x", label="Median")
-        ball_mask = pygad.BallMask(eff_rad)
-        inner_dm_mass = np.sum(snap.dm[ball_mask]["mass"])
-        idmf = inner_dm_mass / (inner_dm_mass + np.sum(snap.stars[ball_mask]["mass"]))
+        _, eb = fDMData.scatter("M*", "f_DM", ax=ax["D"])
+        fdm_masses = 10 ** get_histogram_bin_centres(binned_fdm[1])
+        ax["D"].plot(fdm_masses, binned_fdm[0], "-x", label="Median")
+        idmf = inner_DM_fraction(snap, eff_rad)
         self._calc_quants["kinematics"]["inner_DM_frac"] = idmf
         ax["D"].plot(
-            log_stellar_mass,
+            stellar_mass,
             idmf,
             zorder=eb.lines[0].get_zorder() + 0.2,
             **self.marker_kwargs,
         )
         ax["D"].legend(loc="upper left")
+        ax["D"].set_xscale("log")
+        ax["D"].set_xlabel(r"M$_*$/M$_\odot$")
+        ax["D"].set_ylabel(r"f$_\mathrm{DM}(r<1\,$R$_\mathrm{e})$")
+        ax["D"].set_title("Inner DM Fraction", fontsize="small")
 
         # virial info
         vr, vm = pygad.analysis.virial_info(snap, N_min=10)
@@ -442,59 +444,86 @@ class GalaxyIC:
             "radius": {"unit": "kpc", "value": float(vr)},
         }
 
-        # histogram of LOS velocities
-        ax["E"].ticklabel_format(
-            axis="y", style="scientific", scilimits=(0, 0), useMathText=True
-        )
-        ax["E"].hist(snap.stars["vel"][:, 2].ravel(), 50, density=True)
-        ax["E"].set_xlabel(r"V$_*$ [km/s]")
-        ax["E"].set_ylabel("Density")
-        ax["E"].set_title("Stellar Velocity", fontsize="small", loc="right")
+        # velocity anisotropy
+        ax["E"].axhline(0, c="k")
+        for fam in ("stars", "dm"):
+            if hasattr(snap, fam):
+                beta = velocity_anisotropy(getattr(snap, fam), radial_bin_edges[fam])[0]
+                ax["E"].semilogx(
+                    get_histogram_bin_centres(radial_bin_edges[fam]), beta, label=fam
+                )
+        ax["E"].legend()
+        ax["E"].set_title("Velocity anisotropy", fontsize="small")
+        ax["E"].set_ylim(max(ax["E"].get_ylim()[0], -2), 1)
+        ax["E"].set_xlabel(r"$r/\mathrm{kpc}$")
+        ax["E"].set_ylabel(r"$\beta(r)$")
 
         # MBH-sigma relation
-        ax["F"].set_xlabel(r"log($\sigma_*$/ km/s)")
-        ax["F"].set_ylabel(r"log(M$_\bullet$/M$_\odot$)")
         ax["F"].set_title("BH Mass - Stellar Dispersion", fontsize="small")
-
-        _, eb = BHsigmaData.scatter(
-            "logsigma",
-            "logBHMass",
-            xerr="e_logsigma",
-            yerr=["e_logBHMass", "E_logBHMass"],
-            ax=ax["F"],
-            # use_label=False
-        )
-        BHsigmaData.plot_lin_regress(
-            "logsigma", "logBHMass", ax=ax["F"], plot_scatter=False
+        _, eb = BHsigmaData.plot_lin_regress(
+            "sigma", "BHMass", ax=ax["F"], plot_scatter=True, fit_in_log=True
         )
         ax["F"].plot(
-            np.log10(LOS_sigma),
-            np.log10(snap.bh["mass"]),
+            LOS_sigma,
+            snap.bh["mass"],
             zorder=eb.lines[0].get_zorder() + 0.2,
             **self.marker_kwargs,
         )
         ax["F"].legend()
+        ax["F"].set_xscale("log")
+        ax["F"].set_yscale("log")
+        ax["F"].set_xlabel(r"$\sigma_*$/ km/s")
+        ax["F"].set_ylabel(r"M$_\bullet$/M$_\odot$")
 
         # BH spin distribution
-        if not isinstance(self.pars["bh"]["spin"], list):
-            spin_mag = scipy.stats.beta(
-                *bh_spin_models[self.pars["bh"]["spin"]].values()
-            )
+        try:
+            spin_model = self.pars["bh"]["spin"]
+        except KeyError:
+            spin_model = self.pars["bh"]["chi"]
+        if isinstance(spin_model, str):
+            # select spin model
+            spin_mag = scipy.stats.beta(*bh_spin_models[spin_model].values())
         else:
             spin_mag = scipy.stats.uniform(0, 1)
 
         spin_seq = np.linspace(0, 1, 1000)
-        # TODO convert units correctly
-        print(pygad.physics.G, pygad.physics.c)
-        print(f"BH spins {snap.bh["Spins"]}")
-        print(snap.bh["angmom"].units)
-        bhspin_mag = np.linalg.norm(snap.bh["Spins"]) * (snap.bh["mass"])
-        ax["G"].plot(spin_seq, spin_mag.pdf(spin_seq), **self.marker_kwargs)
-        _logger.info(f"SMBH spin magnitude: {bhspin_mag}")
-        ax["G"].scatter(bhspin_mag, spin_mag.pdf(bhspin_mag), zorder=10)
+        bh_spin = (
+            pygad.UnitArr(
+                snap.bh["Spins"].view(np.ndarray) * 1e10, units=snap.bh["angmom"].units
+            )
+            * pygad.physics.c
+            / pygad.physics.G
+            / (snap.bh["mass"] ** 2)
+        )
+        bh_spin.convert_to_base_units()
+        bh_spin = np.linalg.norm(bh_spin)
+        ax["G"].plot(spin_seq, spin_mag.pdf(spin_seq))
+        _logger.info(f"SMBH spin magnitude: {bh_spin:.3f}")
+        ax["G"].plot(bh_spin, spin_mag.pdf(bh_spin), **self.marker_kwargs)
         ax["G"].set_title(r"BH $\chi$", fontsize="small")
         ax["G"].set_xlabel(r"$\chi$")
         ax["G"].set_ylabel("PDF")
+
+        _, eb = bulgesigmaData.plot_lin_regress(
+            "mstar",
+            "sigma",
+            fit_in_log=True,
+            plot_scatter=True,
+            scatter_kwargs=self.errorbar_kwargs,
+            ax=ax["H"],
+        )
+        ax["H"].plot(
+            stellar_mass,
+            LOS_sigma,
+            zorder=eb.lines[0].get_zorder() + 0.2,
+            **self.marker_kwargs,
+        )
+        ax["H"].set_xscale("log")
+        ax["H"].set_yscale("log")
+        ax["H"].legend()
+        ax["H"].set_xlabel(r"M$_\star$/M$_\odot$")
+        ax["H"].set_ylabel(r"$\sigma_*$/ km/s")
+        ax["G"].set_title(r"M_\star - \sigma$ Relation", fontsize="small")
 
         # save figure
         savefig(self.fig_loc("kinematics.png"))

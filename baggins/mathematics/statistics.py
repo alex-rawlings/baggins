@@ -265,7 +265,7 @@ def stat_interval(x, y, itype="conf", conf_lev=0.68):
         )
         raise
     # clean data
-    mask = ~np.isnan(x) & ~np.isnan(y)
+    mask = np.logical_and(np.isfinite(x), np.isfinite(y))
     x = x[mask]
     y = y[mask]
     # quantities we will need later
@@ -333,15 +333,22 @@ def vertical_RMSE(x, y, return_linregress=False):
         inear regression intercept
     """
     # clean data
-    mask = ~np.isnan(x) & ~np.isnan(y)
+    mask = np.logical_and(np.isfinite(x), np.isfinite(y))
     x = x[mask]
     y = y[mask]
-    slope, intercept, *_ = scipy.stats.linregress(x, y)
-    yhat = slope * x + intercept
+    poly = np.poly1d(np.polyfit(x, y, deg=1))
+    try:
+        assert np.all(~np.isnan(poly.c))
+    except AssertionError:
+        _logger.exception(
+            f"Linear fitting failed, coefficients are {poly.c}", exc_info=True
+        )
+        raise
+    norm_lss = np.sqrt(np.sum((poly(x) - y) ** 2) / len(x))
     if return_linregress:
-        return np.sqrt(np.sum((yhat - y) ** 2) / len(x)), slope, intercept
+        return norm_lss, *poly.c
     else:
-        return np.sqrt(np.sum((yhat - y) ** 2) / len(x))
+        return norm_lss
 
 
 def empirical_cdf(x, t):

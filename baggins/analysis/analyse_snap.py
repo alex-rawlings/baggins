@@ -1033,13 +1033,9 @@ def inner_DM_fraction(snap, Re=None):
         Re, *_ = projected_quantities(snap)
         Re = np.nanmedian(list(Re.values())[0])
     ball_mask = pygad.BallMask(Re)
-    dm_mass = snap.dm["mass"][0]
-    star_mass = snap.stars["mass"][0]
-    return (
-        len(snap.dm[ball_mask])
-        * dm_mass
-        / (len(snap.dm[ball_mask]) * dm_mass + len(snap.stars[ball_mask]) * star_mass)
-    )
+    dm_mass = np.sum(snap.dm[ball_mask]["mass"])
+    star_mass = np.sum(snap.stars[ball_mask]["mass"])
+    return dm_mass / (dm_mass + star_mass)
 
 
 def shell_flow_velocities(snap, R, centre=None, direction="out", dt="5 Myr"):
