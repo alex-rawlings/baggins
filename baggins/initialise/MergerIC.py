@@ -17,18 +17,18 @@ from baggins.analysis import (
     get_com_of_each_galaxy,
     get_com_velocity_of_each_galaxy,
     get_virial_info_of_each_galaxy,
+    get_all_id_masks,
 )
 from baggins.general import snap_num_for_time
 from baggins.mathematics import radial_separation
-from baggins.analysis.masks import get_all_id_masks
 
-__all__ = ["MergerIC"]
+__all__ = ["MergerIC", "PerturbedMergerIC"]
 
 _logger = _cmlogger.getChild(__name__)
 
 
 class MergerIC:
-    def __init__(self, paramfile, rng=None, exist_ok=False) -> None:
+    def __init__(self, paramfile, exist_ok=False) -> None:
         """
         Class to initialise and edit Gadget merger simulations
 
@@ -43,10 +43,10 @@ class MergerIC:
         """
         self.paramfile = paramfile
         self.parameters = read_parameters(self.paramfile)
-        if rng is None:
+        if self.parameters["general"]["random_seed"] is None:
             self.rng = np.random.default_rng()
         else:
-            self.rng = rng
+            self.rng = np.random.default_rng(self.parameters["general"]["random_seed"])
         self.exist_ok = exist_ok
         self._snaplist = None
         self._calc_quants = {}
@@ -54,7 +54,6 @@ class MergerIC:
             self.save_location = self.parameters["calculated"]["full_save_location"]
         except KeyError:
             self.save_location = None
-        self.perturb_directories = []
         self._ic_file_names = []
 
     @property
@@ -72,7 +71,7 @@ class MergerIC:
         """
         self._calc_quants["full_save_location"] = os.path.join(
             self.parameters["file_locations"]["save_location"],
-            f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['r0_physical']:.3f}-{self._calc_quants['rperi_physical']:.3f}",
+            f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['a0_physical']:.3f}-{self._calc_quants['e0']:.3f}",
         )
         return self._calc_quants["full_save_location"]
 
@@ -83,6 +82,152 @@ class MergerIC:
         now = datetime.now()
         self._calc_quants["last_update"] = now.strftime(date_format)
         write_calculated_parameters(self._calc_quants, self.paramfile)
+
+    def generate_merger(self):
+        """
+        Set up a new merger system.
+
+        Raises
+        ------
+        NotImplementedError
+            for units other than 'virial' and 'kpc'
+        """
+        galaxy1 = mg.SnapshotSystem(
+            self.parameters["file_locations"]["galaxy_file_1"],
+            self.parameters["general"]["recentre_progens_to_com"],
+        )
+        galaxy2 = mg.SnapshotSystem(
+            self.parameters["file_locations"]["galaxy_file_2"],
+            self.parameters["general"]["recentre_progens_to_com"],
+        )
+        oppars = self.parameters["orbital_properties"]
+
+        # determine the radial units
+        def _get_virial_radius():
+            vr_list = []
+            for i in range(1, 3):
+                snap = pygad.Snapshot(
+                    self.parameters["file_locations"][f"galaxy_file_{i}"], physical=True
+                )
+                try:
+                    xcom = get_com_of_each_galaxy(snap, method="ss", family="stars")
+                except AttributeError:
+                    xcom = get_com_of_each_galaxy(snap, method="ss", family="dm")
+                vr, *_ = get_virial_info_of_each_galaxy(snap, xcom=xcom)
+                vr_list.append(vr)
+            return float(max(vr_list))
+
+        self._calc_quants["virial_radius_large"] = _get_virial_radius()
+
+        # determine mass resolution
+        self._calc_quants["mass_resolution"] = {}
+        for i in range(1, 3):
+            with h5py.File(
+                self.parameters["file_locations"][f"galaxy_file_{i}"], "r"
+            ) as f:
+                mbh = min(f["/PartType5/Masses"][:])
+                for parttype in range(5):
+                    try:
+                        m = min(f[f"/PartType{parttype}/Masses"][:])
+                        self._calc_quants["mass_resolution"][
+                            mg.ParticleType(parttype).name
+                        ] = m / mbh
+                    except KeyError:
+                        pass
+
+        # determine initial semimajor axis
+        try:
+            assert oppars["a0"]["unit"] in ("virial", "kpc")
+        except AssertionError:
+            _logger.exception(
+                f"Initial semimajor axis unit {oppars['a0']['unit']} not allowed! Must be one of ['kpc', 'virial']",
+                exc_info=True,
+            )
+            raise
+        if oppars["a0"]["unit"] == "virial":
+            self._calc_quants["a0_physical"] = (
+                self._calc_quants["virial_radius_large"] * oppars["a0"]["value"]
+            )
+        else:
+            self._calc_quants["a0_physical"] = oppars["a0"]["value"]
+        oppars["a0"] = self._calc_quants["a0_physical"]
+
+        # determine eccentricity
+        if oppars["e0"] is None:
+            raise NotImplementedError
+            _logger.info("Initial orbital eccentricity set from pericentre distance")
+            self._calc_quants["e0"] = e_from_rperi(
+                self._calc_quants["rperi_physical"]
+                / self._calc_quants["virial_radius_large"]
+            )
+        else:
+            self._calc_quants["e0"] = oppars["e0"]
+
+        # edit oppars in place so we can pass it to Merger
+        _oppars = {}
+        for k in oppars.keys():
+            _oppars[k.rstrip("0")] = oppars[k]
+
+        merger = mg.Merger(galaxy1, galaxy2, **_oppars)
+        self._calc_quants["time_to_pericentre"] = merger.time_to_pericenter
+        # print some velocity information about merger
+        self._calc_quants["initial_velocity"] = {}
+        for k in ("tangential", "radial"):
+            self._calc_quants["initial_velocity"][k] = merger.initial_velocities[k]
+
+        if self.save_location is None:
+            self.save_location = self._make_saveloc()
+        os.makedirs(os.path.join(self.save_location, "output"), exist_ok=self.exist_ok)
+        file_name = os.path.join(
+            self.save_location,
+            f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['a0_physical']:.3f}-{self._calc_quants['e0']:.3f}.hdf5",
+        )
+        try:
+            assert self.exist_ok or not os.path.exists(file_name)
+        except AssertionError:
+            _logger.exception(f"File {file_name} already exists!", exc_info=True)
+            raise
+        mg.write_hdf5_ic_file(
+            filename=file_name,
+            system=merger,
+            center_CoM=self.parameters["general"]["recentre_merger_to_com"],
+        )
+        _logger.info(f"Merger IC file written to {file_name}")
+        # copy parameter file to simulation directory
+        shutil.copyfile(
+            self.paramfile,
+            os.path.join(self.save_location, os.path.basename(self.paramfile)),
+        )
+
+        # get the actual CoM separation between systems
+        snap = pygad.Snapshot(file_name, physical=True)
+        xcom = get_com_of_each_galaxy(snap, masks=get_all_id_masks(snap))
+        self._calc_quants["initial_COM_separation"] = radial_separation(*xcom.values())[
+            0
+        ]
+        # save parameters
+        self.write_calculated_parameters()
+
+
+class PerturbedMergerIC(MergerIC):
+    def __init__(self, paramfile, rng=None, exist_ok=False):
+        """
+        Create ICs for a merger system where a perturbation is applied to other the BHs or a field particle.
+
+        Parameters
+        ----------
+        paramfile : _type_
+            _description_
+        rng : _type_, optional
+            _description_, by default None
+        exist_ok : bool, optional
+            _description_, by default False
+        """
+        super().__init__(paramfile, rng, exist_ok)
+        self.perturb_directories = []
+
+    def setup(self):
+        raise NotImplementedError
 
     def find_snapfile_to_perturb(self):
         """
@@ -116,205 +261,6 @@ class MergerIC:
             )
             raise
         return snapfile
-
-    def setup(self):
-        """
-        Set up a new merger system.
-
-        Raises
-        ------
-        NotImplementedError
-            for units other than 'virial' and 'kpc'
-        """
-        galaxy1 = mg.SnapshotSystem(
-            self.parameters["file_locations"]["galaxy_file_1"],
-            self.parameters["general"]["recentre_progens_to_com"],
-        )
-        galaxy2 = mg.SnapshotSystem(
-            self.parameters["file_locations"]["galaxy_file_2"],
-            self.parameters["general"]["recentre_progens_to_com"],
-        )
-        oppars = self.parameters["orbital_properties"]
-
-        # determine the radial units
-        def _get_virial_radius():
-            vr_list = []
-            for i in [1, 2]:
-                snap = pygad.Snapshot(
-                    self.parameters["file_locations"][f"galaxy_file_{i}"], physical=True
-                )
-                xcom = get_com_of_each_galaxy(snap, method="ss", family="stars")
-                vr, *_ = get_virial_info_of_each_galaxy(snap, xcom=xcom)
-                vr_list.append(vr)
-            return float(max(vr_list))
-
-        # determine mass radius "fudge" factor
-        if oppars["mass_radius_fac"] is None:
-            oppars["mass_radius_fac"] = 0.5
-            _logger.warning(
-                f"Setting merger `mass_radius_fac` to default value of {oppars['mass_radius_fac']}"
-            )
-
-        self._calc_quants["virial_radius_large"] = _get_virial_radius()
-
-        # determine initial separation
-        try:
-            assert oppars["r0"]["unit"] in ("virial", "kpc")
-        except AssertionError:
-            _logger.exception(
-                f"Initial separation unit {oppars['r0']['unit']} not allowed! Must be one of ['kpc', 'virial']",
-                exc_info=True,
-            )
-            raise
-        if oppars["r0"]["unit"] == "virial":
-            self._calc_quants["r0_physical"] = (
-                self._calc_quants["virial_radius_large"] * oppars["r0"]["value"]
-            )
-        else:
-            self._calc_quants["r0_physical"] = oppars["r0"]["value"]
-
-        # determine first pericentre distance
-        if oppars["rperi"]["value"] is not None:
-            try:
-                assert oppars["rperi"]["unit"] in ("virial", "kpc")
-            except AssertionError:
-                _logger.exception(
-                    f"Pericentre distance unit {oppars['rperi']['unit']} not allowed! Must be one of ['kpc', 'virial']",
-                    exc_info=True,
-                )
-                raise
-            if oppars["rperi"]["unit"] == "virial":
-                self._calc_quants["rperi_physical"] = (
-                    self._calc_quants["virial_radius_large"] * oppars["rperi"]["value"]
-                )
-            else:
-                self._calc_quants["rperi_physical"] = oppars["rperi"]["value"]
-        else:
-            try:
-                assert oppars["a0"]["value"] is not None
-                assert oppars["a0"]["unit"] in ("virial", "kpc")
-                assert oppars["e0"] is not None
-            except AssertionError:
-                _logger.exception(
-                    "'a0' (in units of virial or kpc) and 'e0' must be specified if 'rperi' is not!",
-                    exc_info=True,
-                )
-                raise
-            _logger.info(
-                "Determining 'rperi' from initial semimajor axis and eccentricity"
-            )
-            if oppars["a0"]["unit"] == "virial":
-                self._calc_quants["rperi_physical"] = (
-                    self._calc_quants["virial_radius_large"]
-                    * oppars["a0"]["value"]
-                    * (1 - oppars["e0"])
-                )
-            else:
-                self._calc_quants["rperi_physical"] = oppars["a0"]["value"] * (
-                    1 - oppars["e0"]
-                )
-
-        # determine mass resolution
-        mass_resolution = []
-        for i in range(1, 3):
-            with h5py.File(
-                self.parameters["file_locations"][f"galaxy_file_{i}"], "r"
-            ) as f:
-                mstar = np.unique(f["/PartType4/Masses"][:])
-                try:
-                    assert len(mstar) == 1
-                except AssertionError:
-                    _logger.exception(
-                        f"Non-unique stellar particle mass! {len(mstar)} masses present!",
-                        exc_info=True,
-                    )
-                    raise
-                mbh = min(f["/PartType5/Masses"][:])
-                mass_resolution.append(mbh / mstar[0])
-        self._calc_quants["mass_resolution"] = min(mass_resolution)
-
-        # determine eccentricity
-        if oppars["e0"] is None:
-            _logger.info("Initial orbital eccentricity set from pericentre distance")
-            self._calc_quants["e0"] = e_from_rperi(
-                self._calc_quants["rperi_physical"]
-                / self._calc_quants["virial_radius_large"]
-            )
-        else:
-            self._calc_quants["e0"] = oppars["e0"]
-
-        merger = mg.Merger(
-            galaxy1,
-            galaxy2,
-            r0=self._calc_quants["r0_physical"],
-            rperi=self._calc_quants["rperi_physical"],
-            e=self._calc_quants["e0"],
-            mass_radius_fac=oppars["mass_radius_fac"],
-        )
-        self._calc_quants["time_to_pericentre"] = merger.time_to_pericenter
-
-        if self.save_location is None:
-            self.save_location = self._make_saveloc()
-        os.makedirs(os.path.join(self.save_location, "output"), exist_ok=self.exist_ok)
-        file_name = os.path.join(
-            self.save_location,
-            f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['r0_physical']:.3f}-{self._calc_quants['rperi_physical']:.3f}.hdf5",
-        )
-        try:
-            assert not os.path.exists(file_name)
-        except AssertionError:
-            _logger.exception(f"File {file_name} already exists!", exc_info=True)
-            raise
-        mg.write_hdf5_ic_file(
-            filename=file_name,
-            system=merger,
-            center_CoM=self.parameters["general"]["recentre_merger_to_com"],
-        )
-        _logger.info(f"Merger IC file written to {file_name}")
-        # copy parameter file to simulation directory
-        shutil.copyfile(
-            self.paramfile,
-            os.path.join(self.save_location, os.path.basename(self.paramfile)),
-        )
-        # save parameters
-        self.write_calculated_parameters()
-        # print some velocity information about merger
-        _logger.info("Initial merger velocities")
-        for k in ("tangential", "radial"):
-            _logger.info(f"- {k}: {merger.initial_velocities[k]:.3f} km/s")
-
-    def create_perturbation_directories(self, file_to_copy, paramfile="paramfile"):
-        """
-        Create subdirectories and copy relevant files for a series of perturbed
-        runs
-
-        Parameters
-        ----------
-        file_to_copy : str, path-like
-            snapshot file to copy as the new IC file
-        paramfile : str, optional
-            gadget parameter file, by default "paramfile"
-        """
-        ppars = self.parameters["perturb_properties"]
-        perturb_dir = os.path.join(
-            self.save_location, self.parameters["file_locations"]["perturb_sub_dir"]
-        )
-        os.makedirs(perturb_dir, exist_ok=self.exist_ok)
-        for i in range(ppars["number_perturbs"]):
-            _logger.info(f"Setting up child directory: {i}")
-            child_dir = os.path.join(perturb_dir, f"{i:03d}")
-            os.makedirs(os.path.join(child_dir, "output"), exist_ok=self.exist_ok)
-            shutil.copyfile(
-                os.path.join(self.save_location, paramfile),
-                os.path.join(child_dir, paramfile),
-            )
-            self.perturb_directories.append(child_dir)
-            self._ic_file_names.append(
-                f"{self.parameters['general']['galaxy_name_1']}{self.parameters['general']['galaxy_name_2']}_perturb_{i:03d}"
-            )
-            shutil.copyfile(
-                file_to_copy, os.path.join(child_dir, f"{self._ic_file_names[i]}.hdf5")
-            )
 
     def update_gadget_paramfile(self, pfile, params):
         """
@@ -352,13 +298,43 @@ class MergerIC:
             f.write(contents)
             f.truncate()
 
+    def create_perturbation_directories(self, file_to_copy, paramfile="paramfile"):
+        """
+        Create subdirectories and copy relevant files for a series of perturbed
+        runs
+
+        Parameters
+        ----------
+        file_to_copy : str, path-like
+            snapshot file to copy as the new IC file
+        paramfile : str, optional
+            gadget parameter file, by default "paramfile"
+        """
+        ppars = self.parameters["perturb_properties"]
+        perturb_dir = os.path.join(
+            self.save_location, self.parameters["file_locations"]["perturb_sub_dir"]
+        )
+        os.makedirs(perturb_dir, exist_ok=self.exist_ok)
+        for i in range(ppars["number_perturbs"]):
+            _logger.info(f"Setting up child directory: {i}")
+            child_dir = os.path.join(perturb_dir, f"{i:03d}")
+            os.makedirs(os.path.join(child_dir, "output"), exist_ok=self.exist_ok)
+            shutil.copyfile(
+                os.path.join(self.save_location, paramfile),
+                os.path.join(child_dir, paramfile),
+            )
+            self.perturb_directories.append(child_dir)
+            self._ic_file_names.append(
+                f"{self.parameters['general']['galaxy_name_1']}{self.parameters['general']['galaxy_name_2']}_perturb_{i:03d}"
+            )
+            shutil.copyfile(
+                file_to_copy, os.path.join(child_dir, f"{self._ic_file_names[i]}.hdf5")
+            )
+
     def perturb_bhs(self):
         """
         Perturb the BHs of a merger system by a Gaussian distribution.
-        XXX: For consistency with the large sample already run, the
-        perturbation is applied along each coordinate axis. For future, it
-        would be worth considering creating a perturbation of a given magnitude
-        that is then projected along the different coordinate axes.
+        TODO: the perturbation is applied along each coordinate axis: consider creating a perturbation of a given magnitude that is then projected along the different coordinate axes.
         """
         ppars = self.parameters["perturb_properties"]
         snapfile = self.find_snapfile_to_perturb()
@@ -389,7 +365,7 @@ class MergerIC:
                     np.atleast_2d(
                         self.rng.normal(
                             xcoms[bhid],
-                            ppars["perturb_bhs"]["perturb_position"]["value"],
+                            ppars["perturb_bhs"]["perturb_position"],
                         )
                     ),
                     units=snap["pos"].units,
@@ -398,7 +374,7 @@ class MergerIC:
                     np.atleast_2d(
                         self.rng.normal(
                             vcoms[bhid],
-                            ppars["perturb_bhs"]["perturb_velocity"]["value"],
+                            ppars["perturb_bhs"]["perturb_velocity"],
                         )
                     ),
                     units=snap["vel"].units,
@@ -428,10 +404,10 @@ class MergerIC:
         """
         perturbation = self.parameters["perturb_properties"]["perturb_field_particles"][
             "perturb_position"
-        ]["value"]
+        ]
         radial_lims = self.parameters["perturb_properties"]["perturb_field_particles"][
             "radial_bounds"
-        ]["value"]
+        ]
         family = self.parameters["perturb_properties"]["perturb_field_particles"][
             "family"
         ]

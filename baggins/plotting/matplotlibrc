@@ -298,7 +298,7 @@ mathtext.fontset : cm # Should be 'dejavusans' (default),
 #axes.facecolor      : white   # axes background color
 #axes.edgecolor      : black   # axes edge color
 #axes.linewidth      : 0.8     # edge linewidth
-#axes.grid           : False   # display grid or not
+axes.grid           : True   # display grid or not
 #axes.titlesize      : large   # fontsize of the axes title
 #axes.titlepad       : 6.0     # pad between axes and title in points
 axes.labelsize      : 8  # fontsize of the x any y labels
@@ -411,7 +411,7 @@ ytick.labelsize      : 8 # fontsize of the tick labels
 ### GRIDS
 #grid.color       :   b0b0b0    # grid color
 #grid.linestyle   :   -         # solid
-#grid.linewidth   :   0.8       # in points
+grid.linewidth   :   0.2       # in points
 #grid.alpha       :   1.0       # transparency, between 0.0 and 1.0
 
 ### Legend

@@ -932,7 +932,7 @@ def projected_quantities(
         _eff_rad = pygad.analysis.half_mass_radius(s, center=c, proj=proj)
         # vel dispersion within Re
         ball_mask = pygad.BallMask(_eff_rad, center=c)
-        _vsig2_re = pygad.analysis.los_velocity_dispersion(s[ball_mask], proj=0) ** 2
+        _vsig2_re = pygad.analysis.los_velocity_dispersion(s[ball_mask], proj=proj) ** 2
         rbin_dict = pygad.analysis.get_radial_bins(s=s, r_edges=re, proj=proj, center=c)
         vel_projs = ["vx", "vy", "vz"]
         _vsig2_r = pygad.analysis.radially_binned_statistic(

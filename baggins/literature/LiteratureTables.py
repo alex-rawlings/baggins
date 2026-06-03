@@ -1,4 +1,5 @@
 import os.path
+from copy import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -481,6 +482,7 @@ class LiteratureTables:
         )
         data.insert(len(data.columns), "mstar", 10 ** data.loc[:, "logmstar"])
         data.insert(len(data.columns), "mhalo", 10 ** data.loc[:, "logmhalo"])
+        data.insert(len(data.columns), "log_sigavg", np.log10(data.loc[:, "sigavg"]))
         C.table = data
         return C
 
@@ -496,6 +498,9 @@ class LiteratureTables:
         )
         data.insert(len(data.columns), "mstar", 10 ** data.loc[:, "log_mstar"])
         data.insert(len(data.columns), "log_sigma", np.log10(data.loc[:, "sigma"]))
+        data.insert(
+            len(data.columns), "stellardens", 10 ** data.loc[:, "log_stellardens"]
+        )
         C.table = data
         return C
 
@@ -605,6 +610,8 @@ class LiteratureTables:
         ax.set_ylabel(y)
         if scatter_kwargs is None:
             scatter_kwargs = {}
+        else:
+            scatter_kwargs = copy(scatter_kwargs)
         scatter_kwargs.setdefault("fmt", ".")
         scatter_kwargs.setdefault("alpha", 1)
         scatter_kwargs.setdefault("c", "gray")
@@ -703,8 +710,6 @@ class LiteratureTables:
         p : ErrorbarContainer
             error bar object
         """
-        if scatter_kwargs is None:
-            scatter_kwargs = {}
         if line_kwargs is None:
             line_kwargs = {}
         line_kwargs.setdefault("zorder", 1)
@@ -720,7 +725,7 @@ class LiteratureTables:
         if fit_coeffs is None:
             rmse, slope, intercept = vertical_RMSE(_x, _y, return_linregress=True)
             _logger.info(
-                f"Slope is {slope:.3e} and intercept is {intercept:.3e} for linear regression fit"
+                f"Slope is {slope:.3e} and intercept is {intercept:.3e} for linear regression fit {self.name}"
             )
         else:
             slope = fit_coeffs["slope"]

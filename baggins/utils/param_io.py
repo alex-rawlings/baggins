@@ -1,4 +1,5 @@
 import numpy as np
+import re
 import json
 import yaml
 from pygad import UnitArr
@@ -39,7 +40,7 @@ class ScientificDumper(yaml.SafeDumper):
         elif data == -self.inf_value:
             value = "-.inf"
         else:
-            if data < 1e4:
+            if 0.1 < data < 1e4:
                 value = repr(data).lower()
             else:
                 value = f"{data:.8e}".lower()
@@ -63,6 +64,8 @@ def read_parameters(filepath):
     params_and_calc : dict
         dictionary of user parameters and calculated parameters (the latter stored under the key top-level key 'calculated')
     """
+
+    np_helper = NumpyParser()
 
     def _unpack_helper(d, lev):
         """
@@ -111,8 +114,10 @@ def read_parameters(filepath):
                     raise
                 method = getattr(np, v)
                 d["value"] = method(*args)
-            elif isinstance(v, str) and v[-1] == "/":
-                d[k] = v.rstrip("/")
+            elif isinstance(v, str):
+                if v[-1] == "/":
+                    d[k] = v.rstrip("/")
+                d[k] = np_helper.parse_np_expression(v)
             elif isinstance(v, dict):
                 lev += 1
                 _unpack_helper(v, lev)
@@ -244,3 +249,62 @@ def to_json(obj, fname):
             d[k] = v
     with open(fname, "w") as f:
         json.dump(d, f, indent=4)
+
+
+class NumpyParser:
+    def __init__(self):
+        """
+        Helper class to read in strings that contain something like 'np.pi * 0.5'.
+        """
+        self.constants = {
+            "np.pi": np.pi,
+            "np.e": np.e,
+        }
+        self.operators = {
+            "*": lambda a, b: a * b,
+            "/": lambda a, b: a / b,
+            "+": lambda a, b: a + b,
+            "-": lambda a, b: a - b,
+            "**": lambda a, b: a**b,
+        }
+
+    def parse_np_expression(self, expr: str) -> float | str:
+        """
+        Convert the given expression if needed.
+
+        Parameters
+        ----------
+        expr : str
+            input string
+
+        Returns
+        -------
+        float | str
+            evaluated output string
+        """
+        # Check if any known constant is present in the expression
+        pattern = "|".join(re.escape(key) for key in self.constants)
+        if not re.search(pattern, expr):
+            return expr
+        expr = expr.strip().replace(" ", "")
+
+        # Try to split on an operator (handle ** before * to avoid misparse)
+        for op in ("**", "*", "/", "+", "-"):
+            # Split into at most 2 parts around the operator
+            parts = expr.split(op, 1)
+            if len(parts) != 2:
+                continue
+
+            left, right = parts[0].strip(), parts[1].strip()
+
+            # Both sides must be non-empty
+            if not left or not right:
+                continue
+
+            left_val = self.constants.get(left) or float(left)
+            right_val = self.constants.get(right) or float(right)
+
+            return self.operators[op](left_val, right_val)
+
+        # No operator found — must be a plain constant or number
+        return self.constants.get(expr) or float(expr)
