@@ -1,4 +1,5 @@
 import os
+import shutil
 from copy import copy
 from datetime import datetime
 import numpy as np
@@ -138,9 +139,11 @@ class GalaxyIC:
                 dm_pars.setdefault("z", 0)
                 dm_pars["M200"] = dm_pars.pop("mass")
                 dm_pars.setdefault(
-                    "concentration", Duffy08(dm_pars["M200"], dm_pars["z"])
+                    "concentration",
+                    Duffy08(dm_pars["M200"] / MSUN_TO_GADGET, dm_pars["z"]),
                 )
                 _logger.debug(f"DM parameters are {dm_pars}")
+                self._calc_quants["dm"]["concentration"] = dm_pars["concentration"]
                 c = mg.NFWSphere(**dm_pars, particle_type=mg.ParticleType.DM_HALO)
             else:
                 _logger.debug(f"DM parameters are {dm_pars}")
@@ -157,6 +160,7 @@ class GalaxyIC:
                 bh_pars["mass"] = scaling_relation_mapping["sahu"](
                     np.log10(self._stellar_mass)
                 )
+                self._calc_quants["bh"]["mass"] = bh_pars["mass"]
             self._bh_mass = bh_pars["mass"]
             bh_pars = convert_msun_to_gadget(bh_pars)
             if not isinstance(bh_pars["spin"], list):
@@ -201,7 +205,7 @@ class GalaxyIC:
         self._calc_quants["last_update"] = now.strftime(date_format)
         write_calculated_parameters(self._calc_quants, self.parameter_file)
 
-    def generate_galaxy(self, allow_overwrite=False):
+    def generate_galaxy(self, allow_overwrite=False, plot_df=False):
         """
         Generate the initial conditions.
 
@@ -243,12 +247,22 @@ class GalaxyIC:
             mg.write_hdf5_ic_file(self.hdf5_file_name, gal, center_CoM=self._center_CoM)
             self.write_calculated_parameters()
             _logger.info(f"IC file {self.hdf5_file_name} created")
+            # copy parameter file to simulation directory
+            shutil.copyfile(
+                self.parameter_file,
+                os.path.join(
+                    os.path.dirname(self.hdf5_file_name),
+                    os.path.basename(self.parameter_file),
+                ),
+            )
         except AssertionError:
             _logger.exception(
                 f"File {self.hdf5_file_name} already exists! Overwriting not allowed when 'allow_overwrite' is False.",
                 exc_info=True,
             )
             raise
+        if plot_df:
+            mg.plot_distribution_function(gal, self.fig_loc("df.png"))
 
     def generate_galaxy_components_separately(self, allow_overwrite=False):
         """
@@ -322,20 +336,25 @@ class GalaxyIC:
             log_dm_mass = np.nan
         return snap, stellar_mass, log_stellar_mass, log_dm_mass
 
-    def plot_mass_scaling_relations(self):
-        """
-        Plot the stellar mass distribution, and the scaling relations of BH mass -- bulge mass and bulge mass -- DM mass.
-        """
-        snap, stellar_mass, log_stellar_mass, log_dm_mass = self._load_ic_file()
-        # get total masses of field components
+    def particle_counts(self, snap=None):
+        if snap is None:
+            snap, *_ = self._load_ic_file()
         for fam in ("stars", "dm"):
-            if hasattr(snap, fam):
+            if fam in snap.families():
                 self._calc_quants[fam]["total_mass"] = np.sum(
                     getattr(snap, fam)["mass"]
                 )
                 self._calc_quants[fam]["particle_count"] = float(
                     len(getattr(snap, fam))
                 )
+        self.write_calculated_parameters()
+
+    def plot_mass_scaling_relations(self):
+        """
+        Plot the stellar mass distribution, and the scaling relations of BH mass -- bulge mass and bulge mass -- DM mass.
+        """
+        snap, stellar_mass, log_stellar_mass, log_dm_mass = self._load_ic_file()
+        self.particle_counts(snap)
         # read in literature data
         mass_data = LiteratureTables.load_sdss_mass_data()
         bh_data = LiteratureTables.load_sahu_2020_data()
@@ -413,7 +432,7 @@ class GalaxyIC:
         savefig(self.fig_loc("masses.png"))
         self.write_calculated_parameters()
 
-    def plot_kinematics(self, num_rots=3):
+    def plot_kinematics(self, num_rots=3, ax=None):
         """
         Plot kinematic properties of the ICs to check for consistency with
         observations.
@@ -424,25 +443,30 @@ class GalaxyIC:
             number of rotations performed for projected quantities, by default 3
         """
         self._calc_quants["kinematics"] = {}
-        # load literature data
-        bulgeBHData = LiteratureTables.load_sahu_2020_data()
-        fDMData = LiteratureTables.load_jin_2020_data()
-        BHsigmaData = LiteratureTables.load_vdBosch_2016_data()
-        bulgesigmaData = LiteratureTables.load_kauffman_2003_data()
-        bulgesigmaData2 = LiteratureTables.load_veale_2018_data()
 
         # load IC file as snapshot
         snap, stellar_mass, log_stellar_mass, log_dm_mass = self._load_ic_file()
+        self.particle_counts(snap)
 
         # set up figure
-        fig, ax = plt.subplot_mosaic(
+        if ax is None:
+            need_obs_comp = True
+            fig, ax = plt.subplot_mosaic(
+                """
+            ACEG
+            BDFH
             """
-        ACEG
-        BDFH
-        """
-        )
-        make_wide_figure(fig)
-        fig.suptitle(self.name)
+            )
+            make_wide_figure(fig)
+            fig.suptitle(self.name)
+            # load literature data
+            bulgeBHData = LiteratureTables.load_sahu_2020_data()
+            fDMData = LiteratureTables.load_jin_2020_data()
+            BHsigmaData = LiteratureTables.load_vdBosch_2016_data()
+            bulgesigmaData = LiteratureTables.load_kauffman_2003_data()
+            bulgesigmaData2 = LiteratureTables.load_veale_2018_data()
+        else:
+            need_obs_comp = False
 
         # density profiles
         radial_bin_edges = dict(
@@ -450,7 +474,8 @@ class GalaxyIC:
             dm=np.geomspace(0.1, self.pars["general"]["rmax"], 51),
         )
         for fam in ("stars", "dm"):
-            if hasattr(snap, fam):
+            if fam in snap.families():
+                _logger.debug(f"Density profile for {fam}")
                 subsnap = getattr(snap, fam)
                 ax["A"].loglog(
                     get_histogram_bin_centres(radial_bin_edges[fam]),
@@ -483,14 +508,15 @@ class GalaxyIC:
         }
 
         # velocity dispersion against central stellar density
-        bulgesigmaData.plot_lin_regress(
-            "stellardens",
-            "sigma",
-            fit_in_log=True,
-            plot_scatter=True,
-            scatter_kwargs=self.errorbar_kwargs_data,
-            ax=ax["B"],
-        )
+        if need_obs_comp:
+            bulgesigmaData.plot_lin_regress(
+                "stellardens",
+                "sigma",
+                fit_in_log=True,
+                plot_scatter=True,
+                scatter_kwargs=self.errorbar_kwargs_data,
+                ax=ax["B"],
+            )
         central_stellar_densities = np.full_like(eff_rads, np.nan)
         rcentres = get_histogram_bin_centres(radial_bin_edges["stars"])
         for i, (_re, _surf_rho) in enumerate(
@@ -517,9 +543,10 @@ class GalaxyIC:
         ax["B"].legend()
 
         # plot of stellar mass against half mass radius
-        _, eb = bulgeBHData.plot_lin_regress(
-            "Re_maj_kpc", "M*_sph", ax=ax["C"], plot_scatter=True, fit_in_log=True
-        )
+        if need_obs_comp:
+            _, eb = bulgeBHData.plot_lin_regress(
+                "Re_maj_kpc", "M*_sph", ax=ax["C"], plot_scatter=True, fit_in_log=True
+            )
         hmr = pygad.analysis.half_mass_radius(snap.stars)
         self._calc_quants["kinematics"]["half_mass_radius"] = hmr
         ax["C"].plot(
@@ -537,15 +564,16 @@ class GalaxyIC:
 
         # inner dark matter
         ax["D"].set_ylim(0, 1)
-        binned_fdm = scipy.stats.binned_statistic(
-            fDMData.table.loc[:, "log_M*"],
-            values=fDMData.table.loc[:, "f_DM"],
-            bins=5,
-            statistic="median",
-        )
-        _, eb = fDMData.scatter("M*", "f_DM", ax=ax["D"])
-        fdm_masses = 10 ** get_histogram_bin_centres(binned_fdm[1])
-        ax["D"].plot(fdm_masses, binned_fdm[0], "-x", label="Median")
+        if need_obs_comp:
+            binned_fdm = scipy.stats.binned_statistic(
+                fDMData.table.loc[:, "log_M*"],
+                values=fDMData.table.loc[:, "f_DM"],
+                bins=5,
+                statistic="median",
+            )
+            _, eb = fDMData.scatter("M*", "f_DM", ax=ax["D"])
+            fdm_masses = 10 ** get_histogram_bin_centres(binned_fdm[1])
+            ax["D"].plot(fdm_masses, binned_fdm[0], "-x", label="Median")
         idmf = inner_DM_fraction(snap, eff_rad)
         self._calc_quants["kinematics"]["inner_DM_frac"] = idmf
         ax["D"].plot(
@@ -570,7 +598,7 @@ class GalaxyIC:
         # velocity anisotropy
         ax["E"].axhline(0, c="k")
         for fam in ("stars", "dm"):
-            if hasattr(snap, fam):
+            if fam in snap.families():
                 beta = velocity_anisotropy(getattr(snap, fam), radial_bin_edges[fam])[0]
                 ax["E"].semilogx(
                     get_histogram_bin_centres(radial_bin_edges[fam]), beta, label=fam
@@ -583,65 +611,69 @@ class GalaxyIC:
 
         # MBH-sigma relation
         ax["F"].set_title("BH mass - stellar dispersion", fontsize="small")
-        _, eb = BHsigmaData.plot_lin_regress(
-            "sigma", "BHMass", ax=ax["F"], plot_scatter=True, fit_in_log=True
-        )
-        ax["F"].errorbar(
-            LOS_sigma[0],
-            snap.bh["mass"],
-            xerr=LOS_sigma[1],
-            zorder=eb.lines[0].get_zorder() + 0.2,
-            **self.marker_kwargs,
-        )
-        ax["F"].legend()
-        ax["F"].set_xscale("log")
-        ax["F"].set_yscale("log")
-        ax["F"].set_xlabel(r"$\sigma_\star$/ km/s")
-        ax["F"].set_ylabel(r"M$_\bullet$/M$_\odot$")
-
-        # BH spin distribution
-        try:
-            spin_model = self.pars["bh"]["spin"]
-        except KeyError:
-            spin_model = self.pars["bh"]["chi"]
-        if isinstance(spin_model, str):
-            # select spin model
-            spin_mag = scipy.stats.beta(*bh_spin_models[spin_model].values())
-        else:
-            spin_mag = scipy.stats.uniform(0, 1)
-
-        spin_seq = np.linspace(0, 1, 1000)
-        bh_spin = (
-            pygad.UnitArr(
-                snap.bh["Spins"].view(np.ndarray) * 1e10, units=snap.bh["angmom"].units
+        if need_obs_comp:
+            _, eb = BHsigmaData.plot_lin_regress(
+                "sigma", "BHMass", ax=ax["F"], plot_scatter=True, fit_in_log=True
             )
-            * pygad.physics.c
-            / pygad.physics.G
-            / (snap.bh["mass"] ** 2)
-        )
-        bh_spin.convert_to_base_units()
-        bh_spin = np.linalg.norm(bh_spin)
-        ax["G"].plot(spin_seq, spin_mag.pdf(spin_seq))
-        _logger.info(f"SMBH spin magnitude: {bh_spin:.3f}")
-        ax["G"].plot(bh_spin, spin_mag.pdf(bh_spin), **self.marker_kwargs)
-        ax["G"].set_title("BH spin", fontsize="small")
-        ax["G"].set_xlabel(r"$\chi$")
-        ax["G"].set_ylabel("PDF")
+        if "bh" in snap.families():
+            ax["F"].errorbar(
+                LOS_sigma[0],
+                snap.bh["mass"],
+                xerr=LOS_sigma[1],
+                zorder=eb.lines[0].get_zorder() + 0.2,
+                **self.marker_kwargs,
+            )
+            ax["F"].legend()
+            ax["F"].set_xscale("log")
+            ax["F"].set_yscale("log")
+            ax["F"].set_xlabel(r"$\sigma_\star$/ km/s")
+            ax["F"].set_ylabel(r"M$_\bullet$/M$_\odot$")
 
-        _, eb = bulgesigmaData.plot_lin_regress(
-            "mstar",
-            "sigma",
-            fit_in_log=True,
-            plot_scatter=True,
-            scatter_kwargs=self.errorbar_kwargs_data,
-            ax=ax["H"],
-        )
-        bulgesigmaData2.scatter(
-            "mstar",
-            "sigavg",
-            scatter_kwargs={"marker": "s", "markersize": 2, "mew": 0},
-            ax=ax["H"],
-        )
+            # BH spin distribution
+            try:
+                spin_model = self.pars["bh"]["spin"]
+            except KeyError:
+                spin_model = self.pars["bh"]["chi"]
+            if isinstance(spin_model, str):
+                # select spin model
+                spin_mag = scipy.stats.beta(*bh_spin_models[spin_model].values())
+            else:
+                spin_mag = scipy.stats.uniform(0, 1)
+
+            spin_seq = np.linspace(0, 1, 1000)
+            bh_spin = (
+                pygad.UnitArr(
+                    snap.bh["Spins"].view(np.ndarray) * 1e10,
+                    units=snap.bh["angmom"].units,
+                )
+                * pygad.physics.c
+                / pygad.physics.G
+                / (snap.bh["mass"] ** 2)
+            )
+            bh_spin.convert_to_base_units()
+            bh_spin = np.linalg.norm(bh_spin)
+            ax["G"].plot(spin_seq, spin_mag.pdf(spin_seq))
+            _logger.info(f"SMBH spin magnitude: {bh_spin:.3f}")
+            ax["G"].plot(bh_spin, spin_mag.pdf(bh_spin), **self.marker_kwargs)
+            ax["G"].set_title("BH spin", fontsize="small")
+            ax["G"].set_xlabel(r"$\chi$")
+            ax["G"].set_ylabel("PDF")
+
+        if need_obs_comp:
+            _, eb = bulgesigmaData.plot_lin_regress(
+                "mstar",
+                "sigma",
+                fit_in_log=True,
+                plot_scatter=True,
+                scatter_kwargs=self.errorbar_kwargs_data,
+                ax=ax["H"],
+            )
+            bulgesigmaData2.scatter(
+                "mstar",
+                "sigavg",
+                scatter_kwargs={"marker": "s", "markersize": 2, "mew": 0},
+                ax=ax["H"],
+            )
         ax["H"].errorbar(
             stellar_mass,
             LOS_sigma[0],
