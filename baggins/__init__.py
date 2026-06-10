@@ -28,3 +28,9 @@ HOME = baggins.env_config.home_dir
 FIGDIR = baggins.env_config.figure_dir
 DATADIR = baggins.env_config.data_dir
 VERBOSITY = baggins.env_config.logger_level
+PARAMS = dict(
+    username=baggins.env_config.username,
+    version=baggins.env_config.git_hash,
+    date_format=baggins.env_config.date_format,
+    synthesizer_data=baggins.env_config.synthesizer_data,
+)

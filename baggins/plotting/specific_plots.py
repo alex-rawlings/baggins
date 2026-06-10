@@ -31,13 +31,13 @@ _logger = _cmlogger.getChild(__name__)
 
 
 def plot_galaxies_with_pygad(
-    snap,
+    snap: pygad.Snapshot,
     return_ims=False,
     orientate=None,
     ax=None,
     extent=None,
-    kwargs=None,
     overplot_bhs=False,
+    **kwargs,
 ):
     """
     Convenience routine for plotting a system with pygad, both stars and DM
@@ -59,10 +59,10 @@ def plot_galaxies_with_pygad(
         dict of dicts with extent values with top-layer keys "stars", "dm", "gas",
         and second-layer keys "xz" and "xy",  e.g. extent["stars"]["xz"] = 100,
         by default None
-    kwargs : dict, optional
-        other keyword arguments for the pygad plotting routine, by default None
     overplot_bhs : bool, optional
         plot BHs with a white point, by default False
+    kwargs :
+        other keyword arguments for the pygad plotting routine
 
     Returns
     -------
@@ -83,19 +83,13 @@ def plot_galaxies_with_pygad(
         "dm": {"xz": None, "xy": None},
         "gas": {"xz": None, "xy": None},
     }
-    if _extent is not None:
+    if extent is not None:
         _extent.update(extent)
-    default_kwargs = {
-        "scaleind": "labels",
-        "cbartitle": "",
-        "Npx": 800,
-        "qty": "mass",
-        "fontsize": 10,
-    }
-    if kwargs is None:
-        kwargs = default_kwargs
-    else:
-        kwargs = {**default_kwargs, **kwargs}  # append some extra kwargs
+    kwargs.setdefault("scaleind", "labels")
+    kwargs.setdefault("Npx", 800)
+    kwargs.setdefault("qty", "mass")
+    kwargs.setdefault("fontsize", 10)
+
     if ax is None:
         fig, ax = plt.subplots(
             2, len(fams), figsize=(3 * len(fams), 6), sharex="col", squeeze=False
@@ -113,7 +107,7 @@ def plot_galaxies_with_pygad(
                 getattr(snap, pt),
                 xaxis=0,
                 yaxis=2 - j,
-                extent=_extent[pt][proj],
+                extent=pygad.UnitQty(_extent[pt][proj], snap["pos"].units),
                 ax=ax[j, i],
                 **kwargs,
             )

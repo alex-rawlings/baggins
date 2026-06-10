@@ -91,10 +91,10 @@ rcdefaults()
 rc_file(os.path.join(baggins_dir, "plotting/matplotlibrc"))
 
 # get the git hash
-# only set git hash if in the collisionless-merger-sample repo
-if "collisionless-merger-sample" in os.getcwd():
+# only set git hash if in the baggins repo
+if "baggins" in os.getcwd():
     # the standard git describe command, save git hash to yml file for use
-    # of baggins outside the collisionless-merger-sample repo
+    # of baggins outside the repo
     git_hash = (
         subprocess.run(
             ["git", "describe", "--always", "--long", "--all"],
