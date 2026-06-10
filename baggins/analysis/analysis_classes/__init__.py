@@ -4,3 +4,4 @@ from baggins.analysis.analysis_classes.EccentricitySystem import (  # noqa
     EccentricitySystem,
     EccentricitySystemScanner,
 )
+from baggins.analysis.analysis_classes.EddingtonInversion import EddingtonInversion  # noqa
