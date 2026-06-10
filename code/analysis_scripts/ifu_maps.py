@@ -33,7 +33,7 @@ parser.add_argument(
     "-m", "--moment", type=int, help="moment to fit to", dest="moment", default=4
 )
 parser.add_argument(
-    "-z", "--redshift", type=float, help="redshift", dest="redshift", default=0
+    "-z", "--redshift", type=float, help="redshift", dest="redshift", default=0.1
 )
 parser.add_argument("--SN", type=int, help="signal-noise ratio", dest="SN", default=200)
 parser.add_argument(
@@ -66,10 +66,11 @@ for i, t, snap in snap_gen.make_generator(hide_prog=True):
         snap=getattr(snap, args.family),
         xaxis=args.axes[0],
         yaxis=args.axes[1],
-        part_per_bin=args.SN,
+        signal_noise=args.SN,
         moment=args.moment,
     )
     # option to save data with
     # bgs.utils.save_data(ifu.voronoi.dump_to_dict(), "/path/to/save/dir")
-    ifu.voronoi.plot_kinematic_maps(cbar="inset")
+    ax = ifu.voronoi.plot_kinematic_maps(cbar="inset")
+    ifu.overlay_isophotes_on_maps(snap, ax, xaxis=args.axes[0], yaxis=args.axes[1])
     bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"ifu_t{t:.3f}.png"))
