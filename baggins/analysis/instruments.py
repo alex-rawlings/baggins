@@ -223,7 +223,7 @@ class IFUInstrument(BasicInstrument):
         self.pseudo_particle_split = pseudo_particle_split
         self.voronoi = None
 
-    def make_observation(self, snap, xaxis=0, yaxis=2, part_per_bin=1000, moment=None):
+    def make_observation(self, snap, xaxis=0, yaxis=2, signal_noise=1000, moment=None):
         """
         Convenience method that wraps the instrument properties into the VoronoiKinematics interface.
 
@@ -235,8 +235,8 @@ class IFUInstrument(BasicInstrument):
             spatial x axis, by default 0
         yaxis : int, optional
             spatial y axis, by default 2
-        part_per_bin : int, float, optional
-            particles per voronoi bin (this is Poisson S/N), by default 1000
+        signal_noise : int, float, optional
+            Poisson S/N per bin, by default 1000
         moment : int, optional
             Gauss Hermite order to fit to, by default None
         """
@@ -253,7 +253,7 @@ class IFUInstrument(BasicInstrument):
                 "sigma": self.resolution_kpc.value,
             },
         )
-        self.voronoi.make_grid(part_per_bin=int(part_per_bin**2))
+        self.voronoi.make_grid(part_per_bin=int(signal_noise**2))
         kwargs = {}
         if moment is not None:
             kwargs["p"] = moment
