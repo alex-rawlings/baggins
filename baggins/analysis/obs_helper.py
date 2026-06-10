@@ -1,6 +1,7 @@
 import os.path
 import numpy as np
 from copy import copy
+from pygad import UnitQty
 import unyt
 from synthesizer import grid, instruments, GRID_DIR
 from astropy import cosmology
@@ -50,9 +51,12 @@ def set_luminosity(snap, sed, z=0):
     erg_per_s_per_Lsun = unyt.Lsun.get_conversion_factor(
         _sed.bolometric_luminosity.units
     )[0]
-    snap.stars["lum"] = np.full(
-        len(snap.stars),
-        _sed.bolometric_luminosity.value / erg_per_s_per_Lsun / (1 + z) ** 4,
+    snap.stars["lum"] = UnitQty(
+        np.full(
+            len(snap.stars),
+            _sed.bolometric_luminosity.value / erg_per_s_per_Lsun / (1 + z) ** 4,
+        ),
+        units="Lsol",
     )
 
 

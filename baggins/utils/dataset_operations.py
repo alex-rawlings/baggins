@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-__all__ = ["create_error_col", "add_time_column"]
+__all__ = ["create_error_col", "add_time_column", "convert_log_error"]
 
 
 def create_error_col(dat, col, splitat="+/-"):
@@ -57,4 +57,28 @@ def add_time_column(df, unit="s", colname="time", newcolname="time_s"):
         times.hour * multipliers[0]
         + times.minute * multipliers[1]
         + times.second * multipliers[2]
+    )
+
+
+def convert_log_error(df, mean_col, err_col, err_col2=None):
+    """
+    Convert a logarithm error to linear for a pandas DataFrame.
+
+    Parameters
+    ----------
+    df : pandas.core.frame.DataFrame
+        data frame to operate on
+    mean_col : str
+        column with log mean value
+    err_col : str
+        column with log error value (assumed to be lower if 'err_col2' is given)
+    err_col2 : str, optional
+        column with upper log error value, by default None
+    """
+    _col = err_col.lstrip("log").lstrip("_").rstrip("_ERR")
+    df.insert(len(df.columns), f"{_col}_err", 10 ** (df[mean_col] - df[err_col]))
+    df.insert(
+        len(df.columns),
+        f"{_col}_ERR",
+        10 ** (df[mean_col] + df[err_col if err_col2 is None else err_col2]),
     )

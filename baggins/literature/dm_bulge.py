@@ -42,7 +42,7 @@ def Behroozi19(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     Returns
     -------
     : float
-        logarithm of halo mass [log(M/Msol)]
+        halo mass [Msol]
     : np.ndarray, optional
         logarithm of corresponding stellar masses [log(M/Msol)] if plotting is
         True
@@ -93,12 +93,12 @@ def Behroozi19(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
 
     if plotting:
         logMstar = _behroozi19(h_mass)
-        return np.log10(h_mass), logMstar
+        return h_mass, logMstar
     else:
         h_mass = scipy.optimize.bisect(
             lambda h: sm - _behroozi19(h), hm[0], hm[1], xtol=1
         )
-        return np.log10(h_mass)
+        return h_mass
 
 
 def Girelli20(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
@@ -125,7 +125,7 @@ def Girelli20(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     Returns
     -------
     : float
-        logarithm of halo mass [log(M/Msol)]
+        halo mass [Msol]
     : np.ndarray, optional
         logarithm of corresponding stellar masses [log(M/Msol)] if plotting is
         True
@@ -138,13 +138,13 @@ def Girelli20(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     if plotting:
         # plot the relation
         h_mass = np.logspace(np.log10(hm[0]), np.log10(hm[1]), numPoints)
-        return np.log10(h_mass), np.log10(_moster10(h_mass, M1, mM0, b, g))
+        return h_mass, np.log10(_moster10(h_mass, M1, mM0, b, g))
     else:
         # determine the halo mass from the stellar mass
         h_mass = scipy.optimize.bisect(
             _moster_helper, hm[0], hm[1], args=(sm, M1, mM0, b, g), xtol=1
         )
-        return np.log10(h_mass)
+        return h_mass
 
 
 def Moster10(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
@@ -171,7 +171,7 @@ def Moster10(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     Returns
     -------
     : float
-        logarithm of halo mass [log(M/Msol)]
+        halo mass [Msol]
     : np.ndarray, optional
         logarithm of corresponding stellar masses [log(M/Msol)] if plotting is
         True
@@ -185,13 +185,13 @@ def Moster10(sm, hm=[1e10, 1e15], z=0, plotting=False, numPoints=1000):
     if plotting:
         # plot the relation
         h_mass = np.logspace(np.log10(hm[0]), np.log10(hm[1]), numPoints)
-        return np.log10(h_mass), np.log10(_moster10(h_mass, M1, mM0, b, g))
+        return h_mass, np.log10(_moster10(h_mass, M1, mM0, b, g))
     else:
         # determine the halo mass from the stellar mass
         h_mass = scipy.optimize.bisect(
             _moster_helper, hm[0], hm[1], args=(sm, M1, mM0, b, g), xtol=1
         )
-        return np.log10(h_mass)
+        return h_mass
 
 
 def Duffy08(M200, z=0):

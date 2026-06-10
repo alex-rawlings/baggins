@@ -1,11 +1,12 @@
 import os.path
+from copy import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.general import BasicQuantityConverter
 from baggins.mathematics import stat_interval, vertical_RMSE
-from baggins.utils import create_error_col
+from baggins.utils import create_error_col, convert_log_error
 
 __all__ = ["LiteratureTables"]
 
@@ -26,6 +27,32 @@ class LiteratureTables:
     def num_obs(self):
         return self.table.shape[0]
 
+    @property
+    def columns(self):
+        return list(self.table.columns)
+
+    @property
+    def table(self):
+        try:
+            return self.__dict__["table"]
+        except KeyError:
+            raise AttributeError("'table' has not been set.")
+
+    @table.setter
+    def table(self, t):
+        self.__dict__["table"] = t
+        if t is not None:
+            self._format_log_column_names()
+
+    def _format_log_column_names(self):
+        cols = [
+            s
+            if s.startswith("log_")
+            else (f"log_{s[3:]}" if s.startswith("log") else s)
+            for s in self.columns
+        ]
+        self.table.rename(columns=dict(zip(self.columns, cols)), inplace=True)
+
     @classmethod
     def load_sahu_2020_data(cls):
         """
@@ -42,7 +69,7 @@ class LiteratureTables:
             os.path.join(C._literature_dir, "sahu_20.txt"), sep=",", header=0
         )
         data["Re_maj_kpc"] = data.loc[:, "Re_maj"] * data.loc[:, "scale"]
-        data["logRe_maj_kpc"] = np.log10(data["Re_maj_kpc"])
+        data["log_Re_maj_kpc"] = np.log10(data["Re_maj_kpc"])
         # restrict to only ETGs (exclude also S0)
         # data = data.loc[np.logical_or(data.loc[:,"Type"]=="E", data.loc[:,"Type"]=="ES"), :]
         cored_galaxies = np.zeros(data.shape[0], dtype="bool")
@@ -52,6 +79,8 @@ class LiteratureTables:
         data.insert(2, "Cored", cored_galaxies)
         create_error_col(data, "logM*_sph")
         create_error_col(data, "logMbh")
+        data["M*_sph"] = 10 ** (data["logM*_sph"])
+        convert_log_error(data, "logM*_sph", "logM*_sph_ERR")
         C.table = data
         return C
 
@@ -82,12 +111,12 @@ class LiteratureTables:
         """
         C = cls()
         C.name = "Jin+20"
-        C.table = pd.read_fwf(
+        data = pd.read_fwf(
             os.path.join(C._literature_dir, "jin_2020.dat"),
             comment="#",
             names=[
                 "MaNGAID",
-                "log(M*/Msun)",
+                "logM*",
                 "Re(kpc)",
                 "f_DM",
                 "p_e",
@@ -103,6 +132,8 @@ class LiteratureTables:
                 "f_SR",
             ],
         )
+        data["M*"] = 10 ** (data["logM*"])
+        C.table = data
         return C
 
     @classmethod
@@ -129,6 +160,10 @@ class LiteratureTables:
             data.loc[:, "e_logBHMass"] == data.loc[:, "logBHMass"], "e_logBHMass"
         ] = np.nan
         data.loc[data.loc[:, "logBHMass"] < 1, "logBHMass"] = np.nan
+        data["sigma"] = 10 ** data["logsigma"]
+        data["BHMass"] = 10 ** data["logBHMass"]
+        convert_log_error(data, "logsigma", "e_logsigma")
+        convert_log_error(data, "logBHMass", "e_logBHMass", "E_logBHMass")
         C.table = data
         return C
 
@@ -434,6 +469,41 @@ class LiteratureTables:
         C.table = data
         return C
 
+    @classmethod
+    def load_veale_2018_data(cls):
+        C = cls()
+        C.name = r"$\mathrm{Veale\; et\; al\; 2018}$"
+        data = pd.read_csv(
+            os.path.join(C._literature_dir, "veale_18.csv"),
+            sep=" ",
+            header=0,
+            skipinitialspace=True,
+            skiprows=np.arange(0, 19, dtype=int),
+        )
+        data.insert(len(data.columns), "mstar", 10 ** data.loc[:, "logmstar"])
+        data.insert(len(data.columns), "mhalo", 10 ** data.loc[:, "logmhalo"])
+        data.insert(len(data.columns), "log_sigavg", np.log10(data.loc[:, "sigavg"]))
+        C.table = data
+        return C
+
+    @classmethod
+    def load_kauffman_2003_data(cls):
+        C = cls()
+        C.name = r"$\mathrm{Kauffman\; et. \; al\; 2003}$"
+        data = pd.read_csv(
+            os.path.join(C._literature_dir, "kauffman_03.csv"),
+            sep=",",
+            header=0,
+            skipinitialspace=True,
+        )
+        data.insert(len(data.columns), "mstar", 10 ** data.loc[:, "log_mstar"])
+        data.insert(len(data.columns), "log_sigma", np.log10(data.loc[:, "sigma"]))
+        data.insert(
+            len(data.columns), "stellardens", 10 ** data.loc[:, "log_stellardens"]
+        )
+        C.table = data
+        return C
+
     def hist(self, var, ax=None, **hist_kwargs):
         """
         Histogram table data
@@ -462,7 +532,7 @@ class LiteratureTables:
         ax.hist(self.table.loc[:, var], label=self.name, **hist_kwargs)
         return ax
 
-    def add_qauntile_to_plot(self, q, var, ax, xaxis=True, lkwargs={}):
+    def add_qauntile_to_plot(self, q, var, ax, xaxis=True, **lkwargs):
         """
         Add a line to a plot representing a quantile
 
@@ -479,21 +549,19 @@ class LiteratureTables:
         lkwargs : dict, optional
             plotting parameters passed to axvline() or axhline(), by default {}
         """
-        default_lkwargs = {"c": "tab:red"}
+        lkwargs.setdefault("c", "tab:red")
         label = f"{q} Quantile" if q != 0.5 else "Median"
-        for k, v in lkwargs.items():
-            default_lkwargs[k] = v
         if xaxis:
             ax.axvline(
                 np.nanquantile(self.table.loc[:, var], q),
                 label=label,
-                **default_lkwargs,
+                **lkwargs,
             )
         else:
             ax.axhline(
                 np.nanquantile(self.table.loc[:, var], q),
                 label=label,
-                **default_lkwargs,
+                **lkwargs,
             )
 
     def scatter(
@@ -503,7 +571,7 @@ class LiteratureTables:
         xerr=None,
         yerr=None,
         ax=None,
-        scatter_kwargs={},
+        scatter_kwargs=None,
         mask=None,
         use_label=True,
     ):
@@ -540,7 +608,10 @@ class LiteratureTables:
             fig, ax = plt.subplots(1, 1)
         ax.set_xlabel(x)
         ax.set_ylabel(y)
-
+        if scatter_kwargs is None:
+            scatter_kwargs = {}
+        else:
+            scatter_kwargs = copy(scatter_kwargs)
         scatter_kwargs.setdefault("fmt", ".")
         scatter_kwargs.setdefault("alpha", 1)
         scatter_kwargs.setdefault("c", "gray")
@@ -594,8 +665,10 @@ class LiteratureTables:
         ax=None,
         fit_in_log=False,
         mask=None,
-        scatter_kwargs={},
-        fit_coeffs={},
+        plot_scatter=True,
+        line_kwargs=None,
+        scatter_kwargs=None,
+        fit_coeffs=None,
     ):
         """
         Convenience method to plot 2D data from a table as regression
@@ -619,8 +692,12 @@ class LiteratureTables:
             fit regression in log space, by default False
         mask : array-like, optional
             mask to fit regression to subset of data, by default None
+        plot_scatter : bool, optional
+            plot underlying scatter plot, by default True
+        line_kwargs : dict, optional
+            line parameters parsed to plot(), by default None
         scatter_kwargs : dict, optional
-            scatter parameters parsed to scatter() or errorbar(), by default {}
+            scatter parameters parsed to scatter() or errorbar(), by default None
         fit_coeffs : dict, optional
             linear regression fit coefficients (keys must be 'slope' and
             'intercept') to be used instead of fitting coefficients
@@ -630,27 +707,36 @@ class LiteratureTables:
         -------
         ax : matplotlib.axes.Axes
             plotting axes
+        p : ErrorbarContainer
+            error bar object
         """
+        if line_kwargs is None:
+            line_kwargs = {}
+        line_kwargs.setdefault("zorder", 1)
         if mask is None:
             mask = np.ones(len(self.table), dtype=bool)
         if fit_in_log:
-            _x = self.table.loc[mask, f"log_{x}"]
-            _y = self.table.loc[mask, f"log_{y}"]
+            _x = self.table.loc[mask, f"log_{x}"].to_numpy(dtype=np.float64)
+            _y = self.table.loc[mask, f"log_{y}"].to_numpy(dtype=np.float64)
         else:
-            _x = self.table.loc[mask, x]
-            _y = self.table.loc[mask, y]
+            _x = self.table.loc[mask, x].to_numpy(dtype=np.float64)
+            _y = self.table.loc[mask, y].to_numpy(dtype=np.float64)
         stat_fun = stat_interval(_x, _y, itype=itype, conf_lev=conf_lev)
         if fit_coeffs is None:
             rmse, slope, intercept = vertical_RMSE(_x, _y, return_linregress=True)
             _logger.info(
-                f"Slope is {slope:.3e} and intercept is {intercept:.3e} for linear regression fit"
+                f"Slope is {slope:.3e} and intercept is {intercept:.3e} for linear regression fit {self.name}"
             )
         else:
             slope = fit_coeffs["slope"]
             intercept = fit_coeffs["intercept"]
 
         # add scatter plot of data
-        ax = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
+        p = None
+        if plot_scatter:
+            ax, p = self.scatter(x, y, ax=ax, scatter_kwargs=scatter_kwargs)
+        elif ax is None:
+            fig, ax = plt.subplots()
         xhat = xhat_method(
             self.table.loc[mask, x].min(), self.table.loc[mask, x].max(), 1000
         )
@@ -665,18 +751,18 @@ class LiteratureTables:
             y1 = 10**y1
             y2 = 10**y2
             xhat = 10**xhat
-        line1 = ax.plot(xhat, yhat, zorder=1)
+        line1 = ax.plot(xhat, yhat, **line_kwargs)
         ax.fill_between(
             xhat,
             y1=y1,
             y2=y2,
             fc=line1[-1].get_color(),
             alpha=0.3,
-            zorder=1,
+            zorder=line1[-1].get_zorder(),
             label=(
                 r"$1\sigma\mathrm{-confidence}$"
                 if itype == "conf"
                 else r"$1\sigma\mathrm{-predictive}$"
             ),
         )
-        return ax
+        return ax, p

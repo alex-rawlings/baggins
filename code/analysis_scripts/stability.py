@@ -131,6 +131,7 @@ ax[1].set_ylim(-2, 1)
 
 plt.colorbar(smR, ax=ax[0], label="mass frac")
 plt.colorbar(smt, ax=ax[1], label="Snapshot")
+fig.suptitle(f"{args.fam}: {args.path}")
 
 os.makedirs(os.path.join(bgs.FIGDIR, "stability"), exist_ok=True)
 bgs.plotting.savefig(

@@ -72,6 +72,8 @@ def save_data(data, filename, protocol=pickle.HIGHEST_PROTOCOL, exist_ok=False):
     with open(filename, "wb") as f:
         pickle.dump(data, f, protocol=protocol)
     _logger.info(f"File {filename} saved")
+    for k in ["__githash", "__script"]:
+        data.pop(k, None)
 
 
 def load_data(filename, load_meta=False):

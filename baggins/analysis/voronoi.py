@@ -353,11 +353,11 @@ class VoronoiKinematics:
         ax=None,
         moments=None,
         figsize=(7, 4.7),
-        clims={},
+        clims=None,
         desat=False,
         cbar="adj",
         fontsize=None,
-        cbar_kwargs={},
+        cbar_kwargs=None,
     ):
         """
         Plot the voronoi maps for a system.
@@ -386,10 +386,14 @@ class VoronoiKinematics:
         """
         self._stat_is_calculated("V")
         # set the colour limits
+        if clims is None:
+            clims = {}
         clims.setdefault("V", None)
         clims.setdefault("sigma", [None, None])
         for p in range(3, self._hermite_order + 1):
             clims.setdefault(f"h{p}", None)
+        if cbar_kwargs is None:
+            cbar_kwargs = {}
 
         # set up the figure
         if moments is None:
@@ -397,7 +401,7 @@ class VoronoiKinematics:
         if ax is None:
             num_cols = max(int((len(moments)) / 2), 1)
             fig, ax = plt.subplots(
-                2, num_cols, sharex="all", sharey="all", figsize=figsize
+                2, num_cols, sharex="all", sharey="all", figsize=figsize, squeeze=False
             )
             for i in range(2):
                 ax[i, 0].set_ylabel(r"$y/\mathrm{kpc}$")

@@ -1,4 +1,5 @@
 from datetime import datetime
+from warnings import deprecated
 import numpy as np
 import scipy.linalg
 import scipy.interpolate
@@ -32,6 +33,7 @@ __all__ = [
     "influence_radius",
     "hardening_radius",
     "gravitational_radiation_radius",
+    "velocity_dispersion_3d",
     "get_inner_rho_and_sigma",
     "get_G_rho_per_sigma",
     "shell_com_motions_each_galaxy",
@@ -77,6 +79,7 @@ def basic_snapshot_centring(snap):
     pygad.Boost(-vcom).apply(snap, total=True)
 
 
+@deprecated("Use basic_snapshot_centring instead")
 def get_com_of_each_galaxy(
     snap, method="ss", masks=None, family="all", initial_radius=20
 ):
@@ -163,6 +166,7 @@ def get_com_of_each_galaxy(
     return coms
 
 
+@deprecated("Use basic_snapshot_centring instead")
 def get_com_velocity_of_each_galaxy(
     snap, xcom, masks=None, min_particle_count=5e4, family="stars"
 ):
@@ -430,9 +434,9 @@ def get_massive_bh_ID(bhs):
     return bhs["ID"][massive_idx]
 
 
-def _find_radius_for_mass(s, M):
+def _find_radius_for_mass(s, M, centre=[0, 0, 0]):
     # determine the radius where the enclosed mass = desired mass M
-    r = pygad.utils.geo.dist(s["pos"])
+    r = pygad.utils.geo.dist(s["pos"], centre)
     sorted_idx = np.argsort(r)
     r = r[sorted_idx]
     try:
@@ -634,6 +638,23 @@ def gravitational_radiation_radius(bh_masses, ah, tah, H, Gps, e=0):
     return a.view(np.ndarray), time_a.view(np.ndarray)
 
 
+def velocity_dispersion_3d(snap):
+    """
+    Convenience function to determine 3-dimensional velocity dispersion
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        (sub) snapshot to determine quantity for
+
+    Returns
+    -------
+    : float
+        velocity dispersion
+    """
+    return np.linalg.norm(np.nanstd(snap["vel"], axis=0))
+
+
 def get_inner_rho_and_sigma(snap, extent=None):
     """
     Get the mean (3-dimensional) stellar density and velocity dispersion within
@@ -672,7 +693,7 @@ def get_inner_rho_and_sigma(snap, extent=None):
         density_sphere(np.sum(subsnap["mass"]), extent),
         units=snap["mass"].units / snap["r"].units ** 3,
     )
-    inner_sigma = np.sqrt(np.sum(np.nanvar(subsnap["vel"], axis=0)))
+    inner_sigma = velocity_dispersion_3d(subsnap)
     return inner_density, inner_sigma
 
 
@@ -911,7 +932,7 @@ def projected_quantities(
         _eff_rad = pygad.analysis.half_mass_radius(s, center=c, proj=proj)
         # vel dispersion within Re
         ball_mask = pygad.BallMask(_eff_rad, center=c)
-        _vsig2_re = pygad.analysis.los_velocity_dispersion(s[ball_mask], proj=0) ** 2
+        _vsig2_re = pygad.analysis.los_velocity_dispersion(s[ball_mask], proj=proj) ** 2
         rbin_dict = pygad.analysis.get_radial_bins(s=s, r_edges=re, proj=proj, center=c)
         vel_projs = ["vx", "vy", "vz"]
         _vsig2_r = pygad.analysis.radially_binned_statistic(
@@ -1012,13 +1033,9 @@ def inner_DM_fraction(snap, Re=None):
         Re, *_ = projected_quantities(snap)
         Re = np.nanmedian(list(Re.values())[0])
     ball_mask = pygad.BallMask(Re)
-    dm_mass = snap.dm["mass"][0]
-    star_mass = snap.stars["mass"][0]
-    return (
-        len(snap.dm[ball_mask])
-        * dm_mass
-        / (len(snap.dm[ball_mask]) * dm_mass + len(snap.stars[ball_mask]) * star_mass)
-    )
+    dm_mass = np.sum(snap.dm[ball_mask]["mass"])
+    star_mass = np.sum(snap.stars[ball_mask]["mass"])
+    return dm_mass / (dm_mass + star_mass)
 
 
 def shell_flow_velocities(snap, R, centre=None, direction="out", dt="5 Myr"):
