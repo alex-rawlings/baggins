@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import numpy as np
-from scipy.stats import binned_statistic
+from scipy.stats import binned_statistic, gaussian_kde
 from astropy.units import Unit
 from pygad import ExprMask
 from baggins.analysis.voronoi import VoronoiKinematics
@@ -258,6 +258,66 @@ class IFUInstrument(BasicInstrument):
         if moment is not None:
             kwargs["p"] = moment
         self.voronoi.binned_LOSV_statistics(**kwargs)
+
+    def overlay_isophotes_on_maps(
+        self, snap, axes, xaxis=0, yaxis=2, quantiles=None, **kwargs
+    ):
+        """
+        Overlay isophotal contours containing certain quantiles of mass on the IFU plots.
+
+        Parameters
+        ----------
+        snap : pygad.Snapshot
+            snapshot to analyse
+        axes : np.array
+            array of plotting axes
+        xaxis : int, optional
+            spatial x axis, by default 0
+        yaxis : int, optional
+            spatial y axis, by default 2
+        quantiles : list, optional
+            quantiles to plot, by default None
+        kwargs : dict, optional
+            other kyword arguments parsed to plt.contour()
+        """
+        if quantiles is None:
+            quantiles = [0.5, 0.8]
+        mask = self.get_fov_mask(xaxis, yaxis)
+        x = snap[mask]["pos"][:, xaxis].view(np.ndarray)
+        y = snap[mask]["pos"][:, yaxis].view(np.ndarray)
+        weights = snap[mask]["mass"].view(np.ndarray)
+
+        # bin particles onto a grid instead of feeding raw points to KDE
+        x_edges = np.linspace(x.min() - 1, x.max() + 1, self.number_pixels + 1)
+        y_edges = np.linspace(y.min() - 1, y.max() + 1, self.number_pixels + 1)
+        H, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges], weights=weights)
+
+        # KDE now operates on grid
+        xi = get_histogram_bin_centres(x_edges)
+        yi = get_histogram_bin_centres(y_edges)
+        Xi, Yi = np.meshgrid(xi, yi)
+        # only pass non-empty bins to the KDE
+        nonempty = H.T > 0  # histogram2d is (x,y)-indexed; transpose to (row=y, col=x)
+        kde = gaussian_kde(
+            np.vstack([Xi[nonempty], Yi[nonempty]]),
+            weights=H.T[nonempty],
+        )
+        Zi = kde(np.vstack([Xi.ravel(), Yi.ravel()])).reshape(Xi.shape)
+
+        # sort bins by density descending, walk cumulative mass
+        total_mass = weights.sum()
+        flat_density = Zi.ravel()
+        flat_mass = H.T.ravel()  # mass in each bin, matched to Zi layout
+        order = np.argsort(flat_density)[::-1]
+        cumulative = np.cumsum(flat_mass[order]) / total_mass
+        levels = []
+        for q in quantiles:
+            idx = np.searchsorted(cumulative, q)
+            levels.append(flat_density[order[idx]])
+
+        kwargs.setdefault("linewidths", 0.5)
+        for ax in axes.flat:
+            ax.contour(Xi, Yi, Zi, levels=sorted(levels), colors="k", **kwargs)
 
 
 class MUSE_NFM(IFUInstrument):
