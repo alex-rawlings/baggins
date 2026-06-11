@@ -1,5 +1,6 @@
 import argparse
 import os.path
+from numpy.random import default_rng
 import baggins as bgs
 
 bgs.plotting.check_backend()
@@ -54,6 +55,9 @@ SL = bgs.setup_logger("script", args.verbosity)
 ifu = bgs.analysis.MUSE_NFM(z=args.redshift)
 SL.info(ifu)
 
+# ensure determinism
+rng = default_rng(42)
+
 # get the list of snapshots we want to do
 snap_gen = bgs.analysis.SnapshotIterator(snapdir=args.snapdir)
 if args.snaps is None:
@@ -68,6 +72,7 @@ for i, t, snap in snap_gen.make_generator(hide_prog=True):
         yaxis=args.axes[1],
         signal_noise=args.SN,
         moment=args.moment,
+        rng=rng,
     )
     # option to save data with
     # bgs.utils.save_data(ifu.voronoi.dump_to_dict(), "/path/to/save/dir")
