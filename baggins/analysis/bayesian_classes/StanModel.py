@@ -570,6 +570,21 @@ class _StanModel(ABC):
     # Arviz - xarray helpers
     # ---------------------------------
 
+    def _active_group(self):
+        """
+        Return the name of the currently active InferenceData group
+        ('posterior' if only the posterior has been sampled, otherwise 'prior').
+
+        Returns
+        -------
+        str
+        """
+        if self._inference_data is None:
+            raise RuntimeError(
+                "No fit available. Run sample_model() or sample_prior() first."
+            )
+        return "posterior" if "/posterior" in self._inference_data.groups else "prior"
+
     def rename_dimensions(self, dim_map):
         """
         Rename dimensions of arviz InferenceData object
@@ -626,9 +641,9 @@ class _StanModel(ABC):
         """
         dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
         return (
-            np.r_[0:dividing_idx]
+            slice(None, dividing_idx)
             if state == "pred"
-            else np.r_[dividing_idx : self.num_OOS + dividing_idx]
+            else slice(dividing_idx, self.num_OOS + dividing_idx)
         )
 
     def calculate_mode(self, v):
@@ -725,7 +740,7 @@ class _StanModel(ABC):
                 _logger.warning("No diagnosis will be done on fit!")
             return fit
 
-    def build_model(self, prior=False):
+    def build_executable(self, prior=False):
         """
         Build the stan model
 
@@ -759,18 +774,20 @@ class _StanModel(ABC):
             default True
         """
         if self._model is None and not self._loaded_from_file:
-            self.build_model()
+            self.build_executable()
         self._fit = self._sampler(
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
         )
         # TODO capture arviz warnings about NaN
-        self._inference_data = az.from_cmdstanpy(posterior=self._fit)
+        self._inference_data = az.from_cmdstanpy(
+            posterior=self._fit, log_likelihood="lprior"
+        )
         if diagnose:
             # prior sensitivity only done for posterior model
-            self._inference_data.add_groups(
-                {"log_prior": self._inference_data["posterior"]["lprior"]}
+            # TODO consider using psense_summary()?
+            priorsens = az.psense(
+                self._inference_data, var_names=self._latent_qtys, group="likelihood"
             )
-            priorsens = az.psens(self._inference_data, var_names=self._latent_qtys)
             _logger.info(
                 f"Maximum CJS distance for latent variables:\n {priorsens.max()}"
             )
@@ -789,7 +806,7 @@ class _StanModel(ABC):
             diagnose the fit (should always be done), by default True
         """
         if self._prior_model is None and not self._loaded_from_file:
-            self.build_model(prior=True)
+            self.build_executable(prior=True)
         self._prior_fit = self._sampler(
             sample_kwargs=sample_kwargs, prior=True, diagnose=diagnose
         )
@@ -819,7 +836,7 @@ class _StanModel(ABC):
 
         def _choose_model():
             # determine if we should use the prior or posterior model
-            if self._model is None:
+            if self._active_group() == "prior":
                 _logger.debug("Generated quantities will be taken from the prior model")
                 return self._prior_model, self._prior_fit
             else:
@@ -1355,8 +1372,12 @@ class _StanModel(ABC):
             variables in the CmdStanMCMC object to print
         """
         quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
-        group = "prior" if "prior" in self._inference_data.groups() else "posterior"
-        qvals = self._inference_data[group][vars].quantile(quantiles).to_dataframe()
+        qvals = (
+            self._inference_data[self._active_group()]
+            .ds[vars]
+            .quantile(quantiles)
+            .to_dataframe()
+        )
         vars = vars.copy()
         vars.insert(0, "Variable")
         max_str_len = max([len(v) for v in vars]) + 1
@@ -1395,7 +1416,7 @@ class _StanModel(ABC):
         C = cls(figname_base=figname_base, rng=rng)
 
         # set up the model, be aware of changes between sampling and loading
-        C.build_model()
+        C.build_executable()
 
         # handle if a directory is given instead of a glob pattern
         def _get_prefix(fname):
