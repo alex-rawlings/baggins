@@ -197,6 +197,8 @@ baggins/stan/terzic-density/*
 !baggins/stan/terzic-density/*.stan
 baggins/stan/abg-density/*
 !baggins/stan/abg-density/*.stan
+baggins/stan/modified-NFW/*
+!baggins/stan/modified-NFW/*.stan
 
 # code logging
 baggins/logs

@@ -6,7 +6,7 @@ from itertools import groupby
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import rcParams, collections, patches, ticker
+from matplotlib import collections, patches, ticker
 from datetime import datetime, timezone
 import cmdstanpy
 import arviz as az
@@ -53,7 +53,7 @@ class _StanModel(ABC):
         self._stan_data = {}
         self._model = None
         self._fit = None
-        self._fit_for_az = None
+        self._inference_data = None
         self._prior_model = None
         self._prior_fit = None
         self._exec_file = None
@@ -176,6 +176,10 @@ class _StanModel(ABC):
             raise
         self._stan_data.update(d)
 
+    # ---------------------------------
+    # Abstract interface
+    # ---------------------------------
+
     @abstractmethod
     def set_stan_data(self):
         """
@@ -189,6 +193,17 @@ class _StanModel(ABC):
         Set the data for out-of-sample generated quantities.
         """
         pass
+
+    @abstractmethod
+    def extract_data(self):
+        """
+        Extract data for the Stan model (parsed to set_stan_data()).
+        """
+        pass
+
+    # ---------------------------------
+    # Figure helpers
+    # ---------------------------------
 
     def _make_fig_name(self, fname, tag):
         """
@@ -215,6 +230,10 @@ class _StanModel(ABC):
         fittype = "posterior" if self._fit is not None else "prior"
         return f"{fname_parts[0]}_{fittype}_{tag}{fname_parts[1]}"
 
+    # ---------------------------------
+    # Data directory helper
+    # ---------------------------------
+
     def _get_data_dir(self, d):
         """
         Get the observed data directories for a Stan model
@@ -240,6 +259,10 @@ class _StanModel(ABC):
                 )
                 raise
         return d
+
+    # ---------------------------------
+    # Input observation helpers
+    # ---------------------------------
 
     def _check_observation_validity(self, d, set_categorical=False):
         """
@@ -482,6 +505,10 @@ class _StanModel(ABC):
             )
             raise
 
+    # ---------------------------------
+    # Input data book-keeping
+    # ---------------------------------
+
     def _add_input_data_file(self, f):
         """
         Save the path to a HMQ file used in the sampling
@@ -527,7 +554,7 @@ class _StanModel(ABC):
         v : str
             inferred posterior variable name
         """
-        q = self._fit_for_az["posterior"][v]
+        q = self._inference_data["posterior"][v]
         n = [q.sizes[k] for k in q.sizes.keys() if k not in ("chain", "draw")]
         try:
             assert len(n) == 1
@@ -538,6 +565,93 @@ class _StanModel(ABC):
             )
             raise
         self._num_OOS = n[0]
+
+    # ---------------------------------
+    # Arviz - xarray helpers
+    # ---------------------------------
+
+    def rename_dimensions(self, dim_map):
+        """
+        Rename dimensions of arviz InferenceData object
+        TODO: is it worth keeping this method?
+
+        Parameters
+        ----------
+        dim_map : dict
+            mapping of old dimension names to new names
+        """
+        self._inference_data.rename_dims(dim_map, inplace=True)
+
+    def _expand_dimension(self, varnames, dim):
+        """
+        Expand dimensions of variables to match another dimension
+
+        Parameters
+        ----------
+        varnames : list, tuple
+            variables to expand
+        dim : str
+            dimension name to expand to
+        """
+        try:
+            assert isinstance(varnames, (list, tuple))
+        except AssertionError:
+            _logger.exception(
+                f"Expanding variables requires first arugment to be a list or tuple, not {type(varnames)}",
+                exc_info=True,
+            )
+            raise
+        group = "prior" if "prior" in self._inference_data.groups() else "posterior"
+        for k in varnames:
+            self._inference_data[group][k] = self._inference_data[group][k].expand_dims(
+                {dim: np.arange(self._inference_data[group].dims[dim])}, axis=-1
+            )
+
+    def _get_GQ_indices(self, state, collapsed=False):
+        """
+        Get the indices of a generated quantity block for either predictive
+        inference or out of sample inference
+
+        Parameters
+        ----------
+        state : str
+            inference type, must be one of 'pred' or 'OOS'
+        collapsed : bool, optional
+            has the variable been collapsed (1-dimensional), by default False
+
+        Returns
+        -------
+        np.ndarray
+            array of indices
+        """
+        dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
+        return (
+            np.r_[0:dividing_idx]
+            if state == "pred"
+            else np.r_[dividing_idx : self.num_OOS + dividing_idx]
+        )
+
+    def calculate_mode(self, v):
+        """
+        Determine the mode of a Stan variable, following the method defined in
+        arviz.plot_utils package.
+
+        Parameters
+        ----------
+        v : str
+            stan variable to determine the mode for
+
+        Returns
+        -------
+        : float
+            mode of variable
+        """
+        x, dens = az.kde(self.generated_quantities.stan_variables()[v])
+        return x[np.nanargmax(dens)]
+
+    # ---------------------------------
+    # Sampling
+    # ---------------------------------
 
     def _sampler(self, prior=False, sample_kwargs=None, diagnose=True, pathfinder=True):
         """
@@ -611,13 +725,6 @@ class _StanModel(ABC):
                 _logger.warning("No diagnosis will be done on fit!")
             return fit
 
-    @abstractmethod
-    def extract_data(self):
-        """
-        Extract data for the Stan model (parsed to set_stan_data()).
-        """
-        pass
-
     def build_model(self, prior=False):
         """
         Build the stan model
@@ -635,7 +742,7 @@ class _StanModel(ABC):
             )
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}, diagnose=True, pathfinder=True):
+    def sample_model(self, sample_kwargs=None, diagnose=True, pathfinder=True):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
 
@@ -657,18 +764,18 @@ class _StanModel(ABC):
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
         )
         # TODO capture arviz warnings about NaN
-        self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
+        self._inference_data = az.from_cmdstanpy(posterior=self._fit)
         if diagnose:
             # prior sensitivity only done for posterior model
-            self._fit_for_az.add_groups(
-                {"log_prior": self._fit_for_az["posterior"]["lprior"]}
+            self._inference_data.add_groups(
+                {"log_prior": self._inference_data["posterior"]["lprior"]}
             )
-            priorsens = az.psens(self._fit_for_az, var_names=self._latent_qtys)
+            priorsens = az.psens(self._inference_data, var_names=self._latent_qtys)
             _logger.info(
                 f"Maximum CJS distance for latent variables:\n {priorsens.max()}"
             )
 
-    def sample_prior(self, sample_kwargs={}, diagnose=True):
+    def sample_prior(self, sample_kwargs=None, diagnose=True):
         """
         Wrapper function around _sampler() to sample a stan prior model.
 
@@ -686,31 +793,7 @@ class _StanModel(ABC):
         self._prior_fit = self._sampler(
             sample_kwargs=sample_kwargs, prior=True, diagnose=diagnose
         )
-        self._fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
-
-    def _get_GQ_indices(self, state, collapsed=False):
-        """
-        Get the indices of a generated quantity block for either predictive
-        inference or out of sample inference
-
-        Parameters
-        ----------
-        state : str
-            inference type, must be one of 'pred' or 'OOS'
-        collapsed : bool, optional
-            has the variable been collapsed (1-dimensional), by default False
-
-        Returns
-        -------
-        np.ndarray
-            array of indices
-        """
-        dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
-        return (
-            np.r_[0:dividing_idx]
-            if state == "pred"
-            else np.r_[dividing_idx : self.num_OOS + dividing_idx]
-        )
+        self._inference_data = az.from_cmdstanpy(prior=self._prior_fit)
 
     @abstractmethod
     def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
@@ -769,29 +852,9 @@ class _StanModel(ABC):
             )
         return self.generated_quantities.stan_variable(gq)
 
-    def calculate_mode(self, v):
-        """
-        Determine the mode of a Stan variable, following the method defined in
-        arviz.plot_utils package.
-
-        Parameters
-        ----------
-        v : str
-            stan variable to determine the mode for
-
-        Returns
-        -------
-        : float
-            mode of variable
-        """
-        """if self._fit is None:
-            _fit = self._prior_fit
-            _logger.debug("Generated quantities will be taken from the prior model")
-        else:
-            _fit = self._fit
-            _logger.debug("Generated quantities will be taken from the posterior model")"""
-        x, dens = az.kde(self.generated_quantities.stan_variables()[v])
-        return x[np.nanargmax(dens)]
+    # ---------------------------------
+    # Plots
+    # ---------------------------------
 
     def _parameter_corner_plot(
         self,
@@ -838,21 +901,36 @@ class _StanModel(ABC):
         # occurred: combining dimensions changes the length of boolean mask
         # "diverging_mask" in arviz --> index mismatch error
         divergences = divergences if combine_dims is None else False
-        if "prior" in self._fit_for_az.groups():
+        if "prior" in self._inference_data.groups:
             group = "prior"
             divergences = False
         else:
             group = "posterior"
         num_vars = len(var_names)
-        with az.rc_context(
-            {"plot.max_subplots": num_vars**2 - np.sum(np.arange(num_vars)) + 1}
-        ):
+        print(f"num_vars: {num_vars}")
+        with az.rc_context({"plot.max_subplots": num_vars**2}):
             # first lay down the markers
-            # ax = az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.1, "s":10}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
+            # ax = az.plot_pair(self._inference_data, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.1, "s":10}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
             # then add the KDE
-            try:
+            pp_kwargs = dict(
+                dt=self._inference_data,
+                group=group,
+                var_names=var_names,
+                labeller=labeller,
+                triangle="lower",
+                marginal=True,
+                marginal_kind="kde",
+                visuals={
+                    "divergence": divergences,
+                    "scatter": True,
+                    # "dist":{"ci_prob":levels[0]}
+                },
+                aes_by_visuals={"dist": "contour"},
+            )
+            pc = az.plot_pair(**pp_kwargs)
+            """try:
                 ax = az.plot_pair(
-                    self._fit_for_az,
+                    self._inference_data,
                     group=group,
                     var_names=var_names,
                     kind="kde",
@@ -875,7 +953,7 @@ class _StanModel(ABC):
                     "HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults"
                 )
                 ax = az.plot_pair(
-                    self._fit_for_az,
+                    self._inference_data,
                     group=group,
                     var_names=var_names,
                     kind="kde",
@@ -891,8 +969,8 @@ class _StanModel(ABC):
                     labeller=labeller,
                     textsize=rcParams["font.size"],
                     backend_kwargs=backend_kwargs,
-                )
-        return ax
+                )"""
+        return pc
 
     def parameter_corner_plot(
         self,
@@ -906,7 +984,7 @@ class _StanModel(ABC):
         """
         See docs for _parameter_corner_plot()
         """
-        ax = self._parameter_corner_plot(
+        pc = self._parameter_corner_plot(
             var_names,
             figsize=figsize,
             labeller=labeller,
@@ -916,6 +994,7 @@ class _StanModel(ABC):
             divergences=False,
         )
         self._parameter_corner_plot_counter += 1
+        ax = pc.viz["plot"].item()
         return ax
 
     def parameter_diagnostic_plots(
@@ -947,25 +1026,25 @@ class _StanModel(ABC):
 
         # set trace colour scheme
         if self._parameter_diagnostic_plots_counter == 0:
-            vmax = len(self._fit_for_az.posterior["chain"])
-            cmapper, sm = create_normed_colours(-vmax / 2, vmax, cmap="Blues")
+            vmax = len(self._inference_data.posterior["chain"])
+            cmapper, sm = create_normed_colours(0, vmax, cmap="managua")
             self._trace_plot_cols = [
-                cmapper(x) for x in self._fit_for_az.posterior["chain"]
+                cmapper(x) for x in self._inference_data.posterior["chain"]
             ]
         # limit to 4 variables per plot: figures will be saved with an
         # additional index in the name, e.g. 0-0.png
         num_var_per_plot = 3 if len(var_names) == 5 else 4
         for i in range(0, len(var_names), num_var_per_plot):
             # plot trace
-            ax = az.plot_trace(
-                self._fit_for_az,
+            pc = az.plot_trace(
+                self._inference_data,
                 var_names=var_names[i : i + num_var_per_plot],
-                figsize=figsize,
-                chain_prop={"color": self._trace_plot_cols},
-                trace_kwargs={"alpha": 0.9},
+                # visuals={"trace": {"color": self._trace_plot_cols, "alpha":0.9}},
+                # aes_by_visuals={"trace":"color"},
+                color=self._trace_plot_cols,
                 labeller=labeller,
             )
-            fig = ax.flatten()[0].get_figure()
+            fig = pc.viz["figure"].item()
             savefig(
                 self._make_fig_name(
                     self.figname_base,
@@ -976,12 +1055,13 @@ class _StanModel(ABC):
             plt.close(fig)
 
             # plot rank
-            ax = az.plot_rank(
-                self._fit_for_az,
+            pc = az.plot_rank(
+                self._inference_data,
                 var_names=var_names[i : i + num_var_per_plot],
                 labeller=labeller,
+                color=self._trace_plot_cols,
             )
-            fig = ax.flatten()[0].get_figure()
+            fig = pc.viz["figure"].item()
             savefig(
                 self._make_fig_name(
                     self.figname_base,
@@ -992,10 +1072,10 @@ class _StanModel(ABC):
             plt.close(fig)
 
         # plot pair
-        ax = self._parameter_corner_plot(
+        pc = self._parameter_corner_plot(
             var_names=var_names, figsize=figsize, labeller=labeller, levels=levels
         )
-        fig = ax.flatten()[0].get_figure()
+        fig = pc.viz["figure"].item()
         savefig(
             self._make_fig_name(
                 self.figname_base, f"pair_{self._parameter_diagnostic_plots_counter}"
@@ -1041,7 +1121,7 @@ class _StanModel(ABC):
             for j, level in enumerate(levels):
                 p = []
                 hdi = az.hdi(
-                    self._fit_for_az[az_group].get(v), hdi_prob=level, skipna=True
+                    self._inference_data[az_group].get(v), hdi_prob=level, skipna=True
                 )
                 try:
                     lower = hdi[0]
@@ -1235,34 +1315,9 @@ class _StanModel(ABC):
             self._gq_distribution_plot_counter += 1
         return ax
 
-    def print_parameter_percentiles(self, vars):
-        """
-        Print a simple table with the 5%, 50%, and 95% percentiles for some
-        variables.
-
-        Parameters
-        ----------
-        vars : list
-            variables in the CmdStanMCMC object to print
-        """
-        quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
-        group = "prior" if "prior" in self._fit_for_az.groups() else "posterior"
-        qvals = self._fit_for_az[group][vars].quantile(quantiles).to_dataframe()
-        vars = vars.copy()
-        vars.insert(0, "Variable")
-        max_str_len = max([len(v) for v in vars]) + 1
-        head_str = (
-            f"\n{vars[0]:>{max_str_len}}          5%        50%        95%        IQR  "
-        )
-        print(head_str)
-        dashes = ["-" for _ in range(len(head_str))]
-        print("".join(dashes))
-        for v in vars[1:]:
-            _iqr = qvals.loc[0.75, v] - qvals.loc[0.25, v]
-            print(
-                f"{v:>{max_str_len}}:  {qvals.loc[0.05,v]:>+.2e}  {qvals.loc[0.50,v]:>+.2e}  {qvals.loc[0.95,v]:>+.2e}  {_iqr:>+.2e}"
-            )
-        print()
+    # ---------------------------------
+    # Sampling diagnosis
+    # ---------------------------------
 
     def determine_loo(self, stan_log_lik="log_lik"):
         """
@@ -1280,51 +1335,47 @@ class _StanModel(ABC):
         """
         if self.generated_quantities is None:
             self.sample_generated_quantity(stan_log_lik, state="pred")
-        if "log_likelihood" not in self._fit_for_az:
+        if "log_likelihood" not in self._inference_data:
             self.sample_generated_quantity(stan_log_lik, state="pred")
-            self._fit_for_az.add_groups(
+            self._inference_data.add_groups(
                 {"log_likelihood": self.generated_quantities.draws_xr(stan_log_lik)}
             )
-        loo = az.loo(self._fit_for_az)
+        loo = az.loo(self._inference_data)
         print(loo)
         return loo
 
-    def rename_dimensions(self, dim_map):
+    def print_parameter_percentiles(self, vars):
         """
-        Rename dimensions of arviz InferenceData object
-        TODO: is it worth keeping this method?
+        Print a simple table with the 5%, 50%, and 95% percentiles for some
+        variables.
 
         Parameters
         ----------
-        dim_map : dict
-            mapping of old dimension names to new names
+        vars : list
+            variables in the CmdStanMCMC object to print
         """
-        self._fit_for_az.rename_dims(dim_map, inplace=True)
-
-    def _expand_dimension(self, varnames, dim):
-        """
-        Expand dimensions of variables to match another dimension
-
-        Parameters
-        ----------
-        varnames : list, tuple
-            variables to expand
-        dim : str
-            dimension name to expand to
-        """
-        try:
-            assert isinstance(varnames, (list, tuple))
-        except AssertionError:
-            _logger.exception(
-                f"Expanding variables requires first arugment to be a list or tuple, not {type(varnames)}",
-                exc_info=True,
+        quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
+        group = "prior" if "prior" in self._inference_data.groups() else "posterior"
+        qvals = self._inference_data[group][vars].quantile(quantiles).to_dataframe()
+        vars = vars.copy()
+        vars.insert(0, "Variable")
+        max_str_len = max([len(v) for v in vars]) + 1
+        head_str = (
+            f"\n{vars[0]:>{max_str_len}}          5%        50%        95%        IQR  "
+        )
+        print(head_str)
+        dashes = ["-" for _ in range(len(head_str))]
+        print("".join(dashes))
+        for v in vars[1:]:
+            _iqr = qvals.loc[0.75, v] - qvals.loc[0.25, v]
+            print(
+                f"{v:>{max_str_len}}:  {qvals.loc[0.05,v]:>+.2e}  {qvals.loc[0.50,v]:>+.2e}  {qvals.loc[0.95,v]:>+.2e}  {_iqr:>+.2e}"
             )
-            raise
-        group = "prior" if "prior" in self._fit_for_az.groups() else "posterior"
-        for k in varnames:
-            self._fit_for_az[group][k] = self._fit_for_az[group][k].expand_dims(
-                {dim: np.arange(self._fit_for_az[group].dims[dim])}, axis=-1
-            )
+        print()
+
+    # ---------------------------------
+    # Class methods
+    # ---------------------------------
 
     @classmethod
     def load_fit(cls, fit_files, figname_base, rng=None):
@@ -1720,6 +1771,11 @@ class HierarchicalModel_2D(_StanModel):
                 smooth=smooth,
                 hdi_kwargs={"skipna": True},
             )
+            """az.plot_lm(
+                self._inference_data,
+                x=xmodel,
+                y=ymodel,
+            )"""
         if xobs is not None and yobs is not None:
             self.add_data_to_predictive_plot(
                 ax=ax, xobs=xobs, yobs=yobs, yobs_err=yobs_err, collapsed=collapsed
