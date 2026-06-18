@@ -12,7 +12,7 @@ import cmdstanpy
 import arviz as az
 import yaml
 from baggins.plotting import savefig, create_normed_colours, plot_hdi
-from baggins.env_config import figure_dir, TMPDIRs, _cmlogger
+from baggins.env_config import figure_dir, TMPDIRs, _cmlogger, fig_ext
 from baggins.utils import get_mod_time, get_files_in_dir
 
 __all__ = [
@@ -57,11 +57,15 @@ class _StanModel(ABC):
         self._prior_model = None
         self._prior_fit = None
         self._exec_file = None
-        self._parameter_diagnostic_plots_counter = 0
-        self._gq_distribution_plot_counter = 0
-        self._group_par_counter = 0
-        # corner plot method doesn't save figure --> ensures first plot index 0
-        self._parameter_corner_plot_counter = -1
+
+        # helper generators to name figures
+        self.gen_diag_plot_name = self.make_figname_generator("diagnosis")
+        self.gen_gq_plot_name = self.make_figname_generator("GQ")
+        self.gen_hiergroup_plot_name = self.make_figname_generator("HierGroup")
+        self.gen_corner_plot_name = self.make_figname_generator("corner")
+        self.gen_postpred_plot_name = self.make_figname_generator("post-pred")
+        self.gen_postOOS_plot_name = self.make_figname_generator("post-OOS")
+
         self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {
@@ -95,6 +99,10 @@ class _StanModel(ABC):
         self._dependent_qtys_OOS = None
         self.independent_qtys_labs = None
         self.dependent_qtys_labs = None
+
+    # --------------------------------------------------------------------------
+    # Properties
+    # --------------------------------------------------------------------------
 
     @property
     def num_OOS(self):
@@ -188,9 +196,9 @@ class _StanModel(ABC):
             raise
         self._stan_data.update(d)
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Abstract interface
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     @abstractmethod
     def set_stan_data(self):
@@ -213,38 +221,23 @@ class _StanModel(ABC):
         """
         pass
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Figure helpers
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
-    def _make_fig_name(self, fname, tag):
-        """
-        Make figure names by appending a tag to a base name.
+    def make_figname_generator(self, s, N=20):
+        i = 0
+        while i < N:
+            fit_type = self._active_group()
+            yield os.path.join(
+                os.path.dirname(self.figname_base),
+                f"{os.path.basename(self.figname_base)}_{fit_type}_{s}{i}.{fig_ext}",
+            )
+            i += 1
 
-        Parameters
-        ----------
-        fname : str
-            base figure name to which a tag will be appended
-        tag : str
-            tag to append
-
-        Returns
-        -------
-        str, path-like
-            path to save figure as
-        """
-        fname_parts = list(os.path.splitext(fname))
-        if fname_parts[1] == "":
-            fname_parts[1] = ".png"
-        elif fname_parts[1] not in (".png", ".jpeg", ".jpg", ".eps", ".pdf"):
-            # we do not have a valid extension
-            fname_parts = [fname, ".png"]
-        fittype = "posterior" if self._fit is not None else "prior"
-        return f"{fname_parts[0]}_{fittype}_{tag}{fname_parts[1]}"
-
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Data directory helper
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     def _get_data_dir(self, d):
         """
@@ -272,9 +265,9 @@ class _StanModel(ABC):
                 raise
         return d
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Input observation helpers
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     def _check_observation_validity(self, d, set_categorical=False):
         """
@@ -517,9 +510,9 @@ class _StanModel(ABC):
             )
             raise
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Input data book-keeping
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     def _add_input_data_file(self, f):
         """
@@ -578,9 +571,9 @@ class _StanModel(ABC):
             raise
         self._num_OOS = n[0]
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Arviz - xarray helpers
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     def _active_group(self):
         """
@@ -666,9 +659,32 @@ class _StanModel(ABC):
         x, dens = az.kde(self.generated_quantities.stan_variables()[v])
         return x[np.nanargmax(dens)]
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Sampling
-    # ---------------------------------
+    # ----------------------------------------------------------------------
+
+    def _check_needed_variables_set(self):
+        needed_vars = [
+            self._latent_qtys,
+            self._latent_qtys_labs,
+            self._latent_qtys_posterior,
+            self._latent_qtys_posterior_labs,
+            self._independent_qtys,
+            self._independent_qtys_OOS,
+            self._dependent_qtys,
+            self._dependent_qtys_posterior,
+            self._dependent_qtys_OOS,
+            self.independent_qtys_labs,
+            self.dependent_qtys_labs,
+        ]
+        for v in needed_vars:
+            try:
+                assert v is not None
+            except AssertionError:
+                _logger.exception(
+                    f"Class attribute {v} must not be None!", exc_info=True
+                )
+                raise
 
     def _sampler(self, prior=False, sample_kwargs=None, diagnose=True, pathfinder=True):
         """
@@ -691,6 +707,7 @@ class _StanModel(ABC):
         cmdstanpy.CmdStanMCMC
             container output from stan sampling
         """
+        self._check_needed_variables_set()
         if self._loaded_from_file:
             _logger.warning(
                 "Instance instantiated from file: sampling the model again is not possible --> Skipping."
@@ -912,9 +929,9 @@ class _StanModel(ABC):
             )
         return self.generated_quantities.stan_variable(gq)
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Plots
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     def _make_default_hdi_colours(self, levels):
         """
@@ -1073,7 +1090,6 @@ class _StanModel(ABC):
             backend_kwargs=backend_kwargs,
             divergences=False,
         )
-        self._parameter_corner_plot_counter += 1
         return pc
 
     def parameter_diagnostic_plots(
@@ -1104,7 +1120,7 @@ class _StanModel(ABC):
             raise
 
         # set trace colour scheme
-        if self._parameter_diagnostic_plots_counter == 0:
+        if self._trace_plot_cols is None:
             vmax = len(self._inference_data.posterior["chain"])
             cmapper, sm = create_normed_colours(0, vmax, cmap="managua")
             self._trace_plot_cols = [
@@ -1124,13 +1140,7 @@ class _StanModel(ABC):
                 labeller=labeller,
             )
             fig = pc.viz["figure"].item()
-            savefig(
-                self._make_fig_name(
-                    self.figname_base,
-                    f"trace_{self._parameter_diagnostic_plots_counter}-{i//num_var_per_plot}",
-                ),
-                fig=fig,
-            )
+            savefig(next(self.gen_diag_plot_name), fig=fig)
             plt.close(fig)
 
             # plot rank
@@ -1141,13 +1151,7 @@ class _StanModel(ABC):
                 color=self._trace_plot_cols,
             )
             fig = pc.viz["figure"].item()
-            savefig(
-                self._make_fig_name(
-                    self.figname_base,
-                    f"rank_{self._parameter_diagnostic_plots_counter}-{i//num_var_per_plot}",
-                ),
-                fig=fig,
-            )
+            savefig(next(self.gen_diag_plot_name), fig=fig)
             plt.close(fig)
 
         # plot pair
@@ -1155,14 +1159,8 @@ class _StanModel(ABC):
             var_names=var_names, figsize=figsize, labeller=labeller, levels=levels
         )
         fig = pc.viz["figure"].item()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"pair_{self._parameter_diagnostic_plots_counter}"
-            ),
-            fig=fig,
-        )
+        savefig(next(self.gen_diag_plot_name), fig=fig)
         plt.close(fig)
-        self._parameter_diagnostic_plots_counter += 1
 
     def group_parameter_plot(
         self, var_names, figsize=None, levels=None, xlabel="Factor", ylabels=None
@@ -1188,7 +1186,6 @@ class _StanModel(ABC):
             levels = self._default_hdi_levels
         levels = [lev / 100 for lev in levels]
         levels.sort(reverse=True)
-        az_group = "prior"
         cmapper, sm = create_normed_colours(
             max(0, 0.9 * min(levels)), 1.3, cmap="Blues_r", trunc=(None, max(levels))
         )
@@ -1200,7 +1197,9 @@ class _StanModel(ABC):
             for j, level in enumerate(levels):
                 p = []
                 hdi = az.hdi(
-                    self._inference_data[az_group].get(v), hdi_prob=level, skipna=True
+                    self._inference_data[self._active_group()].get(v),
+                    hdi_prob=level,
+                    skipna=True,
                 )
                 try:
                     lower = hdi[0]
@@ -1226,120 +1225,23 @@ class _StanModel(ABC):
             axi.tick_params(axis="x", which="both", bottom=False)
         plt.colorbar(sm, label="HDI", location="top", ax=ax[0])
         savefig(
-            self._make_fig_name(
-                self.figname_base, f"group_par_{self._group_par_counter}"
-            ),
+            next(self.gen_hiergroup_plot_name),
             fig=fig,
         )
         plt.close(fig)
-        self._group_par_counter += 1
 
-    def plot_generated_quantity_dist_OLD(
-        self,
-        gq,
-        bounds=None,
-        ax=None,
-        xlabels=None,
-        save=True,
-        **kwargs,
-    ):
-        """
-        Plot the 1-D distribution of an arbitrary variable in the generated quantities block of a stan model.
-
-        Parameters
-        ----------
-        gq : list
-            variables to plot
-        state : str, optional
-            return generated quantities for predictive checks or out-of-sample
-            quantities, by default "pred"
-        bounds : list
-            list of tuples [(a,b), ..., (a,b)] giving the lower and upper bound for each variable in gq
-        ax : matplotlib.axes.Axes or np.ndarray of, optional
-            axes object to plot to, by default None
-        xlabels : list, optional
-            labels for the x-axis, by default None
-        save : bool, optional
-            save the plot, by default True
-        **kwargs :
-            other parameters parsed to arviz.plot_dist()
-
-        Returns
-        -------
-        matplotlib.axes.Axes
-            plotting axes
-        """
-        try:
-            assert isinstance(gq, list)
-        except AssertionError:
-            _logger.exception(f"Input 'gq' must be of type <list>, not {type(gq)}!")
-            raise
-        if bounds is not None:
-            try:
-                assert len(bounds) == len(gq)
-                for b in bounds:
-                    assert len(b) == 2
-            except AssertionError:
-                _logger.exception(
-                    "Setting bounds requires the `bounds` argument to have the same length as `gq`, and each entry must be a 2-tuple",
-                    exc_info=True,
-                )
-                raise
-        if xlabels is None:
-            xlabels = gq
-        else:
-            assert isinstance(xlabels, list)
-            try:
-                assert len(gq) == len(xlabels)
-            except AssertionError:
-                _logger.exception(
-                    f"There are {len(gq)} generated quantity variables to plot, but only {len(xlabels)} labels!",
-                    exc_info=True,
-                )
-                raise
-        for i, (_gq, lab) in enumerate(zip(gq, xlabels)):
-            ys = self.sample_generated_quantity(_gq)
-            if bounds is not None:
-                if bounds[i][0] is not None:
-                    mask_lower = ys > bounds[i][0]
-                else:
-                    mask_lower = True
-                if bounds[i][1] is not None:
-                    mask_upper = ys <= bounds[i][1]
-                else:
-                    mask_upper = True
-                ys = ys[np.logical_and(mask_lower, mask_upper)]
-            try:
-                assert len(ys.shape) < 3
-            except AssertionError:
-                _logger.exception(
-                    f"Generated quantity {_gq} must have shape 2, has shape {len(ys.shape)}",
-                    exc_info=True,
-                )
-                raise
-            cumulative = kwargs.pop("cumulative", False)
-            az.plot_dist(ys, ax=ax[i], cumulative=cumulative, **kwargs)
-            ax[i].set_xlabel(lab)
-            ax[i].set_ylabel(r"$\mathrm{CDF}$" if cumulative else r"$\mathrm{PDF}$")
-        if save:
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
-                ),
-                # fig=fig,
-            )
-            self._gq_distribution_plot_counter += 1
-        return ax
-
-    def plot_generated_quantity_dist(self, var_names):
+    def plot_generated_quantity_dist(self, var_names, **kwargs):
         pc = az.plot_dist(
-            self._inference_data, var_names=var_names, group=self._active_group()
+            self._inference_data,
+            var_names=var_names,
+            group=self._active_group(),
+            **kwargs,
         )
         return pc
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Sampling diagnosis
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     def determine_loo(self, stan_log_lik="log_lik"):
         """
@@ -1399,9 +1301,9 @@ class _StanModel(ABC):
             )
         print()
 
-    # ---------------------------------
+    # ----------------------------------------------------------------------
     # Class methods
-    # ---------------------------------
+    # ----------------------------------------------------------------------
 
     @classmethod
     def load_fit(cls, fit_files, figname_base, rng=None):
@@ -1607,7 +1509,7 @@ class HierarchicalModel_1D(_StanModel):
         )
         fig = ax.get_figure()
         if save:
-            savefig(self._make_fig_name(self.figname_base, f"pred_{xobs}"), fig=fig)
+            savefig(next(self.gen_postpred_plot_name), fig=fig)
         return ax
 
     def posterior_OOS_plot(
@@ -1622,7 +1524,7 @@ class HierarchicalModel_1D(_StanModel):
         )
         fig = ax.get_figure()
         if save:
-            savefig(self._make_fig_name(self.figname_base, f"OOS_{xmodel}"), fig=fig)
+            savefig(next(self.gen_postOOS_plot_name), fig=fig)
         return ax
 
 
@@ -1633,6 +1535,10 @@ class HierarchicalModel_2D(_StanModel):
         See the __init__ documentation for StanModel()
         """
         super().__init__(model_file, prior_file, figname_base, rng)
+
+    # ----------------------------------------------------------------------
+    # Abstract interface
+    # ----------------------------------------------------------------------
 
     @abstractmethod
     def extract_data(self):
@@ -1649,6 +1555,10 @@ class HierarchicalModel_2D(_StanModel):
     @abstractmethod
     def sample_model(self, **kwargs):
         return super().sample_model(**kwargs)
+
+    # ----------------------------------------------------------------------
+    # Arviz helpers
+    # ----------------------------------------------------------------------
 
     def reduce_obs_between_groups(self, ivar, key, newkey, func):
         """
@@ -1697,6 +1607,10 @@ class HierarchicalModel_2D(_StanModel):
                 )
             for k in (f"{ivar}_reduced", newkey):
                 self.obs[k] = np.atleast_2d(self.obs[k])
+
+    # ----------------------------------------------------------------------
+    # Plotting
+    # ----------------------------------------------------------------------
 
     def _plot_predictive(self, x, y, group, **kwargs):
         kwargs.setdefault("ci_prob", self._default_hdi_levels)

@@ -27,7 +27,7 @@ class ModifiedNFWModelSimple(ABGDensityModelSimple):
             self._latent_qtys_posterior_labs.pop(i)
         self._latent_qtys.append("log10g")
         self._latent_qtys_posterior.append("g")
-        self._latent_qtys_labs.append(r"$\gamma$")
+        self._latent_qtys_labs.append(r"$\log_{10}\gamma$")
         self._latent_qtys_posterior_labs.append(r"$\gamma$")
         self._make_latent_labellers()
         _logger.debug(f"Latent quantities are {self.latent_qtys}")

@@ -6,29 +6,25 @@ functions {
 data {
     int<lower=1> N_obs;                  // number of data points
     vector[N_obs] r;                     // radii
-    vector[N_obs] density;               // observed log10(density)
+    vector[N_obs] log10_density;               // observed log10(density)
 
     // OOS inputs
     int<lower=0> N_OOS;                           // number of prediction points
     vector<lower=0, upper=max(r)>[N_OOS] r_OOS;   // radii at which to predict
 }
 
-transformed data {
-    vector[N_obs] log10_density = log10(density);
-}
-
 parameters {
     real<lower=0, upper=15> log10rhoS;       // log10 scale density
     real<lower=-2, upper=2.7> log10rS;         // log10 scale radius, extends to ~500kpc
-    real<lower=-2, upper=2> log10g;
+    real<lower=-2, upper=1> log10g;
     real<lower=0> err; // observation scatter
 }
 
 transformed parameters {
     array[4] real lprior;
-    lprior[1] = normal_lpdf(log10rhoS | 5, 3);
-    lprior[2] = normal_lpdf(log10rS | 0.1, 1);
-    lprior[3] = normal_lpdf(log10g | 0, 0.5);
+    lprior[1] = normal_lpdf(log10rhoS | 10, 3);
+    lprior[2] = normal_lpdf(log10rS | 1, 2);
+    lprior[3] = normal_lpdf(log10g | 0, 0.25);
     lprior[4] = normal_lpdf(err| 0, 1);
 }
 

@@ -51,7 +51,7 @@ if args.verbose == "DEBUG":
     mNFW.print_obs_summary()
 
 # initialise the data dictionary
-mNFW.set_stan_data(rmin=1e-2)
+mNFW.set_stan_data()
 if args.prior:
     mNFW.sample_prior(sample_kwargs=sample_kwargs)
     mNFW.all_prior_plots()
@@ -65,11 +65,9 @@ else:
 
         # set up guiding Plummer lines
         ax = mNFW.plot_posterior_OOS(save=False)
-        for g, ls in zip((0.5, 1, 1.5), ("-", ":", "--")):
-            mNFW.add_guiding_NFW(ax=ax, rS=0.2, g=g, N=3)
-        bgs.plotting.savefig(
-            mNFW._make_fig_name(mNFW.figname_base, f"OOS_{mNFW._dependent_qtys_OOS[0]}")
-        )
+        for g, ls in zip((0.5, 1, 1.5, 2), ("-", ":", "--", "-.")):
+            mNFW.add_guiding_NFW(ax=ax, rS=0.2, g=g, N=1, ls=ls, offset=0)
+        bgs.plotting.savefig(next(mNFW.gen_postOOS_plot_name))
 mNFW.print_parameter_percentiles(mNFW.latent_qtys)
 
 if args.saveOOS is not None:

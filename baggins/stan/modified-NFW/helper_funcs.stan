@@ -6,7 +6,7 @@ vector mNFW_density_vec(
 ){
     vector[size(r)] x = r ./ pow(10, log10rS);
     real g = pow(10, log10g);
-    return log10rhoS - g * log10(x) + (g - 3.) / log10(1 + x);
+    return log10rhoS - g * log10(x) + (g - 3.) * log10(1 + x);
 }
 
 
@@ -18,16 +18,7 @@ vector mNFW_density_vec(
 ){
     vector[size(r)] x = r ./ pow(10, log10rS);
     vector[size(log10g)] g = pow(10, log10g);
-    return log10rhoS - g .* log10(x) + (g - 3.) ./ log10(1 + x);
-}
-
-
-vector radially_vary_err(vector r, real e0, real ek, real rp){
-    // radially vary error
-    // e0: error at pivot radius
-    // ek: error gradient, ek>0 -> grows with r, ek<0 -> shrinks with r
-    // rp: pivot radius
-    return e0 * pow(r / rp, ek);
+    return log10rhoS - g .* log10(x) + (g - 3.) .* log10(1 + x);
 }
 
 

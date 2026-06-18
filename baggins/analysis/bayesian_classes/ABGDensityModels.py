@@ -28,23 +28,22 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         super().__init__(model_file, prior_file, figname_base, rng)
         self._independent_qtys = ["r"]
         self._independent_qtys_OOS = [f"{v}_OOS" for v in self._independent_qtys]
-        self._dependent_qtys = ["density"]
+        self._dependent_qtys = ["log10_density"]
         self._dependent_qtys_posterior = [
             f"{v}_posterior" for v in self._dependent_qtys
         ]
         self._dependent_qtys_OOS = [f"{v}_OOS" for v in self._dependent_qtys]
         self._latent_qtys = []
         self._latent_qtys_labs = []
-        self._latent_qtys_posterior_labs = []
         self._merger_id = None
         self._dims_prepped = False
         self.independent_qtys_labs = ["r"]
         self.dependent_qtys_labs = ["rho"]
         self._make_xy_labellers()
 
-    # ----------
+    # ----------------------------------------------------------------------
     # Properties
-    # ----------
+    # ----------------------------------------------------------------------
 
     @property
     def dependent_qtys(self):
@@ -74,9 +73,9 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
     def merger_id(self, v):
         self._merger_id = v
 
-    # ----------------
+    # ----------------------------------------------------------------------
     # Abstract methods
-    # ----------------
+    # ----------------------------------------------------------------------
 
     @abstractmethod
     def extract_data(self):
@@ -129,9 +128,9 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         if not self._loaded_from_file:
             self._set_stan_data_OOS(**kwargs)
 
-    # --------
+    # ----------------------------------------------------------------------
     # Sampling
-    # --------
+    # ----------------------------------------------------------------------
 
     def sample_model(self, sample_kwargs=None, diagnose=True):
         """
@@ -145,11 +144,11 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             self._determine_num_OOS(self._prediction_vars[0])
             self._set_stan_data_OOS()
 
-    # ----------------
+    # ----------------------------------------------------------------------
     # Plotting methods
-    # ----------------
+    # ----------------------------------------------------------------------
 
-    def plot_latent_distributions(self, save=True, from_hyper=False):
+    def plot_latent_distributions(self, save=True):
         """
         Plot distributions of the latent parameters of the model.
 
@@ -167,45 +166,30 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        lq = self.latent_qtys_posterior if from_hyper else self.latent_qtys
-        pc = self.plot_generated_quantity_dist(lq)
+        pc = self.plot_generated_quantity_dist(
+            self.latent_qtys, labeller=self._labeller_latent
+        )
         ax = pc.get_viz("plot")
         if save:
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
-                ),
-            )
-            self._gq_distribution_plot_counter += 1
+            savefig(next(self.gen_gq_plot_name))
         return ax
 
     def plot_posterior_predictive(self, save=True, **kwargs):
         pc = super().plot_posterior_predictive(**kwargs)
         ax = pc.get_viz("plot")
         ax.set_xscale("log")
-        ax.set_yscale("log")
+        # ax.set_yscale("log")
         if save:
-            # TODO handling of multiple dependent quantities?
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"pred_{self._dependent_qtys[0]}"
-                )
-            )
+            savefig(next(self.gen_postpred_plot_name))
         return ax
 
     def plot_posterior_OOS(self, save=True, **kwargs):
-        print(self._inference_data)
         pc = super().plot_posterior_OOS(**kwargs)
         ax = pc.get_viz("plot")
         ax.set_xscale("log")
-        ax.set_yscale("log")
+        # ax.set_yscale("log")
         if save:
-            # TODO handling of multiple dependent quantities?
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"OOS_{self._dependent_qtys_OOS[0]}"
-                )
-            )
+            savefig(next(self.gen_postOOS_plot_name))
         return ax
 
     @abstractmethod
@@ -245,12 +229,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             combine_dims={"group"},
         )
         fig2 = ax2[0, 0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig2,
-        )
+        savefig(next(self.gen_corner_plot_name), fig=fig2)
 
     @abstractmethod
     def all_posterior_pred_plots(self, figsize=None):
@@ -272,9 +251,12 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
 
         # latent parameter distributions
         self.plot_latent_distributions()
+        pc = self.plot_generated_quantity_dist(
+            self.latent_qtys_posterior, labeller=self._labeller_latent_posterior
+        )
+        savefig(next(self.gen_gq_plot_name))
 
         # transformed latent parameter distributions
-        self.parameter_corner_plot(self.latent_qtys_posterior)
         pc = self.parameter_corner_plot(
             self.latent_qtys_posterior,
             figsize=(len(self.latent_qtys_posterior), len(self.latent_qtys_posterior)),
@@ -282,12 +264,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             combine_dims={"groupOOS"},
         )
         fig = pc.get_viz("figure")
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
+        savefig(next(self.gen_corner_plot_name), fig=fig)
 
     def add_guiding_profiles(self, ax, a, b, g, rS, N=5, offset=0.5, **kwargs):
         """
@@ -314,16 +291,27 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         kwargs.setdefault("c", "gray")
         kwargs.setdefault("zorder", 0.2)
         kwargs.setdefault("label", f"({a:.1f},{b:.1f},{g:.1f})")
+        use_log = kwargs.pop("log_scale", True)
         dens_pivot = np.max(self.obs["log10_density"])
+        _logger.debug(f"For guiding profile, pivot density is set to {dens_pivot:.3f}")
         log10dens = np.linspace(dens_pivot - offset, dens_pivot + offset, N)
         r = np.geomspace(
-            np.min(self.stan_data["r_OOS"]), np.max(self.stan_data["r_OOS"]), 500
+            np.min(self.stan_data[self._independent_qtys_OOS[0]]),
+            np.max(self.stan_data[self._independent_qtys_OOS[0]]),
+            500,
         )
+
+        def profile_func(**kwargs):
+            if use_log:
+                return np.log10(AlphaBetaGamma_profile(**kwargs))
+            else:
+                return AlphaBetaGamma_profile(**kwargs)
+
         for p in 10**log10dens:
             label = kwargs.pop("label", None)
             ax.plot(
                 r,
-                AlphaBetaGamma_profile(r, rs=rS, ps=p, a=a, b=b, g=g),
+                profile_func(r=r, rs=rS, ps=p, a=a, b=b, g=g),
                 label=label,
                 **kwargs,
             )
@@ -346,9 +334,9 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             ax=ax, a=1, b=3, g=1, rS=rS, N=N, offset=offset, **kwargs
         )
 
-    # -----------
+    # ----------------------------------------------------------------------
     # Data saving
-    # -----------
+    # ----------------------------------------------------------------------
 
     def save_density_data_to_npz(self, dname, exist_ok=False):
         """
@@ -367,7 +355,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         except AssertionError:
             _logger.exception(f"File {fname} already exists!", exc_info=True)
             raise
-        r = self.stan_data["r_OOS"]
+        r = self.stan_data[self._independent_qtys_OOS[0]]
         rho = self.sample_generated_quantity(
             self.dependent_qtys_posterior[0], state="OOS"
         )
@@ -471,7 +459,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         obs["density"].append(
             [pygad.analysis.profile_dens(subsnap[mask], qty="mass", r_edges=r_edges)]
         )
-        obs["r"].append(get_histogram_bin_centres(r_edges))
+        obs["r"].append(get_histogram_bin_centres(r_edges, subsnap[mask]["r"]))
         obs["mass"].append([np.sum(subsnap[mask]["mass"])])
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
@@ -745,12 +733,7 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
             self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )
         fig = ax[0, 0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
+        savefig(next(self.corner_plot_gen), fig=fig)
         super().all_prior_plots(figsize, ylim)
 
     def all_posterior_pred_plots(self, figsize=None):
