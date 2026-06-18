@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 import os
 from operator import itemgetter
-from itertools import groupby
+from itertools import groupby, chain
 import re
 import numpy as np
 import matplotlib.pyplot as plt
@@ -71,7 +71,7 @@ class _StanModel(ABC):
             "cmap": "PuRd",
             "zorder": 2,
         }
-        self._default_hdi_levels = [99, 75, 50, 25]
+        self._default_hdi_levels = [0.5, 0.8, 0.95]
         self._num_groups = 0
         self._loaded_from_file = False
         self._generated_quantities = None
@@ -82,7 +82,11 @@ class _StanModel(ABC):
 
         # properties which are defined in child classes
         self._latent_qtys = None
-        self._folded_qtys = None
+        self._independent_qtys = None
+        self._independent_qtys_OOS = None
+        self._dependent_qtys = None
+        self._dependent_qtys_posterior = None
+        self._dependent_qtys_OOS = None
 
     @property
     def num_OOS(self):
@@ -595,7 +599,7 @@ class _StanModel(ABC):
         dim_map : dict
             mapping of old dimension names to new names
         """
-        self._inference_data.rename_dims(dim_map, inplace=True)
+        self._inference_data = self._inference_data.rename(dim_map)
 
     def _expand_dimension(self, varnames, dim):
         """
@@ -718,7 +722,7 @@ class _StanModel(ABC):
                 try:
                     if pathfinder:
                         pf = self._model.pathfinder(
-                            data=self.stan_data, show_console=True
+                            data=self.stan_data, show_console=False
                         )
                         inits = pf.create_inits()
                     else:
@@ -779,18 +783,56 @@ class _StanModel(ABC):
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
         )
         # TODO capture arviz warnings about NaN
-        self._inference_data = az.from_cmdstanpy(
-            posterior=self._fit, log_likelihood="lprior"
-        )
+        try:
+            coords = {
+                "N_obs": np.arange(self._num_obs),
+                "N_OOS": np.arange(self._num_OOS),
+            }
+            dims = {}
+            # independent/dependent in-sample vars: N_obs dimension
+            for k in chain(self._independent_qtys, self._dependent_qtys):
+                dims[k] = ["N_obs"]
+            # posterior predictive (in-sample replications): N_obs
+            for k in self._dependent_qtys_posterior:
+                dims[k] = ["N_obs"]
+            # OOS independent vars: N_OOS
+            for k in chain(self._independent_qtys_OOS, self._dependent_qtys_OOS):
+                dims[k] = ["N_OOS"]
+            # log_lik is indexed over observations
+            dims["log_lik"] = ["N_obs"]
+            kwargs = {
+                "posterior": self._fit,
+                "log_likelihood": "log_lik",
+                "observed_data": {k: self.stan_data[k] for k in self._dependent_qtys},
+                "constant_data": {k: self.stan_data[k] for k in self._independent_qtys},
+                "posterior_predictive": self._dependent_qtys_posterior,
+                "predictions_constant_data": {
+                    k: self.stan_data[k] for k in self._independent_qtys_OOS
+                },
+                "predictions": self._dependent_qtys_OOS,
+                "dims": dims,
+                "coords": coords,
+            }
+
+            self._inference_data = az.from_cmdstanpy(**kwargs)
+            lprior = self._fit.draws_xr("lprior")
+            for d in lprior.dims:
+                lprior = lprior.dropna(dim=d)
+            self._inference_data["log_prior"] = lprior
+        except ValueError as e:
+            _logger.error(e)
+            kwargs.pop("log_likelihood", None)
+            self._inference_data = az.from_cmdstanpy(**kwargs)
         if diagnose:
             # prior sensitivity only done for posterior model
             # TODO consider using psense_summary()?
-            priorsens = az.psense(
-                self._inference_data, var_names=self._latent_qtys, group="likelihood"
+            priorsens = az.psense_summary(
+                self._inference_data,
+                var_names=self._latent_qtys,
+                prior_var_names="lprior",
+                likelihood_var_names="log_lik",
             )
-            _logger.info(
-                f"Maximum CJS distance for latent variables:\n {priorsens.max()}"
-            )
+            _logger.info(f"CJS distance for latent variables:\n {priorsens}")
 
     def sample_prior(self, sample_kwargs=None, diagnose=True):
         """
@@ -801,7 +843,7 @@ class _StanModel(ABC):
         data : dict
             stan data values
         sample_kwargs : dict, optional
-            kwargs to be passed to CmdStanModel.sample(), by default {}
+            kwargs to be passed to CmdStanModel.sample(), by default None
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         """
@@ -812,8 +854,7 @@ class _StanModel(ABC):
         )
         self._inference_data = az.from_cmdstanpy(prior=self._prior_fit)
 
-    @abstractmethod
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
+    def sample_generated_quantity(self, gq, force_resample=False):
         """
         Sample the 'generated quantities' block of a Stan model. If the model has had both the prior and posterior distributions sampled, the posterior sample will be used.
 
@@ -1172,55 +1213,6 @@ class _StanModel(ABC):
         plt.close(fig)
         self._group_par_counter += 1
 
-    @abstractmethod
-    def _plot_predictive(
-        self,
-        xmodel,
-        ymodel,
-        state,
-        xobs=None,
-        yobs=None,
-        yobs_err=None,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        show_legend=True,
-    ):
-        """
-        Plot predictive regressions - can be either for the conditioned data (in-sample) or new data (out-of-sample).
-
-        Parameters
-        ----------
-        xmodel :str
-            dictionary key for modelled independent variable
-        ymodel :str
-            dictionary key for modelled dependent variable
-        state : str
-            return generated quantities for predictive checks or out-of-sample
-            quantities
-        xobs :str
-            dictionary key for observed independent variable
-        yobs :str
-            dictionary key for observed dependent variable
-        yobs_err : str, optional
-            dictionary key for observed dependent variable scatter, by
-            default None
-        levels : list, optional
-            HDI intervals to plot, by default None
-        ax : matplotlib.axes.Axes, optional
-            axis to plot to, by default None (creates new instance)
-        collapsed : bool, optional
-            plotting collapsed observations?, by default True
-        show_legend : bool, optional
-            show the legend, by default True
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            plotting axis
-        """
-        pass
-
     def plot_generated_quantity_dist(
         self,
         gq,
@@ -1257,22 +1249,10 @@ class _StanModel(ABC):
         matplotlib.axes.Axes
             plotting axes
         """
-        if ax is None:
-            fig, ax = plt.subplots(len(gq), 1)
-        elif isinstance(ax, (np.ndarray, list)):
-            fig = np.atleast_2d(ax)[0, 0].get_figure()
-        else:
-            fig = ax.get_figure()
-        if isinstance(ax, np.ndarray):
-            ax_shape = ax.shape
-        else:
-            ax = np.array(ax)
-            ax_shape = (1,)
-        ax = ax.flatten()
         try:
             assert isinstance(gq, list)
         except AssertionError:
-            _logger.exception(f"Input `gq` must be of type <list>, not {type(gq)}!")
+            _logger.exception(f"Input 'gq' must be of type <list>, not {type(gq)}!")
             raise
         if bounds is not None:
             try:
@@ -1298,7 +1278,7 @@ class _StanModel(ABC):
                 )
                 raise
         for i, (_gq, lab) in enumerate(zip(gq, xlabels)):
-            ys = self.sample_generated_quantity(_gq, state=state)
+            ys = self.sample_generated_quantity(_gq)
             if bounds is not None:
                 if bounds[i][0] is not None:
                     mask_lower = ys > bounds[i][0]
@@ -1321,13 +1301,12 @@ class _StanModel(ABC):
             az.plot_dist(ys, ax=ax[i], cumulative=cumulative, **kwargs)
             ax[i].set_xlabel(lab)
             ax[i].set_ylabel(r"$\mathrm{CDF}$" if cumulative else r"$\mathrm{PDF}$")
-        ax.reshape(ax_shape)
         if save:
             savefig(
                 self._make_fig_name(
                     self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
                 ),
-                fig=fig,
+                # fig=fig,
             )
             self._gq_distribution_plot_counter += 1
         return ax
@@ -1645,10 +1624,6 @@ class HierarchicalModel_2D(_StanModel):
     def sample_model(self, **kwargs):
         return super().sample_model(**kwargs)
 
-    @abstractmethod
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        return super().sample_generated_quantity(gq, force_resample, state)
-
     def reduce_obs_between_groups(self, ivar, key, newkey, func):
         """
         Apply a reduction algorithm element-wise between groups. This only
@@ -1718,93 +1693,6 @@ class HierarchicalModel_2D(_StanModel):
             max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
         )
 
-    def _plot_predictive(
-        self,
-        xmodel,
-        ymodel,
-        state,
-        xobs=None,
-        yobs=None,
-        yobs_err=None,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        show_legend=True,
-        smooth=False,
-    ):
-        """
-        Plot a predictive check for a regression stan model.
-
-        Parameters
-        ----------
-        xmodel : str
-            dictionary key for modelled independent variable
-        ymodel : str
-            dictionary key for modelled dependent variable
-        state : str
-            predictive or OOS samples, must be one of 'pred' or 'OOS'
-        xobs : str, optional
-            dictionary key for observed independent variable, by default None
-        yobs : str, optional
-            dictionary key for observed dependent variable, by default None
-        yobs_err : str, optional
-             dictionary key for observed dependent variable scatter, by default
-             None
-        levels : list, optional
-            HDI intervals to plot, by default None
-        ax : matplotlib.axes.Axes, optional
-            axis to plot to, by default None (creates new instance)
-        collapsed : bool, optional
-            plotting collapsed observations?
-        show_legend : bool
-            create legend, by default True
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            plotting axis
-        """
-        if levels is None:
-            levels = self._default_hdi_levels
-        levels.sort(reverse=True)
-        if ax is None:
-            fig, ax = plt.subplots(1, 1)
-        if isinstance(ymodel, str):
-            ys = self.sample_generated_quantity(ymodel, state=state)
-        else:
-            _logger.warning("Plotting an array outside of generated_quantities")
-            ys = ymodel
-        cmapper, sm = self._make_default_hdi_colours(levels)
-        for lev in levels:
-            _logger.debug(f"Fitting level {lev}")
-            plot_hdi(
-                self.stan_data[xmodel],
-                ys,
-                hdi_prob=lev / 100,
-                ax=ax,
-                plot_kwargs={"c": cmapper(lev)},
-                fill_kwargs={
-                    "color": cmapper(lev),
-                    "alpha": 0.8,
-                    "label": f"{lev}% HDI",
-                    "edgecolor": None,
-                },
-                smooth=smooth,
-                hdi_kwargs={"skipna": True},
-            )
-            """az.plot_lm(
-                self._inference_data,
-                x=xmodel,
-                y=ymodel,
-            )"""
-        if xobs is not None and yobs is not None:
-            self.add_data_to_predictive_plot(
-                ax=ax, xobs=xobs, yobs=yobs, yobs_err=yobs_err, collapsed=collapsed
-            )
-        if show_legend:
-            ax.legend()
-        return ax
-
     def plot_predictive(
         self,
         xmodel,
@@ -1819,23 +1707,19 @@ class HierarchicalModel_2D(_StanModel):
         smooth=False,
         save=True,
     ):
-        """
-        Predictive plot.
-        See docs for _plot_predictive()
-        """
-        ax = self._plot_predictive(
-            xmodel=xmodel,
-            ymodel=ymodel,
-            state="pred",
-            xobs=xobs,
-            yobs=yobs,
-            yobs_err=yobs_err,
-            levels=levels,
-            ax=ax,
-            collapsed=collapsed,
-            smooth=smooth,
-            show_legend=show_legend,
+        if levels is None:
+            levels = self._default_hdi_levels
+        levels.sort()
+        cmapper, sm = self._make_default_hdi_colours(levels)
+        pc = az.plot_lm(
+            self._inference_data,
+            ci_prob=levels,
+            x=xmodel,
+            y=ymodel,
         )
+        if show_legend:
+            ax.legend()
+        ax = pc.viz["plot"].items()
         fig = ax.get_figure()
         if save:
             savefig(self._make_fig_name(self.figname_base, f"pred_{yobs}"), fig=fig)
@@ -1853,7 +1737,6 @@ class HierarchicalModel_2D(_StanModel):
     ):
         """
         Posterior out-of-sample plot, observed data is not added to plot.
-        See docs for _plot_predictive()
         """
         ax = self._plot_predictive(
             xmodel=xmodel,
