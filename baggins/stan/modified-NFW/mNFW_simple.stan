@@ -15,9 +15,6 @@ data {
 
 transformed data {
     vector[N_obs] log10_density = log10(density);
-    real median_r = quantile(r, 0.5);
-    int N_GQ = N_obs + N_OOS;
-    vector<lower=0, upper=max(r)>[N_GQ] r_GQ = append_row(r, r_OOS);
 }
 
 parameters {
@@ -40,18 +37,34 @@ model {
     target += normal_lpdf(log10_density | mNFW_density_vec(r, log10rhoS, log10rS, log10g), err);
 }
 
+
 generated quantities {
     real rS = pow(10., log10rS);
     real g = pow(10., log10g);
-    vector[N_GQ] log10_rho_mean;   // mean model prediction
-    vector[N_GQ] log10_density_posterior;   // posterior predictive draw (with noise)  
-    vector[N_GQ] density_posterior;
 
-    // push forward data
-    log10_rho_mean = mNFW_density_vec(r_GQ, log10rhoS, log10rS, log10g);
-    for(i in 1:N_GQ){
+    // In-sample posterior predictive
+    vector[N_obs] log10_rho_mean;
+    vector[N_obs] log10_density_posterior;
+    vector[N_obs] density_posterior;
+    vector[N_obs] log_lik;
+
+    // Out-of-sample predictions
+    vector[N_OOS] log10_rho_mean_OOS;
+    vector[N_OOS] log10_density_OOS;
+    vector[N_OOS] density_OOS;
+
+    // In-sample
+    log10_rho_mean = mNFW_density_vec(r, log10rhoS, log10rS, log10g);
+    for (i in 1:N_obs) {
         log10_density_posterior[i] = normal_rng(log10_rho_mean[i], err);
+        log_lik[i] = normal_lpdf(log10_density[i] | log10_rho_mean[i], err);
     }
-
     density_posterior = pow(10., log10_density_posterior);
+
+    // OOS
+    log10_rho_mean_OOS = mNFW_density_vec(r_OOS, log10rhoS, log10rS, log10g);
+    for (i in 1:N_OOS) {
+        log10_density_OOS[i] = normal_rng(log10_rho_mean_OOS[i], err);
+    }
+    density_OOS = pow(10., log10_density_OOS);
 }

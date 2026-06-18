@@ -80,13 +80,21 @@ class _StanModel(ABC):
         self._input_data_file_count = 0
         self._input_data_files = {}
 
+        self._x_labeller = None
+        self._y_labeller = None
+
         # properties which are defined in child classes
         self._latent_qtys = None
+        self._latent_qtys_labs = None
+        self._latent_qtys_posterior = None
+        self._latent_qtys_posterior_labs = None
         self._independent_qtys = None
         self._independent_qtys_OOS = None
         self._dependent_qtys = None
         self._dependent_qtys_posterior = None
         self._dependent_qtys_OOS = None
+        self.independent_qtys_labs = None
+        self.dependent_qtys_labs = None
 
     @property
     def num_OOS(self):
@@ -589,18 +597,6 @@ class _StanModel(ABC):
             )
         return "posterior" if "/posterior" in self._inference_data.groups else "prior"
 
-    def rename_dimensions(self, dim_map):
-        """
-        Rename dimensions of arviz InferenceData object
-        TODO: is it worth keeping this method?
-
-        Parameters
-        ----------
-        dim_map : dict
-            mapping of old dimension names to new names
-        """
-        self._inference_data = self._inference_data.rename(dim_map)
-
     def _expand_dimension(self, varnames, dim):
         """
         Expand dimensions of variables to match another dimension
@@ -626,28 +622,30 @@ class _StanModel(ABC):
                 {dim: np.arange(self._inference_data[group].dims[dim])}, axis=-1
             )
 
-    def _get_GQ_indices(self, state, collapsed=False):
-        """
-        Get the indices of a generated quantity block for either predictive
-        inference or out of sample inference
+    def _make_xy_labellers(self):
+        self._x_labeller = az.labels.MapLabeller(
+            dict(
+                zip(
+                    chain(self._independent_qtys, self._independent_qtys_OOS),
+                    (self.independent_qtys_labs, self.independent_qtys_labs),
+                )
+            )
+        )
+        self._y_labeller = az.labels.MapLabeller(
+            dict(
+                zip(
+                    chain(self._dependent_qtys_posterior, self._dependent_qtys_OOS),
+                    (self.dependent_qtys_labs, self.dependent_qtys_labs),
+                )
+            )
+        )
 
-        Parameters
-        ----------
-        state : str
-            inference type, must be one of 'pred' or 'OOS'
-        collapsed : bool, optional
-            has the variable been collapsed (1-dimensional), by default False
-
-        Returns
-        -------
-        np.ndarray
-            array of indices
-        """
-        dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
-        return (
-            slice(None, dividing_idx)
-            if state == "pred"
-            else slice(dividing_idx, self.num_OOS + dividing_idx)
+    def _make_latent_labellers(self):
+        self._labeller_latent = az.labels.MapLabeller(
+            dict(zip(self._latent_qtys, self._latent_qtys_labs))
+        )
+        self._labeller_latent_posterior = az.labels.MapLabeller(
+            dict(zip(self._latent_qtys_posterior, self._latent_qtys_posterior_labs))
         )
 
     def calculate_mode(self, v):
@@ -804,7 +802,11 @@ class _StanModel(ABC):
                 "posterior": self._fit,
                 "log_likelihood": "log_lik",
                 "observed_data": {k: self.stan_data[k] for k in self._dependent_qtys},
-                "constant_data": {k: self.stan_data[k] for k in self._independent_qtys},
+                # TODO remove OOS from below?
+                "constant_data": {
+                    k: self.stan_data[k]
+                    for k in chain(self._independent_qtys, self._independent_qtys_OOS)
+                },
                 "posterior_predictive": self._dependent_qtys_posterior,
                 "predictions_constant_data": {
                     k: self.stan_data[k] for k in self._independent_qtys_OOS
@@ -914,6 +916,27 @@ class _StanModel(ABC):
     # Plots
     # ---------------------------------
 
+    def _make_default_hdi_colours(self, levels):
+        """
+        Create the default colour scheme for HDI regression plots. Basically a wrapper around create_normed_colours()
+
+        Parameters
+        ----------
+        levels : list
+            HDI levels
+
+        Returns
+        -------
+        : function
+            takes an argument in the range [vmin, vmax] and returns the scaled
+            colour
+        : matplotlib.cm.ScalarMappable
+            object that is required for creating a colour bar
+        """
+        return create_normed_colours(
+            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
+        )
+
     def _parameter_corner_plot(
         self,
         var_names,
@@ -965,7 +988,6 @@ class _StanModel(ABC):
         else:
             group = "posterior"
         num_vars = len(var_names)
-        print(f"num_vars: {num_vars}")
         with az.rc_context({"plot.max_subplots": num_vars**2}):
             # first lay down the markers
             # ax = az.plot_pair(self._inference_data, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.1, "s":10}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
@@ -1052,8 +1074,7 @@ class _StanModel(ABC):
             divergences=False,
         )
         self._parameter_corner_plot_counter += 1
-        ax = pc.viz["plot"].item()
-        return ax
+        return pc
 
     def parameter_diagnostic_plots(
         self, var_names, figsize=None, labeller=None, levels=None
@@ -1213,10 +1234,9 @@ class _StanModel(ABC):
         plt.close(fig)
         self._group_par_counter += 1
 
-    def plot_generated_quantity_dist(
+    def plot_generated_quantity_dist_OLD(
         self,
         gq,
-        state="pred",
         bounds=None,
         ax=None,
         xlabels=None,
@@ -1310,6 +1330,12 @@ class _StanModel(ABC):
             )
             self._gq_distribution_plot_counter += 1
         return ax
+
+    def plot_generated_quantity_dist(self, var_names):
+        pc = az.plot_dist(
+            self._inference_data, var_names=var_names, group=self._active_group()
+        )
+        return pc
 
     # ---------------------------------
     # Sampling diagnosis
@@ -1672,132 +1698,48 @@ class HierarchicalModel_2D(_StanModel):
             for k in (f"{ivar}_reduced", newkey):
                 self.obs[k] = np.atleast_2d(self.obs[k])
 
-    def _make_default_hdi_colours(self, levels):
-        """
-        Create the default colour scheme for HDI regression plots. Basically a wrapper around create_normed_colours()
-
-        Parameters
-        ----------
-        levels : list
-            HDI levels
-
-        Returns
-        -------
-        : function
-            takes an argument in the range [vmin, vmax] and returns the scaled
-            colour
-        : matplotlib.cm.ScalarMappable
-            object that is required for creating a colour bar
-        """
-        return create_normed_colours(
-            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
-        )
-
-    def plot_predictive(
-        self,
-        xmodel,
-        ymodel,
-        xobs=None,
-        yobs=None,
-        yobs_err=None,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        show_legend=True,
-        smooth=False,
-        save=True,
-    ):
-        if levels is None:
-            levels = self._default_hdi_levels
-        levels.sort()
-        cmapper, sm = self._make_default_hdi_colours(levels)
+    def _plot_predictive(self, x, y, group, **kwargs):
+        kwargs.setdefault("ci_prob", self._default_hdi_levels)
+        cmapper, sm = self._make_default_hdi_colours(kwargs["ci_prob"])
         pc = az.plot_lm(
             self._inference_data,
-            ci_prob=levels,
-            x=xmodel,
-            y=ymodel,
+            x=x,
+            y=y,
+            group=group,
+            xlabeller=self._x_labeller,
+            ylabeller=self._y_labeller,
+            **kwargs,
         )
-        if show_legend:
-            ax.legend()
-        ax = pc.viz["plot"].items()
-        fig = ax.get_figure()
-        if save:
-            savefig(self._make_fig_name(self.figname_base, f"pred_{yobs}"), fig=fig)
+        return pc
 
-    def posterior_OOS_plot(
-        self,
-        xmodel,
-        ymodel,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        save=True,
-        show_legend=True,
-        smooth=False,
-    ):
+    @abstractmethod
+    def plot_posterior_predictive(self, **kwargs):
+        pc = self._plot_predictive(
+            x=self._independent_qtys,
+            y=self._dependent_qtys_posterior,
+            group="posterior_predictive",
+            **kwargs,
+        )
+        return pc
+
+    def plot_prior_predictive(self, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def plot_posterior_OOS(self, **kwargs):
         """
         Posterior out-of-sample plot, observed data is not added to plot.
         """
-        ax = self._plot_predictive(
-            xmodel=xmodel,
-            ymodel=ymodel,
-            state="OOS",
-            levels=levels,
-            ax=ax,
-            collapsed=collapsed,
-            show_legend=show_legend,
-            smooth=smooth,
-        )
-        fig = ax.get_figure()
-        if save:
-            savefig(self._make_fig_name(self.figname_base, f"OOS_{ymodel}"), fig=fig)
-
-    def posterior_OOS_specific_hdi_plot(
-        self, xmodel, ymodel, hdi=50, ax=None, **kwargs
-    ):
-        """
-        Plot a specific HDI interval for an out-of-sample quantity, most
-        frequently used to compare to different models.
-
-        Parameters
-        ----------
-        xmodel : str
-            dictionary key for modelled independent variable
-        ymodel : str
-            dictionary key for modelled dependent variable
-        hdi : float, optional
-            HDI intervals to plot, by default 50
-        ax : matplotlib.axes.Axes, optional
-            axis to plot to, by default None (creates new instance)
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            axis to plotted to
-        """
-        if ax is None:
-            fig, ax = plt.subplots()
-        kwargs.setdefault("smooth", False)
-        kwargs.setdefault("hdi_kwargs", {"skipna": True})
-        plot_kwargs = kwargs.pop("plot_kwargs", {})
-        plot_kwargs.setdefault("c", "")
-        fill_kwargs = kwargs.pop("fill_kwargs", {})
-        fill_kwargs.setdefault("alpha", 0.8)
-        fill_kwargs.setdefault("edgecolor", None)
-        fill_kwargs["label"] = kwargs.pop("label", None)
-        fill_kwargs.setdefault(
-            "color", plot_kwargs["c"] if plot_kwargs["c"] is not None else None
-        )
-        plot_hdi(
-            self.stan_data[xmodel],
-            self.sample_generated_quantity(ymodel, state="OOS"),
-            hdi_prob=hdi / 100,
-            ax=ax,
-            plot_kwargs=plot_kwargs,
-            fill_kwargs=fill_kwargs,
+        visuals = kwargs.pop("visuals", {})
+        visuals.setdefault("observed_scatter", False)
+        kwargs["visuals"] = visuals
+        pc = self._plot_predictive(
+            x=self._independent_qtys_OOS,
+            y=self._dependent_qtys_OOS,
+            group="predictions",
             **kwargs,
         )
-        return ax
+        return pc
 
     def add_data_to_predictive_plot(
         self, ax, xobs, yobs, yobs_err=None, collapsed=True

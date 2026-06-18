@@ -109,9 +109,7 @@ def plot_hdi(
             hdi_prob = az.rcParams["stats.ci_prob"]
         elif not 1 >= hdi_prob > 0:
             raise ValueError("The value of hdi_prob should be in the interval (0, 1]")
-        hdi_data = az.hdi(
-            y, hdi_prob=hdi_prob, circular=circular, multimodal=False, **hdi_kwargs
-        )
+        hdi_data = az.hdi(y, prob=hdi_prob, circular=circular, **hdi_kwargs)
 
     hdi_shape = hdi_data.shape
     if hdi_shape[:-1] != x_shape:

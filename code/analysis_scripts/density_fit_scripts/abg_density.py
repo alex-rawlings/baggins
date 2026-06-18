@@ -60,7 +60,7 @@ else:
         )
     else:
         abgdens = bgs.analysis.ABGDensityModelHierarchy(figname_base=figname_base)
-abgdens.extract_data(args.files, skiprows=1)
+abgdens.extract_data(args.files)
 sample_kwargs = {"adapt_delta": 0.995, "max_treedepth": 15}
 if args.save is not None:
     sample_kwargs["output_dir"] = os.path.join(args.save, abgdens.merger_id)

@@ -26,27 +26,33 @@ def get_stan_file(f):
 class _ABGDensityModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
-        self._folded_qtys = ["rho"]
-        self._folded_qtys_labs = [r"$\rho(r)$/(M$_\odot$/kpc$^3$))"]
-        self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
+        self._independent_qtys = ["r"]
+        self._independent_qtys_OOS = [f"{v}_OOS" for v in self._independent_qtys]
+        self._dependent_qtys = ["density"]
+        self._dependent_qtys_posterior = [
+            f"{v}_posterior" for v in self._dependent_qtys
+        ]
+        self._dependent_qtys_OOS = [f"{v}_OOS" for v in self._dependent_qtys]
         self._latent_qtys = []
-        self._latent_qtys_labs = []
         self._latent_qtys_labs = []
         self._latent_qtys_posterior_labs = []
         self._merger_id = None
         self._dims_prepped = False
+        self.independent_qtys_labs = ["r"]
+        self.dependent_qtys_labs = ["rho"]
+        self._make_xy_labellers()
+
+    # ----------
+    # Properties
+    # ----------
 
     @property
-    def independent_var_lab(self):
-        return r"$r/\mathrm{kpc}$"
+    def dependent_qtys(self):
+        return self._dependent_qtys
 
     @property
-    def folded_qtys(self):
-        return self._folded_qtys
-
-    @property
-    def folded_qtys_posterior(self):
-        return self._folded_qtys_posterior
+    def dependent_qtys_posterior(self):
+        return self._dependent_qtys_posterior
 
     @property
     def latent_qtys(self):
@@ -68,13 +74,9 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
     def merger_id(self, v):
         self._merger_id = v
 
-    def _make_latent_labellers(self):
-        self._labeller_latent = MapLabeller(
-            dict(zip(self._latent_qtys, self._latent_qtys_labs))
-        )
-        self._labeller_latent_posterior = MapLabeller(
-            dict(zip(self._latent_qtys_posterior, self._latent_qtys_posterior_labs))
-        )
+    # ----------------
+    # Abstract methods
+    # ----------------
 
     @abstractmethod
     def extract_data(self):
@@ -115,46 +117,39 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             N_obs=self.num_obs_collapsed,
             N_group=self.num_groups,
             group_id=self.obs_collapsed["label"],
-            r=self.obs_collapsed["r"],
-            density=self.obs_collapsed["density"],
+        )
+        self.stan_data.update(
+            {
+                self._independent_qtys[0]: self.obs_collapsed[
+                    self._independent_qtys[0]
+                ],
+                self._dependent_qtys[0]: self.obs_collapsed[self._dependent_qtys[0]],
+            }
         )
         if not self._loaded_from_file:
             self._set_stan_data_OOS(**kwargs)
 
-    def sample_model(self, sample_kwargs={}, diagnose=True):
+    # --------
+    # Sampling
+    # --------
+
+    def sample_model(self, sample_kwargs=None, diagnose=True):
         """
         Wrapper around StanModel.sample_model() to handle determining num_OOS
         from previous sample.
         """
+        if sample_kwargs is None:
+            sample_kwargs = {}
         super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
         if self._loaded_from_file:
-            self._determine_num_OOS(self._folded_qtys_posterior[0])
+            self._determine_num_OOS(self._prediction_vars[0])
             self._set_stan_data_OOS()
 
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        v = super().sample_generated_quantity(gq, force_resample, state)
-        if gq in self.folded_qtys or gq in self.folded_qtys_posterior:
-            idxs = self._get_GQ_indices(state)
-            return v[..., idxs]
-        else:
-            return v
+    # ----------------
+    # Plotting methods
+    # ----------------
 
-    def _prep_dims(self):
-        """
-        Rename dimensions for collapsing
-        """
-        if not self._dims_prepped:
-            self.rename_dimensions(
-                dict.fromkeys([f"{k}_dim_0" for k in self.latent_qtys], "group")
-            )
-            self.rename_dimensions(
-                dict.fromkeys(
-                    [f"{k}_dim_0" for k in self.latent_qtys_posterior], "groupOOS"
-                )
-            )
-            self._dims_prepped = True
-
-    def plot_latent_distributions(self, ax=None, figsize=None, from_hyper=False):
+    def plot_latent_distributions(self, save=True, from_hyper=False):
         """
         Plot distributions of the latent parameters of the model.
 
@@ -172,25 +167,45 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        if from_hyper:
-            lq = self.latent_qtys_posterior
-            lql = self._latent_qtys_posterior_labs
-            lqstr = "latent_qtys_posterior"
-        else:
-            lq = self.latent_qtys
-            lql = self.latent_qtys_labs
-            lqstr = "latent_qtys"
-        ncol = int(np.ceil(len(lq) / 2))
-        if ax is None:
-            fig, ax = plt.subplots(2, ncol, figsize=figsize)
-        try:
-            self.plot_generated_quantity_dist(
-                lq,
-                ax=ax,
-                xlabels=lql,
+        lq = self.latent_qtys_posterior if from_hyper else self.latent_qtys
+        pc = self.plot_generated_quantity_dist(lq)
+        ax = pc.get_viz("plot")
+        if save:
+            savefig(
+                self._make_fig_name(
+                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
+                ),
             )
-        except ValueError:  # TODO check this
-            _logger.warning(f"Cannot plot latent distributions for '{lqstr}'.")
+            self._gq_distribution_plot_counter += 1
+        return ax
+
+    def plot_posterior_predictive(self, save=True, **kwargs):
+        pc = super().plot_posterior_predictive(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            # TODO handling of multiple dependent quantities?
+            savefig(
+                self._make_fig_name(
+                    self.figname_base, f"pred_{self._dependent_qtys[0]}"
+                )
+            )
+        return ax
+
+    def plot_posterior_OOS(self, save=True, **kwargs):
+        print(self._inference_data)
+        pc = super().plot_posterior_OOS(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            # TODO handling of multiple dependent quantities?
+            savefig(
+                self._make_fig_name(
+                    self.figname_base, f"OOS_{self._dependent_qtys_OOS[0]}"
+                )
+            )
         return ax
 
     @abstractmethod
@@ -210,12 +225,12 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         if ylim is not None:
             ax1.set_ylim(*ylim)
         ax1.set_xlabel(self.independent_var_lab)
-        ax1.set_ylabel(self._folded_qtys_labs[0])
+        ax1.set_ylabel(self._posterior_predictive_vars_labs[0])
         ax1.set_xscale("log")
         ax1.set_yscale("log")
         self.plot_predictive(
             xmodel="r",
-            ymodel=f"{self._folded_qtys[0]}_prior",
+            ymodel=f"{self._posterior_predictive_vars[0]}_prior",
             xobs="r",
             yobs="density",
             ax=ax1,
@@ -253,49 +268,26 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             plotting axis
         """
         # posterior predictive check
-        fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
-        ax1.set_xlabel(r"$r$/kpc")
-        ax1.set_ylabel(self._folded_qtys_labs[0])
-        ax1.set_xscale("log")
-        ax1.set_yscale("log")
-        self.plot_predictive(
-            xmodel="r",
-            ymodel=f"{self._folded_qtys_posterior[0]}",
-            xobs="r",
-            yobs="density",
-            ax=ax1,
-        )
+        self.plot_posterior_predictive()
 
         # latent parameter distributions
-        self.plot_latent_distributions(figsize=figsize)
+        self.plot_latent_distributions()
 
-        ax = self.parameter_corner_plot(
+        # transformed latent parameter distributions
+        self.parameter_corner_plot(self.latent_qtys_posterior)
+        pc = self.parameter_corner_plot(
             self.latent_qtys_posterior,
             figsize=(len(self.latent_qtys_posterior), len(self.latent_qtys_posterior)),
             labeller=self._labeller_latent_posterior,
             combine_dims={"groupOOS"},
         )
-        fig = ax.flatten()[0].get_figure()
+        fig = pc.get_viz("figure")
         savefig(
             self._make_fig_name(
                 self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
             ),
             fig=fig,
         )
-        return ax
-
-    def all_posterior_OOS_plots(self, figsize=None, ax=None):
-        # out of sample posterior
-        if ax is None:
-            fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.set_xlabel(r"$r$/kpc")
-        ax.set_ylabel(self._folded_qtys_labs[0])
-        ax.set_xscale("log")
-        ax.set_yscale("log")
-        self.posterior_OOS_plot(
-            xmodel="r_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
-        )
-        return ax
 
     def add_guiding_profiles(self, ax, a, b, g, rS, N=5, offset=0.5, **kwargs):
         """
@@ -354,6 +346,10 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             ax=ax, a=1, b=3, g=1, rS=rS, N=N, offset=offset, **kwargs
         )
 
+    # -----------
+    # Data saving
+    # -----------
+
     def save_density_data_to_npz(self, dname, exist_ok=False):
         """
         Save OOS density profile to a numpy .npz file.
@@ -372,7 +368,9 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             _logger.exception(f"File {fname} already exists!", exc_info=True)
             raise
         r = self.stan_data["r_OOS"]
-        rho = self.sample_generated_quantity(self.folded_qtys_posterior[0], state="OOS")
+        rho = self.sample_generated_quantity(
+            self.dependent_qtys_posterior[0], state="OOS"
+        )
         pars = {}
         for p in self.latent_qtys_posterior:
             pars[p] = self.sample_generated_quantity(p)
@@ -436,7 +434,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         self.merger_id = f"{dname}_{snapnum}"
         _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
 
-    def extract_data(self, snapfile=None, extent=10, bin_count=2e5):
+    def extract_data(self, snapfile=None, extent=10, bin_count=2e5, family="stars"):
         """
         Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
 
@@ -455,9 +453,12 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             fname = d[0][0]
             extent = self._input_data_files["kwargs"]["extent"]
             bin_count = self._input_data_files["kwargs"]["bin_count"]
+            family = self._input_data_files["kwargs"]["family"]
         else:
             fname = snapfile
-            self._input_data_files["kwargs"] = dict(extent=extent, bin_count=bin_count)
+            self._input_data_files["kwargs"] = dict(
+                extent=extent, bin_count=bin_count, family=family
+            )
         mask = pygad.BallMask(extent)
         _logger.info(f"Loading file: {fname}")
         if self.merger_id is None:
@@ -465,16 +466,18 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         snap = pygad.Snapshot(fname, physical=True)
         basic_snapshot_centring(snap)
         _logger.debug("snapshot loaded and centred")
-        r_edges = equal_count_bins(snap.stars[mask]["r"], bin_count)
+        subsnap = getattr(snap, family)
+        r_edges = equal_count_bins(subsnap[mask]["r"], bin_count)
         obs["density"].append(
-            [pygad.analysis.profile_dens(snap.stars[mask], qty="mass", r_edges=r_edges)]
+            [pygad.analysis.profile_dens(subsnap[mask], qty="mass", r_edges=r_edges)]
         )
         obs["r"].append(get_histogram_bin_centres(r_edges))
-        obs["mass"].append([np.sum(snap.stars[mask]["mass"])])
+        obs["mass"].append([np.sum(subsnap[mask]["mass"])])
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
         self.obs = obs
-        self.collapse_observations(["r", "density"])
+        self.transform_obs("density", "log10_density", lambda x: np.log10(x))
+        self.collapse_observations(["r", "density", "log10_density"])
 
     def read_data_from_txt(self, fname, **kwargs):
         """
@@ -524,7 +527,9 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             number of level groups (i.e. profiles), by default None
         """
         rs = super()._set_stan_data_OOS(r_count=r_count, rmin=rmin, rmax=rmax)
-        self.stan_data.update(dict(N_OOS=self.num_OOS, r_OOS=rs))
+        self.stan_data.update(
+            {"N_OOS": self.num_OOS, self._independent_qtys_OOS[0]: rs}
+        )
 
     def set_stan_data(self, **kwargs):
         """See docs for _ABGDensityModelBase.set_stan_data()"""

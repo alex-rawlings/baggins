@@ -1,6 +1,5 @@
 import argparse
 import os.path
-import matplotlib.pyplot as plt
 import baggins as bgs
 
 
@@ -65,11 +64,12 @@ else:
         mNFW.all_posterior_pred_plots()
 
         # set up guiding Plummer lines
-        fig, ax = plt.subplots()
-        mNFW.add_data_to_predictive_plot(ax=ax, xobs="r", yobs="density")
+        ax = mNFW.plot_posterior_OOS(save=False)
         for g, ls in zip((0.5, 1, 1.5), ("-", ":", "--")):
-            mNFW.add_guiding_NFW(ax=ax, rS=0.2, N=3)
-        mNFW.all_posterior_OOS_plots(ax=ax)
+            mNFW.add_guiding_NFW(ax=ax, rS=0.2, g=g, N=3)
+        bgs.plotting.savefig(
+            mNFW._make_fig_name(mNFW.figname_base, f"OOS_{mNFW._dependent_qtys_OOS[0]}")
+        )
 mNFW.print_parameter_percentiles(mNFW.latent_qtys)
 
 if args.saveOOS is not None:
