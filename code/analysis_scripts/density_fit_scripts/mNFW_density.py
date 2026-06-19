@@ -68,6 +68,8 @@ else:
         for g, ls in zip((0.5, 1, 1.5, 2), ("-", ":", "--", "-.")):
             mNFW.add_guiding_NFW(ax=ax, rS=0.2, g=g, N=1, ls=ls, offset=0)
         bgs.plotting.savefig(next(mNFW.gen_postOOS_plot_name))
+
+        mNFW.plot_velocity_dispersion_profile()
 mNFW.print_parameter_percentiles(mNFW.latent_qtys)
 
 if args.saveOOS is not None:

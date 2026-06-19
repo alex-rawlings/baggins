@@ -1,8 +1,10 @@
 from abc import abstractmethod
 import os.path
 import numpy as np
+from scipy.integrate import cumulative_trapezoid
 import matplotlib.pyplot as plt
 import pygad
+import xarray as xr
 from arviz_base.labels import MapLabeller
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
@@ -33,12 +35,16 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             f"{v}_posterior" for v in self._dependent_qtys
         ]
         self._dependent_qtys_OOS = [f"{v}_OOS" for v in self._dependent_qtys]
+        self._dependent_qtys.append("vel_disp")
         self._latent_qtys = []
         self._latent_qtys_labs = []
         self._merger_id = None
         self._dims_prepped = False
         self.independent_qtys_labs = [r"$r/\mathrm{kpc}$"]
-        self.dependent_qtys_labs = [r"$\rho/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$"]
+        self.dependent_qtys_labs = [
+            r"$\rho/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$",
+            r"$\sigma_\mathrm{3D}/(\mathrm{km}\,\mathrm{s}^{-1})$",
+        ]
         self._make_xy_labellers()
 
     # ----------------------------------------------------------------------
@@ -292,7 +298,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         kwargs.setdefault("zorder", 0.2)
         kwargs.setdefault("label", f"({a:.1f},{b:.1f},{g:.1f})")
         use_log = kwargs.pop("log_scale", False)
-        dens_pivot = np.max(self.obs["log10_density"])
+        dens_pivot = np.max(self.obs["density"])
         _logger.debug(f"For guiding profile, pivot density is set to {dens_pivot:.3f}")
         log10dens = np.linspace(dens_pivot - offset, dens_pivot + offset, N)
         r = np.geomspace(
@@ -333,6 +339,80 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         self.add_guiding_profiles(
             ax=ax, a=1, b=3, g=1, rS=rS, N=N, offset=offset, **kwargs
         )
+
+    def plot_velocity_dispersion_profile(self, add_obs=True):
+        Gconst = 4.30091e-6  # kpc (km/s)^2 / Msun
+        # wrangle with data
+        r = self.stan_data[self._independent_qtys_OOS[0]]
+        rho = self.sample_generated_quantity(
+            self._dependent_qtys_OOS[0], as_xarray=True
+        )
+        rho = rho.rename_dims({f"{self._dependent_qtys_OOS[0]}_dim_0": "N_OOS"})
+        rho = rho.to_dataarray()[0]
+        for d in rho.dims:
+            rho = rho.dropna(d)
+        _logger.debug(f"rho: {rho.sizes}")
+
+        def _reverse_cumtrapz_last(y, x):
+            """
+            Integral from r to rmax along the last axis. Need to negate as x is now decreasing.
+            """
+            return -cumulative_trapezoid(
+                y[..., ::-1],
+                x[::-1],
+                axis=-1,
+                initial=0.0,
+            )[..., ::-1]
+
+        # Enclosed mass
+        radius_dim = "N_OOS"
+        dMdr = 4.0 * np.pi * rho * r**2
+
+        M = xr.apply_ufunc(
+            lambda y, x: cumulative_trapezoid(y, x, axis=-1, initial=0.0),
+            dMdr,
+            r,
+            input_core_dims=[[radius_dim], [radius_dim]],
+            output_core_dims=[[radius_dim]],
+            vectorize=False,
+            dask="parallelized",
+            output_dtypes=[rho.dtype],
+        )
+        assert np.all(M >= 0)
+
+        # Jeans integrand
+        integrand = rho * Gconst * M / r**2
+
+        J = xr.apply_ufunc(
+            _reverse_cumtrapz_last,
+            integrand,
+            r,
+            input_core_dims=[[radius_dim], [radius_dim]],
+            output_core_dims=[[radius_dim]],
+            vectorize=False,
+            dask="parallelized",
+            output_dtypes=[rho.dtype],
+        )
+        sigma_r2 = xr.where(rho > 0, J / rho, 0.0)
+        self._inference_data["predictions"]["sigma3d"] = np.sqrt(3 * sigma_r2)
+
+        # plot
+        pc = self._plot_predictive(
+            x=self._independent_qtys_OOS[0],
+            y="sigma3d",
+            group="predictions",
+            visuals={"observed_scatter": False},
+        )
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_xlabel(self.independent_qtys_labs[0])
+        ax.set_ylabel(self.dependent_qtys_labs[1])
+
+        if add_obs:
+            self.add_data_to_predictive_plot(
+                ax=ax, xobs=self._independent_qtys[0], yobs=self._dependent_qtys[1]
+            )
+        savefig(next(self.gen_postOOS_plot_name))
 
     # ----------------------------------------------------------------------
     # Data saving
@@ -435,7 +515,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         bin_count : int, float, optional
             number of stellar particles per bin, by default 2e5
         """
-        obs = {"r": [], "density": [], "mass": []}
+        obs = {"r": [], "density": [], "mass": [], "vel_disp": []}
         d = self._get_data_dir(snapfile)
         if self._loaded_from_file:
             fname = d[0][0]
@@ -459,13 +539,20 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         obs["density"].append(
             [pygad.analysis.profile_dens(subsnap[mask], qty="mass", r_edges=r_edges)]
         )
+        obs["vel_disp"].append(
+            pygad.analysis.radially_binned_statistic(
+                subsnap[mask],
+                "vel",
+                r_edges=r_edges,
+                statistic=lambda x: np.linalg.norm(np.nanstd(x, axis=0)),
+            )
+        )
         obs["r"].append(get_histogram_bin_centres(r_edges, subsnap[mask]["r"]))
         obs["mass"].append([np.sum(subsnap[mask]["mass"])])
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
         self.obs = obs
-        self.transform_obs("density", "log10_density", lambda x: np.log10(x))
-        self.collapse_observations(["r", "density", "log10_density"])
+        self.collapse_observations(["r", "density", "vel_disp"])
 
     def read_data_from_txt(self, fname, **kwargs):
         """

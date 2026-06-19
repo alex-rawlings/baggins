@@ -100,9 +100,9 @@ class _StanModel(ABC):
         self.independent_qtys_labs = None
         self.dependent_qtys_labs = None
 
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     # Properties
-    # --------------------------------------------------------------------------
+    # ----------------------------------------------------------------------
 
     @property
     def num_OOS(self):
@@ -797,7 +797,6 @@ class _StanModel(ABC):
         self._fit = self._sampler(
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
         )
-        # TODO capture arviz warnings about NaN
         try:
             coords = {
                 "N_obs": np.arange(self._num_obs),
@@ -818,7 +817,6 @@ class _StanModel(ABC):
             kwargs = {
                 "posterior": self._fit,
                 "log_likelihood": "log_lik",
-                "observed_data": {k: self.stan_data[k] for k in self._dependent_qtys},
                 # TODO remove OOS from below?
                 "constant_data": {
                     k: self.stan_data[k]
@@ -832,6 +830,14 @@ class _StanModel(ABC):
                 "dims": dims,
                 "coords": coords,
             }
+            observed_data = {}
+            for k in self._dependent_qtys:
+                try:
+                    observed_data[k] = self.stan_data[k]
+                except KeyError:
+                    _logger.debug(f"'{k}' is not in stan_data. Skipping")
+                    continue
+            kwargs.update({"observed_data": observed_data})
 
             self._inference_data = az.from_cmdstanpy(**kwargs)
             lprior = self._fit.draws_xr("lprior")
@@ -873,7 +879,7 @@ class _StanModel(ABC):
         )
         self._inference_data = az.from_cmdstanpy(prior=self._prior_fit)
 
-    def sample_generated_quantity(self, gq, force_resample=False):
+    def sample_generated_quantity(self, gq, force_resample=False, as_xarray=False):
         """
         Sample the 'generated quantities' block of a Stan model. If the model has had both the prior and posterior distributions sampled, the posterior sample will be used.
 
@@ -927,7 +933,10 @@ class _StanModel(ABC):
                 previous_fit=_fit,
                 gq_output_dir=TMPDIRs.register[-1],
             )
-        return self.generated_quantities.stan_variable(gq)
+        if as_xarray:
+            return self.generated_quantities.draws_xr(gq)
+        else:
+            return self.generated_quantities.stan_variable(gq)
 
     # ----------------------------------------------------------------------
     # Plots
@@ -1616,14 +1625,14 @@ class HierarchicalModel_2D(_StanModel):
         kwargs.setdefault("ci_prob", self._default_hdi_levels)
         kwargs.setdefault("stats", {"credible_interval": {"skipna": True}})
         kwargs.setdefault("smooth", False)
+        kwargs.setdefault("xlabeller", self._x_labeller)
+        kwargs.setdefault("ylabeller", self._y_labeller)
         cmapper, sm = self._make_default_hdi_colours(kwargs["ci_prob"])
         pc = az.plot_lm(
             self._inference_data,
             x=x,
             y=y,
             group=group,
-            xlabeller=self._x_labeller,
-            ylabeller=self._y_labeller,
             **kwargs,
         )
         return pc
@@ -1686,7 +1695,7 @@ class HierarchicalModel_2D(_StanModel):
         # overlay data
         obs = self.obs_collapsed if collapsed else self.obs
         if self._num_groups < 2:
-            plot_kwargs["cmap"] = "Set1"
+            plot_kwargs["cmap"] = "Set1_r"
 
         # helper function
         def helper_plotting_func():
@@ -1808,7 +1817,6 @@ class FactorModel_2D(_StanModel):
         else:
             ax = ax.flatten()
         ys = self.sample_generated_quantity(ymodel, state=state)
-        # idxs = self._get_GQ_indices(state, collapsed=collapsed)
         obs_to_factor = np.full(self.num_obs_collapsed, 0)
         for i in range(self.num_obs_collapsed):
             obs_to_factor[i] = (
