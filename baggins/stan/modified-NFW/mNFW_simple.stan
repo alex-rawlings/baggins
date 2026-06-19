@@ -6,11 +6,15 @@ functions {
 data {
     int<lower=1> N_obs;                  // number of data points
     vector[N_obs] r;                     // radii
-    vector[N_obs] log10_density;               // observed log10(density)
+    vector[N_obs] density;               // observed log10(density)
 
     // OOS inputs
     int<lower=0> N_OOS;                           // number of prediction points
     vector<lower=0, upper=max(r)>[N_OOS] r_OOS;   // radii at which to predict
+}
+
+transformed data {
+    vector[N_obs] log10_density = log10(density);
 }
 
 parameters {

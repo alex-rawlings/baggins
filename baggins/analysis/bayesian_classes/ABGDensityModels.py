@@ -28,7 +28,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         super().__init__(model_file, prior_file, figname_base, rng)
         self._independent_qtys = ["r"]
         self._independent_qtys_OOS = [f"{v}_OOS" for v in self._independent_qtys]
-        self._dependent_qtys = ["log10_density"]
+        self._dependent_qtys = ["density"]
         self._dependent_qtys_posterior = [
             f"{v}_posterior" for v in self._dependent_qtys
         ]
@@ -37,8 +37,8 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         self._latent_qtys_labs = []
         self._merger_id = None
         self._dims_prepped = False
-        self.independent_qtys_labs = ["r"]
-        self.dependent_qtys_labs = ["rho"]
+        self.independent_qtys_labs = [r"$r/\mathrm{kpc}$"]
+        self.dependent_qtys_labs = [r"$\rho/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$"]
         self._make_xy_labellers()
 
     # ----------------------------------------------------------------------
@@ -178,7 +178,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         pc = super().plot_posterior_predictive(**kwargs)
         ax = pc.get_viz("plot")
         ax.set_xscale("log")
-        # ax.set_yscale("log")
+        ax.set_yscale("log")
         if save:
             savefig(next(self.gen_postpred_plot_name))
         return ax
@@ -187,7 +187,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         pc = super().plot_posterior_OOS(**kwargs)
         ax = pc.get_viz("plot")
         ax.set_xscale("log")
-        # ax.set_yscale("log")
+        ax.set_yscale("log")
         if save:
             savefig(next(self.gen_postOOS_plot_name))
         return ax
@@ -291,7 +291,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         kwargs.setdefault("c", "gray")
         kwargs.setdefault("zorder", 0.2)
         kwargs.setdefault("label", f"({a:.1f},{b:.1f},{g:.1f})")
-        use_log = kwargs.pop("log_scale", True)
+        use_log = kwargs.pop("log_scale", False)
         dens_pivot = np.max(self.obs["log10_density"])
         _logger.debug(f"For guiding profile, pivot density is set to {dens_pivot:.3f}")
         log10dens = np.linspace(dens_pivot - offset, dens_pivot + offset, N)

@@ -620,15 +620,15 @@ class _StanModel(ABC):
             dict(
                 zip(
                     chain(self._independent_qtys, self._independent_qtys_OOS),
-                    (self.independent_qtys_labs, self.independent_qtys_labs),
+                    chain(self.independent_qtys_labs, self.independent_qtys_labs),
                 )
             )
         )
         self._y_labeller = az.labels.MapLabeller(
             dict(
                 zip(
-                    chain(self._dependent_qtys_posterior, self._dependent_qtys_OOS),
-                    (self.dependent_qtys_labs, self.dependent_qtys_labs),
+                    chain(self._independent_qtys, self._independent_qtys_OOS),
+                    chain(self.dependent_qtys_labs, self.dependent_qtys_labs),
                 )
             )
         )
@@ -1614,6 +1614,8 @@ class HierarchicalModel_2D(_StanModel):
 
     def _plot_predictive(self, x, y, group, **kwargs):
         kwargs.setdefault("ci_prob", self._default_hdi_levels)
+        kwargs.setdefault("stats", {"credible_interval": {"skipna": True}})
+        kwargs.setdefault("smooth", False)
         cmapper, sm = self._make_default_hdi_colours(kwargs["ci_prob"])
         pc = az.plot_lm(
             self._inference_data,
