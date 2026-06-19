@@ -13,6 +13,16 @@ def get_stan_file(f):
 
 class ModifiedNFWModelSimple(ABGDensityModelSimple):
     def __init__(self, figname_base, rng=None):
+        """
+        Model for non-hierarchical modified-NFW profile. It inherits as a special case of the more general Alpha-Beta-Gamma profile.
+
+        Parameters
+        ----------
+        figname_base : str
+            base string for figure names
+        rng : np.random.Generator, optional
+            random number generator, by default None
+        """
         super().__init__(figname_base, rng)
         # set different model files
         self._model_file = get_stan_file("mNFW_simple")
@@ -33,6 +43,20 @@ class ModifiedNFWModelSimple(ABGDensityModelSimple):
         _logger.debug(f"Latent quantities are {self.latent_qtys}")
 
     def extract_data(self, snapfile=None, extent=300, bin_count=2e5, family="dm"):
+        """
+        Extract data to perform inference on.
+
+        Parameters
+        ----------
+        snapfile : str, optional
+            name of snapshot, by default None
+        extent : float, optional
+            maximum radial extent to extract, by default 300
+        bin_count : int|float, optional
+            number of particles per radial bin, by default 2e5
+        family : str, optional
+            particle family to analyse, by default "dm"
+        """
         super().extract_data(snapfile, extent, bin_count, family)
         self.figname_base = os.path.join(
             super().figname_base, f"{self.merger_id}/{self.merger_id}-simple"
@@ -48,6 +72,14 @@ class ModifiedNFWModelSimple(ABGDensityModelSimple):
         )
 
     def add_guiding_Plummer(self, **kwargs):
+        """
+        Override method to prevent Plummer profiles from being added to the plot.
+
+        Raises
+        ------
+        RuntimeError
+            if called
+        """
         raise RuntimeError(
             "Guiding Plummer profile not available for 'ModifiedNFWModelSimple'"
         )

@@ -9,7 +9,7 @@ from baggins.env_config import _cmlogger
 
 __all__ = [
     "draw_sizebar",
-    "create_normed_colours",
+    "NormedColours",
     "create_offcentre_diverging",
     "mplColours",
     "mplLines",
@@ -89,73 +89,108 @@ def draw_sizebar(
     return asb
 
 
-def create_normed_colours(
-    vmin,
-    vmax,
-    cmap="cividis",
-    norm="Normalize",
-    norm_kwargs={},
-    trunc=(None, None),
-    bad=None,
-):
-    """
-    Convenience wrapper for creating colour normalisation and colourbar
-    requirements for pyplot.plot()
+class NormedColours:
+    def __init__(
+        self,
+        vmin,
+        vmax,
+        cmap="cividis",
+        norm="Normalize",
+        norm_kwargs=None,
+        trunc=(None, None),
+        bad=None,
+    ):
+        """
+        Create colour mapping, with normalisation. Main methods are 'get_colour' and 'sm', the latter which can be used to make colour bars.
 
-    Parameters
-    ----------
-    vmin : float
-        minimum value of colour variable
-    vmax : float
-        maximum value of colour variable
-    cmap : str, optional
-        pyplot colour map name, by default "cividis"
-    norm: str, optional
-        matplotlib.color attribute for normalisation
-    norm_kwargs: dict, optional
-        additional keyword arguments for normalisation initialisation
-    trunc: tuple, optional
-        values to truncate colour map to, by default (None, None)
+        Parameters
+        ----------
+        vmin : float
+            minimum value
+        vmax : float
+            maximum value
+        cmap : str, optional
+            colour map, by default "cividis"
+        norm : str, optional
+            normalisation, by default "Normalize"
+        norm_kwargs : dict, optional
+            kwargs to norm method, by default None
+        trunc : tuple, optional
+            truncation bounds, by default (None, None)
+        bad : str, optional
+            colour to plot out-of-bound values, by default None
+        """
+        self._vmin = vmin
+        self._vmax = vmax
+        self._cmap = cmap
+        self._norm = norm
+        if norm_kwargs is None:
+            self._norm_kwargs = {}
+        self._trunc = trunc
+        self._bad = bad
 
-    Returns
-    -------
-    mapcols : function
-        takes an argument in the range [vmin, vmax] and returns the scaled
-        colour
-    sm : matplotlib.cm.ScalarMappable
-        object that is required for creating a colour bar
-    """
-    try:
-        cmapv = plt.get_cmap(cmap)
-    except ValueError:
-        _logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
-        cmapv = plt.get_cmap("cividis")
-    if bad is not None:
-        cmapv.set_bad(color=bad)
-    try:
-        _norm = getattr(colors, norm)
-    except AttributeError:
-        _logger.warning(f"Normalisation {norm} is not valid. Using default (Linear).")
-        _norm = colors.Normalize()
-    if norm == "CenteredNorm":
-        _norm = _norm(**norm_kwargs)
-    else:
-        _norm = _norm(vmin=vmin, vmax=vmax, **norm_kwargs)
-    mapcols = lambda x: cmapv(_norm(x))
-    # we now have a colormap that maps (vmin, vmax) -> (0,1)
-    # adjust if we want to truncate it
-    if any([tt is not None for tt in trunc]):
-        tmin = vmin if trunc[0] is None else trunc[0]
-        tmax = vmax if trunc[1] is None else trunc[1]
-        col_arr = mapcols(np.linspace(tmin, tmax, 256))
-        cmapv = colors.LinearSegmentedColormap.from_list("trunc", col_arr)
-        mapcols = lambda x: cmapv(_norm(x))
-        _norm = _norm(vmin=tmin, vmax=tmax, **norm_kwargs)
-        _logger.debug(
-            f"Truncating colormap from ({vmin:.2f},{vmax:.2f}) --> ({tmin:.2f},{tmax:.2f})"
-        )
-    sm = plt.cm.ScalarMappable(norm=_norm, cmap=cmapv)
-    return mapcols, sm
+        try:
+            cmapv = plt.get_cmap(self._cmap)
+        except ValueError:
+            _logger.warning(
+                f"{self._cmap} does not exist. Using default colormap: cividis"
+            )
+            cmapv = plt.get_cmap("cividis")
+        if self._bad is not None:
+            cmapv.set_bad(color=self._bad)
+        try:
+            _norm = getattr(colors, self._norm)
+        except AttributeError:
+            _logger.warning(
+                f"Normalisation {norm} is not valid. Using default (Linear)."
+            )
+            _norm = colors.Normalize()
+        if norm == "CenteredNorm":
+            _norm = _norm(**norm_kwargs)
+        else:
+            _norm = _norm(vmin=self.vmin, vmax=self.vmax, **self._norm_kwargs)
+        self._cmapper = lambda x: cmapv(_norm(x))
+        # we now have a colormap that maps (vmin, vmax) -> (0,1)
+        # adjust if we want to truncate it
+        if any([tt is not None for tt in self._trunc]):
+            tmin = self.vmin if self.trunc[0] is None else self.trunc[0]
+            tmax = self.vmax if self.trunc[1] is None else self.trunc[1]
+            col_arr = self._cmapper(np.linspace(tmin, tmax, 256))
+            cmapv = colors.LinearSegmentedColormap.from_list("trunc", col_arr)
+            self._cmapper = lambda x: cmapv(_norm(x))
+            _norm = _norm(vmin=tmin, vmax=tmax, **self._norm_kwargs)
+            _logger.debug(
+                f"Truncating colormap from ({self.vmin:.2f},{self.vmax:.2f}) --> ({self.tmin:.2f},{self.tmax:.2f})"
+            )
+        self._sm = plt.cm.ScalarMappable(norm=_norm, cmap=cmapv)
+
+    @property
+    def vmin(self):
+        return self._vmin
+
+    @property
+    def vmax(self):
+        return self._vmax
+
+    @property
+    def sm(self):
+        return self._sm
+
+    def get_colour(self, c):
+        """
+        Get the colour for a given value.
+
+        Parameters
+        ----------
+        c : float
+            numeric value to map to a colour
+
+        Returns
+        -------
+        : tuple
+            colour code
+        """
+        return self._cmapper(c)
 
 
 def create_offcentre_diverging(vmin, vmax, vcentre=0, cmap="seismic"):

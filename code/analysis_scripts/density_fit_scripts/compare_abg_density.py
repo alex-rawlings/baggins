@@ -55,7 +55,7 @@ cmin = min(ts)
 SL.debug(f"Minimum colour corresponds to {cmin}")
 cmax = max(ts)
 SL.debug(f"Minimum colour corresponds to {cmax}")
-cmapper, sm = bgs.plotting.create_normed_colours(cmin, cmax, cmap="flare")
+col_map = bgs.plotting.NormedColours(cmin, cmax, cmap="flare")
 
 for t, run_id, dfile, sfile in data_generator():
     abg = bgs.analysis.ABGDensityModelSimple.load_fit(sfile, figname_base="abg_density")
@@ -69,7 +69,7 @@ for t, run_id, dfile, sfile in data_generator():
             state="OOS",
             xlabels=abg.latent_qtys_labs,
             ax=ax,
-            color=cmapper(t),
+            color=col_map.get_colour(t),
             save=False,
             plot_kwargs={"lw": 2},
         )
@@ -79,14 +79,14 @@ for t, run_id, dfile, sfile in data_generator():
             ymodel=abg.folded_qtys_posterior[0],
             ax=ax,
             hdi=50,
-            plot_kwargs={"c": cmapper(t)},
+            plot_kwargs={"c": col_map.get_colour(t)},
             label=f"{t:.1f} Gyr",
         )
     else:
         raise NotImplementedError
 
 if args.param == "all":
-    plt.colorbar(sm, location="top", ax=ax[0, :])
+    plt.colorbar(col_map.sm, location="top", ax=ax[0, :])
 elif args.param == "OOS":
     ax.set_xscale("log")
     ax.set_yscale("log")

@@ -125,7 +125,7 @@ class BHBinaryGP(_GPBase):
         if levels is None:
             levels = self._default_hdi_levels
         levels.sort(reverse=True)
-        cmapper, sm = self._make_default_hdi_colours(levels)
+        cmapper = self._make_default_hdi_colours(levels)
         for lev in levels:
             _logger.debug(f"Fitting level {lev}")
             plot_hdi(
@@ -133,9 +133,9 @@ class BHBinaryGP(_GPBase):
                 dadt_stellar,
                 hdi_prob=lev / 100,
                 ax=ax,
-                plot_kwargs={"c": cmapper(lev)},
+                plot_kwargs={"c": cmapper.get_colour(lev)},
                 fill_kwargs={
-                    "color": cmapper(lev),
+                    "color": cmapper.get_colour(lev),
                     "alpha": 0.8,
                     "label": f"{lev}% HDI",
                     "edgecolor": None,

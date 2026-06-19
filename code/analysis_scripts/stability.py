@@ -90,10 +90,10 @@ snap_gen = bgs.analysis.SnapshotIterator(args.path, stride=args.stride)
 t = np.full(snap_gen.len, np.nan)
 lang_radii = np.full((snap_gen.len, len(args.mass_fracs)), np.nan)
 
-cmapperR, smR = bgs.plotting.create_normed_colours(
+radius_cmap = bgs.plotting.NormedColours(
     min(args.mass_fracs), max(args.mass_fracs), cmap="crest_r"
 )
-cmappert, smt = bgs.plotting.create_normed_colours(0, snap_gen.len)
+time_cmap = bgs.plotting.NormedColours(0, snap_gen.len)
 
 for i, _t, snap in snap_gen.make_generator():
     if args.fam == "stars":
@@ -113,7 +113,7 @@ for i, _t, snap in snap_gen.make_generator():
     )
     beta, bincounts = bgs.analysis.velocity_anisotropy(snap, r_edges=r_edges)
     r_centres = bgs.mathematics.get_histogram_bin_centres(r_edges)
-    ax[1].semilogx(r_centres, beta, c=cmappert(i))
+    ax[1].semilogx(r_centres, beta, c=time_cmap.get_colour(i))
 
     # conserve memory
     snap.delete_blocks()
@@ -122,15 +122,15 @@ for i, _t, snap in snap_gen.make_generator():
 
 # plot lagrangian radii
 for i in range(lang_radii.shape[-1]):
-    ax[0].plot(t, lang_radii[..., i], c=cmapperR(args.mass_fracs[i]))
+    ax[0].plot(t, lang_radii[..., i], c=radius_cmap.get_colour(args.mass_fracs[i]))
     SL.debug(list(map(lambda x: f"{x:.2e}", lang_radii[..., i])))
 
 ax[0].set_yscale("log")
 # let's keep the beta axis sensible
 ax[1].set_ylim(-2, 1)
 
-plt.colorbar(smR, ax=ax[0], label="mass frac")
-plt.colorbar(smt, ax=ax[1], label="Snapshot")
+plt.colorbar(radius_cmap.sm, ax=ax[0], label="mass frac")
+plt.colorbar(time_cmap.sm, ax=ax[1], label="Snapshot")
 fig.suptitle(f"{args.fam}: {args.path}")
 
 os.makedirs(os.path.join(bgs.FIGDIR, "stability"), exist_ok=True)

@@ -93,12 +93,8 @@ class MultipleBHTrajectories:
             "solid_capstyle": "round",
         }
         self.kwargs2 = copy(self.kwargs1)
-        self.cmapper1, _ = bgs.plotting.create_normed_colours(
-            0, 1.1 * self.num_sims, cmap="flare"
-        )
-        self.cmapper2, _ = bgs.plotting.create_normed_colours(
-            0, 1.1 * self.num_sims, cmap="crest"
-        )
+        self.cmapper1 = bgs.plotting.NormedColours(0, 1.1 * self.num_sims, cmap="flare")
+        self.cmapper2 = bgs.plotting.NormedColours(0, 1.1 * self.num_sims, cmap="crest")
         self._sizebar_kw = dict(
             ax=self.ax, units="pc", color="w", fmt=".0f", location="lower left"
         )
@@ -109,8 +105,12 @@ class MultipleBHTrajectories:
         self.lineA = []
         self.lineB = []
         for pidx in range(self.num_sims):
-            lpA = self.ax.plot([], [], c=self.cmapper1(pidx), **self.kwargs1)[-1]
-            lpB = self.ax.plot([], [], c=self.cmapper2(pidx), **self.kwargs2)[-1]
+            lpA = self.ax.plot(
+                [], [], c=self.cmapper1.get_colour(pidx), **self.kwargs1
+            )[-1]
+            lpB = self.ax.plot(
+                [], [], c=self.cmapper2.get_colour(pidx), **self.kwargs2
+            )[-1]
             self.lineA.append(lpA)
             self.lineB.append(lpB)
 

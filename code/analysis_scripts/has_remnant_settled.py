@@ -187,14 +187,16 @@ ax_twin2 = bgs.plotting.twin_axes_from_samples(ax[1], results[:, 1], results[:, 
 ax[1].set_xlabel(r"$t/\mathrm{Gyr}$")
 ax[1].set_ylabel(r"$r/\mathrm{kpc}$")
 ax_twin2.set_xlabel("Snap number")
-cmap, sm = bgs.plotting.create_normed_colours(
+col_map = bgs.plotting.NormedColours(
     10 ** np.floor(np.log10(min(results[:, 5]))),
     10 ** np.ceil(np.log10(min(results[:, 5]))),
     norm="LogNorm",
 )
-ax[1].scatter(results[:, 1], results[:, 4], c=cmap(results[:, 5]), ec="k", lw=0.5)
+ax[1].scatter(
+    results[:, 1], results[:, 4], c=col_map.get_colour(results[:, 5]), ec="k", lw=0.5
+)
 cbar = plt.colorbar(
-    sm, ax=ax[1], label=r"$\rho_\star / \mathrm{M}_\odot/\mathrm{kpc}^{-3}$"
+    col_map.sm, ax=ax[1], label=r"$\rho_\star / \mathrm{M}_\odot/\mathrm{kpc}^{-3}$"
 )
 if max(results[:, 4]) > 5e-2:
     ax[1].set_yscale("log")

@@ -27,6 +27,20 @@ def get_stan_file(f):
 
 class _ABGDensityModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
+        """
+        Base class for the Alpha-Beta-Gamma density model.
+
+        Parameters
+        ----------
+        model_file : str
+            Stan model file
+        prior_file : str
+            Stan prior model file
+        figname_base : str
+            base string for figure names
+        rng : np.random.Generator, optional
+            random number generator, by default None
+        """
         super().__init__(model_file, prior_file, figname_base, rng)
         self._independent_qtys = ["r"]
         self._independent_qtys_OOS = [f"{v}_OOS" for v in self._independent_qtys]
@@ -97,6 +111,20 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         Each derived class will need its own implementation, however all will
         require knowledge of the minimum and maximum radius to model: let's
         do that here.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            number of OOS points, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+
+        Returns
+        -------
+        rs : np.array
+            OOS radius points
         """
         _rmin = np.max([r[0] for r in self.obs["r"]])
         _rmax = np.min([r[-1] for r in self.obs["r"]])
@@ -143,8 +171,6 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         Wrapper around StanModel.sample_model() to handle determining num_OOS
         from previous sample.
         """
-        if sample_kwargs is None:
-            sample_kwargs = {}
         super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
         if self._loaded_from_file:
             self._determine_num_OOS(self._prediction_vars[0])
@@ -160,12 +186,8 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
 
         Parameters
         ----------
-        ax : matplotlib.axes.Axes, optional
-            plotting axis, by default None
-        figsize : tuple, optional
-            figure size, by default None
-        from_hyper : bool, optional
-            plot latent parameters as sampled from hyperdistribution, by default False
+        save : bool, optional
+            save the figure, by default False
 
         Returns
         -------
@@ -181,6 +203,19 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         return ax
 
     def plot_posterior_predictive(self, save=True, **kwargs):
+        """
+        Plot posterior predictive regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
         pc = super().plot_posterior_predictive(**kwargs)
         ax = pc.get_viz("plot")
         ax.set_xscale("log")
@@ -190,6 +225,19 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         return ax
 
     def plot_posterior_OOS(self, save=True, **kwargs):
+        """
+        Plot posterior out-of-sample regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
         pc = super().plot_posterior_OOS(**kwargs)
         ax = pc.get_viz("plot")
         ax.set_xscale("log")
@@ -246,11 +294,6 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         ----------
         figsize : tuple, optional
             figure size, by default None
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            plotting axis
         """
         # posterior predictive check
         self.plot_posterior_predictive()
@@ -341,6 +384,14 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         )
 
     def plot_velocity_dispersion_profile(self, add_obs=True):
+        """
+        Calculate and plot the velocity dispersion as inferred from the posterior OOS density sample.
+
+        Parameters
+        ----------
+        add_obs : bool, optional
+            add observed values, by default True
+        """
         Gconst = 4.30091e-6  # kpc (km/s)^2 / Msun
         # wrangle with data
         r = self.stan_data[self._independent_qtys_OOS[0]]
@@ -514,6 +565,8 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             maximum radial extent to fit to [kpc], by default 10
         bin_count : int, float, optional
             number of stellar particles per bin, by default 2e5
+        family : str, optional
+            particle family to analyse, by default 'stars'
         """
         obs = {"r": [], "density": [], "mass": [], "vel_disp": []}
         d = self._get_data_dir(snapfile)
@@ -598,8 +651,6 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             minimum radius, by default None
         rmax : float, optional
             maximum radius, by default None
-        ngroups : int, optional
-            number of level groups (i.e. profiles), by default None
         """
         rs = super()._set_stan_data_OOS(r_count=r_count, rmin=rmin, rmax=rmax)
         self.stan_data.update(
@@ -636,17 +687,12 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         ----------
         figsize : tuple, optional
             figure size, by default None
-
-        Returns
-        -------
-        : matplotlib.axes.Axes
-            plotting axes for latent parameter corner plot
         """
         # latent parameter plots (corners, chains, etc)
         self.parameter_diagnostic_plots(
             self.latent_qtys, labeller=self._labeller_latent, figsize=(5, 5)
         )
-        return super().all_posterior_pred_plots(figsize)
+        super().all_posterior_pred_plots(figsize)
 
 
 class ABGDensityModelHierarchy(_ABGDensityModelBase):
@@ -831,11 +877,6 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         ----------
         figsize : tuple, optional
             figure size, by default None
-
-        Returns
-        -------
-        : matplotlib.axes.Axes
-            plotting axes for latent parameter corner plot
         """
         self._prep_dims()
         self.plot_latent_distributions(figsize=figsize, from_hyper=True)
@@ -843,18 +884,16 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         self.parameter_diagnostic_plots(
             self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )
-        return super().all_posterior_pred_plots(figsize)
+        super().all_posterior_pred_plots(figsize)
 
-    def all_posterior_OOS_plots(self, figsize=None, ax=None):
+    def all_posterior_OOS_plots(self, save=True, **kwargs):
         """
         Make posterior OOS plots for model.
 
         Parameters
         ----------
-        figsize : tuple, optional
-            figure size, by default None
-        ax : matplotlib.axes.Axes, optional
-            plotting axes, by default None
+        save : bool, optional
+            save the plot, by default True
 
         Returns
         -------
@@ -862,4 +901,4 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
             plotting axes
         """
         self._prep_dims()
-        return super().all_posterior_OOS_plots(figsize, ax)
+        return super().plot_posterior_OOS(save, **kwargs)

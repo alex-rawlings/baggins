@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from copy import deepcopy
+from copy import copy, deepcopy
 import os
 from operator import itemgetter
 from itertools import groupby, chain
@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import cmdstanpy
 import arviz as az
 import yaml
-from baggins.plotting import savefig, create_normed_colours, plot_hdi
+from baggins.plotting import savefig, NormedColours, plot_hdi
 from baggins.env_config import figure_dir, TMPDIRs, _cmlogger, fig_ext
 from baggins.utils import get_mod_time, get_files_in_dir
 
@@ -191,7 +191,7 @@ class _StanModel(ABC):
             assert isinstance(d, dict)
         except AssertionError:
             _logger.exception(
-                "Input to property `stan_data` must be a dict!", exc_info=True
+                "Input to property 'stan_data' must be a dict!", exc_info=True
             )
             raise
         self._stan_data.update(d)
@@ -226,6 +226,21 @@ class _StanModel(ABC):
     # ----------------------------------------------------------------------
 
     def make_figname_generator(self, s, N=20):
+        """
+        Generator to easily make sequential figure names.
+
+        Parameters
+        ----------
+        s : str
+            common string to all generator outputs
+        N : int, optional
+            maximum number of iterations, by default 20
+
+        Yields
+        ------
+        : str
+            figure name (with prepending path)
+        """
         i = 0
         while i < N:
             fit_type = self._active_group()
@@ -516,12 +531,12 @@ class _StanModel(ABC):
 
     def _add_input_data_file(self, f):
         """
-        Save the path to a HMQ file used in the sampling
+        Save the path to the input data file used in the sampling
 
         Parameters
         ----------
         f : path-like
-            path to HMQ file
+            path to data file
         """
         self._input_data_files.update(
             {
@@ -534,11 +549,24 @@ class _StanModel(ABC):
         self._input_data_file_count += 1
 
     def _get_timestamp_from_csv(self, csvfile):
+        """
+        Get the timestamp from a CSV file.
+
+        Parameters
+        ----------
+        csvfile : str
+            path to csv file
+
+        Returns
+        -------
+        : str
+            timestamp
+        """
         return os.path.basename(csvfile).split("-")[-1].split("_")[0]
 
     def _write_input_data_yml(self, csvfile):
         """
-        Save list of HMQ files used to .yml file
+        Save list of data files used to .yml file
 
         Parameters
         ----------
@@ -582,7 +610,8 @@ class _StanModel(ABC):
 
         Returns
         -------
-        str
+        : str
+            name of active group
         """
         if self._inference_data is None:
             raise RuntimeError(
@@ -616,6 +645,9 @@ class _StanModel(ABC):
             )
 
     def _make_xy_labellers(self):
+        """
+        Make the independent and dependent variable labellers, for use with az.plot_lm().
+        """
         self._x_labeller = az.labels.MapLabeller(
             dict(
                 zip(
@@ -634,6 +666,9 @@ class _StanModel(ABC):
         )
 
     def _make_latent_labellers(self):
+        """
+        Make the labeller for latent parameters
+        """
         self._labeller_latent = az.labels.MapLabeller(
             dict(zip(self._latent_qtys, self._latent_qtys_labs))
         )
@@ -664,6 +699,9 @@ class _StanModel(ABC):
     # ----------------------------------------------------------------------
 
     def _check_needed_variables_set(self):
+        """
+        Ensure that all needed variables that are defined in child classes are set.
+        """
         needed_vars = [
             self._latent_qtys,
             self._latent_qtys_labs,
@@ -695,7 +733,7 @@ class _StanModel(ABC):
         prior : bool, optional
             run sampler for prior model, by default False
         sample_kwargs : dict, optional
-            kwargs to be passed to CmdStanModel.sample(), by default {}
+            kwargs to be passed to CmdStanModel.sample(), by default None
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         pathfinder : bool, optional
@@ -785,7 +823,7 @@ class _StanModel(ABC):
         data : dict
             stan data values
         sample_kwargs : dict, optional
-             kwargs to be passed to CmdStanModel.sample(), by default {}
+             kwargs to be passed to CmdStanModel.sample(), by default None
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         pathfinder : bool, optional
@@ -890,13 +928,12 @@ class _StanModel(ABC):
         force_resample : bool, optional
             run the generate_quantities method() again even if already run, by
             default False
-        state : str, optional
-            return generated quantities for predictive checks or out-of-sample
-            quantities, by default "pred"
+        as_xarray : bool, optional
+            return the data as an xarray Dataset
 
         Returns
         -------
-        np.ndarray
+        np.ndarray or xarray.Dataset
             set of draws for the variable gq
         """
 
@@ -942,14 +979,9 @@ class _StanModel(ABC):
     # Plots
     # ----------------------------------------------------------------------
 
-    def _make_default_hdi_colours(self, levels):
+    def _make_default_hdi_colours(self):
         """
-        Create the default colour scheme for HDI regression plots. Basically a wrapper around create_normed_colours()
-
-        Parameters
-        ----------
-        levels : list
-            HDI levels
+        Create the default colour scheme for HDI regression plots. Basically a wrapper around NormedColours()
 
         Returns
         -------
@@ -959,9 +991,7 @@ class _StanModel(ABC):
         : matplotlib.cm.ScalarMappable
             object that is required for creating a colour bar
         """
-        return create_normed_colours(
-            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
-        )
+        return NormedColours(0.45, 1.1, cmap="PuRd_r")
 
     def _parameter_corner_plot(
         self,
@@ -970,7 +1000,6 @@ class _StanModel(ABC):
         labeller=None,
         levels=None,
         combine_dims=None,
-        backend_kwargs=None,
         divergences=True,
     ):
         """
@@ -989,21 +1018,17 @@ class _StanModel(ABC):
             HDI intervals to plot, by default None
         combine_dims : set-like, optional
             dimensions to reduce, by default None
-        backend_kwargs : dict, optional
-            keyword arguments to be passed to pyplot.subplots() as per arviz
-            docs, by default None
         divergences : bool, optional
             plot divergences, by default True
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
+        pc : arviz.PlotCollection
             corner plot
         """
         if levels is None:
-            levels = self._default_hdi_levels
-        levels.sort(reverse=True)
-        levels = [lev / 100 for lev in levels]
+            levels = copy(self._default_hdi_levels)
+        levels.sort()
         # show divergences on plots where no dimension combination has
         # occurred: combining dimensions changes the length of boolean mask
         # "diverging_mask" in arviz --> index mismatch error
@@ -1015,9 +1040,6 @@ class _StanModel(ABC):
             group = "posterior"
         num_vars = len(var_names)
         with az.rc_context({"plot.max_subplots": num_vars**2}):
-            # first lay down the markers
-            # ax = az.plot_pair(self._inference_data, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.1, "s":10}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
-            # then add the KDE
             pp_kwargs = dict(
                 dt=self._inference_data,
                 group=group,
@@ -1029,53 +1051,10 @@ class _StanModel(ABC):
                 visuals={
                     "divergence": divergences,
                     "scatter": True,
-                    # "dist":{"ci_prob":levels[0]}
                 },
                 aes_by_visuals={"dist": "contour"},
             )
             pc = az.plot_pair(**pp_kwargs)
-            """try:
-                ax = az.plot_pair(
-                    self._inference_data,
-                    group=group,
-                    var_names=var_names,
-                    kind="kde",
-                    divergences=divergences,
-                    combine_dims=combine_dims,
-                    figsize=figsize,
-                    marginals=True,
-                    kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0, "levels": 0},
-                        "hdi_probs": levels,
-                        "contourf_kwargs": {"cmap": "Blues"},
-                    },
-                    point_estimate_marker_kwargs={"marker": ""},
-                    labeller=labeller,
-                    textsize=rcParams["font.size"],
-                    backend_kwargs=backend_kwargs,
-                )
-            except ValueError:
-                _logger.error(
-                    "HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults"
-                )
-                ax = az.plot_pair(
-                    self._inference_data,
-                    group=group,
-                    var_names=var_names,
-                    kind="kde",
-                    divergences=divergences,
-                    combine_dims=combine_dims,
-                    figsize=figsize,
-                    marginals=True,
-                    kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0, "levels": 0},
-                        "contourf_kwargs": {"cmap": "Blues"},
-                    },
-                    point_estimate_marker_kwargs={"marker": ""},
-                    labeller=labeller,
-                    textsize=rcParams["font.size"],
-                    backend_kwargs=backend_kwargs,
-                )"""
         return pc
 
     def parameter_corner_plot(
@@ -1085,7 +1064,6 @@ class _StanModel(ABC):
         labeller=None,
         levels=None,
         combine_dims=None,
-        backend_kwargs=None,
     ):
         """
         See docs for _parameter_corner_plot()
@@ -1096,7 +1074,6 @@ class _StanModel(ABC):
             labeller=labeller,
             levels=levels,
             combine_dims=combine_dims,
-            backend_kwargs=backend_kwargs,
             divergences=False,
         )
         return pc
@@ -1105,7 +1082,7 @@ class _StanModel(ABC):
         self, var_names, figsize=None, labeller=None, levels=None
     ):
         """
-        Plot key pair plots and diagnostics of a stan likelihood model.
+        Plot key pair plots and diagnostics of a Stan likelihood model.
 
         Parameters
         ----------
@@ -1130,10 +1107,11 @@ class _StanModel(ABC):
 
         # set trace colour scheme
         if self._trace_plot_cols is None:
-            vmax = len(self._inference_data.posterior["chain"])
-            cmapper, sm = create_normed_colours(0, vmax, cmap="managua")
+            cmapper = NormedColours(
+                0, len(self._inference_data.posterior["chain"]), cmap="managua"
+            )
             self._trace_plot_cols = [
-                cmapper(x) for x in self._inference_data.posterior["chain"]
+                cmapper.get_colour(x) for x in self._inference_data.posterior["chain"]
             ]
         # limit to 4 variables per plot: figures will be saved with an
         # additional index in the name, e.g. 0-0.png
@@ -1192,10 +1170,9 @@ class _StanModel(ABC):
         """
         num_vars = len(var_names)
         if levels is None:
-            levels = self._default_hdi_levels
-        levels = [lev / 100 for lev in levels]
-        levels.sort(reverse=True)
-        cmapper, sm = create_normed_colours(
+            levels = copy(self._default_hdi_levels)
+        levels.sort()
+        cmapper = NormedColours(
             max(0, 0.9 * min(levels)), 1.3, cmap="Blues_r", trunc=(None, max(levels))
         )
         fig, ax = plt.subplots(num_vars, 1, sharex="all", figsize=figsize)
@@ -1220,7 +1197,9 @@ class _StanModel(ABC):
                 for k, (ll, uu) in enumerate(zip(lower, upper)):
                     r = patches.Rectangle((k - 0.5, ll), 1, uu - ll)
                     p.append(r)
-                ax[i].add_collection(collections.PatchCollection(p, fc=cmapper(level)))
+                ax[i].add_collection(
+                    collections.PatchCollection(p, fc=cmapper.get_colour(level))
+                )
             ax[i].autoscale_view()
             for j in range(len(lower) - 1):
                 ax[i].axvline(j + 0.5, c="k", alpha=0.4, lw=0.5)
@@ -1232,7 +1211,7 @@ class _StanModel(ABC):
             if i == num_vars - 1:
                 break
             axi.tick_params(axis="x", which="both", bottom=False)
-        plt.colorbar(sm, label="HDI", location="top", ax=ax[0])
+        plt.colorbar(cmapper.sm, label="HDI", location="top", ax=ax[0])
         savefig(
             next(self.gen_hiergroup_plot_name),
             fig=fig,
@@ -1240,6 +1219,23 @@ class _StanModel(ABC):
         plt.close(fig)
 
     def plot_generated_quantity_dist(self, var_names, **kwargs):
+        """
+        Plot the distribution of a generated quantity variable.
+
+        Parameters
+        ----------
+        var_names : list or str
+            variables to plot
+
+        Returns
+        -------
+        pc : arviz.PlotCollection
+            plotting collection
+        """
+        cmapper = self._make_default_hdi_colours()
+        visuals = kwargs.pop("visuals", {})
+        visuals.setdefault("dist", {"color": cmapper.get_colour(cmapper.vmin)})
+        kwargs["visuals"] = visuals
         pc = az.plot_dist(
             self._inference_data,
             var_names=var_names,
@@ -1469,13 +1465,13 @@ class HierarchicalModel_1D(_StanModel):
         else:
             colvals = np.unique(obs["label"])
             ncols = len(colvals)
-            cmapper, sm = create_normed_colours(
+            cmapper = NormedColours(
                 np.min(colvals),
                 np.max(colvals),
                 cmap=self._plot_obs_data_kwargs["cmap"],
             )
             for i, c in enumerate(colvals):
-                col = cmapper(c)
+                col = cmapper.get_colour(c)
                 mask = obs["label"] == c
                 ys = np.zeros(len(obs[xobs][mask]))
                 ax.scatter(
@@ -1622,23 +1618,51 @@ class HierarchicalModel_2D(_StanModel):
     # ----------------------------------------------------------------------
 
     def _plot_predictive(self, x, y, group, **kwargs):
+        """
+        Plot predictive-regression like data.
+
+        Parameters
+        ----------
+        x : str
+            x variable to plot. Must be in 'group'.
+        y : str
+            y variable to plot. Must be in 'group'.
+        group : str
+            DataTree inference group
+
+        Returns
+        -------
+        pc : arviz.PlotCollection
+            plotting collection
+        """
         kwargs.setdefault("ci_prob", self._default_hdi_levels)
+        kwargs["ci_prob"].sort()
         kwargs.setdefault("stats", {"credible_interval": {"skipna": True}})
         kwargs.setdefault("smooth", False)
         kwargs.setdefault("xlabeller", self._x_labeller)
         kwargs.setdefault("ylabeller", self._y_labeller)
-        cmapper, sm = self._make_default_hdi_colours(kwargs["ci_prob"])
+        cmapper = self._make_default_hdi_colours()
+        kwargs.setdefault("color", [cmapper.get_colour(c) for c in kwargs["ci_prob"]])
         pc = az.plot_lm(
             self._inference_data,
             x=x,
             y=y,
             group=group,
+            alpha=0.8,
             **kwargs,
         )
         return pc
 
     @abstractmethod
     def plot_posterior_predictive(self, **kwargs):
+        """
+        Base method for plotting the posterior predictive distribution.
+
+        Returns
+        -------
+        pc : arviz.PlotCollection
+            plotting collection
+        """
         pc = self._plot_predictive(
             x=self._independent_qtys,
             y=self._dependent_qtys_posterior,
@@ -1653,7 +1677,12 @@ class HierarchicalModel_2D(_StanModel):
     @abstractmethod
     def plot_posterior_OOS(self, **kwargs):
         """
-        Posterior out-of-sample plot, observed data is not added to plot.
+        Base method for plotting the posterior OOS distribution.
+
+        Returns
+        -------
+        pc : arviz.PlotCollection
+            plotting collection
         """
         visuals = kwargs.pop("visuals", {})
         visuals.setdefault("observed_scatter", False)
@@ -1701,13 +1730,13 @@ class HierarchicalModel_2D(_StanModel):
         def helper_plotting_func():
             colvals = np.unique(obs["label"])
             ncols = len(colvals)
-            cmapper, sm = create_normed_colours(
+            cmapper = NormedColours(
                 np.min(colvals),
                 np.max(colvals),
                 cmap=plot_kwargs.pop("cmap"),
             )
             for i, c in enumerate(colvals):
-                col = cmapper(c)
+                col = cmapper.get_colour(c)
                 mask = obs["label"] == c
                 label = "Sims." if i == ncols - 1 else ""
                 yield mask, col, label
@@ -1810,8 +1839,8 @@ class FactorModel_2D(_StanModel):
         show_legend=True,
     ):
         if levels is None:
-            levels = self._default_hdi_levels
-        levels.sort(reverse=True)
+            levels = copy(self._default_hdi_levels)
+        levels.sort()
         if ax is None:
             fig, ax = plt.subplots(self.num_groups, 1, sharex="all", sharey="all")
         else:
@@ -1826,7 +1855,7 @@ class FactorModel_2D(_StanModel):
             _logger.info(f"Creating HDI predictive for factor {i}")
             mask = obs_to_factor == i
             _ys = ys[:, mask]
-            cmapper, sm = create_normed_colours(
+            cmapper = NormedColours(
                 max(0, 0.9 * min(levels)),
                 1.2 * max(levels),
                 cmap="Blues_r",
@@ -1841,9 +1870,9 @@ class FactorModel_2D(_StanModel):
                     _ys,
                     hdi_prob=lev / 100,
                     ax=ax[i],
-                    plot_kwargs={"c": cmapper(lev)},
+                    plot_kwargs={"c": cmapper.get_colour(lev)},
                     fill_kwargs={
-                        "color": cmapper(lev),
+                        "color": cmapper.get_colour(lev),
                         "alpha": 0.8,
                         "label": label,
                         "edgecolor": None,
@@ -1863,13 +1892,13 @@ class FactorModel_2D(_StanModel):
             else:
                 colvals = np.unique(obs["label"])
                 ncols = len(colvals)
-                cmapper, sm = create_normed_colours(
+                cmapper = NormedColours(
                     np.min(colvals),
                     np.max(colvals),
                     cmap=self._plot_obs_data_kwargs["cmap"],
                 )
                 for i, c in enumerate(colvals):
-                    col = cmapper(c)
+                    col = cmapper.get_colour(c)
                     mask = obs["label"] == c
                     ax.errorbar(
                         obs[xobs][mask],
