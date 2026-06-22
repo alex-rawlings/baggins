@@ -2,7 +2,6 @@ from abc import abstractmethod
 import os.path
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
-import matplotlib.pyplot as plt
 import pygad
 import xarray as xr
 from arviz_base.labels import MapLabeller
@@ -48,6 +47,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         self._dependent_qtys_posterior = [
             f"{v}_posterior" for v in self._dependent_qtys
         ]
+        self._dependent_qtys_prior = [f"{v}_prior" for v in self._dependent_qtys]
         self._dependent_qtys_OOS = [f"{v}_OOS" for v in self._dependent_qtys]
         self._dependent_qtys.append("vel_disp")
         self._latent_qtys = []
@@ -224,6 +224,15 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             savefig(next(self.gen_postpred_plot_name))
         return ax
 
+    def plot_prior_predictive(self, save=True, **kwargs):
+        pc = super().plot_prior_predictive(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            savefig(next(self.gen_priorpred_plot_name))
+        return ax
+
     def plot_posterior_OOS(self, save=True, **kwargs):
         """
         Plot posterior out-of-sample regression model.
@@ -259,31 +268,18 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             figure y-limits, by default (-1, 15.1)
         """
         # prior predictive check
-        fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
-        if ylim is not None:
-            ax1.set_ylim(*ylim)
-        ax1.set_xlabel(self.independent_var_lab)
-        ax1.set_ylabel(self._posterior_predictive_vars_labs[0])
-        ax1.set_xscale("log")
-        ax1.set_yscale("log")
-        self.plot_predictive(
-            xmodel="r",
-            ymodel=f"{self._posterior_predictive_vars[0]}_prior",
-            xobs="r",
-            yobs="density",
-            ax=ax1,
-        )
+        self.plot_prior_predictive()
 
         # prior latent quantities
-        self.plot_latent_distributions(figsize=figsize)
-        ax2 = self.parameter_corner_plot(
+        self.plot_latent_distributions()
+        pc = self.parameter_corner_plot(
             self.latent_qtys,
             figsize=(len(self.latent_qtys), len(self.latent_qtys)),
             labeller=self._labeller_latent,
             combine_dims={"group"},
         )
-        fig2 = ax2[0, 0].get_figure()
-        savefig(next(self.gen_corner_plot_name), fig=fig2)
+        fig = pc.get_viz("figure")
+        savefig(next(self.gen_corner_plot_name), fig=fig)
 
     @abstractmethod
     def all_posterior_pred_plots(self, figsize=None):
@@ -672,11 +668,6 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         ylim : tuple, optional
             y-limits for prior predictive plot, by default None
         """
-        self.rename_dimensions(
-            dict.fromkeys(
-                [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
-            )
-        )
         return super().all_prior_plots(figsize, ylim)
 
     def all_posterior_pred_plots(self, figsize=None):

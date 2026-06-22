@@ -64,6 +64,7 @@ class _StanModel(ABC):
         self.gen_hiergroup_plot_name = self.make_figname_generator("HierGroup")
         self.gen_corner_plot_name = self.make_figname_generator("corner")
         self.gen_postpred_plot_name = self.make_figname_generator("post-pred")
+        self.gen_priorpred_plot_name = self.make_figname_generator("prior-pred")
         self.gen_postOOS_plot_name = self.make_figname_generator("post-OOS")
 
         self._trace_plot_cols = None
@@ -95,6 +96,7 @@ class _StanModel(ABC):
         self._independent_qtys = None
         self._independent_qtys_OOS = None
         self._dependent_qtys = None
+        self._dependent_qtys_prior = None
         self._dependent_qtys_posterior = None
         self._dependent_qtys_OOS = None
         self.independent_qtys_labs = None
@@ -710,6 +712,7 @@ class _StanModel(ABC):
             self._independent_qtys,
             self._independent_qtys_OOS,
             self._dependent_qtys,
+            self._dependent_qtys_prior,
             self._dependent_qtys_posterior,
             self._dependent_qtys_OOS,
             self.independent_qtys_labs,
@@ -915,7 +918,32 @@ class _StanModel(ABC):
         self._prior_fit = self._sampler(
             sample_kwargs=sample_kwargs, prior=True, diagnose=diagnose
         )
-        self._inference_data = az.from_cmdstanpy(prior=self._prior_fit)
+        coords = {
+            "N_obs": np.arange(self._num_obs),
+        }
+        dims = {}
+        # independent/dependent in-sample vars: N_obs dimension
+        for k in chain(self._independent_qtys, self._dependent_qtys):
+            dims[k] = ["N_obs"]
+        # prior predictive (in-sample replications): N_obs
+        for k in self._dependent_qtys_prior:
+            dims[k] = ["N_obs"]
+        kwargs = {
+            "prior": self._prior_fit,
+            "constant_data": {k: self.stan_data[k] for k in self._independent_qtys},
+            "prior_predictive": self._dependent_qtys_prior,
+            "dims": dims,
+            "coords": coords,
+        }
+        observed_data = {}
+        for k in self._dependent_qtys:
+            try:
+                observed_data[k] = self.stan_data[k]
+            except KeyError:
+                _logger.debug(f"'{k}' is not in stan_data. Skipping")
+                continue
+        kwargs.update({"observed_data": observed_data})
+        self._inference_data = az.from_cmdstanpy(**kwargs)
 
     def sample_generated_quantity(self, gq, force_resample=False, as_xarray=False):
         """
@@ -999,8 +1027,9 @@ class _StanModel(ABC):
         figsize=None,
         labeller=None,
         levels=None,
-        combine_dims=None,
         divergences=True,
+        combine_dims=None,
+        **kwargs,
     ):
         """
         Base method to create parameter corner plots. This method should not be
@@ -1032,13 +1061,17 @@ class _StanModel(ABC):
         # show divergences on plots where no dimension combination has
         # occurred: combining dimensions changes the length of boolean mask
         # "diverging_mask" in arviz --> index mismatch error
-        divergences = divergences if combine_dims is None else False
-        if "prior" in self._inference_data.groups:
-            group = "prior"
+        group = self._active_group()
+        if group == "prior":
             divergences = False
-        else:
-            group = "posterior"
+        # TODO how to handle combining dimensions?
         num_vars = len(var_names)
+        cmapper = self._make_default_hdi_colours()
+        visuals = kwargs.pop("visuals", {})
+        for k in ("dist", "scatter"):
+            visuals.setdefault(k, {"color": cmapper.get_colour(cmapper.vmin)})
+        visuals["divergence"] = divergences
+        kwargs["visuals"] = visuals
         with az.rc_context({"plot.max_subplots": num_vars**2}):
             pp_kwargs = dict(
                 dt=self._inference_data,
@@ -1048,13 +1081,9 @@ class _StanModel(ABC):
                 triangle="lower",
                 marginal=True,
                 marginal_kind="kde",
-                visuals={
-                    "divergence": divergences,
-                    "scatter": True,
-                },
                 aes_by_visuals={"dist": "contour"},
             )
-            pc = az.plot_pair(**pp_kwargs)
+            pc = az.plot_pair(**pp_kwargs, **kwargs)
         return pc
 
     def parameter_corner_plot(
@@ -1064,6 +1093,7 @@ class _StanModel(ABC):
         labeller=None,
         levels=None,
         combine_dims=None,
+        **kwargs,
     ):
         """
         See docs for _parameter_corner_plot()
@@ -1073,8 +1103,8 @@ class _StanModel(ABC):
             figsize=figsize,
             labeller=labeller,
             levels=levels,
-            combine_dims=combine_dims,
             divergences=False,
+            **kwargs,
         )
         return pc
 
@@ -1641,16 +1671,24 @@ class HierarchicalModel_2D(_StanModel):
         kwargs.setdefault("smooth", False)
         kwargs.setdefault("xlabeller", self._x_labeller)
         kwargs.setdefault("ylabeller", self._y_labeller)
+        kwargs.setdefault("point_estimate", "median")
         cmapper = self._make_default_hdi_colours()
         kwargs.setdefault("color", [cmapper.get_colour(c) for c in kwargs["ci_prob"]])
-        pc = az.plot_lm(
-            self._inference_data,
-            x=x,
-            y=y,
-            group=group,
-            alpha=0.8,
-            **kwargs,
-        )
+        try:
+            pc = az.plot_lm(
+                self._inference_data,
+                x=x,
+                y=y,
+                group=group,
+                alpha=0.8,
+                **kwargs,
+            )
+        except KeyError:
+            _logger.exception(
+                f"Arviz DataTree has groups: {self._inference_data.groups}",
+                exc_info=True,
+            )
+            raise
         return pc
 
     @abstractmethod
@@ -1671,8 +1709,15 @@ class HierarchicalModel_2D(_StanModel):
         )
         return pc
 
+    @abstractmethod
     def plot_prior_predictive(self, **kwargs):
-        raise NotImplementedError
+        pc = self._plot_predictive(
+            x=self._independent_qtys,
+            y=self._dependent_qtys_prior,
+            group="prior_predictive",
+            **kwargs,
+        )
+        return pc
 
     @abstractmethod
     def plot_posterior_OOS(self, **kwargs):
