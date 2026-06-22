@@ -6,7 +6,7 @@ functions {
 data {
     int<lower=1> N_obs;                  // number of data points
     vector[N_obs] r;                     // radii
-    vector[N_obs] density;               // observed log10(density)
+    vector[N_obs] density;               // observed density
 
     // OOS inputs
     int<lower=0> N_OOS;                           // number of prediction points

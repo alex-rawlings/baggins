@@ -5,26 +5,21 @@ functions {
 
 
 data {
-    int<lower=1> N_obs;
-    int<lower=1> N_group;
-    array[N_obs] int<lower=1, upper=N_group> group_id;
-    vector<lower=0>[N_obs] r;
-    array[N_obs] real<lower=0> density;
+    int<lower=1> N_obs;                  // number of data points
+    int<lower=1> N_group;                // number of hierarchical groups
+    array[N_obs] int<lower=1, upper=N_group> group_id;  // group id
+    vector<lower=0>[N_obs] r;            // radii
+    array[N_obs] real<lower=0> density;  // density
 
-    int<lower=1> N_OOS;
-    vector<lower=0>[N_OOS] r_OOS;
-    int<lower=1> N_group_OOS;
-    array[N_OOS] int<lower=1> group_id_OOS;      // group ids for generated quantities
+    int<lower=1> N_OOS;                  // number of prediction points
+    vector<lower=0>[N_OOS] r_OOS;        // prediction radii
+    int<lower=1> N_group_OOS;            // prediction groups
+    array[N_OOS] int<lower=1> group_id_OOS;  // prediction group ids
 }
 
 
 transformed data {
     array[N_obs] real log10_density = log10(density);
-    int N_GQ = N_obs + N_OOS;
-    int N_group_GQ = N_group + N_group_OOS;
-    vector<lower=0, upper=max(r)>[N_GQ] r_GQ = append_row(r, r_OOS);
-    array[N_GQ] int<lower=1> group_id_GQ = append_array(group_id, group_id_OOS);
-    
 }
 
 
@@ -98,9 +93,13 @@ generated quantities {
     corr_matrix[5] Omega = tcrossprod(L_corr);
 
     // --- declare posterior predictive and OOS sets ---
-    vector[N_GQ] log10_rho_posterior;   // posterior predictive draw (with noise)
-    vector[N_GQ] log10_rho_mean;
-    vector[N_GQ] rho_posterior;
+    vector[N_obs] log10_density_posterior;   // posterior predictive draw (with noise)
+    vector[N_obs] log10_rho_mean;
+    vector[N_obs] density_posterior;
+
+    vector[N_OOS] log10_rho_mean_OOS;
+    vector[N_OOS] log10_density_OOS;
+    vector[N_OOS] density_OOS;
 
     // posterior parameters
     vector[N_group_OOS] log10rhoS_posterior;
@@ -112,8 +111,9 @@ generated quantities {
     vector[N_group_OOS] a_posterior;
 
     // --- Posterior predictive for observed data ---
-    log10_rho_mean[1:N_obs] = abg_density_vec(r, log10rhoS[group_id], log10rS[group_id], log10a[group_id], b[group_id], g[group_id]);
-    log10_rho_posterior[1:N_obs] = to_vector(normal_rng(log10_rho_mean[1:N_obs], obs_sigma));
+    log10_rho_mean = abg_density_vec(r, log10rhoS[group_id], log10rS[group_id], log10a[group_id], b[group_id], g[group_id]);
+    log10_density_posterior = to_vector(normal_rng(log10_rho_mean[1:N_obs], obs_sigma));
+    density_posterior = pow(10., log10_density_posterior);
 
     // --- Population draws (hyper-level predictive) ---
     array[N_group_OOS] vector[5] theta_pop;
@@ -128,7 +128,7 @@ generated quantities {
     rS_posterior = pow(10., log10rS_posterior);
     a_posterior = pow(10., log10a_posterior);
 
-    log10_rho_mean[N_obs+1:N_GQ] = abg_density_vec(
+    log10_rho_mean_OOS = abg_density_vec(
         r_OOS,
         log10rhoS_posterior[group_id_OOS],
         log10rS_posterior[group_id_OOS],
@@ -136,8 +136,8 @@ generated quantities {
         b_posterior[group_id_OOS],
         g_posterior[group_id_OOS]
     );
-    log10_rho_posterior[N_obs+1:N_GQ] = to_vector(normal_rng(log10_rho_mean[N_obs+1:N_GQ], obs_sigma));
+    log10_density_OOS = to_vector(normal_rng(log10_rho_mean_OOS, obs_sigma));
 
-    rho_posterior = pow(10., log10_rho_posterior);
+    density_OOS = pow(10., log10_density_OOS);
 }
 

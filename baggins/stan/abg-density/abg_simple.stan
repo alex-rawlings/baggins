@@ -6,7 +6,7 @@ functions {
 data {
     int<lower=1> N_obs;                  // number of data points
     vector[N_obs] r;                     // radii
-    vector[N_obs] density;               // observed log10(density)
+    vector[N_obs] density;               // density
 
     // OOS inputs
     int<lower=0> N_OOS;                           // number of prediction points
@@ -15,18 +15,15 @@ data {
 
 transformed data {
     vector[N_obs] log10_density = log10(density);
-    real median_r = quantile(r, 0.5);
-    int N_GQ = N_obs + N_OOS;
-    vector<lower=0, upper=max(r)>[N_GQ] r_GQ = append_row(r, r_OOS);
 }
 
 parameters {
     real<lower=-5, upper=10> log10rhoS;       // log10 scale density
-    real<lower=-5, upper=2> log10rS;         // log10 scale radius
-    real log10a;      // inner slope transition sharpness
-    real b;      // outer slope
-    real<lower=0> g;
-    real<lower=0> err; // observation scatter
+    real<lower=-5, upper=2> log10rS;          // log10 scale radius
+    real log10a;                              // transition sharpness
+    real b;                                   // outer slope
+    real<lower=0> g;                          // inner slope
+    real<lower=0> err;                        // observation scatter
 }
 
 transformed parameters {
@@ -47,15 +44,30 @@ model {
 generated quantities {
     real rS = pow(10., log10rS);
     real a = pow(10, log10a);
-    vector[N_GQ] log10_rho_mean;   // mean model prediction
-    vector[N_GQ] log10_rho_posterior;   // posterior predictive draw (with noise)  
-    vector[N_GQ] rho_posterior;
 
-    // push forward data
-    log10_rho_mean = abg_density_vec(r_GQ, log10rhoS, log10rS, log10a, b, g);
-    for(i in 1:N_GQ){
-        log10_rho_posterior[i] = normal_rng(log10_rho_mean[i], err);
+    // In-sample posterior predictive
+    vector[N_obs] log10_rho_mean;
+    vector[N_obs] log10_density_posterior;
+    vector[N_obs] density_posterior;
+    vector[N_obs] log_lik;
+
+    // Out-of-sample predictions
+    vector[N_OOS] log10_rho_mean_OOS;
+    vector[N_OOS] log10_density_OOS;
+    vector[N_OOS] density_OOS;
+
+    // In-sample
+    log10_rho_mean = abg_density_vec(r, log10rhoS, log10rS, log10a, b, g);
+    for (i in 1:N_obs) {
+        log10_density_posterior[i] = normal_rng(log10_rho_mean[i], err);
+        log_lik[i] = normal_lpdf(log10_density[i] | log10_rho_mean[i], err);
     }
+    density_posterior = pow(10., log10_density_posterior);
 
-    rho_posterior = pow(10., log10_rho_posterior);
+    // OOS
+    log10_rho_mean_OOS = abg_density_vec(r_OOS, log10rhoS, log10rS, log10a, b, g);
+    for (i in 1:N_OOS) {
+        log10_density_OOS[i] = normal_rng(log10_rho_mean_OOS[i], err);
+    }
+    density_OOS = pow(10., log10_density_OOS);
 }
