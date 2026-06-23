@@ -126,6 +126,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         rs : np.array
             OOS radius points
         """
+        r_count = super()._set_stan_data_OOS(r_count)
         _rmin = np.max([r[0] for r in self.obs["r"]])
         _rmax = np.min([r[-1] for r in self.obs["r"]])
         if rmin is None:
@@ -134,7 +135,6 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             rmax = _rmax
         if r_count is None:
             r_count = max([len(rs) for rs in self.obs["r"]]) * 10
-        self._num_OOS = r_count
         _logger.debug(
             f"OOS will have radial values from {rmin:.2e} - {rmax:.2e} in {r_count} bins"
         )
@@ -146,21 +146,18 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         """
         Set the Stan data dictionary used for sampling.
         """
-        self.stan_data = dict(
-            N_obs=self.num_obs_collapsed,
-            N_group=self.num_groups,
-            group_id=self.obs_collapsed["label"],
-        )
+        self.stan_data = {}
         self.stan_data.update(
             {
+                "N_obs": self.num_obs_collapsed,
                 self._independent_qtys[0]: self.obs_collapsed[
                     self._independent_qtys[0]
                 ],
                 self._dependent_qtys[0]: self.obs_collapsed[self._dependent_qtys[0]],
             }
         )
-        if not self._loaded_from_file:
-            self._set_stan_data_OOS(**kwargs)
+        # if not self._loaded_from_file:
+        self._set_stan_data_OOS(**kwargs)
 
     # ----------------------------------------------------------------------
     # Sampling
@@ -168,13 +165,9 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
 
     def sample_model(self, sample_kwargs=None, diagnose=True):
         """
-        Wrapper around StanModel.sample_model() to handle determining num_OOS
-        from previous sample.
+        Wrapper around StanModel.sample_model().
         """
         super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
-        if self._loaded_from_file:
-            self._determine_num_OOS(self._prediction_vars[0])
-            self._set_stan_data_OOS()
 
     # ----------------------------------------------------------------------
     # Plotting methods
@@ -565,15 +558,15 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             particle family to analyse, by default 'stars'
         """
         obs = {"r": [], "density": [], "mass": [], "vel_disp": []}
-        d = self._get_data_dir(snapfile)
+        d = self._get_data_files(snapfile)
         if self._loaded_from_file:
-            fname = d[0][0]
-            extent = self._input_data_files["kwargs"]["extent"]
-            bin_count = self._input_data_files["kwargs"]["bin_count"]
-            family = self._input_data_files["kwargs"]["family"]
+            fname = d[0]
+            extent = self._input_data_files["data_opts"]["extent"]
+            bin_count = self._input_data_files["data_opts"]["bin_count"]
+            family = self._input_data_files["data_opts"]["family"]
         else:
             fname = snapfile
-            self._input_data_files["kwargs"] = dict(
+            self._input_data_files["data_opts"] = dict(
                 extent=extent, bin_count=bin_count, family=family
             )
         mask = pygad.BallMask(extent)
@@ -822,10 +815,13 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
             number of level groups (i.e. profiles), by default None
         """
         rs = super()._set_stan_data_OOS(r_count=r_count, rmin=rmin, rmax=rmax)
-        if ngroups is None:
-            ngroups = 2 * self.stan_data["N_group"]
-        # update num_OOS to account for different groups
-        self._num_OOS = self._num_OOS * ngroups
+        if self._loaded_from_file:
+            ngroups = int(self._determine_num_OOS() / r_count)
+        else:
+            if ngroups is None:
+                ngroups = 2 * self.stan_data["N_group"]
+            # update num_OOS to account for different groups
+            self._num_OOS = self._num_OOS * ngroups
         self.stan_data.update(
             dict(
                 N_OOS=self.num_OOS,
@@ -839,7 +835,10 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         """
         Set Stan data for the model.
         """
-        return super().set_stan_data(**kwargs)
+        super().set_stan_data(**kwargs)
+        self.stan_data.update(
+            {"N_group": self.num_groups, "group_id": self.obs_collapsed["label"]}
+        )
 
     def all_prior_plots(self, figsize=None, ylim=None):
         """

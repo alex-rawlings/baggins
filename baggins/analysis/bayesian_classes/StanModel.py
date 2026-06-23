@@ -210,11 +210,20 @@ class _StanModel(ABC):
         pass
 
     @abstractmethod
-    def _set_stan_data_OOS(self):
+    def _set_stan_data_OOS(self, N):
         """
-        Set the data for out-of-sample generated quantities.
+        Set the data for out-of-sample generated quantities. Note that the dependent quantity values can change, however the number cannot.
+
+        Parameters
+        ----------
+        N : int
+            Number of OOS points to use if not loaded from file
         """
-        pass
+        if self._loaded_from_file:
+            self._num_OOS = self._determine_num_OOS()
+            _logger.info(f"Previous fit means that N_OOS is set to {self.num_OOS}")
+        else:
+            self._num_OOS = N
 
     @abstractmethod
     def extract_data(self):
@@ -256,7 +265,7 @@ class _StanModel(ABC):
     # Data directory helper
     # ----------------------------------------------------------------------
 
-    def _get_data_dir(self, d):
+    def _get_data_files(self, p):
         """
         Get the observed data directories for a Stan model
 
@@ -270,17 +279,22 @@ class _StanModel(ABC):
         d : path-like, list
             observed data directories
         """
-        if d is None:
+        _files = []
+        if self._loaded_from_file:
+            for k, f in self._input_data_files.items():
+                if "file" in k:
+                    _files.append(f["path"])
+            return _files
+        else:
             try:
-                assert self._loaded_from_file
-                d = [[f["path"] for f in self._input_data_files.values()]]
+                assert p is not None
+                return p
             except AssertionError:
                 _logger.exception(
-                    "HMQ directory must be given if not loaded from file!",
+                    "Data directory must be given if not loaded from file!",
                     exc_info=True,
                 )
                 raise
-        return d
 
     # ----------------------------------------------------------------------
     # Input observation helpers
@@ -580,26 +594,12 @@ class _StanModel(ABC):
         with open(os.path.join(d, f"input_data-{tstamp}.yml"), "w") as f:
             yaml.dump(self._input_data_files, f)
 
-    def _determine_num_OOS(self, v):
+    def _determine_num_OOS(self):
         """
         Determine number of out-of-sample values given a previously saved run
-
-        Parameters
-        ----------
-        v : str
-            inferred posterior variable name
         """
-        q = self._inference_data["posterior"][v]
-        n = [q.sizes[k] for k in q.sizes.keys() if k not in ("chain", "draw")]
-        try:
-            assert len(n) == 1
-        except AssertionError:
-            _logger.exception(
-                f"Dataset can only have three dimensions: chain, draw, and other. Currently has size {len(n)+2}",
-                exc_info=True,
-            )
-            raise
-        self._num_OOS = n[0]
+        dims = self._fit.draws_xr(self._dependent_qtys_OOS[0]).dims
+        return dims[next(iter(dims.keys() - {"draw", "chain"}))]
 
     # ----------------------------------------------------------------------
     # Arviz - xarray helpers
@@ -839,6 +839,7 @@ class _StanModel(ABC):
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
         )
         try:
+            # TODO add self._num_groups and corresponding OOS as coords for hierarchical models?
             coords = {
                 "N_obs": np.arange(self._num_obs),
                 "N_OOS": np.arange(self._num_OOS),
@@ -1400,7 +1401,9 @@ class _StanModel(ABC):
             dir_name = os.path.dirname(fit_files[0])
         with open(os.path.join(dir_name, f"input_data-{tstamp}.yml"), "r") as f:
             C._input_data_files = yaml.safe_load(f)
-        for v in C._input_data_files.values():
+        for k, v in C._input_data_files.items():
+            if "file" not in k:
+                continue
             if os.path.getmtime(v["path"]) > v["created"]:
                 _logger.error(
                     f"HMQ file {v['path']} has been modified since the Stan model was run, proceed with caution!"
@@ -1584,8 +1587,8 @@ class HierarchicalModel_2D(_StanModel):
         return super().set_stan_data()
 
     @abstractmethod
-    def _set_stan_data_OOS(self):
-        return super()._set_stan_data_OOS()
+    def _set_stan_data_OOS(self, N):
+        return super()._set_stan_data_OOS(N)
 
     @abstractmethod
     def sample_model(self, **kwargs):
