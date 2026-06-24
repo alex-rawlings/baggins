@@ -6,9 +6,27 @@ import arviz as az
 from xarray import Dataset
 from baggins.env_config import _cmlogger
 
-__all__ = ["plot_hdi"]
+__all__ = ["plot_hdi", "get_all_axes_from_plot_collection"]
 
 _logger = _cmlogger.getChild(__name__)
+
+
+def get_all_axes_from_plot_collection(pc):
+    """
+    Get all axes from an arviz PlotCollection object as an array.
+
+    Parameters
+    ----------
+    pc : arivz_plots.PlotCollection
+        object to get axes from
+
+    Returns
+    -------
+    : np.ndarray
+        flattened array of plotting axes
+    """
+    plots = pc.viz["plot"].to_dataset()
+    return np.concatenate([np.ravel(da.values) for da in plots.data_vars.values()])
 
 
 def plot_hdi(

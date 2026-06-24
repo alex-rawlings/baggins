@@ -1,6 +1,5 @@
 import argparse
 import os.path
-import matplotlib.pyplot as plt
 import baggins as bgs
 
 
@@ -8,7 +7,7 @@ parser = argparse.ArgumentParser(
     description="fit ABG density profile with Stan",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
-parser.add_argument(help="data file", dest="files", type=str)
+parser.add_argument(help="data file", dest="files", type=str, nargs="*")
 parser.add_argument(
     "-m",
     "--model",
@@ -45,7 +44,7 @@ args = parser.parse_args()
 SL = bgs.setup_logger("script", console_level=args.verbose)
 
 if args.model == "s":
-    figname_base = "abg_density_simple"
+    figname_base = "abg_density/abg_density_simple"
     if args.loaded:
         abgdens = bgs.analysis.ABGDensityModelSimple.load_fit(
             args.files, figname_base=figname_base
@@ -53,7 +52,7 @@ if args.model == "s":
     else:
         abgdens = bgs.analysis.ABGDensityModelSimple(figname_base=figname_base)
 else:
-    figname_base = "abg_density_hierarchy"
+    figname_base = "abg_density/abg_density_hierarchy"
     if args.loaded:
         abgdens = bgs.analysis.ABGDensityModelHierarchy.load_fit(
             args.files, figname_base=figname_base
@@ -81,13 +80,12 @@ else:
         abgdens.all_posterior_pred_plots()
 
         # set up guiding Plummer lines
-        fig, ax = plt.subplots()
-        abgdens.add_data_to_predictive_plot(ax=ax, xobs="r", yobs="density")
+        ax = abgdens.all_posterior_OOS_plots(save=False)
         abgdens.add_guiding_Plummer(ax=ax, rS=0.2)
         bgs.plotting.add_log_guiding_gradients(
             ax=ax, x0=0.085, x1=0.2, y1=1e3, b=[-2, -1, 0, 1, 2], offset=-0.01
         )
-        abgdens.all_posterior_OOS_plots(ax=ax)
+        bgs.plotting.savefig(next(abgdens.gen_postOOS_plot_name))
 abgdens.print_parameter_percentiles(abgdens.latent_qtys)
 if args.model == "h":
     abgdens.print_parameter_percentiles(["g_mean", "g_std"])

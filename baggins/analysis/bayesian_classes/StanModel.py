@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib import collections, patches, ticker
 from datetime import datetime, timezone
 import cmdstanpy
+import xarray as xr
 import arviz as az
 import yaml
 from baggins.plotting import savefig, NormedColours, plot_hdi
@@ -44,19 +45,24 @@ class _StanModel(ABC):
         self._model_file = model_file
         self._prior_file = prior_file
         self.figname_base = figname_base
-        self._num_OOS = None
         if rng is None:
             self._rng = np.random.default_rng()
         else:
             self._rng = rng
-        self._num_obs = None
-        self._stan_data = {}
+        self.stan_data = None
         self._model = None
         self._fit = None
         self._inference_data = None
         self._prior_model = None
         self._prior_fit = None
         self._exec_file = None
+
+        # number of observations, hierarchical groups, etc
+        # note these may be set in a child class
+        self._num_obs = None
+        self._num_OOS = None
+        self._num_groups = None
+        self._num_groups_OOS = None
 
         # helper generators to name figures
         self.gen_diag_plot_name = self.make_figname_generator("diagnosis")
@@ -76,8 +82,8 @@ class _StanModel(ABC):
             "cmap": "PuRd",
             "zorder": 2,
         }
-        self._default_hdi_levels = [0.5, 0.8, 0.95]
-        self._num_groups = 0
+        self._default_hdi_levels = [0.25, 0.5, 0.8]
+
         self._loaded_from_file = False
         self._generated_quantities = None
         self._obs_collapsed = {}
@@ -85,14 +91,19 @@ class _StanModel(ABC):
         self._input_data_file_count = 0
         self._input_data_files = {}
 
+        # ArviZ labellers
         self._x_labeller = None
         self._y_labeller = None
+        self._labeller_latent = None
+        self._labeller_latent_posterior = None
+        self._labeller_latent_OOS = None
 
         # properties which are defined in child classes
         self._latent_qtys = None
         self._latent_qtys_labs = None
         self._latent_qtys_posterior = None
         self._latent_qtys_posterior_labs = None
+        self._latent_qtys_OOS = None
         self._independent_qtys = None
         self._independent_qtys_OOS = None
         self._dependent_qtys = None
@@ -190,13 +201,19 @@ class _StanModel(ABC):
     @stan_data.setter
     def stan_data(self, d):
         try:
-            assert isinstance(d, dict)
+            if isinstance(d, dict):
+                self._stan_data.update(d)
+            elif d is None:
+                self._stan_data = {}
+            else:
+                raise AssertionError
         except AssertionError:
             _logger.exception(
                 "Input to property 'stan_data' must be a dict!", exc_info=True
             )
             raise
-        self._stan_data.update(d)
+        if isinstance(d, dict):
+            self._stan_data.update(d)
 
     # ----------------------------------------------------------------------
     # Abstract interface
@@ -218,12 +235,17 @@ class _StanModel(ABC):
         ----------
         N : int
             Number of OOS points to use if not loaded from file
+
+        Returns
+        -------
+        : number of OOS points
         """
         if self._loaded_from_file:
             self._num_OOS = self._determine_num_OOS()
             _logger.info(f"Previous fit means that N_OOS is set to {self.num_OOS}")
         else:
             self._num_OOS = N
+        return self._num_OOS
 
     @abstractmethod
     def extract_data(self):
@@ -677,6 +699,10 @@ class _StanModel(ABC):
         self._labeller_latent_posterior = az.labels.MapLabeller(
             dict(zip(self._latent_qtys_posterior, self._latent_qtys_posterior_labs))
         )
+        if self._latent_qtys_OOS is not None:
+            self._labeller_latent_OOS = az.labels.MapLabeller(
+                dict(zip(self._latent_qtys_OOS, self._latent_qtys_posterior_labs))
+            )
 
     def calculate_mode(self, v):
         """
@@ -843,6 +869,8 @@ class _StanModel(ABC):
             coords = {
                 "N_obs": np.arange(self._num_obs),
                 "N_OOS": np.arange(self._num_OOS),
+                "N_groups": np.arange(self.num_groups),
+                "N_groups_OOS": np.arange(self._num_groups_OOS),
             }
             dims = {}
             # independent/dependent in-sample vars: N_obs dimension
@@ -856,6 +884,16 @@ class _StanModel(ABC):
                 dims[k] = ["N_OOS"]
             # log_lik is indexed over observations
             dims["log_lik"] = ["N_obs"]
+            # latent parameters
+            for k in chain(self._latent_qtys, self._latent_qtys_posterior):
+                if len(self._fit.draws_xr(k).dims) > 2:
+                    dims[k] = ["N_groups"]
+            for k in self._latent_qtys_OOS:
+                try:
+                    if len(self._fit.draws_xr(k).dims) > 2:
+                        dims[k] = ["N_groups_OOS"]
+                except KeyError:
+                    continue
             kwargs = {
                 "posterior": self._fit,
                 "log_likelihood": "log_lik",
@@ -882,24 +920,12 @@ class _StanModel(ABC):
             kwargs.update({"observed_data": observed_data})
 
             self._inference_data = az.from_cmdstanpy(**kwargs)
-            lprior = self._fit.draws_xr("lprior")
-            for d in lprior.dims:
-                lprior = lprior.dropna(dim=d)
-            self._inference_data["log_prior"] = lprior
         except ValueError as e:
             _logger.error(e)
             kwargs.pop("log_likelihood", None)
             self._inference_data = az.from_cmdstanpy(**kwargs)
         if diagnose:
-            # prior sensitivity only done for posterior model
-            # TODO consider using psense_summary()?
-            priorsens = az.psense_summary(
-                self._inference_data,
-                var_names=self._latent_qtys,
-                prior_var_names="lprior",
-                likelihood_var_names="log_lik",
-            )
-            _logger.info(f"CJS distance for latent variables:\n {priorsens}")
+            self.diagnose_sample()
 
     def sample_prior(self, sample_kwargs=None, diagnose=True):
         """
@@ -945,6 +971,49 @@ class _StanModel(ABC):
                 continue
         kwargs.update({"observed_data": observed_data})
         self._inference_data = az.from_cmdstanpy(**kwargs)
+
+    @abstractmethod
+    def diagnose_sample(self, var_names):
+        """
+        Diagnose a MCMC sample with prior-sense to determine sensitivity of fit.
+
+        Parameters
+        ----------
+        var_names : list
+            variable names to assess sensitivity for
+        """
+        lprior = self._fit.draws_xr("lprior")
+        for d in lprior.dims:
+            lprior = lprior.dropna(dim=d)
+
+        # Build a flat Dataset with one named variable per parameter
+        log_prior_vars = {}
+        for x in lprior.coords["lprior_dim_0"].values:
+            da = (
+                lprior["lprior"]  # extract the DataArray from the Dataset
+                .sel(lprior_dim_0=x)
+                .drop_vars("lprior_dim_0", errors="ignore")
+            )
+            # Fix chain indexing: re-index from 1-based to 0-based
+            da = da.assign_coords(chain=da.coords["chain"] - 1)
+            log_prior_vars[var_names[x]] = da
+
+        log_prior_ds = xr.Dataset(log_prior_vars)
+
+        # Replace any previously attached log_prior group
+        if "log_prior" in self._inference_data.groups:
+            del self._inference_data.log_prior
+        self._inference_data["log_prior"] = xr.DataTree(log_prior_ds)
+
+        try:
+            priorsens = az.psense_summary(
+                self._inference_data,
+                var_names=var_names,
+                likelihood_var_names="log_lik",
+            )
+            _logger.info(f"CJS distance for latent variables:\n {priorsens}")
+        except TypeError as e:
+            _logger.error(f"{e} --  no diagnosis will be performed.")
 
     def sample_generated_quantity(self, gq, force_resample=False, as_xarray=False):
         """
@@ -1020,7 +1089,7 @@ class _StanModel(ABC):
         : matplotlib.cm.ScalarMappable
             object that is required for creating a colour bar
         """
-        return NormedColours(0.45, 1.1, cmap="PuRd_r")
+        return NormedColours(0.2, 1.1, cmap="PuRd_r")
 
     def _parameter_corner_plot(
         self,
@@ -1065,7 +1134,11 @@ class _StanModel(ABC):
         group = self._active_group()
         if group == "prior":
             divergences = False
-        # TODO how to handle combining dimensions?
+        if combine_dims is not None:
+            sample_dims = ["chain", "draw"]
+            sample_dims.extend(combine_dims)
+        else:
+            sample_dims = None
         num_vars = len(var_names)
         cmapper = self._make_default_hdi_colours()
         visuals = kwargs.pop("visuals", {})
@@ -1083,6 +1156,7 @@ class _StanModel(ABC):
                 marginal=True,
                 marginal_kind="kde",
                 aes_by_visuals={"dist": "contour"},
+                sample_dims=sample_dims,
             )
             pc = az.plot_pair(**pp_kwargs, **kwargs)
         return pc
@@ -1105,6 +1179,7 @@ class _StanModel(ABC):
             labeller=labeller,
             levels=levels,
             divergences=False,
+            combine_dims=combine_dims,
             **kwargs,
         )
         return pc
@@ -1593,6 +1668,10 @@ class HierarchicalModel_2D(_StanModel):
     @abstractmethod
     def sample_model(self, **kwargs):
         return super().sample_model(**kwargs)
+
+    @abstractmethod
+    def diagnose_sample(self, var_names):
+        return super().diagnose_sample(var_names)
 
     # ----------------------------------------------------------------------
     # Arviz helpers

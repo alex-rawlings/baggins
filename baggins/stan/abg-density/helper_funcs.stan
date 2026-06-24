@@ -6,9 +6,23 @@ vector abg_density_vec(
     real b,
     real g
 ){
-    vector[size(r)] x = r ./ pow(10, log10rS);
     real a = pow(10, log10a);
-    return log10rhoS - g * log10(x) + (g - b) / a * log10(1 + pow(x, a));
+    // work in log10(x) throughout to avoid pow(x, a) overflow
+    vector[size(r)] log10x = log10(fmax(r / pow(10, log10rS), 1e-20));
+
+    // log10(1 + x^a): stable via log1p in natural log
+    // When a*log(x) > 20, log(1+x^a) ~= a*log(x) (asymptote, avoids exp overflow)
+    // When a*log(x) < -20, log(1+x^a) ~= x^a      (avoids catastrophic cancellation)
+    vector[size(r)] log10_1pxa;
+    for (i in 1:size(r)) {
+        real exponent = a * log10x[i] * log(10);   // = a * ln(x)
+        if (exponent > 20)
+            log10_1pxa[i] = a * log10x[i];          // asymptote: log10(x^a)
+        else
+            log10_1pxa[i] = log1p(exp(exponent)) / log(10);
+    }
+
+    return log10rhoS - g * log10x + (g - b) / a * log10_1pxa;
 }
 
 
@@ -20,18 +34,20 @@ vector abg_density_vec(
     vector b,
     vector g
 ){
-    vector[size(r)] x = r ./ pow(10, log10rS);
     vector[size(log10a)] a = pow(10, log10a);
-    return log10rhoS - g .* log10(x) + (g - b) ./ a .* log10(1 + pow(x, a));
-}
+    // same stabilisation for the vectorised overload
+    vector[size(r)] log10x = log10(fmax(r ./ pow(10, log10rS), 1e-20));
 
+    vector[size(r)] log10_1pxa;
+    for (i in 1:size(r)) {
+        real exponent = a[i] * log10x[i] * log(10);
+        if (exponent > 20)
+            log10_1pxa[i] = a[i] * log10x[i];
+        else
+            log10_1pxa[i] = log1p(exp(exponent)) / log(10);
+    }
 
-vector radially_vary_err(vector r, real e0, real ek, real rp){
-    // radially vary error
-    // e0: error at pivot radius
-    // ek: error gradient, ek>0 -> grows with r, ek<0 -> shrinks with r
-    // rp: pivot radius
-    return e0 * pow(r / rp, ek);
+    return log10rhoS - g .* log10x + (g - b) ./ a .* log10_1pxa;
 }
 
 
