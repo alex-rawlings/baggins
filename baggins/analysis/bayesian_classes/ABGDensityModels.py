@@ -43,23 +43,22 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         super().__init__(model_file, prior_file, figname_base, rng)
         self._independent_qtys = ["r"]
         self._independent_qtys_OOS = [f"{v}_OOS" for v in self._independent_qtys]
+        self.independent_qtys_labs = [r"$r/\mathrm{kpc}$"]
         self._dependent_qtys = ["density"]
         self._dependent_qtys_posterior = [
             f"{v}_posterior" for v in self._dependent_qtys
         ]
         self._dependent_qtys_prior = [f"{v}_prior" for v in self._dependent_qtys]
         self._dependent_qtys_OOS = [f"{v}_OOS" for v in self._dependent_qtys]
+        self.dependent_qtys_labs = [r"$\rho/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$"]
+        self._make_xy_labellers()
         self._dependent_qtys.append("vel_disp")
+        self.dependent_qtys_labs.append(
+            r"$\sigma_\mathrm{3D}/(\mathrm{km}\,\mathrm{s}^{-1})$"
+        )
         self._latent_qtys = []
         self._latent_qtys_labs = []
         self._merger_id = None
-        self._dims_prepped = False
-        self.independent_qtys_labs = [r"$r/\mathrm{kpc}$"]
-        self.dependent_qtys_labs = [
-            r"$\rho/(\mathrm{M}_\odot\,\mathrm{kpc}^{-3})$",
-            r"$\sigma_\mathrm{3D}/(\mathrm{km}\,\mathrm{s}^{-1})$",
-        ]
-        self._make_xy_labellers()
 
     # ----------------------------------------------------------------------
     # Properties
@@ -129,7 +128,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         rcount : number of OOS bins (if a new sample, else will be updated in child methods)
         """
         if r_count is None:
-            r_count = max([len(rs) for rs in self.obs["r"]]) * 10
+            r_count = max(max([len(rs) for rs in self.obs["r"]]) * 10, 500)
         _rmin = np.max([r[0] for r in self.obs["r"]])
         _rmax = np.min([r[-1] for r in self.obs["r"]])
         if rmin is None:
@@ -197,7 +196,6 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             sample_dims=["chain", "draw", "N_groups"],
         )
         ax = get_all_axes_from_plot_collection(pc)
-        print(type(ax))
         fig = ax[0].get_figure()
         fig.suptitle("Latent parameters (in-sample)")
         if save:
@@ -344,7 +342,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         kwargs.setdefault("zorder", 0.2)
         kwargs.setdefault("label", f"({a:.1f},{b:.1f},{g:.1f})")
         use_log = kwargs.pop("log_scale", False)
-        dens_pivot = np.max(self.obs["density"])
+        dens_pivot = np.max(self.obs_collapsed["density"])
         _logger.debug(f"For guiding profile, pivot density is set to {dens_pivot:.3f}")
         log10dens = np.linspace(dens_pivot - offset, dens_pivot + offset, N)
         r = np.geomspace(
@@ -575,12 +573,12 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         d = self._get_data_files(snapfile)
         if self._loaded_from_file:
             fname = d[0]
-            extent = self._input_data_files["data_opts"]["extent"]
-            bin_count = self._input_data_files["data_opts"]["bin_count"]
-            family = self._input_data_files["data_opts"]["family"]
+            extent = self._input_data_and_pars["data_opts"]["extent"]
+            bin_count = self._input_data_and_pars["data_opts"]["bin_count"]
+            family = self._input_data_and_pars["data_opts"]["family"]
         else:
             fname = snapfile
-            self._input_data_files["data_opts"] = dict(
+            self._input_data_and_pars["data_opts"] = dict(
                 extent=extent, bin_count=bin_count, family=family
             )
         mask = pygad.BallMask(extent)
@@ -658,11 +656,11 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         rmin, rmax, r_count = super()._prep_OOS_radii(
             r_count=r_count, rmin=rmin, rmax=rmax
         )
-        super()._set_stan_data_OOS(r_count)
+        OOS_data = super()._set_stan_data_OOS(r_count)
+        self._add_OOS_pars_for_saving(OOS_data)
         rs = np.geomspace(rmin, rmax, self.num_OOS)
-        self.stan_data.update(
-            {"N_OOS": self.num_OOS, self._independent_qtys_OOS[0]: rs}
-        )
+        OOS_data.update({self._independent_qtys_OOS[0]: rs})
+        self.stan_data.update(OOS_data)
 
     def set_stan_data(self, **kwargs):
         """See docs for _ABGDensityModelBase.set_stan_data()"""
@@ -789,11 +787,11 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         obs = {"r": [], "density": [], "mass": [], "vel_disp": []}
         d = self._get_data_files(snapfiles)
         if self._loaded_from_file:
-            extent = self._input_data_files["data_opts"]["extent"]
-            bin_count = self._input_data_files["data_opts"]["bin_count"]
-            family = self._input_data_files["data_opts"]["family"]
+            extent = self._input_data_and_pars["data_opts"]["extent"]
+            bin_count = self._input_data_and_pars["data_opts"]["bin_count"]
+            family = self._input_data_and_pars["data_opts"]["family"]
         else:
-            self._input_data_files["data_opts"] = dict(
+            self._input_data_and_pars["data_opts"] = dict(
                 extent=extent, bin_count=bin_count, family=family
             )
         mask = pygad.BallMask(extent)
@@ -895,24 +893,23 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         rmin, rmax, r_count = super()._prep_OOS_radii(
             r_count=r_count, rmin=rmin, rmax=rmax
         )
-        super()._set_stan_data_OOS(r_count)
-        rs = np.geomspace(rmin, rmax, self.num_OOS)
-        if self._loaded_from_file:
-            ngroups = int(self._determine_num_OOS() / r_count)
-        else:
-            if ngroups is None:
-                ngroups = 2 * self.stan_data["N_group"]
-            self._num_groups_OOS = ngroups
-            # update num_OOS to account for different groups
-            self._num_OOS = self._num_OOS * ngroups
-        self.stan_data.update(
-            dict(
-                N_OOS=self.num_OOS,
-                r_OOS=np.tile(rs, ngroups),
-                N_group_OOS=ngroups,
-                group_id_OOS=np.repeat(np.arange(1, ngroups + 1), len(rs)),
-            )
+        OOS_data = super()._set_stan_data_OOS(r_count)
+        OOS_data.setdefault(
+            "N_group_OOS", 2 * self.stan_data["N_group"] if ngroups is None else ngroups
         )
+        self._num_groups_OOS = OOS_data["N_group_OOS"]
+        self._add_OOS_pars_for_saving(OOS_data)
+        rs = np.geomspace(rmin, rmax, self.num_OOS)
+        OOS_data.update(
+            {self._independent_qtys_OOS[0]: np.tile(rs, self._num_groups_OOS)}
+        )
+        # update num_OOS to account for different groups
+        self._num_OOS = self.num_OOS * self._num_groups_OOS
+        OOS_data["N_OOS"] = self.num_OOS
+        OOS_data["group_id_OOS"] = np.repeat(
+            np.arange(1, self._num_groups_OOS + 1), len(rs)
+        )
+        self.stan_data.update(OOS_data)
 
     def set_stan_data(self, **kwargs):
         """

@@ -89,7 +89,12 @@ class _StanModel(ABC):
         self._obs_collapsed = {}
         self._obs_collapsed_names = []
         self._input_data_file_count = 0
-        self._input_data_files = {}
+        self._input_data_and_pars = {
+            "input_files": {},
+            "OOS_opts": None,
+            "data_opts": None,
+        }
+        self._input_data_yml_file = None
 
         # ArviZ labellers
         self._x_labeller = None
@@ -241,11 +246,14 @@ class _StanModel(ABC):
         : number of OOS points
         """
         if self._loaded_from_file:
-            self._num_OOS = self._determine_num_OOS()
+            with open(self._input_data_yml_file, "r+") as f:
+                data = yaml.safe_load(f)["OOS_opts"]
+            self._num_OOS = data["N_OOS"]
             _logger.info(f"Previous fit means that N_OOS is set to {self.num_OOS}")
+            return data
         else:
             self._num_OOS = N
-        return self._num_OOS
+            return {"N_OOS": self._num_OOS}
 
     @abstractmethod
     def extract_data(self):
@@ -303,9 +311,8 @@ class _StanModel(ABC):
         """
         _files = []
         if self._loaded_from_file:
-            for k, f in self._input_data_files.items():
-                if "file" in k:
-                    _files.append(f["path"])
+            for k, f in self._input_data_and_pars["input_files"].items():
+                _files.append(f["path"])
             return _files
         else:
             try:
@@ -576,7 +583,7 @@ class _StanModel(ABC):
         f : path-like
             path to data file
         """
-        self._input_data_files.update(
+        self._input_data_and_pars["input_files"].update(
             {
                 f"file{self._input_data_file_count:03d}": {
                     "path": f,
@@ -613,15 +620,33 @@ class _StanModel(ABC):
         """
         d = os.path.dirname(csvfile)
         tstamp = self._get_timestamp_from_csv(csvfile)
-        with open(os.path.join(d, f"input_data-{tstamp}.yml"), "w") as f:
-            yaml.dump(self._input_data_files, f)
+        self._input_data_yml_file = os.path.join(d, f"input_data-{tstamp}.yml")
+        try:
+            assert not os.path.exists(self._input_data_yml_file)
+        except AssertionError:
+            _logger.exception(
+                f"Input data .yml file {self._input_data_yml_file} exists!",
+                exc_info=True,
+            )
+            raise
+        with open(self._input_data_yml_file, "w") as f:
+            yaml.dump(self._input_data_and_pars, f)
 
-    def _determine_num_OOS(self):
+    def _add_OOS_pars_for_saving(self, d):
         """
-        Determine number of out-of-sample values given a previously saved run
+        Add OOS options to the dictionary of information to be saved so models can be restored from saved .csv files.
+
+        Parameters
+        ----------
+        d : dict
+            OOS parameters to be saved
         """
-        dims = self._fit.draws_xr(self._dependent_qtys_OOS[0]).dims
-        return dims[next(iter(dims.keys() - {"draw", "chain"}))]
+        if not self._loaded_from_file:
+            self._input_data_and_pars["OOS_opts"] = deepcopy(d)
+        else:
+            _logger.debug(
+                "Model instantiated from file, cannot set OOS parameters again"
+            )
 
     # ----------------------------------------------------------------------
     # Arviz - xarray helpers
@@ -662,7 +687,7 @@ class _StanModel(ABC):
                 exc_info=True,
             )
             raise
-        group = "prior" if "prior" in self._inference_data.groups() else "posterior"
+        group = self._active_group()
         for k in varnames:
             self._inference_data[group][k] = self._inference_data[group][k].expand_dims(
                 {dim: np.arange(self._inference_data[group].dims[dim])}, axis=-1
@@ -1474,11 +1499,10 @@ class _StanModel(ABC):
             # actually a list of files was parsed
             tstamp = os.path.basename(fit_files[0]).split("-")[-1].split("_")[0]
             dir_name = os.path.dirname(fit_files[0])
-        with open(os.path.join(dir_name, f"input_data-{tstamp}.yml"), "r") as f:
-            C._input_data_files = yaml.safe_load(f)
-        for k, v in C._input_data_files.items():
-            if "file" not in k:
-                continue
+        C._input_data_yml_file = os.path.join(dir_name, f"input_data-{tstamp}.yml")
+        with open(C._input_data_yml_file, "r") as f:
+            C._input_data_and_pars = yaml.safe_load(f)
+        for k, v in C._input_data_and_pars["input_files"].items():
             if os.path.getmtime(v["path"]) > v["created"]:
                 _logger.error(
                     f"HMQ file {v['path']} has been modified since the Stan model was run, proceed with caution!"

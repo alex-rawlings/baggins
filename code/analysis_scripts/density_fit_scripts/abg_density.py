@@ -47,7 +47,7 @@ if args.model == "s":
     figname_base = "abg_density/abg_density_simple"
     if args.loaded:
         abgdens = bgs.analysis.ABGDensityModelSimple.load_fit(
-            args.files, figname_base=figname_base
+            args.files[0], figname_base=figname_base
         )
     else:
         abgdens = bgs.analysis.ABGDensityModelSimple(figname_base=figname_base)
@@ -55,11 +55,12 @@ else:
     figname_base = "abg_density/abg_density_hierarchy"
     if args.loaded:
         abgdens = bgs.analysis.ABGDensityModelHierarchy.load_fit(
-            args.files, figname_base=figname_base
+            args.files[0], figname_base=figname_base
         )
     else:
         abgdens = bgs.analysis.ABGDensityModelHierarchy(figname_base=figname_base)
-abgdens.extract_data(args.files)
+abgdens.extract_data(args.files, extent=20, bin_count=1e5)
+
 sample_kwargs = {"adapt_delta": 0.995, "max_treedepth": 15}
 if args.save is not None:
     sample_kwargs["output_dir"] = os.path.join(args.save, abgdens.merger_id)
