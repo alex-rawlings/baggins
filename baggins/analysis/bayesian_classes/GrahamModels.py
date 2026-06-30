@@ -1,22 +1,18 @@
 from abc import abstractmethod
 import os.path
-import re
-import itertools
 import numpy as np
 import matplotlib.pyplot as plt
 from arviz_base.labels import MapLabeller
+import pygad
+from baggins.analysis.analyse_snap import basic_snapshot_centring
 from baggins.analysis.bayesian_classes.StanModel import (
     HierarchicalModel_2D,
     FactorModel_2D,
 )
-from baggins.analysis.data_classes.HMQuantitiesBinaryData import (
-    HMQuantitiesBinaryData,
-    HMQuantitiesSingleData,
-)
-from baggins.mathematics import get_histogram_bin_centres
+from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
 from baggins.env_config import _cmlogger, baggins_dir
-from baggins.plotting import savefig
-from baggins.utils import get_files_in_dir, load_data
+from baggins.general import common_string_subgroups, get_snapshot_number
+from baggins.plotting import savefig, get_all_axes_from_plot_collection
 
 __all__ = ["_GrahamModelBase", "GrahamModelSimple", "GrahamModelHierarchy"]
 
@@ -60,10 +56,21 @@ class _DummyDataDict:
 class _GrahamModelBase(HierarchicalModel_2D):
     def __init__(self, model_file, prior_file, figname_base, rng=None) -> None:
         super().__init__(model_file, prior_file, figname_base, rng)
-        self._folded_qtys = ["log10_surf_rho"]
-        self._folded_qtys_labs = [r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))"]
-        self._folded_qtys_posterior = [f"{v}_posterior" for v in self._folded_qtys]
-        self._latent_qtys = ["rb", "Re", "log10densb", "g", "n", "a"]
+        self._independent_qtys = ["R"]
+        self._independent_qtys_OOS = [f"{v}_OOS" for v in self._independent_qtys]
+        self.independent_qtys_labs = [r"$r/\mathrm{kpc}$"]
+        self._dependent_qtys = ["density"]
+        self._dependent_qtys_posterior = [
+            f"{v}_posterior" for v in self._dependent_qtys
+        ]
+        self._dependent_qtys_prior = [f"{v}_prior" for v in self._dependent_qtys]
+        self._dependent_qtys_OOS = [f"{v}_OOS" for v in self._dependent_qtys]
+        self.dependent_qtys_labs = [r"log($\Sigma(R)$/(M$_\odot$/kpc$^2$))"]
+        self._make_xy_labellers()
+        self._latent_qtys = []
+        self._latent_qtys_labs = []
+        self._merger_id = None
+
         self._latent_qtys_posterior = [f"{v}_posterior" for v in self.latent_qtys]
         self._latent_qtys_labs = [
             r"$r_\mathrm{b}/\mathrm{kpc}$",
@@ -80,15 +87,14 @@ class _GrahamModelBase(HierarchicalModel_2D):
             dict(zip(self._latent_qtys_posterior, self._latent_qtys_labs))
         )
         self._merger_id = None
-        self._dims_prepped = False
 
     @property
-    def folded_qtys(self):
-        return self._folded_qtys
+    def dependent_qtys(self):
+        return self._dependent_qtys
 
     @property
-    def folded_qtys_posterior(self):
-        return self._folded_qtys_posterior
+    def dependent_qtys_posterior(self):
+        return self._dependent_qtys_posterior
 
     @property
     def latent_qtys(self):
@@ -99,11 +105,23 @@ class _GrahamModelBase(HierarchicalModel_2D):
         return self._latent_qtys_posterior
 
     @property
+    def latent_qtys_labs(self):
+        return self._latent_qtys_labs
+
+    @property
     def merger_id(self):
         return self._merger_id
 
+    @merger_id.setter
+    def merger_id(self, v):
+        self._merger_id = v
+
+    # ----------------------------------------------------------------------
+    # Abstract methods
+    # ----------------------------------------------------------------------
+
     @abstractmethod
-    def extract_data(self, pars, d=None, binary=True):
+    def extract_data(self, snapfile, extent=10, bin_count=2e5, proj=0):
         """
         Data extraction and manipulation required for the Graham density model
 
@@ -117,180 +135,169 @@ class _GrahamModelBase(HierarchicalModel_2D):
         binary: bool, optional
             system before merger (2 BHs present), by default True
         """
-        obs = {"R": [], "proj_density": [], "vkick": []}
-        d = self._get_data_dir(d)
-        if self._loaded_from_file:
-            fnames = d[0]
-        elif os.path.isfile(d):
-            fnames = [d]
-        else:
-            fnames = get_files_in_dir(d)
-            if not fnames:
-                fnames = get_files_in_dir(d, ext=".pickle")
-            _logger.debug(f"Reading from dir: {d}")
-        is_single_file = len(fnames) == 1
-        data_ext = os.path.splitext(fnames[0])[1].lstrip(".")
-        try:
-            assert fnames
-        except AssertionError:
-            _logger.exception(
-                f"Directory {d} has no files with extension {data_ext}", exc_info=True
-            )
-            raise
-        for f in fnames:
-            _logger.info(f"Loading file: {f}")
-            if binary:
-                _logger.debug(
-                    "Hierarchical model will be constructed for a binary BH system"
-                )
-                if data_ext == "hdf5":
-                    hmq = HMQuantitiesBinaryData.load_from_file(f)
-                    status, idx = hmq.idx_finder(
-                        pars["bh_binary"]["target_semimajor_axis"]["value"],
-                        hmq.semimajor_axis,
-                    )
-                else:
-                    raise NotImplementedError(
-                        "Only hdf5 data input allowed for mode 'binary'!"
-                    )
-            else:
-                _logger.debug(
-                    "Hierarchical model will be constructed for a single BH system"
-                )
-                if data_ext == "hdf5":
-                    hmq = HMQuantitiesSingleData.load_from_file(f)
-                elif data_ext == "pickle":
-                    hmq = _DummyDataDict(load_data(f))
-                else:
-                    raise RuntimeError(
-                        f"Only 'hdf5' and 'pickle' data input allowed, not {data_ext}"
-                    )
-                idx = 0
-                status = True
-            if not status:
-                continue
-            r = get_histogram_bin_centres(hmq.radial_edges)
-            obs["R"].append(r)
-            obs["proj_density"].append(list(hmq.projected_mass_density.values())[idx])
-            # get median escape velocity within some radius
-            try:
-                vesc = np.nanmedian(
-                    list(hmq.escape_velocity.values())[idx][hmq.radial_edges < 1]
-                )
-                obs["vkick"].append([hmq.merger_remnant["kick"] / vesc])
-            except TypeError:
-                obs["vkick"].append([-99])
-            if self._merger_id is None:
-                self._merger_id = re.sub("_[a-z]-", "-", hmq.merger_id)
-                if not is_single_file:
-                    # remove vXXXX from merger ID
-                    self._merger_id = re.sub("-v[0-9]*", "", self._merger_id)
-            if not self._loaded_from_file:
-                self._add_input_data_file(f)
-        if is_single_file:
-            # we have loaded a single file
-            # manipulate the data so it "looks" like multiple files
-            _obs = obs.copy()
-            obs = {"R": [], "proj_density": [], "vkick": []}
-            for i in range(_obs["proj_density"][0].shape[0]):
-                obs["R"].append(_obs["R"][0])
-                obs["proj_density"].append(_obs["proj_density"][0][i, :])
-                obs["vkick"].append(_obs["vkick"][0])
-            _logger.warning(
-                "Observations from a single file have been converted to a hierarchy format"
-            )
-        self.obs = obs
-        # some transformations we need
-        self.transform_obs("R", "log10_R", lambda x: np.log10(x))
-        self.transform_obs("proj_density", "log10_proj_density", lambda x: np.log10(x))
+        raise NotImplementedError
 
-    @abstractmethod
-    def _set_stan_data_OOS(self):
+    def _prep_OOS_radii(self, r_count=None, rmin=None, rmax=None):
+        """
+        Set the out-of-sample Stan data variables.
+        Each derived class will need its own implementation, however all will
+        require knowledge of the minimum and maximum radius to model: let's
+        do that here.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            number of OOS points, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+
+        Returns
+        -------
+        rmin : float
+            minimum OOS radius
+        rmax : float
+            maximum OOS radius
+        rcount : number of OOS bins (if a new sample, else will be updated in child methods)
+        """
+        if r_count is None:
+            r_count = max(max([len(rs) for rs in self.obs["r"]]) * 10, 500)
+        _rmin = np.max([r[0] for r in self.obs["r"]])
+        _rmax = np.min([r[-1] for r in self.obs["r"]])
+        if rmin is None:
+            rmin = _rmin
+        if rmax is None:
+            rmax = _rmax
+        return rmin, rmax, r_count
+
+    def _set_stan_data_OOS(self, N):
         """
         Set the out-of-sample Stan data variables.
         Each derived class will need its own implementation, however all will
         require knowledge of the minimum and maximum radius to model: let's
         do that here.
         """
-        rmin = np.max([R[0] for R in self.obs["R"]])
-        rmax = np.min([R[-1] for R in self.obs["R"]])
-        return rmin, rmax
+        return super()._set_stan_data_OOS(N)
 
     @abstractmethod
-    def set_stan_data(self):
+    def set_stan_data(self, **kwargs):
         """
         Set the Stan data dictionary used for sampling.
         """
-        self.stan_data = dict(
-            N_tot=self.num_obs_collapsed,
-            N_groups=self.num_groups,
-            group_idx=self.obs_collapsed["label"],
-            R=self.obs_collapsed["R"],
+        if self.stan_data is None:
+            self.stan_data = {}
+        self.stan_data.update(
+            {
+                "N_obs": self.num_obs_collapsed,
+                self._independent_qtys[0]: self.obs_collapsed[
+                    self._independent_qtys[0]
+                ],
+                self._dependent_qtys[0]: self.obs_collapsed[self._dependent_qtys[0]],
+            }
         )
-        if not self._loaded_from_file:
-            self._set_stan_data_OOS()
+        self._set_stan_data_OOS(**kwargs)
 
-    def sample_model(self, sample_kwargs={}, diagnose=True):
+    @abstractmethod
+    def diagnose_sample(self, var_names):
+        return super().diagnose_sample(var_names)
+
+    # ----------------------------------------------------------------------
+    # Sampling
+    # ----------------------------------------------------------------------
+
+    def sample_model(self, sample_kwargs=None, diagnose=True):
         """
         Wrapper around StanModel.sample_model() to handle determining num_OOS
         from previous sample.
         """
         super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
-        if self._loaded_from_file:
-            self._determine_num_OOS(self._folded_qtys_posterior[0])
-            self._set_stan_data_OOS()
 
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        v = super().sample_generated_quantity(gq, force_resample, state)
-        if gq in self.folded_qtys or gq in self.folded_qtys_posterior:
-            idxs = self._get_GQ_indices(state)
-            return v[..., idxs]
-        else:
-            return v
+    # ----------------------------------------------------------------------
+    # Plotting methods
+    # ----------------------------------------------------------------------
 
-    def _prep_dims(self):
-        """
-        Rename dimensions for collapsing
-        """
-        if not self._dims_prepped:
-            _rename_dict = {}
-            for k in itertools.chain(self.latent_qtys, self._latent_qtys_posterior):
-                _rename_dict[f"{k}_dim_0"] = "group"
-            self.rename_dimensions(_rename_dict)
-            self._dims_prepped = True
-
-    def plot_latent_distributions(self, figsize=None):
+    def plot_latent_distributions(self, save=True):
         """
         Plot distributions of the latent parameters of the model
 
         Parameters
         ----------
-        figsize : tuple, optional
-            figure size, by default None
+        save : bool, optional
+            save the figure, by default True
 
         Returns
         -------
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        ncol = int(np.ceil(len(self.latent_qtys) / 2))
-        fig, ax = plt.subplots(2, ncol, figsize=figsize)
-        try:
-            self.plot_generated_quantity_dist(
-                self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs
-            )
-        except ValueError:  # TODO check this
-            _logger.warning(
-                "Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
-            )
-            self.plot_generated_quantity_dist(
-                self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs
-            )
-        ax[1, 0].set_xscale("log")
+        pc = self.plot_generated_quantity_dist(
+            self.latent_qtys,
+            labeller=self._labeller_latent,
+            sample_dims=["chain", "draw", "N_groups"],
+        )
+        ax = get_all_axes_from_plot_collection(pc)
+        fig = ax[0].get_figure()
+        fig.suptitle("Latent parameters (in-sample)")
+        if save:
+            savefig(next(self.gen_gq_plot_name))
+        return ax
+
+    def plot_posterior_predictive(self, save=True, **kwargs):
+        """
+        Plot posterior predictive regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
+        pc = super().plot_posterior_predictive(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            savefig(next(self.gen_postpred_plot_name))
+        return ax
+
+    def plot_prior_predictive(self, save=True, **kwargs):
+        pc = super().plot_prior_predictive(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            savefig(next(self.gen_priorpred_plot_name))
+        return ax
+
+    def plot_posterior_OOS(self, save=True, **kwargs):
+        """
+        Plot posterior out-of-sample regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
+        pc = super().plot_posterior_OOS(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            savefig(next(self.gen_postOOS_plot_name))
         return ax
 
     @abstractmethod
-    def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
+    def all_prior_plots(self, figsize=None, ylim=None):
         """
         Prior plots generally required for predictive checks
 
@@ -302,35 +309,53 @@ class _GrahamModelBase(HierarchicalModel_2D):
             figure y-limits, by default (-1, 15.1)
         """
         # prior predictive check
-        fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
-        if ylim is not None:
-            ax1.set_ylim(*ylim)
-        ax1.set_xlabel("R/kpc")
-        ax1.set_ylabel(self._folded_qtys_labs[0])
-        ax1.set_xscale("log")
-        self.plot_predictive(
-            xmodel="R",
-            ymodel=f"{self._folded_qtys[0]}_prior",
-            xobs="R",
-            yobs="log10_proj_density",
-            ax=ax1,
-        )
+        self.plot_prior_predictive()
 
         # prior latent quantities
-        self.plot_latent_distributions(figsize=figsize)
-        ax1 = self.parameter_corner_plot(
+        self.plot_latent_distributions()
+        pc = self.parameter_corner_plot(
             self.latent_qtys,
-            figsize=figsize,
+            figsize=(len(self.latent_qtys), len(self.latent_qtys)),
             labeller=self._labeller_latent,
             combine_dims={"group"},
         )
-        fig1 = ax1[0, 0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig1,
+        fig = pc.get_viz("figure")
+        savefig(next(self.gen_corner_plot_name), fig=fig)
+
+    @abstractmethod
+    def all_posterior_pred_plots(self, figsize=None):
+        """
+        Posterior plots generally required for predictive checks and parameter convergence
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        """
+        # posterior predictive check
+        self.plot_posterior_predictive()
+
+        # latent parameter distributions
+        self.plot_latent_distributions()
+        pc = self.plot_generated_quantity_dist(
+            self.latent_qtys_posterior,
+            labeller=self._labeller_latent_posterior,
+            sample_dims=["chain", "draw", "N_groups"],
         )
+        fig = pc.get_viz("figure")
+        fig.suptitle("Latent parameters (out-sample)")
+        savefig(next(self.gen_gq_plot_name))
+
+        # transformed latent parameter distributions
+        pc = self.parameter_corner_plot(
+            self.latent_qtys_posterior,
+            figsize=(len(self.latent_qtys_posterior), len(self.latent_qtys_posterior)),
+            labeller=self._labeller_latent_posterior,
+            combine_dims=["N_groups"],
+        )
+        fig = pc.get_viz("figure")
+        fig.suptitle("Latent parameters (out-sample)")
+        savefig(next(self.gen_corner_plot_name), fig=fig)
 
 
 class GrahamModelSimple(_GrahamModelBase):
@@ -352,17 +377,87 @@ class GrahamModelSimple(_GrahamModelBase):
             figname_base=figname_base,
             rng=rng,
         )
+        self._latent_qtys = [
+            "log10densb",
+            "log10rb",
+            "log10g",
+            "log10n",
+            "log10a",
+            "log10re",
+            "err",
+        ]
+        self._latent_qtys_posterior = ["log10densb", "rb", "g", "n", "a", "Re", "err"]
+        self._latent_qtys_labs = [
+            r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$",
+            r"$\log_{10}(r_\mathrm{b}/\mathrm{kpc})$",
+            r"$\log_{10}(\gamma)$",
+            r"$\log_{10}(n)$",
+            r"$\log_{10}(a)$",
+            r"$\log_{10}(R_\mathrm{e}/\mathrm{kpc})$",
+            r"$\tau$",
+        ]
+        self._latent_qtys_posterior_labs = [
+            r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$",
+            r"$r_\mathrm{b}/\mathrm{kpc}$",
+            r"$\gamma$",
+            r"$n$",
+            r"$a$",
+            r"$R_\mathrm{e}/\mathrm{kpc}$",
+            r"$\tau$",
+        ]
+        self._make_latent_labellers()
 
-    def extract_data(self, pars, d=None, binary=True):
+    def _make_default_merger_id(self, snapfile):
         """
-        See docs for _GrahamModelBase.extract_data()
-        Update figname_base to include merger ID and keyword 'simple'
+        Make the default merger ID for a system if not set manually.
+
+        Parameters
+        ----------
+        snapfile : str
+            snapshot file name
         """
-        super().extract_data(pars, d, binary)
-        self.collapse_observations(["R", "log10_R", "log10_proj_density"])
-        self.figname_base = os.path.join(
-            self.figname_base, f"{self.merger_id}/{self.merger_id}-simple"
+        snapnum = get_snapshot_number(snapfile)
+        # use the directory name of the simulation, assumes file path is of the form:
+        # /path/to/simulation/dname/output/snap_XXX.hdf5
+        dname = os.path.abspath(snapfile).split("/")[-3]
+        self.merger_id = f"{dname}_{snapnum}"
+        _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
+
+    def extract_data(self, snapfile, extent=10, bin_count=200000, proj=0):
+        obs = {"R": [], "density": []}
+        d = self._get_data_files(snapfile)
+        if self._loaded_from_file:
+            fname = d[0]
+            extent = self._input_data_and_pars["data_opts"]["extent"]
+            bin_count = self._input_data_and_pars["data_opts"]["bin_count"]
+            proj = self._input_data_and_pars["data_opts"]["proj"]
+        else:
+            fname = snapfile
+            self._input_data_and_pars["data_opts"] = dict(
+                extent=extent, bin_count=bin_count, proj=proj
+            )
+        mask = pygad.BallMask(extent)
+        _logger.info(f"Loading file: {fname}")
+        if self.merger_id is None:
+            self._make_default_merger_id(fname)
+        snap = pygad.Snapshot(fname, physical=True)
+        basic_snapshot_centring(snap)
+        _logger.debug("snapshot loaded and centred")
+        _xy = list({0, 1, 2} - {proj})
+        R = pygad.utils.geo.dist(snap.stars[mask]["pos"][_xy])
+        r_edges = equal_count_bins(R, bin_count)
+        obs["density"].append(
+            [
+                pygad.analysis.profile_dens(
+                    snap.stars[mask], qty="mass", r_edges=r_edges, proj=proj
+                )
+            ]
         )
+        obs["R"].append(get_histogram_bin_centres(r_edges, R))
+        if not self._loaded_from_file:
+            self._add_input_data_file(fname)
+        self.obs = obs
+        self.collapse_observations(["R", "density"])
 
     def read_data_from_txt(self, fname, mergerid):
         """
@@ -394,28 +489,33 @@ class GrahamModelSimple(_GrahamModelBase):
             self.figname_base, f"{self.merger_id}/{self.merger_id}-simple"
         )
 
-    def _set_stan_data_OOS(self, r_count=None):
-        rmin, rmax = super()._set_stan_data_OOS()
-        if r_count is None:
-            r_count = max([len(rs) for rs in self.obs["R"]]) * 10
-        self._num_OOS = r_count
-        rs = np.geomspace(rmin, rmax, r_count)
-        self.stan_data.update(dict(N_OOS=self.num_OOS, R_OOS=rs))
+    def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None):
+        """
+        Set OOS Stan data.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            Number of radii for OOS plots, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+        """
+        rmin, rmax, r_count = super()._prep_OOS_radii(
+            r_count=r_count, rmin=rmin, rmax=rmax
+        )
+        OOS_data = super()._set_stan_data_OOS(r_count)
+        self._add_OOS_pars_for_saving(OOS_data)
+        Rs = np.geomspace(rmin, rmax, self.num_OOS)
+        OOS_data.update({self._independent_qtys_OOS[0]: Rs})
+        self.stan_data.update(OOS_data)
 
     def set_stan_data(self):
         """See docs for _GrahamModelBase.set_stan_data()"""
         super().set_stan_data()
-        self.stan_data.update(
-            dict(log10_surf_rho=self.obs_collapsed["log10_proj_density"])
-        )
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
-        self.rename_dimensions(
-            dict.fromkeys(
-                [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
-            )
-        )
-        # self._expand_dimension(["err"], "group")
         return super().all_prior_plots(figsize, ylim)
 
     def all_posterior_pred_plots(self, figsize=None):
@@ -436,45 +536,7 @@ class GrahamModelSimple(_GrahamModelBase):
         self.parameter_diagnostic_plots(
             self.latent_qtys, labeller=self._labeller_latent
         )
-
-        # posterior predictive check
-        fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
-        ax1.set_xlabel(r"log($R$/kpc)")
-        ax1.set_ylabel(self._folded_qtys_labs[0])
-        ax1.set_xscale("log")
-        # TODO scale of x axis??
-        self.plot_predictive(
-            xmodel="R",
-            ymodel=f"{self._folded_qtys_posterior[0]}",
-            xobs="R",
-            yobs="log10_proj_density",
-            ax=ax1,
-        )
-
-        # latent parameter distributions
-        self.plot_latent_distributions(figsize=figsize)
-
-        ax = self.parameter_corner_plot(
-            self.latent_qtys, figsize=figsize, labeller=self._labeller_latent
-        )
-        fig = ax.flatten()[0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
-        return ax
-
-    def all_posterior_OOS_plots(self, figsize=None):
-        # out of sample posterior
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.set_xlabel(r"$R$/kpc")
-        ax.set_xscale("log")
-        self.posterior_OOS_plot(
-            xmodel="R_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
-        )
-        return ax
+        super().all_posterior_pred_plots(figsize=figsize)
 
 
 class GrahamModelHierarchy(_GrahamModelBase):
@@ -499,186 +561,196 @@ class GrahamModelHierarchy(_GrahamModelBase):
         self._hyper_qtys = [
             "log10densb_mean",
             "log10densb_std",
-            "Re_sig",
-            "g_lam",
-            "rb_sig",
-            "n_mean",
-            "n_std",
-            "a_sig",
-            "err_mean",
-            "err_std",
+            "log10densb_std",
+            "log10rb_mean",
+            "log10rb_std",
+            "log10g_mean",
+            "log10g_std",
+            "log10n_mean",
+            "log10n_std",
+            "log10a_mean",
+            "log10a_std",
+            "log10Re_mean",
+            "log10Re_std",
+            "err",
         ]
         self._hyper_qtys_labs = [
             r"$\mu_{\log_{10}\Sigma_\mathrm{b}}$",
             r"$\sigma_{\log_{10}\Sigma_\mathrm{b}}$",
-            r"$\sigma_{R_\mathrm{e}}$",
-            r"$\lambda_\gamma$",
-            r"$\sigma_{r_\mathrm{b}}$",
-            r"$\mu_{n}$",
-            r"$\sigma_{n}$",
-            r"$\sigma_a$",
-            r"$\mu_{\tau}$",
-            r"$\sigma_{\tau}$",
+            r"$\mu_{\log_{10}r_\mathrm{b}}$",
+            r"$\sigma_{\log_{10}r_\mathrm{b}}$",
+            r"$\mu_{\log_{10}\gamma}$",
+            r"$\sigma_{\log_{10}\gamma}$",
+            r"$\mu_{\log_{10}n}$",
+            r"$\sigma_{\log_{10}n}$",
+            r"$\mu_{\log_{10}\alpha}$",
+            r"$\sigma_{\log_{10}\alpha}$",
+            r"$\mu_{\log_{10}R_\mathrm{e}}$",
+            r"$\sigma_{\log_{10}R_\mathrm{e}}$",
+            r"$\tau$",
         ]
+        self._latent_qtys = [
+            "log10densb",
+            "log10rb",
+            "log10g",
+            "log10n",
+            "log10a",
+            "log10re",
+        ]
+        self._latent_qtys_posterior = ["log10densb", "rb", "g", "n", "a", "Re"]
+        self._latent_qtys_labs = [
+            r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$",
+            r"$\log_{10}(r_\mathrm{b}/\mathrm{kpc})$",
+            r"$\log_{10}(\gamma)$",
+            r"$\log_{10}(n)$",
+            r"$\log_{10}(a)$",
+            r"$\log_{10}(R_\mathrm{e}/\mathrm{kpc})$",
+        ]
+        self._latent_qtys_posterior_labs = [
+            r"$\log_{10}\left(\Sigma_\mathrm{b}/(\mathrm{M}_\odot\mathrm{kpc}^{-2})\right)$",
+            r"$r_\mathrm{b}/\mathrm{kpc}$",
+            r"$\gamma$",
+            r"$n$",
+            r"$a$",
+            r"$R_\mathrm{e}/\mathrm{kpc}$",
+        ]
+        self._make_latent_labellers()
         self._labeller_hyper = MapLabeller(
             dict(zip(self._hyper_qtys, self._hyper_qtys_labs))
         )
 
-    def extract_data(self, pars, d=None, binary=True):
-        """
-        See docs for _GrahamModelBase.extract_data()
-        Update figname_base to include merger ID and keyword 'hierarchy'
-        """
-        super().extract_data(pars, d, binary)
-        self.collapse_observations(["R", "log10_R", "log10_proj_density"])
-        self.figname_base = os.path.join(
-            self.figname_base, f"{self.merger_id}/{self.merger_id}-hierarchy"
-        )
-
-    def _set_stan_data_OOS(self, r_count=None, ngroups=None):
-        rmin, rmax = super()._set_stan_data_OOS()
-        if r_count is None:
-            r_count = max([len(rs) for rs in self.obs["R"]]) * 10
-        if ngroups is None:
-            ngroups = 2 * self.stan_data["N_groups"]
-        self._num_OOS = r_count * ngroups
-        rs = np.geomspace(rmin, rmax, r_count)
-        self.stan_data.update(
-            dict(
-                N_OOS=self.num_OOS,
-                R_OOS=np.tile(rs, ngroups),
-                N_groups_OOS=ngroups,
-                group_idx_OOS=np.repeat(np.arange(1, ngroups + 1), r_count),
+    def extract_data(self, snapfiles, extent=10, bin_count=200000, proj=0):
+        obs = {"R": [], "density": []}
+        d = self._get_data_files(snapfiles)
+        if self._loaded_from_file:
+            extent = self._input_data_and_pars["data_opts"]["extent"]
+            bin_count = self._input_data_and_pars["data_opts"]["bin_count"]
+            proj = self._input_data_and_pars["data_opts"]["proj"]
+        else:
+            self._input_data_and_pars["data_opts"] = dict(
+                extent=extent, bin_count=bin_count, proj=proj
             )
-        )
-
-    def set_stan_data(self):
-        """See docs for _GrahamModelBase.set_stan_data()"""
-        super().set_stan_data()
-        self.stan_data.update(
-            dict(log10_surf_rho=self.obs_collapsed["log10_proj_density"])
-        )
-
-    def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
-        self.rename_dimensions(
-            dict.fromkeys(
-                [f"{k}_dim_0" for k in self._latent_qtys if "err" not in k], "group"
+        mask = pygad.BallMask(extent)
+        self._merger_id = os.path.splitext(
+            common_string_subgroups([os.path.basename(f) for f in d])
+        )[0]
+        for fname in d:
+            _logger.info(f"Loading file: {fname}")
+            snap = pygad.Snapshot(fname, physical=True)
+            basic_snapshot_centring(snap)
+            _logger.debug("snapshot loaded and centred")
+            _xy = list({0, 1, 2} - {proj})
+            R = pygad.utils.geo.dist(snap.stars[mask]["pos"][_xy])
+            r_edges = equal_count_bins(R, bin_count)
+            obs["density"].append(
+                [
+                    pygad.analysis.profile_dens(
+                        snap.stars[mask], qty="mass", r_edges=r_edges
+                    )
+                ]
             )
+            obs["R"].append(get_histogram_bin_centres(r_edges, R))
+            if not self._loaded_from_file:
+                self._add_input_data_file(fname)
+        self.obs = obs
+        self.collapse_observations(["R", "density"])
+
+    def _set_stan_data_OOS(self, r_count=None, rmin=None, rmax=None, ngroups=None):
+        """
+        Set OOS Stan data.
+
+        Parameters
+        ----------
+        r_count : int, optional
+            Number of radii for OOS plots, by default None
+        rmin : float, optional
+            minimum radius, by default None
+        rmax : float, optional
+            maximum radius, by default None
+        ngroups : int, optional
+            number of level groups (i.e. profiles), by default None
+        """
+        rmin, rmax, r_count = super()._prep_OOS_radii(
+            r_count=r_count, rmin=rmin, rmax=rmax
         )
+        OOS_data = super()._set_stan_data_OOS(r_count)
+        OOS_data.setdefault(
+            "N_group_OOS", 2 * self.stan_data["N_group"] if ngroups is None else ngroups
+        )
+        self._num_groups_OOS = OOS_data["N_group_OOS"]
+        self._add_OOS_pars_for_saving(OOS_data)
+        Rs = np.geomspace(rmin, rmax, self.num_OOS)
+        OOS_data.update(
+            {self._independent_qtys_OOS[0]: np.tile(Rs, self._num_groups_OOS)}
+        )
+        # update num_OOS to account for different groups
+        self._num_OOS = self.num_OOS * self._num_groups_OOS
+        OOS_data["N_OOS"] = self.num_OOS
+        OOS_data["group_id_OOS"] = np.repeat(
+            np.arange(1, self._num_groups_OOS + 1), len(Rs)
+        )
+        self.stan_data.update(OOS_data)
+
+    def set_stan_data(self, **kwargs):
+        """
+        Set Stan data for the model.
+        """
+        self.stan_data.update(
+            {"N_group": self.num_groups, "group_id": self.obs_collapsed["label"]}
+        )
+        super().set_stan_data(**kwargs)
+
+    def diagnose_sample(self):
+        return super().diagnose_sample(self._hyper_qtys)
+
+    def all_prior_plots(self, figsize=None, ylim=None):
+        """
+        Make prior predictive plots for model.
+
+        Parameters
+        ----------
+        figsize : tuple, optional
+            figure size, by default None
+        ylim : tuple, optional
+            y-limits for prior predictive plot, by default None
+        """
         ax = self.parameter_corner_plot(
-            self._hyper_qtys, labeller=self._labeller_hyper, figsize=figsize
+            self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )
         fig = ax[0, 0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
-        return super().all_prior_plots(figsize, ylim)
+        savefig(next(self.corner_plot_gen), fig=fig)
+        super().all_prior_plots(figsize, ylim)
 
-    def all_posterior_pred_plots(self, figsize=None, ylim=(6, 10)):
+    def all_posterior_pred_plots(self, figsize=None):
         """
-        Posterior plots generally required for predictive checks and parameter convergence
+        Make posterior predictive plots for model.
 
         Parameters
         ----------
         figsize : tuple, optional
             figure size, by default None
-        ylim : tuple, optional
-            figure y-limits, by default (6, 10)
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            plotting axis
         """
-        self.rename_dimensions(
-            dict.fromkeys([f"{k}_dim_0" for k in self._latent_qtys], "group")
+        # latent parameter plots (corners, chains, etc)
+        self.parameter_diagnostic_plots(
+            self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )
-        # hyper parameter plots (corners, chains, etc)
-        self.parameter_diagnostic_plots(self._hyper_qtys, labeller=self._labeller_hyper)
+        super().all_posterior_pred_plots(figsize)
 
-        # posterior predictive check
-        fig1, ax1 = plt.subplots(1, 1, figsize=figsize)
-        ax1.set_xlabel(r"$R$/kpc")
-        ax1.set_ylabel(self._folded_qtys_labs[0])
-        ax1.set_xscale("log")
-        ax1.set_ylim(*ylim)
-        self.plot_predictive(
-            xmodel="R",
-            ymodel=f"{self._folded_qtys_posterior[0]}",
-            xobs="R",
-            yobs="log10_proj_density",
-            ax=ax1,
-        )
-
-        # latent parameter distributions
-        self.plot_latent_distributions(figsize=figsize)
-
-        ax = self.parameter_corner_plot(
-            self.latent_qtys,
-            figsize=figsize,
-            labeller=self._labeller_latent,
-            combine_dims={"group"},
-        )
-        fig = ax.flatten()[0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
-        return ax
-
-    def all_posterior_OOS_plots(self, figsize=None, ylim=(6, 10)):
+    def all_posterior_OOS_plots(self, save=True, **kwargs):
         """
-        Posterior plots for out of sample points
+        Make posterior OOS plots for model.
 
         Parameters
         ----------
-        figsize : tuple, optional
-            figure size, by default None
-        ylim : tuple, optional
-            figure y-limits, by default (6, 10)
+        save : bool, optional
+            save the plot, by default True
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
-            plotting axis
+         matplotlib.axes.Axes, optional
+            plotting axes
         """
-        self.rename_dimensions(
-            dict.fromkeys(
-                [f"{k}_dim_0" for k in self._latent_qtys_posterior], "groupOOS"
-            )
-        )
-
-        ax = self.parameter_corner_plot(
-            self.latent_qtys_posterior,
-            figsize=figsize,
-            labeller=self._labeller_latent_posterior,
-            combine_dims={"groupOOS"},
-        )
-        fig = ax.flatten()[0].get_figure()
-        # note that the plot indexing uses _parameter_corner_plot_counter, so
-        # if a predictive corner plot has been made beforehand, this number will
-        # be one larger
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_OOS_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
-
-        # out of sample posterior
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.set_xlabel(r"$R$/kpc")
-        ax.set_xscale("log")
-        self.posterior_OOS_plot(
-            xmodel="R_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
-        )
-        ax.set_ylim(*ylim)
-        return ax
+        return super().plot_posterior_OOS(save, **kwargs)
 
 
 class GrahamModelKick(_GrahamModelBase, FactorModel_2D):

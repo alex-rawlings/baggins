@@ -183,7 +183,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         Parameters
         ----------
         save : bool, optional
-            save the figure, by default False
+            save the figure, by default True
 
         Returns
         -------
@@ -225,6 +225,19 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         return ax
 
     def plot_prior_predictive(self, save=True, **kwargs):
+        """
+        Plot prior predictive regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
         pc = super().plot_prior_predictive(**kwargs)
         ax = pc.get_viz("plot")
         ax.set_xscale("log")
@@ -934,7 +947,6 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         ylim : tuple, optional
             y-limits for prior predictive plot, by default None
         """
-        self._prep_dims()
         ax = self.parameter_corner_plot(
             self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )

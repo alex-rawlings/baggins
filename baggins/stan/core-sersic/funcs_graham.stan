@@ -68,14 +68,21 @@ projected density at specified radial values
 */
 vector graham_surf_density_vec(
                              vector R,
-                             vector preterm,
-                             vector g,
-                             vector a,
-                             vector rb,
-                             vector n,
-                             vector b,
-                             vector Re,
-                             vector log10densb){
+                             vector log10densb,
+                             vector log10rb,
+                             vector log10g,
+                             vector log10n,
+                             vector log10a,
+                             vector log10Re,
+                             ){
+    int N = size(log10densb);
+    vector[N] rb = pow(10., log10rb);
+    vector[N] g = pow(10., log10g);
+    vector[N] n = pow(10., log10n);
+    vector[N] a = pow(10., log10a);
+    vector[N] Re = pow(10., log10Re);
+    vector[N] b = sersic_b_parameter(n);
+    vector[N] preterm = graham_preterm(g, a, n, b, rb, Re);
     return log10densb + (preterm + g./a.*log(pow(R,a) + pow(rb,a)) - g.*log(R) - b .* pow(Re, -inv(n)) .* pow((pow(R,a) + pow(rb,a)), inv(a.*n))) ./ log(10.0);
 }
 
@@ -85,14 +92,19 @@ Calculate the core Sersic profile, serial over parameters
 */
 vector graham_surf_density_vec(
                              vector R,
-                             real preterm,
-                             real g,
-                             real a,
-                             real rb,
-                             real n,
-                             real b,
-                             real Re,
-                             real log10densb){
+                             real log10densb,
+                             real log10rb,
+                             real log10g,
+                             real log10n,
+                             real log10a,
+                             real log10Re){
+    real rb = pow(10., log10rb);
+    real g = pow(10., log10g);
+    real n = pow(10., log10n);
+    real a = pow(10., log10a);
+    real Re = pow(10., log10Re);
+    real b = sersic_b_parameter(n);
+    real preterm = graham_preterm(g, a, n, b, rb, Re);
     return log10densb + (preterm + g/a*log(pow(R,a) + pow(rb,a)) - g*log(R) - b * pow(Re, -inv(n)) * pow((pow(R,a) + pow(rb,a)), inv(a*n))) / log(10.0);
 }
 
@@ -120,9 +132,9 @@ Returns
 -------
 likelihood evaluation at radius R
 */
-real partial_sum_factor(array[] real y_slice, int start, int end, int nc, vector R, vector g, vector a, vector rb, vector n, vector re, vector ld, vector s, array[] int fidx, array[] int cidx){
-    vector[nc] b = sersic_b_parameter(n);
-    vector[nc] pt = graham_preterm(g, a, n, b, rb, re);
+real partial_sum_factor(array[] real y_slice, int start, int end, vector R, vector g, vector a, vector rb, vector n, vector re, vector ld, vector s, array[] int fidx, array[] int cidx){
+    vector[size(n)] b = sersic_b_parameter(n);
+    vector[size(n)] pt = graham_preterm(g, a, n, b, rb, re);
 
     return normal_lpdf(y_slice | graham_surf_density_vec(
                     R[start:end],
@@ -146,74 +158,28 @@ Parameters
 yslice: observed projected density values
 start: start index for partial sum
 end: end index for partial sum
-nc: number of contexts (groups) in the hierarchy
 R: radius to evaluate at
-g: inner slope
-a: transition index
-rb: core radius
-n: sersic index
-re: effective radius
-ld: density at core radius
-s: standard deviation for projected density
+log10densb: logarithmic break density
+log10rb: logarithmic break radius
+log10g: logarithmic inner slope
+log10n: logarithmic Sersic index
+log10a: logarithmic transition index
+log10Re: logarithmic effective radius
+s: error for projected density
 cidx: context index
 
 Returns
 -------
 likelihood evaluation at radius R
 */
-real partial_sum_hierarchy(array[] real y_slice, int start, int end, int nc, vector R, vector g, vector a, vector rb, vector n, vector re, vector ld, vector s, array[] int cidx){
-    vector[nc] b = sersic_b_parameter(n);
-    vector[nc] pt = graham_preterm(g, a, n, b, rb, re);
-
+real partial_sum_hierarchy(array[] real y_slice, int start, int end, vector R, vector log10densb, vector log10rb, vector log10g, vector log10n, vector log10a, vector log10Re, vector s, array[] int cidx){
     return normal_lpdf(y_slice | graham_surf_density_vec(
                     R[start:end],
-                    pt[cidx[start:end]],
-                    g[cidx[start:end]],
-                    a[cidx[start:end]],
-                    rb[cidx[start:end]],
-                    n[cidx[start:end]],
-                    b[cidx[start:end]],
-                    re[cidx[start:end]],
-                    ld[cidx[start:end]]),
-                    s[start:end]);
-}
-
-
-/*
-Partial summation function for reduce_sum() capability
-
-Parameters
-----------
-yslice: observed projected density values
-start: start index for partial sum
-end: end index for partial sum
-R: radius to evaluate at
-g: inner slope
-a: transition index
-rb: core radius
-n: sersic index
-re: effective radius
-ld: density at core radius
-s: standard deviation for projected density
-
-Returns
--------
-likelihood evaluation at radius R
-*/
-real partial_sum_simple(array[] real y_slice, int start, int end, vector R, real g, real a, real rb, real n, real re, real ld, vector s){
-    // convert to vector types
-    real b = sersic_b_parameter(n);
-    real pt = graham_preterm(g, a, n, b, rb, re);
-
-    return normal_lpdf(y_slice | graham_surf_density_vec(
-                    R[start:end],
-                    pt,
-                    g,
-                    a,
-                    rb,
-                    n,
-                    b,
-                    re,
-                    ld),
-                    s[start:end]);
+                    log10densb[cidx[start:end]],
+                    log10rb[cidx[start:end]],
+                    log10g[cidx[start:end]],
+                    log10n[cidx[start:end]],
+                    log10a[cidx[start:end]],
+                    log10Re[cidx[start:end]]),
+                    s);
 }
