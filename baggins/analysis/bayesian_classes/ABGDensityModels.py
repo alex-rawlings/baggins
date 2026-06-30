@@ -1,5 +1,6 @@
 from abc import abstractmethod
 import os.path
+from copy import copy
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
 import pygad
@@ -176,12 +177,15 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
     # Plotting methods
     # ----------------------------------------------------------------------
 
-    def plot_latent_distributions(self, save=True):
+    @abstractmethod
+    def plot_latent_distributions(self, sample_dims, save=True):
         """
         Plot distributions of the latent parameters of the model.
 
         Parameters
         ----------
+        sample_dims : list
+            sampling dimensions
         save : bool, optional
             save the figure, by default True
 
@@ -193,7 +197,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         pc = self.plot_generated_quantity_dist(
             self.latent_qtys,
             labeller=self._labeller_latent,
-            sample_dims=["chain", "draw", "N_groups"],
+            sample_dims=sample_dims,
         )
         ax = get_all_axes_from_plot_collection(pc)
         fig = ax[0].get_figure()
@@ -295,7 +299,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         savefig(next(self.gen_corner_plot_name), fig=fig)
 
     @abstractmethod
-    def all_posterior_pred_plots(self, figsize=None):
+    def all_posterior_pred_plots(self, figsize=None, extra_sample_dims=None):
         """
         Posterior plots generally required for predictive checks and parameter convergence
 
@@ -303,16 +307,22 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         ----------
         figsize : tuple, optional
             figure size, by default None
+        extra_sample_dims : list, optional
+            extra sample dimensions to combine, by default None
         """
         # posterior predictive check
         self.plot_posterior_predictive()
 
         # latent parameter distributions
         self.plot_latent_distributions()
+
+        sample_dims = ["chain", "draw"]
+        if extra_sample_dims is not None:
+            sample_dims.extend(extra_sample_dims)
         pc = self.plot_generated_quantity_dist(
             self.latent_qtys_posterior,
             labeller=self._labeller_latent_posterior,
-            sample_dims=["chain", "draw", "N_groups"],
+            sample_dims=sample_dims,
         )
         fig = pc.get_viz("figure")
         fig.suptitle("Latent parameters (out-sample)")
@@ -323,7 +333,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             self.latent_qtys_posterior,
             figsize=(len(self.latent_qtys_posterior), len(self.latent_qtys_posterior)),
             labeller=self._labeller_latent_posterior,
-            combine_dims=["N_groups"],
+            combine_dims=extra_sample_dims,
         )
         fig = pc.get_viz("figure")
         fig.suptitle("Latent parameters (out-sample)")
@@ -533,6 +543,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         )
         self._latent_qtys = ["log10rS", "log10a", "b", "g", "log10rhoS", "err"]
         self._latent_qtys_posterior = ["rS", "a", "b", "g", "log10rhoS", "err"]
+        self._latent_qtys_OOS = copy(self.latent_qtys_posterior)
         self._latent_qtys_labs = [
             r"$\log_{10}(r_\mathrm{S}/\mathrm{kpc})$",
             r"$\log_{10}\alpha$",
@@ -581,8 +592,13 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             number of stellar particles per bin, by default 2e5
         family : str, optional
             particle family to analyse, by default 'stars'
+
+        Returns
+        -------
+        snap : pygad.Snapshot
+            snapshot used for fitting
         """
-        obs = {"r": [], "density": [], "mass": [], "vel_disp": []}
+        obs = {"r": [], "density": [], "mass": [], "vel_disp": [], "mass_external": []}
         d = self._get_data_files(snapfile)
         if self._loaded_from_file:
             fname = d[0]
@@ -616,10 +632,12 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         )
         obs["r"].append(get_histogram_bin_centres(r_edges, subsnap[mask]["r"]))
         obs["mass"].append([np.sum(subsnap[mask]["mass"])])
+        obs["mass_external"].append([np.sum(subsnap[~mask]["mass"])])
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
         self.obs = obs
         self.collapse_observations(["r", "density", "vel_disp"])
+        return snap
 
     def read_data_from_txt(self, fname, **kwargs):
         """
@@ -670,7 +688,6 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             r_count=r_count, rmin=rmin, rmax=rmax
         )
         OOS_data = super()._set_stan_data_OOS(r_count)
-        self._add_OOS_pars_for_saving(OOS_data)
         rs = np.geomspace(rmin, rmax, self.num_OOS)
         OOS_data.update({self._independent_qtys_OOS[0]: rs})
         self.stan_data.update(OOS_data)
@@ -678,6 +695,14 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
     def set_stan_data(self, **kwargs):
         """See docs for _ABGDensityModelBase.set_stan_data()"""
         super().set_stan_data(**kwargs)
+
+    def diagnose_sample(self):
+        return super().diagnose_sample(self.latent_qtys)
+
+    def plot_latent_distributions(self, save=True):
+        return super().plot_latent_distributions(
+            sample_dims=["chain", "draw"], save=save
+        )
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
         """
@@ -936,6 +961,11 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
     def diagnose_sample(self):
         return super().diagnose_sample(self._hyper_qtys)
 
+    def plot_latent_distributions(self, save=True):
+        return super().plot_latent_distributions(
+            sample_dims=["chain", "draw", "N_groups"], save=save
+        )
+
     def all_prior_plots(self, figsize=None, ylim=None):
         """
         Make prior predictive plots for model.
@@ -967,7 +997,7 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         self.parameter_diagnostic_plots(
             self._hyper_qtys, labeller=self._labeller_hyper, figsize=(8, 8)
         )
-        super().all_posterior_pred_plots(figsize)
+        super().all_posterior_pred_plots(figsize, ["N_groups"])
 
     def all_posterior_OOS_plots(self, save=True, **kwargs):
         """

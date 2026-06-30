@@ -895,8 +895,9 @@ class _StanModel(ABC):
                 "N_obs": np.arange(self._num_obs),
                 "N_OOS": np.arange(self._num_OOS),
                 "N_groups": np.arange(self.num_groups),
-                "N_groups_OOS": np.arange(self._num_groups_OOS),
             }
+            if self._num_groups_OOS is not None:
+                coords.update({"N_groups_OOS": np.arange(self._num_groups_OOS)})
             dims = {}
             # independent/dependent in-sample vars: N_obs dimension
             for k in chain(self._independent_qtys, self._dependent_qtys):
@@ -1040,6 +1041,15 @@ class _StanModel(ABC):
         except TypeError as e:
             _logger.error(f"{e} --  no diagnosis will be performed.")
 
+    def _choose_model_fit_for_GQ(self):
+        # determine if we should use the prior or posterior model
+        if self._active_group() == "prior":
+            _logger.debug("Generated quantities will be taken from the prior model")
+            return self._prior_model, self._prior_fit
+        else:
+            _logger.debug("Generated quantities will be taken from the posterior model")
+            return self._model, self._fit
+
     def sample_generated_quantity(self, gq, force_resample=False, as_xarray=False):
         """
         Sample the 'generated quantities' block of a Stan model. If the model has had both the prior and posterior distributions sampled, the posterior sample will be used.
@@ -1052,28 +1062,16 @@ class _StanModel(ABC):
             run the generate_quantities method() again even if already run, by
             default False
         as_xarray : bool, optional
-            return the data as an xarray Dataset
+            return the data as an xarray Dataset, by default False
 
         Returns
         -------
         np.ndarray or xarray.Dataset
             set of draws for the variable gq
         """
-
-        def _choose_model():
-            # determine if we should use the prior or posterior model
-            if self._active_group() == "prior":
-                _logger.debug("Generated quantities will be taken from the prior model")
-                return self._prior_model, self._prior_fit
-            else:
-                _logger.debug(
-                    "Generated quantities will be taken from the posterior model"
-                )
-                return self._model, self._fit
-
         try:
             if self.generated_quantities is None or force_resample:
-                _model, _fit = _choose_model()
+                _model, _fit = self._choose_model_fit_for_GQ()
                 self._generated_quantities = _model.generate_quantities(
                     data=self.stan_data, previous_fit=_fit
                 )
@@ -1083,7 +1081,7 @@ class _StanModel(ABC):
                 )
             self.generated_quantities.stan_variable(gq)
         except ValueError as e:
-            _model, _fit = _choose_model()
+            _model, _fit = self._choose_model_fit_for_GQ()
             TMPDIRs.make_new_dir()
             _logger.error(
                 f"{e}\n > Value error trying to read generated quantities data: creating temporary directory {TMPDIRs.register[-1]}"
@@ -1097,6 +1095,33 @@ class _StanModel(ABC):
             return self.generated_quantities.draws_xr(gq)
         else:
             return self.generated_quantities.stan_variable(gq)
+
+    def sample_generated_quantity_custom_OOS(self, gq, data, as_xarray=False):
+        """
+        Similar method to 'sample_generated_quantity' but returns the sampled GQ variable directly, given a custom OOS data dictionary. This leaves the original OOS draws and stan_data variable untouched.
+
+        Parameters
+        ----------
+        gq : str
+            variable to draw
+        data : dict
+            OOS update values (updates a copy of stan_data)
+        as_xarray : bool, optional
+            return the data as an xarray Dataset, by default False
+
+        Returns
+        -------
+        : np.array or xarray.DataSet
+            posterior draw of quantity
+        """
+        _stan_data = copy(self.stan_data)
+        _stan_data.update(data)
+        _model, _fit = self._choose_model_fit_for_GQ()
+        _gen_quans = _model.generate_quantities(data=_stan_data, previous_fit=_fit)
+        if as_xarray:
+            return _gen_quans.draws_xr(gq)
+        else:
+            return _gen_quans.stan_variable(gq)
 
     # ----------------------------------------------------------------------
     # Plots

@@ -22,6 +22,12 @@ parser.add_argument(
     "--no-plots", action="store_true", dest="noplots", help="don't make plots"
 )
 parser.add_argument(
+    "--no-diagnose",
+    action="store_false",
+    dest="diagnose",
+    help="don't diagnose HMC fit",
+)
+parser.add_argument(
     "-v",
     "--verbosity",
     type=str,
@@ -51,14 +57,12 @@ if args.verbose == "DEBUG":
     mNFW.print_obs_summary()
 
 # initialise the data dictionary
-mNFW.set_stan_data()
+mNFW.set_stan_data(rmin=1e-3, rmax=1000)
 if args.prior:
     mNFW.sample_prior(sample_kwargs=sample_kwargs)
     mNFW.all_prior_plots()
 else:
-    mNFW.sample_model(
-        sample_kwargs=sample_kwargs, diagnose=False
-    )  # TODO change diagnose
+    mNFW.sample_model(sample_kwargs=sample_kwargs, diagnose=args.diagnose)
 
     if not args.noplots:
         mNFW.all_posterior_pred_plots()

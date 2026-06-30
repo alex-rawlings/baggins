@@ -10,7 +10,7 @@ data {
 
     // OOS inputs
     int<lower=0> N_OOS;                           // number of prediction points
-    vector<lower=0, upper=max(r)>[N_OOS] r_OOS;   // radii at which to predict
+    vector<lower=0>[N_OOS] r_OOS;   // radii at which to predict
 }
 
 transformed data {
