@@ -74,6 +74,10 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         return self._dependent_qtys_posterior
 
     @property
+    def dependent_qtys_OOS(self):
+        return self._dependent_qtys_OOS
+
+    @property
     def latent_qtys(self):
         return self._latent_qtys
 
@@ -172,6 +176,48 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         Wrapper around StanModel.sample_model().
         """
         super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
+
+    # ----------------------------------------------------------------------
+    # Transformed quantities
+    # ----------------------------------------------------------------------
+
+    def calculate_mass_profile(self, use_OOS=False, as_xarray=False):
+        """
+        Calculate the mass profile from the density profile.
+
+        Parameters
+        ----------
+        use_OOS : bool, optional
+            use OOS quantities, by default False
+        as_xarray : bool, optional
+            return as xr.DataSet, by default False
+
+        Returns
+        -------
+        : np.array | xr.DataSet
+            mass profile
+        """
+        f = lambda p, r: 4 * np.pi * p * r**2
+
+        if use_OOS:
+            return f(
+                self.sample_generated_quantity(
+                    self.dependent_qtys_OOS[0], as_xarray=as_xarray
+                ),
+                self.access_independent_qty(
+                    self._independent_qtys_OOS[0], as_xarray=as_xarray
+                ),
+            )
+
+        else:
+            return f(
+                self.sample_generated_quantity(
+                    self.dependent_qtys_posterior[0], as_xarray=as_xarray
+                ),
+                self.access_independent_qty(
+                    self._independent_qtys[0], as_xarray=as_xarray
+                ),
+            )
 
     # ----------------------------------------------------------------------
     # Plotting methods
@@ -422,7 +468,6 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         rho = self.sample_generated_quantity(
             self._dependent_qtys_OOS[0], as_xarray=True
         )
-        rho = rho.rename_dims({f"{self._dependent_qtys_OOS[0]}_dim_0": "N_OOS"})
         rho = rho.to_dataarray()[0]
         for d in rho.dims:
             rho = rho.dropna(d)
@@ -598,7 +643,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         snap : pygad.Snapshot
             snapshot used for fitting
         """
-        obs = {"r": [], "density": [], "mass": [], "vel_disp": [], "mass_external": []}
+        obs = {"r": [], "density": [], "mass": [], "vel_disp": []}
         d = self._get_data_files(snapfile)
         if self._loaded_from_file:
             fname = d[0]
@@ -632,7 +677,6 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         )
         obs["r"].append(get_histogram_bin_centres(r_edges, subsnap[mask]["r"]))
         obs["mass"].append([np.sum(subsnap[mask]["mass"])])
-        obs["mass_external"].append([np.sum(subsnap[~mask]["mass"])])
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
         self.obs = obs

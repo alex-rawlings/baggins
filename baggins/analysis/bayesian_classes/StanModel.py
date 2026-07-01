@@ -747,6 +747,31 @@ class _StanModel(ABC):
         x, dens = az.kde(self.generated_quantities.stan_variables()[v])
         return x[np.nanargmax(dens)]
 
+    def access_independent_qty(self, q, as_xarray=False):
+        """
+        Access the data associated with an independent quantity.
+
+        Parameters
+        ----------
+        q : str
+            name of quantity
+        as_xarray : bool, optional
+            return as an xarray DataArray, by default False
+
+        Returns
+        -------
+        x : np.array | xr.DataArray
+            independent quantity
+        """
+        if q in self._independent_qtys:
+            x = self._inference_data["constant_data"][q]
+        else:
+            x = self._inference_data["predictions_constant_data"][q]
+        if as_xarray:
+            return x
+        else:
+            return x.to_numpy()
+
     # ----------------------------------------------------------------------
     # Sampling
     # ----------------------------------------------------------------------
@@ -890,7 +915,6 @@ class _StanModel(ABC):
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
         )
         try:
-            # TODO add self._num_groups and corresponding OOS as coords for hierarchical models?
             coords = {
                 "N_obs": np.arange(self._num_obs),
                 "N_OOS": np.arange(self._num_OOS),
@@ -1092,7 +1116,12 @@ class _StanModel(ABC):
                 gq_output_dir=TMPDIRs.register[-1],
             )
         if as_xarray:
-            return self.generated_quantities.draws_xr(gq)
+            ds = self.generated_quantities.draws_xr(gq)
+            if gq in self._dependent_qtys_OOS:
+                ds = ds.rename_dims({f"{gq}_dim_0": "N_OOS"})
+            elif gq in self._dependent_qtys_posterior:
+                ds = ds.rename_dims({f"{gq}_dim_0": "N_obs"})
+            return ds
         else:
             return self.generated_quantities.stan_variable(gq)
 

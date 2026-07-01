@@ -4,7 +4,7 @@ import baggins as bgs
 bgs.plotting.check_backend()
 
 parser = argparse.ArgumentParser(
-    description="Fit a Dehnen profile with stan",
+    description="Fit a Dehnen profile with Stan",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
 )
 parser.add_argument(help="snapshot to analyse", dest="file", type=str)
@@ -34,5 +34,5 @@ dehnen.set_stan_data()
 dehnen.sample_model()
 
 dehnen.all_posterior_pred_plots()
-dehnen.all_posterior_OOS_plots()
+dehnen.plot_posterior_OOS()
 dehnen.print_parameter_percentiles(dehnen.latent_qtys)
