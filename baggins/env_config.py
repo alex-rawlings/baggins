@@ -87,8 +87,9 @@ except AssertionError:
 os.makedirs(figure_dir, exist_ok=True)
 
 # set the matplotlib settings
-rcdefaults()
-rc_file(os.path.join(baggins_dir, "plotting/matplotlibrc"))
+if not user_params["disable_plot_style"]:
+    rcdefaults()
+    rc_file(os.path.join(baggins_dir, "plotting/matplotlibrc"))
 
 # get the git hash
 # only set git hash if in the baggins repo
