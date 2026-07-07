@@ -48,8 +48,8 @@ def argparse_for_stan(description="", pos_args=None):
     description : str, optional
         main description of program invoked with help flag, by default ""
     pos_args : list, optional
-        positional arguments that should come before the `type` positional 
-        argument. This must be a list of dicts, where each dict is expanded as 
+        positional arguments that should come before the `type` positional
+        argument. This must be a list of dicts, where each dict is expanded as
         a keyword-argument pair.
 
     Returns
