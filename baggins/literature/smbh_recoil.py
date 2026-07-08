@@ -143,8 +143,7 @@ def ketju_calculate_bh_merger_remnant_properties(m1, m2, s1, s2, x1, x2, v1, v2)
         )
         + np.dot(S0_tilde, m59)
         * (
-            Delta_tilde_para
-            * (4315.0 - 1262.0 * delta_m**2 + 15970.0 * S0_tilde_para)
+            Delta_tilde_para * (4315.0 - 1262.0 * delta_m**2 + 15970.0 * S0_tilde_para)
             - 2256.0 * delta_m
             - 2231.0 * delta_m * S0_tilde_para
         )

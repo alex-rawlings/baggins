@@ -43,5 +43,14 @@ python ./script.py -h
 A list of 
 required inputs and optional inputs will be displayed.  
 
+## Contributing  
+Contributions are welcome. To keep the code base clean, we use `pre-commit` and `ruff`.  
+```
+pip install pre-commit
+pip install ruff
+pre-commit install
+```
+Now when you commit changes, automatic formatting and linting is done (in which case you'll need to rerun the `git add` and `git commit` commands).
+
 ### Who do I talk to?  
 * Alex Rawlings (rawlings@mpa-garching.mpg.de)
