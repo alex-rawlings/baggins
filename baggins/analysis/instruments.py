@@ -14,7 +14,6 @@ __all__ = [
     "HARMONI_SENSITIVE",
     "HARMONI_BALANCED",
     "HARMONI_SPATIAL",
-    "Euclid_NISP",
     "Euclid_VIS",
     "ERIS_IFU",
     "JWST_IFU",
@@ -29,7 +28,7 @@ _logger = _cmlogger.getChild(__name__)
 
 
 class BasicInstrument(ABC):
-    def __init__(self, fov, sampling, res=None, z=None):
+    def __init__(self, fov, sampling, res=None, z=None, max_extent=40):
         """
         Template class for defining basic observation instrument properties
 
@@ -43,14 +42,14 @@ class BasicInstrument(ABC):
             angular resolution in arcsec, by default None
         z : float, optional
             redshift of observations, by default None
+        max_extent : float, optional
+            maximum spatial extent [kpc], by default 40
         """
         self.field_of_view = fov * Unit("arcsec")
         self.sampling = sampling * Unit("arcsec")
-        if res is None:
-            res = 1e-6
         self.angular_resolution = res * Unit("arcsec")
         self._ang_scale = None
-        self.max_extent = 40.0 * Unit("kpc")
+        self.max_extent = max_extent * Unit("kpc")
         if z is not None:
             self.redshift = z
 
@@ -179,12 +178,13 @@ class BasicInstrument(ABC):
 
 
 class Euclid_NISP(BasicInstrument):
+    # TODO not a camera, so doesn't make sense here
     def __init__(self, z=None):
         """
         Euclid infrared bands. Parameters taken from:
         https://sci.esa.int/web/euclid/-/euclid-nisp-instrument
         """
-        super().__init__(fov=0.722 * 3600, sampling=0.3, res=None, z=z)
+        super().__init__(fov=0.722 * 3600, sampling=0.3, res=0.101, z=z)
         self.label = r"$\mathrm{Euclid}$"
 
 
@@ -625,7 +625,7 @@ class VLT_FORS2(LongSlitInstrument):
             sampling=0.125,
             slit_width=0.28,
             slit_length=6.8 * 60,
-            res=None,
+            res=0.25,
             rng=rng,
             z=z,
         )
