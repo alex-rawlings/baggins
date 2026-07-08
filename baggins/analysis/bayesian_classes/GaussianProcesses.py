@@ -1,12 +1,10 @@
 from abc import abstractmethod
 import os.path
 import numpy as np
-import matplotlib.pyplot as plt
-from arviz_base.labels import MapLabeller
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.env_config import _cmlogger, baggins_dir
-from baggins.plotting import savefig
-from baggins.utils import save_data, get_files_in_dir
+from baggins.plotting import savefig, get_all_axes_from_plot_collection
+from baggins.utils import save_data
 
 
 __all__ = ["_GPBase", "GeneralGP"]
@@ -32,42 +30,83 @@ class _GPBase(HierarchicalModel_2D):
         saved .csv files.
         """
         super().__init__(model_file, prior_file, figname_base, rng)
-        self._latent_qtys = ["rho", "alpha", "sigma"]
-        self._latent_qtys_labs = [r"$\rho$", r"$\alpha$", r"$\sigma$"]
-        self._labeller_latent = MapLabeller(
-            dict(zip(self._latent_qtys, self._latent_qtys_labs))
-        )
-        self._folded_qtys = ["y1"]
-        self._folded_qtys_posterior = ["y"]
+        self._independent_qtys = ["x"]
+        self._independent_qtys_OOS = ["x_OOS"]
+        self.independent_qtys_labs = [r"$x$"]
+        self._dependent_qtys = ["y"]
+        self._dependent_qtys_posterior = [
+            f"{v}_posterior" for v in self._dependent_qtys
+        ]
+        self._dependent_qtys_prior = [f"{v}_prior" for v in self._dependent_qtys]
+        self._dependent_qtys_OOS = [f"{v}_OOS" for v in self._dependent_qtys]
+        self.dependent_qtys_labs = [r"$y$"]
+        self._make_xy_labellers()
+        self._latent_qtys = ["rho", "alpha", "err"]
+        self._latent_qtys_labs = [r"$\rho$", r"$\alpha$", r"$\tau$"]
+        self._make_latent_labellers()
+
+    # ----------------------------------------------------------------------
+    # Properties
+    # ----------------------------------------------------------------------
+
+    @property
+    def dependent_qtys(self):
+        return self._dependent_qtys
+
+    @property
+    def dependent_qtys_posterior(self):
+        return self._dependent_qtys_posterior
+
+    @property
+    def dependent_qtys_OOS(self):
+        return self._dependent_qtys_OOS
 
     @property
     def latent_qtys(self):
         return self._latent_qtys
 
     @property
-    def folded_qtys(self):
-        return self._folded_qtys
+    def latent_qtys_posterior(self):
+        return self._latent_qtys_posterior
 
     @property
-    def folded_qtys_posterior(self):
-        return self._folded_qtys_posterior
+    def latent_qtys_labs(self):
+        return self._latent_qtys_labs
+
+    # ----------------------------------------------------------------------
+    # Abstract methods
+    # ----------------------------------------------------------------------
 
     @abstractmethod
     def extract_data(self):
         return super().extract_data()
 
     @abstractmethod
-    def _set_stan_data_OOS(self):
-        return super()._set_stan_data_OOS()
+    def _set_stan_data_OOS(self, N):
+        return super()._set_stan_data_OOS(N)
 
-    @abstractmethod
-    def set_stan_data(self, *pars):
-        self.stan_data = dict(
-            N1=self.num_obs_collapsed,
+    # ----------------------------------------------------------------------
+    # Stan Data
+    # ----------------------------------------------------------------------
+
+    def set_stan_data(self, *kwargs):
+        if self.stan_data is None:
+            self.stan_data = {}
+        self.stan_data.update(
+            {
+                "N_obs": self.num_obs_collapsed,
+                self._independent_qtys[0]: self.obs_collapsed[
+                    self._independent_qtys[0]
+                ],
+                self._dependent_qtys[0]: self.obs_collapsed[self._dependent_qtys[0]],
+            }
         )
-        if not self._loaded_from_file:
-            self._set_stan_data_OOS(*pars)
-        _logger.debug(f"Setting {self.stan_data['N1']} training points")
+        self._set_stan_data_OOS(**kwargs)
+        _logger.debug(f"Setting {self.stan_data['N_obs']} training points")
+
+    # ----------------------------------------------------------------------
+    # Sampling
+    # ----------------------------------------------------------------------
 
     def sample_model(self, sample_kwargs={}, diagnose=True):
         super().sample_model(
@@ -77,70 +116,134 @@ class _GPBase(HierarchicalModel_2D):
             self._determine_num_OOS(self._folded_qtys_posterior[0])
             self._set_stan_data_OOS()
 
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        v = super().sample_generated_quantity(gq, force_resample, state)
-        if gq in self.folded_qtys or gq in self.folded_qtys_posterior:
-            idxs = self._get_GQ_indices(state)
-            return v[..., idxs]
-        else:
-            return v
+    def diagnose_sample(self):
+        return super().diagnose_sample(self.latent_qtys)
 
-    def plot_latent_distributions(self, figsize=None):
+    # ----------------------------------------------------------------------
+    # Plotting methods
+    # ----------------------------------------------------------------------
+
+    def plot_latent_distributions(self, save=True):
         """
-        Plot distributions of the latent parameters of the model
+        Plot distributions of the latent parameters of the model.
 
         Parameters
         ----------
-        figsize : tuple, optional
-            figure size, by default None
+        save : bool, optional
+            save the figure, by default True
 
         Returns
         -------
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        fig, ax = plt.subplots(3, 1, figsize=figsize)
-        self.plot_generated_quantity_dist(
-            self._latent_qtys, ax=ax, xlabels=self._latent_qtys_labs
+        pc = self.plot_generated_quantity_dist(
+            self.latent_qtys,
+            labeller=self._labeller_latent,
         )
+        ax = get_all_axes_from_plot_collection(pc)
+        fig = ax[0].get_figure()
+        fig.suptitle("Latent parameters (in-sample)")
+        if save:
+            savefig(next(self.gen_gq_plot_name))
         return ax
 
-    def diag_plots(self, figsize=None):
+    def plot_posterior_predictive(self, save=True, **kwargs):
         """
-        Plots generally required for predictive checks
+        Plot posterior predictive regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
+        pc = super().plot_posterior_predictive(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            savefig(next(self.gen_postpred_plot_name))
+        return ax
+
+    def plot_prior_predictive(self, save=True, **kwargs):
+        """
+        Plot prior predictive regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
+        pc = super().plot_prior_predictive(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            savefig(next(self.gen_priorpred_plot_name))
+        return ax
+
+    def plot_posterior_OOS(self, save=True, **kwargs):
+        """
+        Plot posterior out-of-sample regression model.
+
+        Parameters
+        ----------
+        save : bool, optional
+            save the plot, by default True
+
+        Returns
+        -------
+        ax : matplotlib.Axes.axes
+            plotting axes
+        """
+        pc = super().plot_posterior_OOS(**kwargs)
+        ax = pc.get_viz("plot")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        if save:
+            savefig(next(self.gen_postOOS_plot_name))
+        return ax
+
+    def all_posterior_pred_plots(self, figsize=None):
+        """
+        Posterior plots generally required for predictive checks and parameter convergence
 
         Parameters
         ----------
         figsize : tuple, optional
             figure size, by default None
+        extra_sample_dims : list, optional
+            extra sample dimensions to combine, by default None
         """
-        type_str = "prior" if self._fit is None else "posterior"
+        # posterior predictive check
+        self.plot_posterior_predictive()
+
+        # latent parameter distributions
+        self.plot_latent_distributions()
+
+        # transformed latent parameter distributions
+        pc = self.parameter_corner_plot(
+            self.latent_qtys_posterior,
+            figsize=(len(self.latent_qtys_posterior), len(self.latent_qtys_posterior)),
+            labeller=self._labeller_latent_posterior,
+        )
+        fig = pc.get_viz("figure")
+        fig.suptitle("Latent parameters (out-sample)")
+        savefig(next(self.gen_corner_plot_name), fig=fig)
 
         self.parameter_diagnostic_plots(
             self.latent_qtys, labeller=self._labeller_latent, figsize=figsize
         )
-
-        # latent quantities
-        self.plot_latent_distributions(figsize=figsize)
-        ax1 = self.parameter_corner_plot(
-            self.latent_qtys,
-            figsize=figsize,
-            labeller=self._labeller_latent,
-            combine_dims={"dim"},
-        )
-        fig1 = ax1[0, 0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base,
-                f"corner_{type_str}_{self._parameter_corner_plot_counter}",
-            ),
-            fig=fig1,
-        )
-
-    @abstractmethod
-    def all_plots(self, figsize=None):
-        self.diag_plots(figsize=figsize)
-        pass
 
     def save_gp_for_plots(self, fname, xkey="x", ykey="y"):
         """
@@ -156,9 +259,9 @@ class _GPBase(HierarchicalModel_2D):
             key for y data, by default "y"
         """
         data = {
-            f"{xkey}": self.stan_data["x1"],
+            f"{xkey}": self.access_independent_qty(self._independent_qtys[0]),
             f"{ykey}": self.sample_generated_quantity(
-                self.folded_qtys_posterior[0], state="OOS"
+                self.sample_generated_quantity(self.dependent_qtys[0])
             ),
         }
         save_data(data, fname)
@@ -182,16 +285,6 @@ class GeneralGP(_GPBase):
             figname_base=figname_base,
             rng=rng,
         )
-        self._input_qtys_labs = [r"$x$"]
-        self._folded_qtys_labs = [r"$y$"]
-
-    @property
-    def input_qtys_labs(self):
-        return self._input_qtys_labs
-
-    @property
-    def folded_qtys_labs(self):
-        return self._folded_qtys_labs
 
     def extract_data(self, d=None, skiprows=0, logx=False, logy=False):
         """
@@ -213,43 +306,36 @@ class GeneralGP(_GPBase):
         RuntimeError
             if non-txt file supplied
         """
-        d = self._get_data_dir(d)
-        try:
-            fnames = get_files_in_dir(d, ext=".txt")
-        except NotADirectoryError:
-            # the individual file names are saved to the input_data_*.yml file
-            _ext = os.path.splitext(d)[-1]
-            _logger.debug(f"Loading from {_ext} file")
-            if _ext == ".yml":
-                fnames = d
-            elif _ext == ".txt":
-                fnames = [d]
-            else:
-                raise RuntimeError(f"Unknown file type {_ext}")
-        except TypeError:
-            _logger.debug("TypeError -> taking the first instance")
-            fnames = d[0]
         obs = {"x": [], "y": []}
-        _logger.debug(f"Files to load {fnames}")
-        for f in fnames:
-            _logger.info(f"Loading file: {f}")
-            _dat = np.loadtxt(f, skiprows=skiprows)
-            if _dat.shape[0] == 2 and _dat.shape[1] != 2:
-                # convert to column-major
-                _dat = _dat.T
-            _logger.debug(f"Input data has shape {_dat.shape}")
-            # TODO check for 2x2 case
-            if logx:
-                obs["x"].append(np.log10(_dat[:, 0]))
-            else:
-                obs["x"].append(_dat[:, 0])
-            if logy:
-                obs["y"].append(np.log10(_dat[:, 1]))
-            else:
-                obs["y"].append(_dat[:, 1])
+        d = self._get_data_files(d)
+        if self._loaded_from_file:
+            fname = d[0]
+            skiprows = self._input_data_and_pars["data_opts"]["skiprows"]
+            logx = self._input_data_and_pars["data_opts"]["logx"]
+            logy = self._input_data_and_pars["data_opts"]["logx"]
+        else:
+            fname = d
+            self._input_data_and_pars["data_opts"] = dict(
+                skiprows=skiprows, logx=logx, logy=logy
+            )
+        _logger.info(f"Loading file: {fname}")
+        _dat = np.loadtxt(fname, skiprows=skiprows)
+        if _dat.shape[0] == 2 and _dat.shape[1] != 2:
+            # convert to column-major
+            _dat = _dat.T
+        _logger.debug(f"Input data has shape {_dat.shape}")
+        # TODO check for 2x2 case
+        if logx:
+            obs["x"].append(np.log10(_dat[:, 0]))
+        else:
+            obs["x"].append(_dat[:, 0])
+        if logy:
+            obs["y"].append(np.log10(_dat[:, 1]))
+        else:
+            obs["y"].append(_dat[:, 1])
 
-            if not self._loaded_from_file:
-                self._add_input_data_file(f)
+        if not self._loaded_from_file:
+            self._add_input_data_file(fname)
         self.obs = obs
         self.collapse_observations(["x", "y"])
 
@@ -263,45 +349,9 @@ class GeneralGP(_GPBase):
         """
         if N is None:
             N = max([len(x) for x in self.obs["x"]]) * 10
-        self._num_OOS = N
+        OOS_data = super()._set_stan_data_OOS(N)
         xmin = min([np.min(x) for x in self.obs["x"]])
         xmax = max([np.max(x) for x in self.obs["x"]])
-        x2 = np.linspace(xmin, xmax, self.num_OOS)
-        self.stan_data.update({"x2": x2, "N2": self.num_OOS})
-
-    def set_stan_data(self, *pars):
-        """
-        Set the data for Stan
-        """
-        super().set_stan_data(*pars)
-        self.stan_data.update(
-            {"x1": self.obs_collapsed["x"], "y1": self.obs_collapsed["y"]}
-        )
-
-    def posterior_OOS_plot(self, figsize=None):
-        """
-        Plots for posterior.
-
-        Parameters
-        ----------
-        figsize : tuple, optional
-            figure size, by default None
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            plotting axes
-        """
-        ylims = (
-            np.quantile(self.obs_collapsed["y"], 0.01),
-            np.quantile(self.obs_collapsed["y"], 0.99),
-        )
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-        self.add_data_to_predictive_plot(ax=ax, xobs="x", yobs="y")
-        ax.set_ylim(*ylims)
-        ax.set_xlabel(self._input_qtys_labs[0])
-        ax.set_ylabel(self._folded_qtys_labs[0])
-        self.posterior_OOS_plot(
-            xmodel="x2", ymodel=self.folded_qtys_posterior[0], ax=ax, smooth=True
-        )
-        return ax
+        x = np.linspace(xmin, xmax, self.num_OOS)
+        OOS_data.update({self._independent_qtys_OOS[0]: x})
+        self.stan_data.update(OOS_data)
