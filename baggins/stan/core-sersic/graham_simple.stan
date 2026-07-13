@@ -5,24 +5,18 @@ functions{
 
 
 data {
-    // total number of points
-    int<lower=1> N_tot;
-    // array of radial values
-    vector<lower=0.001>[N_tot] R;
-    // array of surface density values
-    array[N_tot] real log10_surf_rho;
+    int<lower=1> N_obs;                // number of data points
+    vector<lower=0.001>[N_obs] R;      // radii
+    array[N_obs] real log10_density;  // density
 
     // Out of Sample points
-    // total number of OOS points
-    int<lower=1> N_OOS;
-    // OOS radii values
-    vector<lower=min(R), upper=max(R)>[N_OOS] R_OOS;
+    int<lower=1> N_OOS;                           // number of prediction points
+    vector<lower=min(R), upper=max(R)>[N_OOS] R_OOS;  // radii at which to predict
 }
 
 
 transformed data {
-    int N_GQ = N_tot + N_OOS;
-    vector<lower=min(R), upper=max(R)>[N_GQ] R_GQ = append_row(R, R_OOS);
+    vector[N_obs] log10_density = log10(density);
 }
 
 
@@ -60,35 +54,40 @@ model{
     {
         real b = sersic_b_parameter(n);
         real pt = graham_preterm(g, a, n, b, rb, Re);
-        target += normal_lpdf(log10_surf_rho | graham_surf_density_vec(R, pt, g, a, rb, n, b, Re, log10densb), err);
+        target += normal_lpdf(log10_density | graham_surf_density_vec(R, pt, g, a, rb, n, b, Re, log10densb), err);
     }
 }
 
 
 generated quantities {
-    // generate data replication
-    vector[N_GQ] log10_surf_rho_posterior;
-    vector[N_GQ] surf_rho_posterior;
+    // In-sample posterior predictive
+    vector[N_obs] log10_Sigma_mean;
+    vector[N_obs] log10_density_posterior;
+    vector[N_obs] density_posterior;
+    vector[N_obs] log_lik;
+
+    // Out-of-sample predictions
+    vector[N_OOS] log10_Sigma_mean_OOS;
+    vector[N_OOS] log10_density_OOS;
+    vector[N_OOS] density_OOS;
 
     {
+        // In-sample
         // some helper quantities
         real b = sersic_b_parameter(n);
         real pt = graham_preterm(g, a, n, b, rb, Re);
 
-        // push forward data
-        vector[N_GQ] mean_gsd = graham_surf_density_vec(
-                                        R_GQ,
-                                        pt,
-                                        g,
-                                        a,
-                                        rb,
-                                        n,
-                                        b,
-                                        Re,
-                                        log10densb);
-        for(i in 1:N_GQ){
-            log10_surf_rho_posterior[i] = trunc_normal_rng(mean_gsd[i], err, -5, 15);
+        log10_Sigma_mean = graham_surf_density_vec(R, pt, g, a, rb, n, b, Re, log10densb);
+        for (i in 1:N_obs){
+            log10_density_posterior[i] = trunc_normal_rng(log10_Sigma_mean[i], err, -5, 15);
+            log_lik[i] = normal_lpdf(log10_density[i] | log10_Sigma_mean[i], err);
+        }
+
+        // OOS
+        log10_Sigma_mean_OOS = graham_surf_density_vec(R_OOS, pt, g, a, rb, n, b, Re, log10densb);
+        for(i in 1:N_OOS){
+            log10_density_OOS[i] = trunc_normal_rng(log10_Sigma_mean_OOS[i], err, -5, 15);
         }
     }
-    surf_rho_posterior = pow(10., log10_surf_rho_posterior);
+    density_OOS = pow(10., log10_density_OOS);
 }

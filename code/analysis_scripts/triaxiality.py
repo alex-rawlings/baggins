@@ -198,12 +198,12 @@ if args.save:
     ax[1].set_ylabel(r"$c/a$")
 
     # create a colour scale
-    cmapper, sm = bgs.plotting.create_normed_colours(min(times), max(times))
+    col_map = bgs.plotting.NormedColours(min(times), max(times))
 
     for i, t in enumerate(times):
-        ax[0].semilogx(ratios["r"][i, :], ratios["ba"][i, :], c=cmapper(t))
-        ax[1].semilogx(ratios["r"][i, :], ratios["ca"][i, :], c=cmapper(t))
+        ax[0].semilogx(ratios["r"][i, :], ratios["ba"][i, :], c=col_map.get_colour(t))
+        ax[1].semilogx(ratios["r"][i, :], ratios["ca"][i, :], c=col_map.get_colour(t))
     ax[0].set_ylim(0, 1)
-    cbar = plt.colorbar(sm, ax=ax[-1], label=r"$t/\mathrm{Gyr}$")
+    cbar = plt.colorbar(col_map.sm, ax=ax[-1], label=r"$t/\mathrm{Gyr}$")
     bgs.plotting.savefig(os.path.join(bgs.FIGDIR, "triaxiality", figname))
     plt.show()

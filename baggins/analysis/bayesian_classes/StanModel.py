@@ -1,18 +1,19 @@
 from abc import ABC, abstractmethod
-from copy import deepcopy
+from copy import copy, deepcopy
 import os
 from operator import itemgetter
-from itertools import groupby
+from itertools import groupby, chain
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import rcParams, collections, patches, ticker
+from matplotlib import collections, patches, ticker
 from datetime import datetime, timezone
 import cmdstanpy
+import xarray as xr
 import arviz as az
 import yaml
-from baggins.plotting import savefig, create_normed_colours, plot_hdi
-from baggins.env_config import figure_dir, TMPDIRs, _cmlogger
+from baggins.plotting import savefig, NormedColours, plot_hdi
+from baggins.env_config import figure_dir, TMPDIRs, _cmlogger, fig_ext
 from baggins.utils import get_mod_time, get_files_in_dir
 
 __all__ = [
@@ -44,24 +45,34 @@ class _StanModel(ABC):
         self._model_file = model_file
         self._prior_file = prior_file
         self.figname_base = figname_base
-        self._num_OOS = None
         if rng is None:
             self._rng = np.random.default_rng()
         else:
             self._rng = rng
-        self._num_obs = None
-        self._stan_data = {}
+        self.stan_data = None
         self._model = None
         self._fit = None
-        self._fit_for_az = None
+        self._inference_data = None
         self._prior_model = None
         self._prior_fit = None
         self._exec_file = None
-        self._parameter_diagnostic_plots_counter = 0
-        self._gq_distribution_plot_counter = 0
-        self._group_par_counter = 0
-        # corner plot method doesn't save figure --> ensures first plot index 0
-        self._parameter_corner_plot_counter = -1
+
+        # number of observations, hierarchical groups, etc
+        # note these may be set in a child class
+        self._num_obs = None
+        self._num_OOS = None
+        self._num_groups = None
+        self._num_groups_OOS = None
+
+        # helper generators to name figures
+        self.gen_diag_plot_name = self.make_figname_generator("diagnosis")
+        self.gen_gq_plot_name = self.make_figname_generator("GQ")
+        self.gen_hiergroup_plot_name = self.make_figname_generator("HierGroup")
+        self.gen_corner_plot_name = self.make_figname_generator("corner")
+        self.gen_postpred_plot_name = self.make_figname_generator("post-pred")
+        self.gen_priorpred_plot_name = self.make_figname_generator("prior-pred")
+        self.gen_postOOS_plot_name = self.make_figname_generator("post-OOS")
+
         self._trace_plot_cols = None
         self._observation_mask = True
         self._plot_obs_data_kwargs = {
@@ -71,18 +82,45 @@ class _StanModel(ABC):
             "cmap": "PuRd",
             "zorder": 2,
         }
-        self._default_hdi_levels = [99, 75, 50, 25]
-        self._num_groups = 0
+        self._default_hdi_levels = [0.25, 0.5, 0.8]
+
         self._loaded_from_file = False
         self._generated_quantities = None
         self._obs_collapsed = {}
         self._obs_collapsed_names = []
         self._input_data_file_count = 0
-        self._input_data_files = {}
+        self._input_data_and_pars = {
+            "input_files": {},
+            "OOS_opts": None,
+            "data_opts": None,
+        }
+        self._input_data_yml_file = None
+
+        # ArviZ labellers
+        self._x_labeller = None
+        self._y_labeller = None
+        self._labeller_latent = None
+        self._labeller_latent_posterior = None
+        self._labeller_latent_OOS = None
 
         # properties which are defined in child classes
         self._latent_qtys = None
-        self._folded_qtys = None
+        self._latent_qtys_labs = None
+        self._latent_qtys_posterior = None
+        self._latent_qtys_posterior_labs = None
+        self._latent_qtys_OOS = None
+        self._independent_qtys = None
+        self._independent_qtys_OOS = None
+        self._dependent_qtys = None
+        self._dependent_qtys_prior = None
+        self._dependent_qtys_posterior = None
+        self._dependent_qtys_OOS = None
+        self.independent_qtys_labs = None
+        self.dependent_qtys_labs = None
+
+    # ----------------------------------------------------------------------
+    # Properties
+    # ----------------------------------------------------------------------
 
     @property
     def num_OOS(self):
@@ -168,13 +206,23 @@ class _StanModel(ABC):
     @stan_data.setter
     def stan_data(self, d):
         try:
-            assert isinstance(d, dict)
+            if isinstance(d, dict):
+                self._stan_data.update(d)
+            elif d is None:
+                self._stan_data = {}
+            else:
+                raise AssertionError
         except AssertionError:
             _logger.exception(
-                "Input to property `stan_data` must be a dict!", exc_info=True
+                "Input to property 'stan_data' must be a dict!", exc_info=True
             )
             raise
-        self._stan_data.update(d)
+        if isinstance(d, dict):
+            self._stan_data.update(d)
+
+    # ----------------------------------------------------------------------
+    # Abstract interface
+    # ----------------------------------------------------------------------
 
     @abstractmethod
     def set_stan_data(self):
@@ -184,38 +232,70 @@ class _StanModel(ABC):
         pass
 
     @abstractmethod
-    def _set_stan_data_OOS(self):
+    def _set_stan_data_OOS(self, N):
         """
-        Set the data for out-of-sample generated quantities.
-        """
-        pass
-
-    def _make_fig_name(self, fname, tag):
-        """
-        Make figure names by appending a tag to a base name.
+        Set the data for out-of-sample generated quantities. Note that the dependent quantity values can change, however the number cannot.
 
         Parameters
         ----------
-        fname : str
-            base figure name to which a tag will be appended
-        tag : str
-            tag to append
+        N : int
+            Number of OOS points to use if not loaded from file
 
         Returns
         -------
-        str, path-like
-            path to save figure as
+        : number of OOS points
         """
-        fname_parts = list(os.path.splitext(fname))
-        if fname_parts[1] == "":
-            fname_parts[1] = ".png"
-        elif fname_parts[1] not in (".png", ".jpeg", ".jpg", ".eps", ".pdf"):
-            # we do not have a valid extension
-            fname_parts = [fname, ".png"]
-        fittype = "posterior" if self._fit is not None else "prior"
-        return f"{fname_parts[0]}_{fittype}_{tag}{fname_parts[1]}"
+        if self._loaded_from_file:
+            with open(self._input_data_yml_file, "r+") as f:
+                data = yaml.safe_load(f)["OOS_opts"]
+            self._num_OOS = data["N_OOS"]
+            _logger.info(f"Previous fit means that N_OOS is set to {self.num_OOS}")
+            return data
+        else:
+            self._num_OOS = N
+            return {"N_OOS": self._num_OOS}
 
-    def _get_data_dir(self, d):
+    @abstractmethod
+    def extract_data(self):
+        """
+        Extract data for the Stan model (parsed to set_stan_data()).
+        """
+        pass
+
+    # ----------------------------------------------------------------------
+    # Figure helpers
+    # ----------------------------------------------------------------------
+
+    def make_figname_generator(self, s, N=20):
+        """
+        Generator to easily make sequential figure names.
+
+        Parameters
+        ----------
+        s : str
+            common string to all generator outputs
+        N : int, optional
+            maximum number of iterations, by default 20
+
+        Yields
+        ------
+        : str
+            figure name (with prepending path)
+        """
+        i = 0
+        while i < N:
+            fit_type = self._active_group()
+            yield os.path.join(
+                os.path.dirname(self.figname_base),
+                f"{os.path.basename(self.figname_base)}_{fit_type}_{s}{i}.{fig_ext}",
+            )
+            i += 1
+
+    # ----------------------------------------------------------------------
+    # Data directory helper
+    # ----------------------------------------------------------------------
+
+    def _get_data_files(self, p):
         """
         Get the observed data directories for a Stan model
 
@@ -229,17 +309,25 @@ class _StanModel(ABC):
         d : path-like, list
             observed data directories
         """
-        if d is None:
+        _files = []
+        if self._loaded_from_file:
+            for k, f in self._input_data_and_pars["input_files"].items():
+                _files.append(f["path"])
+            return _files
+        else:
             try:
-                assert self._loaded_from_file
-                d = [[f["path"] for f in self._input_data_files.values()]]
+                assert p is not None
+                return p
             except AssertionError:
                 _logger.exception(
-                    "HMQ directory must be given if not loaded from file!",
+                    "Data directory must be given if not loaded from file!",
                     exc_info=True,
                 )
                 raise
-        return d
+
+    # ----------------------------------------------------------------------
+    # Input observation helpers
+    # ----------------------------------------------------------------------
 
     def _check_observation_validity(self, d, set_categorical=False):
         """
@@ -482,16 +570,20 @@ class _StanModel(ABC):
             )
             raise
 
+    # ----------------------------------------------------------------------
+    # Input data book-keeping
+    # ----------------------------------------------------------------------
+
     def _add_input_data_file(self, f):
         """
-        Save the path to a HMQ file used in the sampling
+        Save the path to the input data file used in the sampling
 
         Parameters
         ----------
         f : path-like
-            path to HMQ file
+            path to data file
         """
-        self._input_data_files.update(
+        self._input_data_and_pars["input_files"].update(
             {
                 f"file{self._input_data_file_count:03d}": {
                     "path": f,
@@ -502,11 +594,24 @@ class _StanModel(ABC):
         self._input_data_file_count += 1
 
     def _get_timestamp_from_csv(self, csvfile):
+        """
+        Get the timestamp from a CSV file.
+
+        Parameters
+        ----------
+        csvfile : str
+            path to csv file
+
+        Returns
+        -------
+        : str
+            timestamp
+        """
         return os.path.basename(csvfile).split("-")[-1].split("_")[0]
 
     def _write_input_data_yml(self, csvfile):
         """
-        Save list of HMQ files used to .yml file
+        Save list of data files used to .yml file
 
         Parameters
         ----------
@@ -515,29 +620,188 @@ class _StanModel(ABC):
         """
         d = os.path.dirname(csvfile)
         tstamp = self._get_timestamp_from_csv(csvfile)
-        with open(os.path.join(d, f"input_data-{tstamp}.yml"), "w") as f:
-            yaml.dump(self._input_data_files, f)
+        self._input_data_yml_file = os.path.join(d, f"input_data-{tstamp}.yml")
+        try:
+            assert not os.path.exists(self._input_data_yml_file)
+        except AssertionError:
+            _logger.exception(
+                f"Input data .yml file {self._input_data_yml_file} exists!",
+                exc_info=True,
+            )
+            raise
+        with open(self._input_data_yml_file, "w") as f:
+            yaml.dump(self._input_data_and_pars, f)
 
-    def _determine_num_OOS(self, v):
+    def _add_OOS_pars_for_saving(self, d):
         """
-        Determine number of out-of-sample values given a previously saved run
+        Add OOS options to the dictionary of information to be saved so models can be restored from saved .csv files.
+
+        Parameters
+        ----------
+        d : dict
+            OOS parameters to be saved
+        """
+        if not self._loaded_from_file:
+            self._input_data_and_pars["OOS_opts"] = deepcopy(d)
+        else:
+            _logger.debug(
+                "Model instantiated from file, cannot set OOS parameters again"
+            )
+
+    # ----------------------------------------------------------------------
+    # Arviz - xarray helpers
+    # ----------------------------------------------------------------------
+
+    def _active_group(self):
+        """
+        Return the name of the currently active InferenceData group
+        ('posterior' if only the posterior has been sampled, otherwise 'prior').
+
+        Returns
+        -------
+        : str
+            name of active group
+        """
+        if self._inference_data is None:
+            raise RuntimeError(
+                "No fit available. Run sample_model() or sample_prior() first."
+            )
+        return "posterior" if "/posterior" in self._inference_data.groups else "prior"
+
+    def _expand_dimension(self, varnames, dim):
+        """
+        Expand dimensions of variables to match another dimension
+
+        Parameters
+        ----------
+        varnames : list, tuple
+            variables to expand
+        dim : str
+            dimension name to expand to
+        """
+        try:
+            assert isinstance(varnames, (list, tuple))
+        except AssertionError:
+            _logger.exception(
+                f"Expanding variables requires first arugment to be a list or tuple, not {type(varnames)}",
+                exc_info=True,
+            )
+            raise
+        group = self._active_group()
+        for k in varnames:
+            self._inference_data[group][k] = self._inference_data[group][k].expand_dims(
+                {dim: np.arange(self._inference_data[group].dims[dim])}, axis=-1
+            )
+
+    def _make_xy_labellers(self):
+        """
+        Make the independent and dependent variable labellers, for use with az.plot_lm().
+        """
+        self._x_labeller = az.labels.MapLabeller(
+            dict(
+                zip(
+                    chain(self._independent_qtys, self._independent_qtys_OOS),
+                    chain(self.independent_qtys_labs, self.independent_qtys_labs),
+                )
+            )
+        )
+        self._y_labeller = az.labels.MapLabeller(
+            dict(
+                zip(
+                    chain(self._independent_qtys, self._independent_qtys_OOS),
+                    chain(self.dependent_qtys_labs, self.dependent_qtys_labs),
+                )
+            )
+        )
+
+    def _make_latent_labellers(self):
+        """
+        Make the labeller for latent parameters
+        """
+        self._labeller_latent = az.labels.MapLabeller(
+            dict(zip(self._latent_qtys, self._latent_qtys_labs))
+        )
+        self._labeller_latent_posterior = az.labels.MapLabeller(
+            dict(zip(self._latent_qtys_posterior, self._latent_qtys_posterior_labs))
+        )
+        if self._latent_qtys_OOS is not None:
+            self._labeller_latent_OOS = az.labels.MapLabeller(
+                dict(zip(self._latent_qtys_OOS, self._latent_qtys_posterior_labs))
+            )
+
+    def calculate_mode(self, v):
+        """
+        Determine the mode of a Stan variable, following the method defined in
+        arviz.plot_utils package.
 
         Parameters
         ----------
         v : str
-            inferred posterior variable name
+            stan variable to determine the mode for
+
+        Returns
+        -------
+        : float
+            mode of variable
         """
-        q = self._fit_for_az["posterior"][v]
-        n = [q.sizes[k] for k in q.sizes.keys() if k not in ("chain", "draw")]
-        try:
-            assert len(n) == 1
-        except AssertionError:
-            _logger.exception(
-                f"Dataset can only have three dimensions: chain, draw, and other. Currently has size {len(n)+2}",
-                exc_info=True,
-            )
-            raise
-        self._num_OOS = n[0]
+        x, dens = az.kde(self.generated_quantities.stan_variables()[v])
+        return x[np.nanargmax(dens)]
+
+    def access_independent_qty(self, q, as_xarray=False):
+        """
+        Access the data associated with an independent quantity.
+
+        Parameters
+        ----------
+        q : str
+            name of quantity
+        as_xarray : bool, optional
+            return as an xarray DataArray, by default False
+
+        Returns
+        -------
+        x : np.array | xr.DataArray
+            independent quantity
+        """
+        if q in self._independent_qtys:
+            x = self._inference_data["constant_data"][q]
+        else:
+            x = self._inference_data["predictions_constant_data"][q]
+        if as_xarray:
+            return x
+        else:
+            return x.to_numpy()
+
+    # ----------------------------------------------------------------------
+    # Sampling
+    # ----------------------------------------------------------------------
+
+    def _check_needed_variables_set(self):
+        """
+        Ensure that all needed variables that are defined in child classes are set.
+        """
+        needed_vars = [
+            self._latent_qtys,
+            self._latent_qtys_labs,
+            self._latent_qtys_posterior,
+            self._latent_qtys_posterior_labs,
+            self._independent_qtys,
+            self._independent_qtys_OOS,
+            self._dependent_qtys,
+            self._dependent_qtys_prior,
+            self._dependent_qtys_posterior,
+            self._dependent_qtys_OOS,
+            self.independent_qtys_labs,
+            self.dependent_qtys_labs,
+        ]
+        for v in needed_vars:
+            try:
+                assert v is not None
+            except AssertionError:
+                _logger.exception(
+                    f"Class attribute {v} must not be None!", exc_info=True
+                )
+                raise
 
     def _sampler(self, prior=False, sample_kwargs=None, diagnose=True, pathfinder=True):
         """
@@ -548,7 +812,7 @@ class _StanModel(ABC):
         prior : bool, optional
             run sampler for prior model, by default False
         sample_kwargs : dict, optional
-            kwargs to be passed to CmdStanModel.sample(), by default {}
+            kwargs to be passed to CmdStanModel.sample(), by default None
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         pathfinder : bool, optional
@@ -560,6 +824,7 @@ class _StanModel(ABC):
         cmdstanpy.CmdStanMCMC
             container output from stan sampling
         """
+        self._check_needed_variables_set()
         if self._loaded_from_file:
             _logger.warning(
                 "Instance instantiated from file: sampling the model again is not possible --> Skipping."
@@ -589,7 +854,7 @@ class _StanModel(ABC):
                 try:
                     if pathfinder:
                         pf = self._model.pathfinder(
-                            data=self.stan_data, show_console=True
+                            data=self.stan_data, show_console=False
                         )
                         inits = pf.create_inits()
                     else:
@@ -611,14 +876,7 @@ class _StanModel(ABC):
                 _logger.warning("No diagnosis will be done on fit!")
             return fit
 
-    @abstractmethod
-    def extract_data(self):
-        """
-        Extract data for the Stan model (parsed to set_stan_data()).
-        """
-        pass
-
-    def build_model(self, prior=False):
+    def build_executable(self, prior=False):
         """
         Build the stan model
 
@@ -635,7 +893,7 @@ class _StanModel(ABC):
             )
 
     @abstractmethod
-    def sample_model(self, sample_kwargs={}, diagnose=True, pathfinder=True):
+    def sample_model(self, sample_kwargs=None, diagnose=True, pathfinder=True):
         """
         Wrapper function around _sampler() to sample a stan likelihood model.
 
@@ -644,7 +902,7 @@ class _StanModel(ABC):
         data : dict
             stan data values
         sample_kwargs : dict, optional
-             kwargs to be passed to CmdStanModel.sample(), by default {}
+             kwargs to be passed to CmdStanModel.sample(), by default None
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         pathfinder : bool, optional
@@ -652,23 +910,74 @@ class _StanModel(ABC):
             default True
         """
         if self._model is None and not self._loaded_from_file:
-            self.build_model()
+            self.build_executable()
         self._fit = self._sampler(
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=pathfinder
         )
-        # TODO capture arviz warnings about NaN
-        self._fit_for_az = az.from_cmdstanpy(posterior=self._fit)
-        if diagnose:
-            # prior sensitivity only done for posterior model
-            self._fit_for_az.add_groups(
-                {"log_prior": self._fit_for_az["posterior"]["lprior"]}
-            )
-            priorsens = az.psens(self._fit_for_az, var_names=self._latent_qtys)
-            _logger.info(
-                f"Maximum CJS distance for latent variables:\n {priorsens.max()}"
-            )
+        try:
+            coords = {
+                "N_obs": np.arange(self._num_obs),
+                "N_OOS": np.arange(self._num_OOS),
+                "N_groups": np.arange(self.num_groups),
+            }
+            if self._num_groups_OOS is not None:
+                coords.update({"N_groups_OOS": np.arange(self._num_groups_OOS)})
+            dims = {}
+            # independent/dependent in-sample vars: N_obs dimension
+            for k in chain(self._independent_qtys, self._dependent_qtys):
+                dims[k] = ["N_obs"]
+            # posterior predictive (in-sample replications): N_obs
+            for k in self._dependent_qtys_posterior:
+                dims[k] = ["N_obs"]
+            # OOS independent vars: N_OOS
+            for k in chain(self._independent_qtys_OOS, self._dependent_qtys_OOS):
+                dims[k] = ["N_OOS"]
+            # log_lik is indexed over observations
+            dims["log_lik"] = ["N_obs"]
+            # latent parameters
+            for k in chain(self._latent_qtys, self._latent_qtys_posterior):
+                if len(self._fit.draws_xr(k).dims) > 2:
+                    dims[k] = ["N_groups"]
+            for k in self._latent_qtys_OOS:
+                try:
+                    if len(self._fit.draws_xr(k).dims) > 2:
+                        dims[k] = ["N_groups_OOS"]
+                except KeyError:
+                    continue
+            kwargs = {
+                "posterior": self._fit,
+                "log_likelihood": "log_lik",
+                # TODO remove OOS from below?
+                "constant_data": {
+                    k: self.stan_data[k]
+                    for k in chain(self._independent_qtys, self._independent_qtys_OOS)
+                },
+                "posterior_predictive": self._dependent_qtys_posterior,
+                "predictions_constant_data": {
+                    k: self.stan_data[k] for k in self._independent_qtys_OOS
+                },
+                "predictions": self._dependent_qtys_OOS,
+                "dims": dims,
+                "coords": coords,
+            }
+            observed_data = {}
+            for k in self._dependent_qtys:
+                try:
+                    observed_data[k] = self.stan_data[k]
+                except KeyError:
+                    _logger.debug(f"'{k}' is not in stan_data. Skipping")
+                    continue
+            kwargs.update({"observed_data": observed_data})
 
-    def sample_prior(self, sample_kwargs={}, diagnose=True):
+            self._inference_data = az.from_cmdstanpy(**kwargs)
+        except ValueError as e:
+            _logger.error(e)
+            kwargs.pop("log_likelihood", None)
+            self._inference_data = az.from_cmdstanpy(**kwargs)
+        if diagnose:
+            self.diagnose_sample()
+
+    def sample_prior(self, sample_kwargs=None, diagnose=True):
         """
         Wrapper function around _sampler() to sample a stan prior model.
 
@@ -677,43 +986,95 @@ class _StanModel(ABC):
         data : dict
             stan data values
         sample_kwargs : dict, optional
-            kwargs to be passed to CmdStanModel.sample(), by default {}
+            kwargs to be passed to CmdStanModel.sample(), by default None
         diagnose : bool, optional
             diagnose the fit (should always be done), by default True
         """
         if self._prior_model is None and not self._loaded_from_file:
-            self.build_model(prior=True)
+            self.build_executable(prior=True)
         self._prior_fit = self._sampler(
             sample_kwargs=sample_kwargs, prior=True, diagnose=diagnose
         )
-        self._fit_for_az = az.from_cmdstanpy(prior=self._prior_fit)
+        coords = {
+            "N_obs": np.arange(self._num_obs),
+        }
+        dims = {}
+        # independent/dependent in-sample vars: N_obs dimension
+        for k in chain(self._independent_qtys, self._dependent_qtys):
+            dims[k] = ["N_obs"]
+        # prior predictive (in-sample replications): N_obs
+        for k in self._dependent_qtys_prior:
+            dims[k] = ["N_obs"]
+        kwargs = {
+            "prior": self._prior_fit,
+            "constant_data": {k: self.stan_data[k] for k in self._independent_qtys},
+            "prior_predictive": self._dependent_qtys_prior,
+            "dims": dims,
+            "coords": coords,
+        }
+        observed_data = {}
+        for k in self._dependent_qtys:
+            try:
+                observed_data[k] = self.stan_data[k]
+            except KeyError:
+                _logger.debug(f"'{k}' is not in stan_data. Skipping")
+                continue
+        kwargs.update({"observed_data": observed_data})
+        self._inference_data = az.from_cmdstanpy(**kwargs)
 
-    def _get_GQ_indices(self, state, collapsed=False):
+    @abstractmethod
+    def diagnose_sample(self, var_names):
         """
-        Get the indices of a generated quantity block for either predictive
-        inference or out of sample inference
+        Diagnose a MCMC sample with prior-sense to determine sensitivity of fit.
 
         Parameters
         ----------
-        state : str
-            inference type, must be one of 'pred' or 'OOS'
-        collapsed : bool, optional
-            has the variable been collapsed (1-dimensional), by default False
-
-        Returns
-        -------
-        np.ndarray
-            array of indices
+        var_names : list
+            variable names to assess sensitivity for
         """
-        dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
-        return (
-            np.r_[0:dividing_idx]
-            if state == "pred"
-            else np.r_[dividing_idx : self.num_OOS + dividing_idx]
-        )
+        lprior = self._fit.draws_xr("lprior")
+        for d in lprior.dims:
+            lprior = lprior.dropna(dim=d)
 
-    @abstractmethod
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
+        # Build a flat Dataset with one named variable per parameter
+        log_prior_vars = {}
+        for x in lprior.coords["lprior_dim_0"].values:
+            da = (
+                lprior["lprior"]  # extract the DataArray from the Dataset
+                .sel(lprior_dim_0=x)
+                .drop_vars("lprior_dim_0", errors="ignore")
+            )
+            # Fix chain indexing: re-index from 1-based to 0-based
+            da = da.assign_coords(chain=da.coords["chain"] - 1)
+            log_prior_vars[var_names[x]] = da
+
+        log_prior_ds = xr.Dataset(log_prior_vars)
+
+        # Replace any previously attached log_prior group
+        if "log_prior" in self._inference_data.groups:
+            del self._inference_data.log_prior
+        self._inference_data["log_prior"] = xr.DataTree(log_prior_ds)
+
+        try:
+            priorsens = az.psense_summary(
+                self._inference_data,
+                var_names=var_names,
+                likelihood_var_names="log_lik",
+            )
+            _logger.info(f"CJS distance for latent variables:\n {priorsens}")
+        except TypeError as e:
+            _logger.error(f"{e} --  no diagnosis will be performed.")
+
+    def _choose_model_fit_for_GQ(self):
+        # determine if we should use the prior or posterior model
+        if self._active_group() == "prior":
+            _logger.debug("Generated quantities will be taken from the prior model")
+            return self._prior_model, self._prior_fit
+        else:
+            _logger.debug("Generated quantities will be taken from the posterior model")
+            return self._model, self._fit
+
+    def sample_generated_quantity(self, gq, force_resample=False, as_xarray=False):
         """
         Sample the 'generated quantities' block of a Stan model. If the model has had both the prior and posterior distributions sampled, the posterior sample will be used.
 
@@ -724,30 +1085,17 @@ class _StanModel(ABC):
         force_resample : bool, optional
             run the generate_quantities method() again even if already run, by
             default False
-        state : str, optional
-            return generated quantities for predictive checks or out-of-sample
-            quantities, by default "pred"
+        as_xarray : bool, optional
+            return the data as an xarray Dataset, by default False
 
         Returns
         -------
-        np.ndarray
+        np.ndarray or xarray.Dataset
             set of draws for the variable gq
         """
-
-        def _choose_model():
-            # determine if we should use the prior or posterior model
-            if self._model is None:
-                _logger.debug("Generated quantities will be taken from the prior model")
-                return self._prior_model, self._prior_fit
-            else:
-                _logger.debug(
-                    "Generated quantities will be taken from the posterior model"
-                )
-                return self._model, self._fit
-
         try:
             if self.generated_quantities is None or force_resample:
-                _model, _fit = _choose_model()
+                _model, _fit = self._choose_model_fit_for_GQ()
                 self._generated_quantities = _model.generate_quantities(
                     data=self.stan_data, previous_fit=_fit
                 )
@@ -757,7 +1105,7 @@ class _StanModel(ABC):
                 )
             self.generated_quantities.stan_variable(gq)
         except ValueError as e:
-            _model, _fit = _choose_model()
+            _model, _fit = self._choose_model_fit_for_GQ()
             TMPDIRs.make_new_dir()
             _logger.error(
                 f"{e}\n > Value error trying to read generated quantities data: creating temporary directory {TMPDIRs.register[-1]}"
@@ -767,31 +1115,60 @@ class _StanModel(ABC):
                 previous_fit=_fit,
                 gq_output_dir=TMPDIRs.register[-1],
             )
-        return self.generated_quantities.stan_variable(gq)
+        if as_xarray:
+            ds = self.generated_quantities.draws_xr(gq)
+            if gq in self._dependent_qtys_OOS:
+                ds = ds.rename_dims({f"{gq}_dim_0": "N_OOS"})
+            elif gq in self._dependent_qtys_posterior:
+                ds = ds.rename_dims({f"{gq}_dim_0": "N_obs"})
+            return ds
+        else:
+            return self.generated_quantities.stan_variable(gq)
 
-    def calculate_mode(self, v):
+    def sample_generated_quantity_custom_OOS(self, gq, data, as_xarray=False):
         """
-        Determine the mode of a Stan variable, following the method defined in
-        arviz.plot_utils package.
+        Similar method to 'sample_generated_quantity' but returns the sampled GQ variable directly, given a custom OOS data dictionary. This leaves the original OOS draws and stan_data variable untouched.
 
         Parameters
         ----------
-        v : str
-            stan variable to determine the mode for
+        gq : str
+            variable to draw
+        data : dict
+            OOS update values (updates a copy of stan_data)
+        as_xarray : bool, optional
+            return the data as an xarray Dataset, by default False
 
         Returns
         -------
-        : float
-            mode of variable
+        : np.array or xarray.DataSet
+            posterior draw of quantity
         """
-        """if self._fit is None:
-            _fit = self._prior_fit
-            _logger.debug("Generated quantities will be taken from the prior model")
+        _stan_data = copy(self.stan_data)
+        _stan_data.update(data)
+        _model, _fit = self._choose_model_fit_for_GQ()
+        _gen_quans = _model.generate_quantities(data=_stan_data, previous_fit=_fit)
+        if as_xarray:
+            return _gen_quans.draws_xr(gq)
         else:
-            _fit = self._fit
-            _logger.debug("Generated quantities will be taken from the posterior model")"""
-        x, dens = az.kde(self.generated_quantities.stan_variables()[v])
-        return x[np.nanargmax(dens)]
+            return _gen_quans.stan_variable(gq)
+
+    # ----------------------------------------------------------------------
+    # Plots
+    # ----------------------------------------------------------------------
+
+    def _make_default_hdi_colours(self):
+        """
+        Create the default colour scheme for HDI regression plots. Basically a wrapper around NormedColours()
+
+        Returns
+        -------
+        : function
+            takes an argument in the range [vmin, vmax] and returns the scaled
+            colour
+        : matplotlib.cm.ScalarMappable
+            object that is required for creating a colour bar
+        """
+        return NormedColours(0.2, 1.1, cmap="PuRd_r")
 
     def _parameter_corner_plot(
         self,
@@ -799,9 +1176,9 @@ class _StanModel(ABC):
         figsize=None,
         labeller=None,
         levels=None,
-        combine_dims=None,
-        backend_kwargs=None,
         divergences=True,
+        combine_dims=None,
+        **kwargs,
     ):
         """
         Base method to create parameter corner plots. This method should not be
@@ -819,80 +1196,49 @@ class _StanModel(ABC):
             HDI intervals to plot, by default None
         combine_dims : set-like, optional
             dimensions to reduce, by default None
-        backend_kwargs : dict, optional
-            keyword arguments to be passed to pyplot.subplots() as per arviz
-            docs, by default None
         divergences : bool, optional
             plot divergences, by default True
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
+        pc : arviz.PlotCollection
             corner plot
         """
         if levels is None:
-            levels = self._default_hdi_levels
-        levels.sort(reverse=True)
-        levels = [lev / 100 for lev in levels]
+            levels = copy(self._default_hdi_levels)
+        levels.sort()
         # show divergences on plots where no dimension combination has
         # occurred: combining dimensions changes the length of boolean mask
         # "diverging_mask" in arviz --> index mismatch error
-        divergences = divergences if combine_dims is None else False
-        if "prior" in self._fit_for_az.groups():
-            group = "prior"
+        group = self._active_group()
+        if group == "prior":
             divergences = False
+        if combine_dims is not None:
+            sample_dims = ["chain", "draw"]
+            sample_dims.extend(combine_dims)
         else:
-            group = "posterior"
+            sample_dims = None
         num_vars = len(var_names)
-        with az.rc_context(
-            {"plot.max_subplots": num_vars**2 - np.sum(np.arange(num_vars)) + 1}
-        ):
-            # first lay down the markers
-            # ax = az.plot_pair(self._fit_for_az, group=group, var_names=var_names, kind="scatter", marginals=True, combine_dims=combine_dims, scatter_kwargs={"marker":".", "alpha":0.1, "s":10}, figsize=figsize, labeller=labeller, textsize=rcParams["font.size"], backend_kwargs=backend_kwargs)
-            # then add the KDE
-            try:
-                ax = az.plot_pair(
-                    self._fit_for_az,
-                    group=group,
-                    var_names=var_names,
-                    kind="kde",
-                    divergences=divergences,
-                    combine_dims=combine_dims,
-                    figsize=figsize,
-                    marginals=True,
-                    kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0, "levels": 0},
-                        "hdi_probs": levels,
-                        "contourf_kwargs": {"cmap": "Blues"},
-                    },
-                    point_estimate_marker_kwargs={"marker": ""},
-                    labeller=labeller,
-                    textsize=rcParams["font.size"],
-                    backend_kwargs=backend_kwargs,
-                )
-            except ValueError:
-                _logger.error(
-                    "HDI interval cannot be determined for corner plots! KDE levels will not correspond to a particular HDI, but follow matplotlib contour defaults"
-                )
-                ax = az.plot_pair(
-                    self._fit_for_az,
-                    group=group,
-                    var_names=var_names,
-                    kind="kde",
-                    divergences=divergences,
-                    combine_dims=combine_dims,
-                    figsize=figsize,
-                    marginals=True,
-                    kde_kwargs={
-                        "contour_kwargs": {"linewidths": 0, "levels": 0},
-                        "contourf_kwargs": {"cmap": "Blues"},
-                    },
-                    point_estimate_marker_kwargs={"marker": ""},
-                    labeller=labeller,
-                    textsize=rcParams["font.size"],
-                    backend_kwargs=backend_kwargs,
-                )
-        return ax
+        cmapper = self._make_default_hdi_colours()
+        visuals = kwargs.pop("visuals", {})
+        for k in ("dist", "scatter"):
+            visuals.setdefault(k, {"color": cmapper.get_colour(cmapper.vmin)})
+        visuals["divergence"] = divergences
+        kwargs["visuals"] = visuals
+        with az.rc_context({"plot.max_subplots": num_vars**2}):
+            pp_kwargs = dict(
+                dt=self._inference_data,
+                group=group,
+                var_names=var_names,
+                labeller=labeller,
+                triangle="lower",
+                marginal=True,
+                marginal_kind="kde",
+                aes_by_visuals={"dist": "contour"},
+                sample_dims=sample_dims,
+            )
+            pc = az.plot_pair(**pp_kwargs, **kwargs)
+        return pc
 
     def parameter_corner_plot(
         self,
@@ -901,28 +1247,27 @@ class _StanModel(ABC):
         labeller=None,
         levels=None,
         combine_dims=None,
-        backend_kwargs=None,
+        **kwargs,
     ):
         """
         See docs for _parameter_corner_plot()
         """
-        ax = self._parameter_corner_plot(
+        pc = self._parameter_corner_plot(
             var_names,
             figsize=figsize,
             labeller=labeller,
             levels=levels,
-            combine_dims=combine_dims,
-            backend_kwargs=backend_kwargs,
             divergences=False,
+            combine_dims=combine_dims,
+            **kwargs,
         )
-        self._parameter_corner_plot_counter += 1
-        return ax
+        return pc
 
     def parameter_diagnostic_plots(
         self, var_names, figsize=None, labeller=None, levels=None
     ):
         """
-        Plot key pair plots and diagnostics of a stan likelihood model.
+        Plot key pair plots and diagnostics of a Stan likelihood model.
 
         Parameters
         ----------
@@ -946,64 +1291,48 @@ class _StanModel(ABC):
             raise
 
         # set trace colour scheme
-        if self._parameter_diagnostic_plots_counter == 0:
-            vmax = len(self._fit_for_az.posterior["chain"])
-            cmapper, sm = create_normed_colours(-vmax / 2, vmax, cmap="Blues")
+        if self._trace_plot_cols is None:
+            cmapper = NormedColours(
+                0, len(self._inference_data.posterior["chain"]), cmap="managua"
+            )
             self._trace_plot_cols = [
-                cmapper(x) for x in self._fit_for_az.posterior["chain"]
+                cmapper.get_colour(x) for x in self._inference_data.posterior["chain"]
             ]
         # limit to 4 variables per plot: figures will be saved with an
         # additional index in the name, e.g. 0-0.png
         num_var_per_plot = 3 if len(var_names) == 5 else 4
         for i in range(0, len(var_names), num_var_per_plot):
             # plot trace
-            ax = az.plot_trace(
-                self._fit_for_az,
+            pc = az.plot_trace(
+                self._inference_data,
                 var_names=var_names[i : i + num_var_per_plot],
-                figsize=figsize,
-                chain_prop={"color": self._trace_plot_cols},
-                trace_kwargs={"alpha": 0.9},
+                # visuals={"trace": {"color": self._trace_plot_cols, "alpha":0.9}},
+                # aes_by_visuals={"trace":"color"},
+                color=self._trace_plot_cols,
                 labeller=labeller,
             )
-            fig = ax.flatten()[0].get_figure()
-            savefig(
-                self._make_fig_name(
-                    self.figname_base,
-                    f"trace_{self._parameter_diagnostic_plots_counter}-{i//num_var_per_plot}",
-                ),
-                fig=fig,
-            )
+            fig = pc.viz["figure"].item()
+            savefig(next(self.gen_diag_plot_name), fig=fig)
             plt.close(fig)
 
             # plot rank
-            ax = az.plot_rank(
-                self._fit_for_az,
+            pc = az.plot_rank(
+                self._inference_data,
                 var_names=var_names[i : i + num_var_per_plot],
                 labeller=labeller,
+                color=self._trace_plot_cols,
             )
-            fig = ax.flatten()[0].get_figure()
-            savefig(
-                self._make_fig_name(
-                    self.figname_base,
-                    f"rank_{self._parameter_diagnostic_plots_counter}-{i//num_var_per_plot}",
-                ),
-                fig=fig,
-            )
+            fig = pc.viz["figure"].item()
+            savefig(next(self.gen_diag_plot_name), fig=fig)
             plt.close(fig)
 
         # plot pair
-        ax = self._parameter_corner_plot(
+        pc = self._parameter_corner_plot(
             var_names=var_names, figsize=figsize, labeller=labeller, levels=levels
         )
-        fig = ax.flatten()[0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"pair_{self._parameter_diagnostic_plots_counter}"
-            ),
-            fig=fig,
-        )
+        fig = pc.viz["figure"].item()
+        savefig(next(self.gen_diag_plot_name), fig=fig)
         plt.close(fig)
-        self._parameter_diagnostic_plots_counter += 1
 
     def group_parameter_plot(
         self, var_names, figsize=None, levels=None, xlabel="Factor", ylabels=None
@@ -1026,11 +1355,9 @@ class _StanModel(ABC):
         """
         num_vars = len(var_names)
         if levels is None:
-            levels = self._default_hdi_levels
-        levels = [lev / 100 for lev in levels]
-        levels.sort(reverse=True)
-        az_group = "prior"
-        cmapper, sm = create_normed_colours(
+            levels = copy(self._default_hdi_levels)
+        levels.sort()
+        cmapper = NormedColours(
             max(0, 0.9 * min(levels)), 1.3, cmap="Blues_r", trunc=(None, max(levels))
         )
         fig, ax = plt.subplots(num_vars, 1, sharex="all", figsize=figsize)
@@ -1041,7 +1368,9 @@ class _StanModel(ABC):
             for j, level in enumerate(levels):
                 p = []
                 hdi = az.hdi(
-                    self._fit_for_az[az_group].get(v), hdi_prob=level, skipna=True
+                    self._inference_data[self._active_group()].get(v),
+                    hdi_prob=level,
+                    skipna=True,
                 )
                 try:
                     lower = hdi[0]
@@ -1053,7 +1382,9 @@ class _StanModel(ABC):
                 for k, (ll, uu) in enumerate(zip(lower, upper)):
                     r = patches.Rectangle((k - 0.5, ll), 1, uu - ll)
                     p.append(r)
-                ax[i].add_collection(collections.PatchCollection(p, fc=cmapper(level)))
+                ax[i].add_collection(
+                    collections.PatchCollection(p, fc=cmapper.get_colour(level))
+                )
             ax[i].autoscale_view()
             for j in range(len(lower) - 1):
                 ax[i].axvline(j + 0.5, c="k", alpha=0.4, lw=0.5)
@@ -1065,204 +1396,42 @@ class _StanModel(ABC):
             if i == num_vars - 1:
                 break
             axi.tick_params(axis="x", which="both", bottom=False)
-        plt.colorbar(sm, label="HDI", location="top", ax=ax[0])
+        plt.colorbar(cmapper.sm, label="HDI", location="top", ax=ax[0])
         savefig(
-            self._make_fig_name(
-                self.figname_base, f"group_par_{self._group_par_counter}"
-            ),
+            next(self.gen_hiergroup_plot_name),
             fig=fig,
         )
         plt.close(fig)
-        self._group_par_counter += 1
 
-    @abstractmethod
-    def _plot_predictive(
-        self,
-        xmodel,
-        ymodel,
-        state,
-        xobs=None,
-        yobs=None,
-        yobs_err=None,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        show_legend=True,
-    ):
+    def plot_generated_quantity_dist(self, var_names, **kwargs):
         """
-        Plot predictive regressions - can be either for the conditioned data (in-sample) or new data (out-of-sample).
+        Plot the distribution of a generated quantity variable.
 
         Parameters
         ----------
-        xmodel :str
-            dictionary key for modelled independent variable
-        ymodel :str
-            dictionary key for modelled dependent variable
-        state : str
-            return generated quantities for predictive checks or out-of-sample
-            quantities
-        xobs :str
-            dictionary key for observed independent variable
-        yobs :str
-            dictionary key for observed dependent variable
-        yobs_err : str, optional
-            dictionary key for observed dependent variable scatter, by
-            default None
-        levels : list, optional
-            HDI intervals to plot, by default None
-        ax : matplotlib.axes.Axes, optional
-            axis to plot to, by default None (creates new instance)
-        collapsed : bool, optional
-            plotting collapsed observations?, by default True
-        show_legend : bool, optional
-            show the legend, by default True
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            plotting axis
-        """
-        pass
-
-    def plot_generated_quantity_dist(
-        self,
-        gq,
-        state="pred",
-        bounds=None,
-        ax=None,
-        xlabels=None,
-        save=True,
-        **kwargs,
-    ):
-        """
-        Plot the 1-D distribution of an arbitrary variable in the generated quantities block of a stan model.
-
-        Parameters
-        ----------
-        gq : list
+        var_names : list or str
             variables to plot
-        state : str, optional
-            return generated quantities for predictive checks or out-of-sample
-            quantities, by default "pred"
-        bounds : list
-            list of tuples [(a,b), ..., (a,b)] giving the lower and upper bound for each variable in gq
-        ax : matplotlib.axes.Axes or np.ndarray of, optional
-            axes object to plot to, by default None
-        xlabels : list, optional
-            labels for the x-axis, by default None
-        save : bool, optional
-            save the plot, by default True
-        **kwargs :
-            other parameters parsed to arviz.plot_dist()
 
         Returns
         -------
-        matplotlib.axes.Axes
-            plotting axes
+        pc : arviz.PlotCollection
+            plotting collection
         """
-        if ax is None:
-            fig, ax = plt.subplots(len(gq), 1)
-        elif isinstance(ax, (np.ndarray, list)):
-            fig = np.atleast_2d(ax)[0, 0].get_figure()
-        else:
-            fig = ax.get_figure()
-        if isinstance(ax, np.ndarray):
-            ax_shape = ax.shape
-        else:
-            ax = np.array(ax)
-            ax_shape = (1,)
-        ax = ax.flatten()
-        try:
-            assert isinstance(gq, list)
-        except AssertionError:
-            _logger.exception(f"Input `gq` must be of type <list>, not {type(gq)}!")
-            raise
-        if bounds is not None:
-            try:
-                assert len(bounds) == len(gq)
-                for b in bounds:
-                    assert len(b) == 2
-            except AssertionError:
-                _logger.exception(
-                    "Setting bounds requires the `bounds` argument to have the same length as `gq`, and each entry must be a 2-tuple",
-                    exc_info=True,
-                )
-                raise
-        if xlabels is None:
-            xlabels = gq
-        else:
-            assert isinstance(xlabels, list)
-            try:
-                assert len(gq) == len(xlabels)
-            except AssertionError:
-                _logger.exception(
-                    f"There are {len(gq)} generated quantity variables to plot, but only {len(xlabels)} labels!",
-                    exc_info=True,
-                )
-                raise
-        for i, (_gq, lab) in enumerate(zip(gq, xlabels)):
-            ys = self.sample_generated_quantity(_gq, state=state)
-            if bounds is not None:
-                if bounds[i][0] is not None:
-                    mask_lower = ys > bounds[i][0]
-                else:
-                    mask_lower = True
-                if bounds[i][1] is not None:
-                    mask_upper = ys <= bounds[i][1]
-                else:
-                    mask_upper = True
-                ys = ys[np.logical_and(mask_lower, mask_upper)]
-            try:
-                assert len(ys.shape) < 3
-            except AssertionError:
-                _logger.exception(
-                    f"Generated quantity {_gq} must have shape 2, has shape {len(ys.shape)}",
-                    exc_info=True,
-                )
-                raise
-            cumulative = kwargs.pop("cumulative", False)
-            az.plot_dist(ys, ax=ax[i], cumulative=cumulative, **kwargs)
-            ax[i].set_xlabel(lab)
-            ax[i].set_ylabel(r"$\mathrm{CDF}$" if cumulative else r"$\mathrm{PDF}$")
-        ax.reshape(ax_shape)
-        if save:
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
-                ),
-                fig=fig,
-            )
-            self._gq_distribution_plot_counter += 1
-        return ax
-
-    def print_parameter_percentiles(self, vars):
-        """
-        Print a simple table with the 5%, 50%, and 95% percentiles for some
-        variables.
-
-        Parameters
-        ----------
-        vars : list
-            variables in the CmdStanMCMC object to print
-        """
-        quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
-        group = "prior" if "prior" in self._fit_for_az.groups() else "posterior"
-        qvals = self._fit_for_az[group][vars].quantile(quantiles).to_dataframe()
-        vars = vars.copy()
-        vars.insert(0, "Variable")
-        max_str_len = max([len(v) for v in vars]) + 1
-        head_str = (
-            f"\n{vars[0]:>{max_str_len}}          5%        50%        95%        IQR  "
+        cmapper = self._make_default_hdi_colours()
+        visuals = kwargs.pop("visuals", {})
+        visuals.setdefault("dist", {"color": cmapper.get_colour(cmapper.vmin)})
+        kwargs["visuals"] = visuals
+        pc = az.plot_dist(
+            self._inference_data,
+            var_names=var_names,
+            group=self._active_group(),
+            **kwargs,
         )
-        print(head_str)
-        dashes = ["-" for _ in range(len(head_str))]
-        print("".join(dashes))
-        for v in vars[1:]:
-            _iqr = qvals.loc[0.75, v] - qvals.loc[0.25, v]
-            print(
-                f"{v:>{max_str_len}}:  {qvals.loc[0.05,v]:>+.2e}  {qvals.loc[0.50,v]:>+.2e}  {qvals.loc[0.95,v]:>+.2e}  {_iqr:>+.2e}"
-            )
-        print()
+        return pc
+
+    # ----------------------------------------------------------------------
+    # Sampling diagnosis
+    # ----------------------------------------------------------------------
 
     def determine_loo(self, stan_log_lik="log_lik"):
         """
@@ -1280,51 +1449,51 @@ class _StanModel(ABC):
         """
         if self.generated_quantities is None:
             self.sample_generated_quantity(stan_log_lik, state="pred")
-        if "log_likelihood" not in self._fit_for_az:
+        if "log_likelihood" not in self._inference_data:
             self.sample_generated_quantity(stan_log_lik, state="pred")
-            self._fit_for_az.add_groups(
+            self._inference_data.add_groups(
                 {"log_likelihood": self.generated_quantities.draws_xr(stan_log_lik)}
             )
-        loo = az.loo(self._fit_for_az)
+        loo = az.loo(self._inference_data)
         print(loo)
         return loo
 
-    def rename_dimensions(self, dim_map):
+    def print_parameter_percentiles(self, vars):
         """
-        Rename dimensions of arviz InferenceData object
-        TODO: is it worth keeping this method?
+        Print a simple table with the 5%, 50%, and 95% percentiles for some
+        variables.
 
         Parameters
         ----------
-        dim_map : dict
-            mapping of old dimension names to new names
+        vars : list
+            variables in the CmdStanMCMC object to print
         """
-        self._fit_for_az.rename_dims(dim_map, inplace=True)
-
-    def _expand_dimension(self, varnames, dim):
-        """
-        Expand dimensions of variables to match another dimension
-
-        Parameters
-        ----------
-        varnames : list, tuple
-            variables to expand
-        dim : str
-            dimension name to expand to
-        """
-        try:
-            assert isinstance(varnames, (list, tuple))
-        except AssertionError:
-            _logger.exception(
-                f"Expanding variables requires first arugment to be a list or tuple, not {type(varnames)}",
-                exc_info=True,
+        quantiles = [0.05, 0.25, 0.50, 0.75, 0.95]
+        qvals = (
+            self._inference_data[self._active_group()]
+            .ds[vars]
+            .quantile(quantiles)
+            .to_dataframe()
+        )
+        vars = vars.copy()
+        vars.insert(0, "Variable")
+        max_str_len = max([len(v) for v in vars]) + 1
+        head_str = (
+            f"\n{vars[0]:>{max_str_len}}          5%        50%        95%        IQR  "
+        )
+        print(head_str)
+        dashes = ["-" for _ in range(len(head_str))]
+        print("".join(dashes))
+        for v in vars[1:]:
+            _iqr = qvals.loc[0.75, v] - qvals.loc[0.25, v]
+            print(
+                f"{v:>{max_str_len}}:  {qvals.loc[0.05,v]:>+.2e}  {qvals.loc[0.50,v]:>+.2e}  {qvals.loc[0.95,v]:>+.2e}  {_iqr:>+.2e}"
             )
-            raise
-        group = "prior" if "prior" in self._fit_for_az.groups() else "posterior"
-        for k in varnames:
-            self._fit_for_az[group][k] = self._fit_for_az[group][k].expand_dims(
-                {dim: np.arange(self._fit_for_az[group].dims[dim])}, axis=-1
-            )
+        print()
+
+    # ----------------------------------------------------------------------
+    # Class methods
+    # ----------------------------------------------------------------------
 
     @classmethod
     def load_fit(cls, fit_files, figname_base, rng=None):
@@ -1344,7 +1513,7 @@ class _StanModel(ABC):
         C = cls(figname_base=figname_base, rng=rng)
 
         # set up the model, be aware of changes between sampling and loading
-        C.build_model()
+        C.build_executable()
 
         # handle if a directory is given instead of a glob pattern
         def _get_prefix(fname):
@@ -1384,9 +1553,10 @@ class _StanModel(ABC):
             # actually a list of files was parsed
             tstamp = os.path.basename(fit_files[0]).split("-")[-1].split("_")[0]
             dir_name = os.path.dirname(fit_files[0])
-        with open(os.path.join(dir_name, f"input_data-{tstamp}.yml"), "r") as f:
-            C._input_data_files = yaml.safe_load(f)
-        for v in C._input_data_files.values():
+        C._input_data_yml_file = os.path.join(dir_name, f"input_data-{tstamp}.yml")
+        with open(C._input_data_yml_file, "r") as f:
+            C._input_data_and_pars = yaml.safe_load(f)
+        for k, v in C._input_data_and_pars["input_files"].items():
             if os.path.getmtime(v["path"]) > v["created"]:
                 _logger.error(
                     f"HMQ file {v['path']} has been modified since the Stan model was run, proceed with caution!"
@@ -1481,13 +1651,13 @@ class HierarchicalModel_1D(_StanModel):
         else:
             colvals = np.unique(obs["label"])
             ncols = len(colvals)
-            cmapper, sm = create_normed_colours(
+            cmapper = NormedColours(
                 np.min(colvals),
                 np.max(colvals),
                 cmap=self._plot_obs_data_kwargs["cmap"],
             )
             for i, c in enumerate(colvals):
-                col = cmapper(c)
+                col = cmapper.get_colour(c)
                 mask = obs["label"] == c
                 ys = np.zeros(len(obs[xobs][mask]))
                 ax.scatter(
@@ -1530,7 +1700,7 @@ class HierarchicalModel_1D(_StanModel):
         )
         fig = ax.get_figure()
         if save:
-            savefig(self._make_fig_name(self.figname_base, f"pred_{xobs}"), fig=fig)
+            savefig(next(self.gen_postpred_plot_name), fig=fig)
         return ax
 
     def posterior_OOS_plot(
@@ -1545,7 +1715,7 @@ class HierarchicalModel_1D(_StanModel):
         )
         fig = ax.get_figure()
         if save:
-            savefig(self._make_fig_name(self.figname_base, f"OOS_{xmodel}"), fig=fig)
+            savefig(next(self.gen_postOOS_plot_name), fig=fig)
         return ax
 
 
@@ -1557,6 +1727,10 @@ class HierarchicalModel_2D(_StanModel):
         """
         super().__init__(model_file, prior_file, figname_base, rng)
 
+    # ----------------------------------------------------------------------
+    # Abstract interface
+    # ----------------------------------------------------------------------
+
     @abstractmethod
     def extract_data(self):
         return super().extract_data()
@@ -1566,16 +1740,20 @@ class HierarchicalModel_2D(_StanModel):
         return super().set_stan_data()
 
     @abstractmethod
-    def _set_stan_data_OOS(self):
-        return super()._set_stan_data_OOS()
+    def _set_stan_data_OOS(self, N):
+        return super()._set_stan_data_OOS(N)
 
     @abstractmethod
     def sample_model(self, **kwargs):
         return super().sample_model(**kwargs)
 
     @abstractmethod
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        return super().sample_generated_quantity(gq, force_resample, state)
+    def diagnose_sample(self, var_names):
+        return super().diagnose_sample(var_names)
+
+    # ----------------------------------------------------------------------
+    # Arviz helpers
+    # ----------------------------------------------------------------------
 
     def reduce_obs_between_groups(self, ivar, key, newkey, func):
         """
@@ -1625,219 +1803,102 @@ class HierarchicalModel_2D(_StanModel):
             for k in (f"{ivar}_reduced", newkey):
                 self.obs[k] = np.atleast_2d(self.obs[k])
 
-    def _make_default_hdi_colours(self, levels):
+    # ----------------------------------------------------------------------
+    # Plotting
+    # ----------------------------------------------------------------------
+
+    def _plot_predictive(self, x, y, group, **kwargs):
         """
-        Create the default colour scheme for HDI regression plots. Basically a wrapper around create_normed_colours()
+        Plot predictive-regression like data.
 
         Parameters
         ----------
-        levels : list
-            HDI levels
+        x : str
+            x variable to plot. Must be in 'group'.
+        y : str
+            y variable to plot. Must be in 'group'.
+        group : str
+            DataTree inference group
 
         Returns
         -------
-        : function
-            takes an argument in the range [vmin, vmax] and returns the scaled
-            colour
-        : matplotlib.cm.ScalarMappable
-            object that is required for creating a colour bar
+        pc : arviz.PlotCollection
+            plotting collection
         """
-        return create_normed_colours(
-            max(0, 0.9 * min(levels)), 1.2 * max(levels), cmap="Blues_r", norm="LogNorm"
-        )
-
-    def _plot_predictive(
-        self,
-        xmodel,
-        ymodel,
-        state,
-        xobs=None,
-        yobs=None,
-        yobs_err=None,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        show_legend=True,
-        smooth=False,
-    ):
-        """
-        Plot a predictive check for a regression stan model.
-
-        Parameters
-        ----------
-        xmodel : str
-            dictionary key for modelled independent variable
-        ymodel : str
-            dictionary key for modelled dependent variable
-        state : str
-            predictive or OOS samples, must be one of 'pred' or 'OOS'
-        xobs : str, optional
-            dictionary key for observed independent variable, by default None
-        yobs : str, optional
-            dictionary key for observed dependent variable, by default None
-        yobs_err : str, optional
-             dictionary key for observed dependent variable scatter, by default
-             None
-        levels : list, optional
-            HDI intervals to plot, by default None
-        ax : matplotlib.axes.Axes, optional
-            axis to plot to, by default None (creates new instance)
-        collapsed : bool, optional
-            plotting collapsed observations?
-        show_legend : bool
-            create legend, by default True
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            plotting axis
-        """
-        if levels is None:
-            levels = self._default_hdi_levels
-        levels.sort(reverse=True)
-        if ax is None:
-            fig, ax = plt.subplots(1, 1)
-        if isinstance(ymodel, str):
-            ys = self.sample_generated_quantity(ymodel, state=state)
-        else:
-            _logger.warning("Plotting an array outside of generated_quantities")
-            ys = ymodel
-        cmapper, sm = self._make_default_hdi_colours(levels)
-        for lev in levels:
-            _logger.debug(f"Fitting level {lev}")
-            plot_hdi(
-                self.stan_data[xmodel],
-                ys,
-                hdi_prob=lev / 100,
-                ax=ax,
-                plot_kwargs={"c": cmapper(lev)},
-                fill_kwargs={
-                    "color": cmapper(lev),
-                    "alpha": 0.8,
-                    "label": f"{lev}% HDI",
-                    "edgecolor": None,
-                },
-                smooth=smooth,
-                hdi_kwargs={"skipna": True},
-            )
-        if xobs is not None and yobs is not None:
-            self.add_data_to_predictive_plot(
-                ax=ax, xobs=xobs, yobs=yobs, yobs_err=yobs_err, collapsed=collapsed
-            )
-        if show_legend:
-            ax.legend()
-        return ax
-
-    def plot_predictive(
-        self,
-        xmodel,
-        ymodel,
-        xobs=None,
-        yobs=None,
-        yobs_err=None,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        show_legend=True,
-        smooth=False,
-        save=True,
-    ):
-        """
-        Predictive plot.
-        See docs for _plot_predictive()
-        """
-        ax = self._plot_predictive(
-            xmodel=xmodel,
-            ymodel=ymodel,
-            state="pred",
-            xobs=xobs,
-            yobs=yobs,
-            yobs_err=yobs_err,
-            levels=levels,
-            ax=ax,
-            collapsed=collapsed,
-            smooth=smooth,
-            show_legend=show_legend,
-        )
-        fig = ax.get_figure()
-        if save:
-            savefig(self._make_fig_name(self.figname_base, f"pred_{yobs}"), fig=fig)
-
-    def posterior_OOS_plot(
-        self,
-        xmodel,
-        ymodel,
-        levels=None,
-        ax=None,
-        collapsed=True,
-        save=True,
-        show_legend=True,
-        smooth=False,
-    ):
-        """
-        Posterior out-of-sample plot, observed data is not added to plot.
-        See docs for _plot_predictive()
-        """
-        ax = self._plot_predictive(
-            xmodel=xmodel,
-            ymodel=ymodel,
-            state="OOS",
-            levels=levels,
-            ax=ax,
-            collapsed=collapsed,
-            show_legend=show_legend,
-            smooth=smooth,
-        )
-        fig = ax.get_figure()
-        if save:
-            savefig(self._make_fig_name(self.figname_base, f"OOS_{ymodel}"), fig=fig)
-
-    def posterior_OOS_specific_hdi_plot(
-        self, xmodel, ymodel, hdi=50, ax=None, **kwargs
-    ):
-        """
-        Plot a specific HDI interval for an out-of-sample quantity, most
-        frequently used to compare to different models.
-
-        Parameters
-        ----------
-        xmodel : str
-            dictionary key for modelled independent variable
-        ymodel : str
-            dictionary key for modelled dependent variable
-        hdi : float, optional
-            HDI intervals to plot, by default 50
-        ax : matplotlib.axes.Axes, optional
-            axis to plot to, by default None (creates new instance)
-
-        Returns
-        -------
-        ax : matplotlib.axes.Axes
-            axis to plotted to
-        """
-        if ax is None:
-            fig, ax = plt.subplots()
+        kwargs.setdefault("ci_prob", self._default_hdi_levels)
+        kwargs["ci_prob"].sort()
+        kwargs.setdefault("stats", {"credible_interval": {"skipna": True}})
         kwargs.setdefault("smooth", False)
-        kwargs.setdefault("hdi_kwargs", {"skipna": True})
-        plot_kwargs = kwargs.pop("plot_kwargs", {})
-        plot_kwargs.setdefault("c", "")
-        fill_kwargs = kwargs.pop("fill_kwargs", {})
-        fill_kwargs.setdefault("alpha", 0.8)
-        fill_kwargs.setdefault("edgecolor", None)
-        fill_kwargs["label"] = kwargs.pop("label", None)
-        fill_kwargs.setdefault(
-            "color", plot_kwargs["c"] if plot_kwargs["c"] is not None else None
-        )
-        plot_hdi(
-            self.stan_data[xmodel],
-            self.sample_generated_quantity(ymodel, state="OOS"),
-            hdi_prob=hdi / 100,
-            ax=ax,
-            plot_kwargs=plot_kwargs,
-            fill_kwargs=fill_kwargs,
+        kwargs.setdefault("xlabeller", self._x_labeller)
+        kwargs.setdefault("ylabeller", self._y_labeller)
+        kwargs.setdefault("point_estimate", "median")
+        cmapper = self._make_default_hdi_colours()
+        kwargs.setdefault("color", [cmapper.get_colour(c) for c in kwargs["ci_prob"]])
+        try:
+            pc = az.plot_lm(
+                self._inference_data,
+                x=x,
+                y=y,
+                group=group,
+                alpha=0.8,
+                **kwargs,
+            )
+        except KeyError:
+            _logger.exception(
+                f"Arviz DataTree has groups: {self._inference_data.groups}",
+                exc_info=True,
+            )
+            raise
+        return pc
+
+    @abstractmethod
+    def plot_posterior_predictive(self, **kwargs):
+        """
+        Base method for plotting the posterior predictive distribution.
+
+        Returns
+        -------
+        pc : arviz.PlotCollection
+            plotting collection
+        """
+        pc = self._plot_predictive(
+            x=self._independent_qtys,
+            y=self._dependent_qtys_posterior,
+            group="posterior_predictive",
             **kwargs,
         )
-        return ax
+        return pc
+
+    @abstractmethod
+    def plot_prior_predictive(self, **kwargs):
+        pc = self._plot_predictive(
+            x=self._independent_qtys,
+            y=self._dependent_qtys_prior,
+            group="prior_predictive",
+            **kwargs,
+        )
+        return pc
+
+    @abstractmethod
+    def plot_posterior_OOS(self, **kwargs):
+        """
+        Base method for plotting the posterior OOS distribution.
+
+        Returns
+        -------
+        pc : arviz.PlotCollection
+            plotting collection
+        """
+        visuals = kwargs.pop("visuals", {})
+        visuals.setdefault("observed_scatter", False)
+        kwargs["visuals"] = visuals
+        pc = self._plot_predictive(
+            x=self._independent_qtys_OOS,
+            y=self._dependent_qtys_OOS,
+            group="predictions",
+            **kwargs,
+        )
+        return pc
 
     def add_data_to_predictive_plot(
         self, ax, xobs, yobs, yobs_err=None, collapsed=True
@@ -1868,19 +1929,19 @@ class HierarchicalModel_2D(_StanModel):
         # overlay data
         obs = self.obs_collapsed if collapsed else self.obs
         if self._num_groups < 2:
-            plot_kwargs["cmap"] = "Set1"
+            plot_kwargs["cmap"] = "Set1_r"
 
         # helper function
         def helper_plotting_func():
             colvals = np.unique(obs["label"])
             ncols = len(colvals)
-            cmapper, sm = create_normed_colours(
+            cmapper = NormedColours(
                 np.min(colvals),
                 np.max(colvals),
                 cmap=plot_kwargs.pop("cmap"),
             )
             for i, c in enumerate(colvals):
-                col = cmapper(c)
+                col = cmapper.get_colour(c)
                 mask = obs["label"] == c
                 label = "Sims." if i == ncols - 1 else ""
                 yield mask, col, label
@@ -1983,14 +2044,13 @@ class FactorModel_2D(_StanModel):
         show_legend=True,
     ):
         if levels is None:
-            levels = self._default_hdi_levels
-        levels.sort(reverse=True)
+            levels = copy(self._default_hdi_levels)
+        levels.sort()
         if ax is None:
             fig, ax = plt.subplots(self.num_groups, 1, sharex="all", sharey="all")
         else:
             ax = ax.flatten()
         ys = self.sample_generated_quantity(ymodel, state=state)
-        # idxs = self._get_GQ_indices(state, collapsed=collapsed)
         obs_to_factor = np.full(self.num_obs_collapsed, 0)
         for i in range(self.num_obs_collapsed):
             obs_to_factor[i] = (
@@ -2000,7 +2060,7 @@ class FactorModel_2D(_StanModel):
             _logger.info(f"Creating HDI predictive for factor {i}")
             mask = obs_to_factor == i
             _ys = ys[:, mask]
-            cmapper, sm = create_normed_colours(
+            cmapper = NormedColours(
                 max(0, 0.9 * min(levels)),
                 1.2 * max(levels),
                 cmap="Blues_r",
@@ -2015,9 +2075,9 @@ class FactorModel_2D(_StanModel):
                     _ys,
                     hdi_prob=lev / 100,
                     ax=ax[i],
-                    plot_kwargs={"c": cmapper(lev)},
+                    plot_kwargs={"c": cmapper.get_colour(lev)},
                     fill_kwargs={
-                        "color": cmapper(lev),
+                        "color": cmapper.get_colour(lev),
                         "alpha": 0.8,
                         "label": label,
                         "edgecolor": None,
@@ -2037,13 +2097,13 @@ class FactorModel_2D(_StanModel):
             else:
                 colvals = np.unique(obs["label"])
                 ncols = len(colvals)
-                cmapper, sm = create_normed_colours(
+                cmapper = NormedColours(
                     np.min(colvals),
                     np.max(colvals),
                     cmap=self._plot_obs_data_kwargs["cmap"],
                 )
                 for i, c in enumerate(colvals):
-                    col = cmapper(c)
+                    col = cmapper.get_colour(c)
                     mask = obs["label"] == c
                     ax.errorbar(
                         obs[xobs][mask],

@@ -3,12 +3,30 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
 from scipy.signal import savgol_filter
 import arviz as az
-from xarray import Dataset
+import xarray as xr
 from baggins.env_config import _cmlogger
 
-__all__ = ["plot_hdi"]
+__all__ = ["plot_hdi", "get_all_axes_from_plot_collection"]
 
 _logger = _cmlogger.getChild(__name__)
+
+
+def get_all_axes_from_plot_collection(pc):
+    """
+    Get all axes from an arviz PlotCollection object as an array.
+
+    Parameters
+    ----------
+    pc : arivz_plots.PlotCollection
+        object to get axes from
+
+    Returns
+    -------
+    : np.ndarray
+        flattened array of plotting axes
+    """
+    plots = pc.viz["plot"].to_dataset()
+    return np.concatenate([np.ravel(da.values) for da in plots.data_vars.values()])
 
 
 def plot_hdi(
@@ -18,11 +36,10 @@ def plot_hdi(
     hdi_data=None,
     color="C1",
     circular=False,
-    smooth=True,
+    smooth=False,
     smooth_kwargs=None,
     figsize=None,
     fill_kwargs=None,
-    plot_kwargs=None,
     hdi_kwargs=None,
     ax=None,
 ):
@@ -46,7 +63,7 @@ def plot_hdi(
     circular : bool, default False
         Whether to compute the HDI taking into account ``x`` is a circular variable
         (in the range [-np.pi, np.pi]) or not. Defaults to False (i.e non-circular variables).
-    smooth : boolean, default True
+    smooth : boolean, default False
         If True the result will be smoothed by first computing a linear interpolation of the data
         over a regular grid and then applying the Savitzky-Golay filter to the interpolated data.
     smooth_kwargs : dict, optional
@@ -57,9 +74,6 @@ def plot_hdi(
     fill_kwargs : dict, optional
         Keywords passed to :meth:`mpl:matplotlib.axes.Axes.fill_between`
         (use ``fill_kwargs={'alpha': 0}`` to disable fill) or to
-        :meth:`bokeh.plotting.Figure.patch`.
-    plot_kwargs : dict, optional
-        HDI limits keyword arguments, passed to :meth:`mpl:matplotlib.axes.Axes.plot` or
         :meth:`bokeh.plotting.Figure.patch`.
     hdi_kwargs : dict, optional
         Keyword arguments passed to :func:`~arviz.hdi`. Ignored if ``hdi_data`` is present.
@@ -95,7 +109,7 @@ def plot_hdi(
             if hasattr(hdi_data, "hdi")
             else np.nan
         )
-        if isinstance(hdi_data, Dataset):
+        if isinstance(hdi_data, xr.Dataset):
             data_vars = list(hdi_data.data_vars)
             if len(data_vars) != 1:
                 raise ValueError(
@@ -104,14 +118,12 @@ def plot_hdi(
                 )
             hdi_data = hdi_data[data_vars[0]]
     else:
-        y = np.asarray(y)
+        assert isinstance(y, xr.DataArray)
         if hdi_prob is None:
             hdi_prob = az.rcParams["stats.ci_prob"]
         elif not 1 >= hdi_prob > 0:
             raise ValueError("The value of hdi_prob should be in the interval (0, 1]")
-        hdi_data = az.hdi(
-            y, hdi_prob=hdi_prob, circular=circular, multimodal=False, **hdi_kwargs
-        )
+        hdi_data = az.hdi(y, prob=hdi_prob, circular=circular, **hdi_kwargs)
 
     hdi_shape = hdi_data.shape
     if hdi_shape[:-1] != x_shape:
@@ -140,19 +152,17 @@ def plot_hdi(
         x_data = x[idx]
         y_data = hdi_data[idx]
 
-    if plot_kwargs is None:
-        plot_kwargs = {}
-    plot_kwargs.setdefault("color", color, None)
-    plot_kwargs.setdefault("alpha", 0, None)
     if fill_kwargs is None:
         fill_kwargs = {}
-    fill_kwargs.setdefault("color", color, None)
-    fill_kwargs.setdefault("alpha", 0.5, None)
+    fill_kwargs.setdefault("fc", color)
+    fill_kwargs.setdefault("ec", "none")
+    fill_kwargs.setdefault("lw", 0)
+    fill_kwargs.setdefault("alpha", 0.5)
+    fill_kwargs.setdefault("label", f"{hdi_prob*100:.0f}% HDI")
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
 
-    ax.plot(x_data, y_data, **plot_kwargs)
     ax.fill_between(x_data, y_data[:, 0], y_data[:, 1], **fill_kwargs)
 
     return ax

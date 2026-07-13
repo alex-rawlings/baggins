@@ -33,7 +33,7 @@ __all__ = [
     "influence_radius",
     "hardening_radius",
     "gravitational_radiation_radius",
-    "velocity_dispersion_3d",
+    "velocity_dispersion_profile_3d",
     "get_inner_rho_and_sigma",
     "get_G_rho_per_sigma",
     "shell_com_motions_each_galaxy",
@@ -638,21 +638,31 @@ def gravitational_radiation_radius(bh_masses, ah, tah, H, Gps, e=0):
     return a.view(np.ndarray), time_a.view(np.ndarray)
 
 
-def velocity_dispersion_3d(snap):
+def velocity_dispersion_profile_3d(snap, r_edges=None):
     """
-    Convenience function to determine 3-dimensional velocity dispersion
+    Convenience function to determine 3-dimensional velocity dispersion profile.
+    If radial edges not given, a global quantity is determined.
 
     Parameters
     ----------
     snap : pygad.Snapshot
         (sub) snapshot to determine quantity for
+    r_edges: array-like, optional
+        radial bin edges, by default None (global value for sigma calculated)
 
     Returns
     -------
-    : float
-        velocity dispersion
+    : np.array
+        velocity dispersion profile
     """
-    return np.linalg.norm(np.nanstd(snap["vel"], axis=0))
+    if r_edges is None:
+        r_edges = np.array([0, np.max(snap["r"])])
+    return pygad.analysis.radially_binned_statistic(
+        snap,
+        "vel",
+        r_edges=r_edges,
+        statistic=lambda x: np.linalg.norm(np.nanstd(x, axis=0)),
+    )
 
 
 def get_inner_rho_and_sigma(snap, extent=None):
@@ -693,7 +703,7 @@ def get_inner_rho_and_sigma(snap, extent=None):
         density_sphere(np.sum(subsnap["mass"]), extent),
         units=snap["mass"].units / snap["r"].units ** 3,
     )
-    inner_sigma = velocity_dispersion_3d(subsnap)
+    inner_sigma = velocity_dispersion_profile_3d(subsnap)[0]
     return inner_density, inner_sigma
 
 
