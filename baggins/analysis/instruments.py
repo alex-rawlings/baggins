@@ -1,7 +1,11 @@
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy.stats import binned_statistic, gaussian_kde
+from scipy.signal import fftconvolve
+import matplotlib.pyplot as plt
 from astropy.units import Unit
+from astropy.cosmology import Planck18
+from astropy.constants import L_sun
 from pygad import ExprMask
 from baggins.analysis.voronoi import VoronoiKinematics
 from baggins.env_config import _cmlogger
@@ -15,6 +19,7 @@ __all__ = [
     "HARMONI_BALANCED",
     "HARMONI_SPATIAL",
     "Euclid_VIS",
+    "HSTWFC3",
     "ERIS_IFU",
     "JWST_IFU",
     "MICADO_WFM",
@@ -177,25 +182,616 @@ class BasicInstrument(ABC):
         return list(set({0, 1, 2}).difference({xaxis, yaxis}))[0]
 
 
-class Euclid_NISP(BasicInstrument):
-    # TODO not a camera, so doesn't make sense here
-    def __init__(self, z=None):
-        """
-        Euclid infrared bands. Parameters taken from:
-        https://sci.esa.int/web/euclid/-/euclid-nisp-instrument
-        """
-        super().__init__(fov=0.722 * 3600, sampling=0.3, res=0.101, z=z)
-        self.label = r"$\mathrm{Euclid}$"
+# ------------------------------------------------------------------
+# Photometric instruments
+# ------------------------------------------------------------------
 
 
-class Euclid_VIS(BasicInstrument):
+class PhotometricInstrument(BasicInstrument):
+    def __init__(
+        self,
+        fov,
+        sampling,
+        res=None,
+        z=None,
+        psf_fwhm=None,
+        psf_type="gaussian",
+        moffat_beta=2.5,
+        read_noise=0.0,
+        dark_current=0.0,
+        sky_background=0.0,
+        zeropoint=25.0,
+        flux_zeropoint=None,
+        gain=1.0,
+        full_well=None,
+        exposure_time=1.0,
+    ):
+        """
+        Parameters
+        ----------
+        fov, sampling, res, z : see BasicInstrument
+        psf_fwhm : float, optional
+            PSF FWHM in arcsec. Defaults to `angular_resolution` if not given.
+        psf_type : {"gaussian", "moffat"}
+            Functional form of the PSF.
+        moffat_beta : float
+            Moffat profile beta parameter (only used if psf_type="moffat").
+        read_noise : float
+            Detector read noise, in electrons (e-) per pixel.
+        dark_current : float
+            Dark current, in e-/s/pixel.
+        sky_background : float
+            Sky background, in e-/s/pixel (already matched to `sampling`).
+        zeropoint : float
+            AB magnitude corresponding to 1 e-/s in this band.
+        flux_zeropoint : float, optional
+            Flux, in erg/s/cm^2, corresponding to 1 e-/s in this band.
+            Used to convert particle luminosities to count rate in
+            `luminosity_to_rate` / `image_from_particles`. If your
+            luminosities are already band-specific and monochromatic-flux
+            calibrated, set this from the instrument's throughput; otherwise
+            treat it as a tunable calibration constant.
+        gain : float
+            Detector gain, in e-/ADU. Use 1.0 to keep everything in electrons.
+        full_well : float, optional
+            Full well depth in e-, for saturation. None disables saturation.
+        exposure_time : float
+            Default exposure time in seconds.
+        """
+        super().__init__(fov, sampling, res=res, z=z)
+
+        self.psf_fwhm = (
+            psf_fwhm if psf_fwhm is not None else self.angular_resolution.value
+        )
+        self.psf_type = psf_type
+        self.moffat_beta = moffat_beta
+
+        self.read_noise = read_noise
+        self.dark_current = dark_current
+        self.sky_background = sky_background
+        self.zeropoint = zeropoint
+        self.flux_zeropoint = flux_zeropoint
+        self.gain = gain
+        self.full_well = full_well
+        self.exposure_time = exposure_time
+
+    # ------------------------------------------------------------------
+    # PSF
+    # ------------------------------------------------------------------
+    @property
+    def psf_sigma_pix(self):
+        """PSF Gaussian sigma, in pixels, from FWHM."""
+        fwhm_pix = self.psf_fwhm / self.sampling.value
+        return fwhm_pix / (2.0 * np.sqrt(2.0 * np.log(2.0)))
+
+    def psf_kernel(self, size=None):
+        """
+        Build a normalized 2D PSF kernel in pixel units.
+
+        Parameters
+        ----------
+        size : int, optional
+            Kernel side length in pixels (odd). Defaults to ~8x sigma,
+            clipped to be odd and at least 7 pixels.
+
+        Returns
+        -------
+        kernel : ndarray
+            Normalized (sum=1) 2D PSF kernel.
+        """
+        sigma = self.psf_sigma_pix
+        if size is None:
+            size = max(7, int(np.ceil(8 * sigma)) | 1)  # force odd
+        elif size % 2 == 0:
+            size += 1
+
+        y, x = np.mgrid[0:size, 0:size]
+        cy = cx = size // 2
+        r2 = (x - cx) ** 2 + (y - cy) ** 2
+
+        if self.psf_type == "gaussian":
+            kernel = np.exp(-0.5 * r2 / sigma**2)
+        elif self.psf_type == "moffat":
+            # alpha related to FWHM and beta for a Moffat profile
+            fwhm_pix = self.psf_fwhm / self.sampling.value
+            alpha = fwhm_pix / (2.0 * np.sqrt(2.0 ** (1.0 / self.moffat_beta) - 1.0))
+            kernel = (1.0 + r2 / alpha**2) ** (-self.moffat_beta)
+        else:
+            _logger.exception(f"Unknown psf_type '{self.psf_type}'", exc_info=True)
+            raise ValueError
+
+        return kernel / kernel.sum()
+
+    def convolve_with_psf(self, image):
+        """Convolve a 2D image (counts or flux) with the instrument PSF."""
+        kernel = self.psf_kernel()
+        return fftconvolve(image, kernel, mode="same")
+
+    # ------------------------------------------------------------------
+    # Photometric calibration
+    # ------------------------------------------------------------------
+    def mag_to_rate(self, mag):
+        """AB magnitude -> count rate in e-/s, using the instrument zeropoint."""
+        return 10.0 ** (-0.4 * (mag - self.zeropoint))
+
+    def rate_to_mag(self, rate):
+        """Count rate in e-/s -> AB magnitude."""
+        rate = np.clip(rate, 1e-12, None)
+        return self.zeropoint - 2.5 * np.log10(rate)
+
+    # ------------------------------------------------------------------
+    # Scene generation (simple synthetic sources -> flux-rate image)
+    # ------------------------------------------------------------------
+    def render_scene(self, catalog):
+        """
+        Render a flux-rate image (e-/s/pixel, pre-PSF) from a source catalog.
+
+        Parameters
+        ----------
+        catalog : list of dict
+            Each entry needs: 'x', 'y' (pixel coords), 'mag' (AB mag).
+            Optional 'r_eff' (pixels) and 'n' (Sersic index) for extended
+            sources; point sources are used if 'r_eff' is omitted.
+
+        Returns
+        -------
+        image : ndarray
+            2D array of count rate (e-/s/pixel), shape (npix, npix).
+        """
+        npix = self.number_pixels
+        image = np.zeros((npix, npix))
+
+        yy, xx = np.mgrid[0:npix, 0:npix]
+        for src in catalog:
+            rate = self.mag_to_rate(src["mag"])
+            x0, y0 = src["x"], src["y"]
+
+            if "r_eff" in src and src["r_eff"] > 0:
+                r_eff = src["r_eff"]
+                n = src.get("n", 1.0)
+                bn = 1.9992 * n - 0.3271  # standard approximation
+                r = np.sqrt((xx - x0) ** 2 + (yy - y0) ** 2)
+                profile = np.exp(-bn * ((r / r_eff) ** (1.0 / n) - 1.0))
+                profile /= profile.sum()
+                image += rate * profile
+            else:
+                # point source: deposit into nearest pixel
+                ix, iy = int(round(x0)), int(round(y0))
+                if 0 <= ix < npix and 0 <= iy < npix:
+                    image[iy, ix] += rate
+
+        return image
+
+    def random_catalog(self, n_sources=50, mag_range=(20, 26), seed=None):
+        """Generate a random point-source + extended-source catalog for testing."""
+        rng = np.random.default_rng(seed)
+        npix = self.number_pixels
+        catalog = []
+        for _ in range(n_sources):
+            entry = {
+                "x": rng.uniform(0, npix),
+                "y": rng.uniform(0, npix),
+                "mag": rng.uniform(*mag_range),
+            }
+            if rng.random() < 0.5:
+                entry["r_eff"] = rng.uniform(1.5, 6.0)
+                entry["n"] = rng.choice([1.0, 4.0])
+            catalog.append(entry)
+        return catalog
+
+    # ------------------------------------------------------------------
+    # Noise / detector effects
+    # ------------------------------------------------------------------
+    def add_noise(self, counts_image, exposure_time=None):
+        """
+        Apply sky, dark current, Poisson, and read noise to a noiseless
+        counts image (in e-, already integrated over exposure_time).
+        """
+        t = exposure_time if exposure_time is not None else self.exposure_time
+
+        sky = self.sky_background * t
+        dark = self.dark_current * t
+
+        total_e = np.clip(counts_image + sky + dark, 0, None)
+        noisy_e = np.random.poisson(total_e).astype(float)
+        noisy_e += np.random.normal(0.0, self.read_noise, size=counts_image.shape)
+
+        if self.full_well is not None:
+            noisy_e = np.clip(noisy_e, None, self.full_well)
+
+        return noisy_e / self.gain  # convert to ADU if gain != 1
+
+    # ------------------------------------------------------------------
+    # Full observation pipeline
+    # ------------------------------------------------------------------
+    def observe(self, scene_rate_image, exposure_time=None):
+        """
+        Run the full pipeline on a noiseless count-rate image (e-/s/pixel):
+        PSF convolution -> integrate over exposure time -> add noise.
+
+        Parameters
+        ----------
+        scene_rate_image : ndarray
+            2D count-rate image (e-/s/pixel), e.g. from `render_scene`.
+        exposure_time : float, optional
+            Overrides `self.exposure_time` if given.
+
+        Returns
+        -------
+        image_adu : ndarray
+            Simulated detector frame, in ADU (or e- if gain=1).
+        """
+        t = exposure_time if exposure_time is not None else self.exposure_time
+        blurred_rate = self.convolve_with_psf(scene_rate_image)
+        counts = blurred_rate * t
+        return self.add_noise(counts, exposure_time=t)
+
+    def mock_observation(
+        self,
+        catalog=None,
+        n_sources=50,
+        mag_range=(20, 26),
+        seed=None,
+        exposure_time=None,
+    ):
+        """Convenience: build a random scene (or use given catalog) and observe it."""
+        if catalog is None:
+            catalog = self.random_catalog(
+                n_sources=n_sources, mag_range=mag_range, seed=seed
+            )
+        scene = self.render_scene(catalog)
+        return self.observe(scene, exposure_time=exposure_time)
+
+    # ------------------------------------------------------------------
+    # Photometric calibration from luminosity
+    # ------------------------------------------------------------------
+    def flux_from_luminosity(self, luminosity, z=None, cosmology=None):
+        """
+        Convert luminosity (Lsun) to observed flux (erg/s/cm^2) via the
+        luminosity distance at the instrument's redshift.
+
+        Parameters
+        ----------
+        luminosity : array_like
+            Per-particle (or per-pixel) luminosity in solar luminosities.
+            For band-correct photometry this should already be luminosity
+            *in the instrument's bandpass* -- this does not apply a
+            K-correction or SED integration.
+        z : float, optional
+            Redshift to use; defaults to `self.redshift` if already set.
+        cosmology : astropy.cosmology instance, optional
+            Defaults to astropy.cosmology.Planck18.
+
+        Returns
+        -------
+        flux : ndarray
+            Flux in erg/s/cm^2.
+        """
+
+        if z is None:
+            z = self.redshift
+        cosmo = cosmology if cosmology is not None else Planck18
+
+        d_L = cosmo.luminosity_distance(z).to("cm").value
+        L_erg_s = np.asarray(luminosity) * L_sun.to("erg/s").value
+        return L_erg_s / (4.0 * np.pi * d_L**2)
+
+    def luminosity_to_rate(
+        self, luminosity, z=None, flux_zeropoint=None, cosmology=None
+    ):
+        """
+        Convert luminosity (Lsun) directly to a detector count rate (e-/s),
+        using `self.flux_zeropoint` (flux in erg/s/cm^2 for 1 e-/s) unless
+        overridden here.
+        """
+        zp = flux_zeropoint if flux_zeropoint is not None else self.flux_zeropoint
+        if zp is None:
+            _logger.exception(
+                "flux_zeropoint must be set on the instrument (flux in erg/s/cm^2 "
+                "corresponding to 1 e-/s) before converting luminosity to count rate.",
+                exc_info=True,
+            )
+            raise RuntimeError
+        flux = self.flux_from_luminosity(luminosity, z=z, cosmology=cosmology)
+        return flux / zp
+
+    # ------------------------------------------------------------------
+    # Building images directly from particle data
+    # ------------------------------------------------------------------
+    def project_particles(self, pos, xaxis="x", yaxis="y"):
+        """
+        Select particles inside the instrument FoV and LOS depth, and
+        convert their in-plane positions into pixel coordinates.
+
+        Parameters
+        ----------
+        pos : ndarray, shape (N, 3)
+            Particle positions in kpc, centered on the object of interest.
+        xaxis, yaxis : int or str
+            Spatial axes to project onto (see `BasicInstrument._get_LOS_axis`).
+
+        Returns
+        -------
+        px, py : ndarray
+            Pixel coordinates of the selected particles (float, unbinned).
+        keep : ndarray (bool)
+            Mask into the original `pos` array marking retained particles.
+        """
+        self._param_check()
+        valid_str = "xyz"
+        xi = valid_str.find(xaxis) if isinstance(xaxis, str) else xaxis
+        yi = valid_str.find(yaxis) if isinstance(yaxis, str) else yaxis
+        los = self._get_LOS_axis(xaxis, yaxis)
+
+        half_extent = 0.5 * self.extent.value  # kpc, in-plane
+        half_depth = 0.5 * self.max_extent.to("kpc").value  # kpc, along LOS
+
+        x, y, zlos = pos[:, xi], pos[:, yi], pos[:, los]
+        keep = (
+            (np.abs(x) <= half_extent)
+            & (np.abs(y) <= half_extent)
+            & (np.abs(zlos) <= half_depth)
+        )
+
+        npix = self.number_pixels
+        pixel_width = self.pixel_width.to("kpc").value  # kpc/pixel
+
+        px = (x[keep] + half_extent) / pixel_width
+        py = (y[keep] + half_extent) / pixel_width
+        px = np.clip(px, 0, npix - 1e-6)
+        py = np.clip(py, 0, npix - 1e-6)
+
+        return px, py, keep
+
+    def bin_particles(self, px, py, weights):
+        """Bin projected particle positions + per-particle weights into a 2D image."""
+        npix = self.number_pixels
+        image, _, _ = np.histogram2d(
+            py, px, bins=npix, range=[[0, npix], [0, npix]], weights=weights
+        )
+        return image
+
+    def image_from_particles(
+        self,
+        pos,
+        weights,
+        xaxis="x",
+        yaxis="y",
+        weight_type="rate",
+        z=None,
+        flux_zeropoint=None,
+        exposure_time=None,
+        apply_noise=True,
+    ):
+        """
+        Build a mock observation directly from particle position + weight
+        arrays (mass, velocities aren't needed for imaging itself, but
+        `pos` is expected to already be centered on the object of interest;
+        velocities are typically used upstream for e.g. kinematic cuts).
+
+        Parameters
+        ----------
+        pos : ndarray, shape (N, 3)
+            Particle positions in kpc.
+        weights : ndarray, shape (N,)
+            Per-particle quantity to bin; interpretation set by `weight_type`.
+        xaxis, yaxis : int or str
+            Projection axes.
+        weight_type : {"rate", "luminosity"}
+            "rate": weights are already a detector count rate (e-/s) per
+                particle -- use this if you've already done SED/bandpass
+                integration per particle.
+            "luminosity": weights are luminosity in Lsun; converted to
+                count rate via `luminosity_to_rate` (needs `self.redshift`
+                and `self.flux_zeropoint`, or override with `z`/`flux_zeropoint`).
+        z : float, optional
+            Redshift override, only used if weight_type="luminosity".
+        flux_zeropoint : float, optional
+            Flux (erg/s/cm^2) for 1 e-/s; only used if weight_type="luminosity".
+        exposure_time : float, optional
+            Overrides `self.exposure_time`.
+        apply_noise : bool
+            If False, returns the noiseless PSF-convolved rate image
+            (useful for checking geometry/projection before adding noise).
+
+        Returns
+        -------
+        image : ndarray
+            Simulated detector frame (ADU or e-), or noiseless PSF-convolved
+            rate image if apply_noise=False.
+        """
+        pos = np.asarray(pos)
+        weights = np.asarray(weights)
+
+        px, py, keep = self.project_particles(pos, xaxis=xaxis, yaxis=yaxis)
+        w = weights[keep]
+
+        if weight_type == "luminosity":
+            w = self.luminosity_to_rate(w, z=z, flux_zeropoint=flux_zeropoint)
+        elif weight_type != "rate":
+            _logger.exception(f"Unknown weight_type '{weight_type}'", exc_info=True)
+            raise ValueError
+
+        rate_image = self.bin_particles(px, py, w)
+
+        if not apply_noise:
+            return self.convolve_with_psf(rate_image)
+
+        return self.observe(rate_image, exposure_time=exposure_time)
+
+    def image_from_snapshot(
+        self,
+        snap,
+        xaxis="x",
+        yaxis="y",
+        pos_key="pos",
+        luminosity_key="lum",
+        mass_key="mass",
+        weight_type="luminosity",
+        z=None,
+        flux_zeropoint=None,
+        exposure_time=None,
+        apply_noise=False,
+    ):
+        """
+        Convenience wrapper around `image_from_particles` for a pygad-style
+        snapshot object (dict-like field access), so you can go straight
+        from a loaded snapshot to a mock image.
+
+        Parameters
+        ----------
+        snap : dict-like
+            Must support `snap[pos_key]` and either `snap[luminosity_key]`
+            (weight_type="luminosity"/"rate") or `snap[mass_key]`
+            (weight_type="mass"). Apply any pygad ExprMask / sub-snapshot
+            selection (e.g. `self.get_fov_mask`, star/gas cuts) to `snap`
+            *before* passing it in here -- this function does the spatial
+            FoV + LOS-depth cut itself via `project_particles`, but any
+            physical selection (particle type, SF state, etc.) is on you.
+        pos_key, luminosity_key, mass_key : str
+            Field names to look up on `snap`.
+        weight_type : {"luminosity", "rate", "mass"}
+            "mass" bins raw mass and returns a noiseless, uncalibrated mass
+            map (no PSF/noise applied) -- useful as a sanity check on
+            projection/geometry, not a photometric image.
+        (remaining parameters as in `image_from_particles`)
+
+        Returns
+        -------
+        image : ndarray
+        """
+        pos = np.asarray(snap[pos_key])
+
+        if weight_type == "mass":
+            weights = np.asarray(snap[mass_key])
+            px, py, keep = self.project_particles(pos, xaxis=xaxis, yaxis=yaxis)
+            return self.bin_particles(px, py, weights[keep])
+
+        weights = np.asarray(snap[luminosity_key])
+        return self.image_from_particles(
+            pos,
+            weights,
+            xaxis=xaxis,
+            yaxis=yaxis,
+            weight_type="luminosity" if weight_type == "luminosity" else "rate",
+            z=z,
+            flux_zeropoint=flux_zeropoint,
+            exposure_time=exposure_time,
+            apply_noise=apply_noise,
+        )
+
+    # ------------------------------------------------------------------
+    # Plotting
+    # ------------------------------------------------------------------
+    def plot_image(self, image, ax=None, stretch="asinh", cmap="bone", title=None):
+        """
+        Display a simulated image with an astronomy-style stretch.
+
+        Parameters
+        ----------
+        image : ndarray
+            2D image to display (e.g. output of `observe`/`mock_observation`).
+        ax : matplotlib Axes, optional
+            Existing axes to plot into; a new figure is created if None.
+        stretch : {"asinh", "linear", "log"}
+            Intensity stretch to apply before display.
+        cmap : str
+            Matplotlib colormap name.
+        title : str, optional
+            Plot title; defaults to instrument name.
+
+        Returns
+        -------
+        fig, ax : matplotlib Figure, Axes
+        """
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(6, 6))
+        else:
+            fig = ax.figure
+
+        if self.full_well is not None:
+            sat_frac = np.nanmean(image >= self.full_well)
+            if sat_frac > 0.01:
+                _logger.warning(
+                    f"{sat_frac:.1%} of pixels are at or above full_well "
+                    f"({self.full_well} e-). The image is saturated over a "
+                    "significant area -- check flux_zeropoint, exposure_time, "
+                    "or source luminosities. A saturated plateau this large "
+                    "will dominate percentile-based stretches."
+                )
+
+        data = image - np.nanmedian(image)
+        if stretch == "asinh":
+            # Use a median-absolute-deviation scale rather than a fixed
+            # percentile: a percentile can land inside a saturated plateau
+            # when a sizeable fraction of pixels are clipped to full_well,
+            # which crushes all unsaturated (background/source) contrast
+            # to ~0. MAD stays anchored to the bulk of the distribution
+            # as long as saturated pixels are a minority (<50%).
+            mad = np.nanmedian(np.abs(data - np.nanmedian(data)))
+            scale = 1.4826 * mad if mad > 0 else (np.nanstd(data) or 1.0)
+            disp = np.arcsinh(data / scale)
+        elif stretch == "log":
+            disp = np.log10(np.clip(data - data.min() + 1.0, 1, None))
+        else:
+            disp = data
+
+        vmin, vmax = np.nanpercentile(disp, [1, 99.5])
+        ax.imshow(disp, origin="lower", cmap=cmap, vmin=vmin, vmax=vmax)
+        ax.set_title(title or f"{self.name} mock observation")
+        ax.set_xlabel("x [pixel]")
+        ax.set_ylabel("y [pixel]")
+        fig.tight_layout()
+        return fig, ax
+
+
+class Euclid_VIS(PhotometricInstrument):
+    """Euclid VIS imaging channel (broad optical band, ~550-900 nm)."""
+
     def __init__(self, z=None):
-        """
-        Euclid visible bands. Parameters taken from:
-        https://sci.esa.int/web/euclid/-/euclid-vis-instrument
-        """
-        super().__init__(fov=0.709 * 3600, sampling=0.101, res=0.23, z=z)
-        self.label = r"$\mathrm{Euclid}$"
+        super().__init__(
+            fov=0.787 * 3600,  # ~0.787 deg per detector -> arcsec (illustrative)
+            sampling=0.101,  # arcsec/pixel
+            res=0.16,  # PSF FWHM ~0.16"
+            z=z,
+            psf_fwhm=0.16,
+            psf_type="gaussian",
+            read_noise=4.5,  # e-
+            dark_current=0.001,  # e-/s/pix
+            sky_background=0.0015,  # e-/s/pix (approximate, zodiacal-dominated)
+            zeropoint=24.7,  # AB mag for 1 e-/s (approximate)
+            gain=1.0,
+            full_well=200000,
+            exposure_time=565.0,  # s, single VIS exposure
+        )
+        self.label = r"$\mathrm{Euclid-VIS}$"
+
+
+class HSTWFC3(PhotometricInstrument):
+    """HST WFC3/UVIS, F606W-like broad V band."""
+
+    def __init__(self, z=None):
+        super().__init__(
+            fov=162.0,  # arcsec, UVIS field of view
+            sampling=0.04,  # arcsec/pixel
+            res=0.07,  # diffraction-limited PSF FWHM, approximate
+            z=z,
+            psf_fwhm=0.07,
+            psf_type="moffat",
+            moffat_beta=3.0,
+            read_noise=3.1,  # e-
+            dark_current=0.0153,  # e-/s/pix
+            sky_background=0.03,  # e-/s/pix, approximate
+            zeropoint=26.5,  # AB mag for 1 e-/s (approximate, filter-dependent)
+            gain=1.5,
+            full_well=63000,
+            exposure_time=1200.0,  # s
+        )
+
+
+# ------------------------------------------------------------------
+# IFU instruments
+# ------------------------------------------------------------------
 
 
 class IFUInstrument(BasicInstrument):
@@ -437,6 +1033,11 @@ class JWST_IFU(IFUInstrument):
             pseudo_particle_split=pseudo_particle_split,
         )
         self.label = r"$\mathrm{JWST}$"
+
+
+# ------------------------------------------------------------------
+# Long slit spectroscopy instruments
+# ------------------------------------------------------------------
 
 
 class LongSlitInstrument(BasicInstrument):

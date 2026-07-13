@@ -72,7 +72,7 @@ def get_spectrum_ssp(
     Parameters
     ----------
     age : float
-        age of a stellar particle (in Gyr)
+        age of a stellar particle (in yr)
     metallicity : float
         metallicity of stellar particle
     grid_name : str, optional
