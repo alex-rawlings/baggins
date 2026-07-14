@@ -169,6 +169,34 @@ class MergerIC:
             _oppars[k.rstrip("0")] = oppars[k]
 
         merger = mg.Merger(galaxy1, galaxy2, **_oppars)
+
+        # clean centre
+        # whilst individual galaxies may have already been cleaned, need to
+        # make sure the combined systems are also cleaned of particles from
+        # system A too close to BH B
+        try:
+            bh_masses = np.concatenate(
+                [
+                    galaxy1._get_part_masses(mg.ParticleType.BH, 0, None),
+                    galaxy2._get_part_masses(mg.ParticleType.BH, 0, None),
+                ]
+            )
+            _logger.debug(f"BH masses are {bh_masses}")
+            _mass_before_cleaning = merger.total_mass()
+            for bh_mass in bh_masses:
+                merger = mg.TransformedSystem(
+                    merger,
+                    mg.FilterParticlesBoundToCentralMass(
+                        central_object_mass=bh_mass,
+                        minimum_semi_major_axis=self.parameters["general"]["rmin"],
+                    ),
+                )
+            _logger.debug(
+                f"Mass change after BH cleaning: {_mass_before_cleaning - merger.total_mass()}"
+            )
+        except KeyError:
+            _logger.warning("No BHs present in merger")
+
         self._calc_quants["time_to_pericentre"] = merger.time_to_pericenter
         # print some velocity information about merger
         self._calc_quants["initial_velocity"] = {}
@@ -177,7 +205,6 @@ class MergerIC:
 
         if self.save_location is None:
             self.save_location = self._make_saveloc()
-        os.makedirs(os.path.join(self.save_location, "output"), exist_ok=self.exist_ok)
         file_name = os.path.join(
             self.save_location,
             f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['a0_physical']:.3f}-{self._calc_quants['e0']:.3f}.hdf5",
