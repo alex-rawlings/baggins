@@ -122,34 +122,35 @@ class NormedColours:
         """
         self._vmin = vmin
         self._vmax = vmax
-        self._cmap = cmap
-        self._norm = norm
         if norm_kwargs is None:
             self._norm_kwargs = {}
         self._trunc = trunc
         self._bad = bad
 
         try:
-            cmapv = plt.get_cmap(self._cmap)
+            cmapv = plt.get_cmap(cmap)
+            self.cmap = cmap
         except ValueError:
-            _logger.warning(
-                f"{self._cmap} does not exist. Using default colormap: cividis"
-            )
+            _logger.warning(f"{cmap} does not exist. Using default colormap: cividis")
             cmapv = plt.get_cmap("cividis")
+            self.cmap = "cividis"
         if self._bad is not None:
             cmapv.set_bad(color=self._bad)
         try:
-            _norm = getattr(colors, self._norm)
+            _norm = getattr(colors, norm)
         except AttributeError:
             _logger.warning(
                 f"Normalisation {norm} is not valid. Using default (Linear)."
             )
-            _norm = colors.Normalize()
+            _norm = colors.Normalize
         if norm == "CenteredNorm":
-            _norm = _norm(**norm_kwargs)
+            self._norm = _norm(**norm_kwargs)
         else:
-            _norm = _norm(vmin=self.vmin, vmax=self.vmax, **self._norm_kwargs)
-        self._cmapper = lambda x: cmapv(_norm(x))
+            if norm == "LogNorm" and vmin < 1e-30:
+                # protect against zero value
+                self._vmin = 1e-30
+            self._norm = _norm(vmin=self.vmin, vmax=self.vmax, **self._norm_kwargs)
+        self._cmapper = lambda x: cmapv(self._norm(x))
         # we now have a colormap that maps (vmin, vmax) -> (0,1)
         # adjust if we want to truncate it
         if any([tt is not None for tt in self._trunc]):
@@ -157,12 +158,12 @@ class NormedColours:
             tmax = self.vmax if self.trunc[1] is None else self.trunc[1]
             col_arr = self._cmapper(np.linspace(tmin, tmax, 256))
             cmapv = colors.LinearSegmentedColormap.from_list("trunc", col_arr)
-            self._cmapper = lambda x: cmapv(_norm(x))
-            _norm = _norm(vmin=tmin, vmax=tmax, **self._norm_kwargs)
+            self._cmapper = lambda x: cmapv(self._norm(x))
+            self._norm = self._norm(vmin=tmin, vmax=tmax, **self._norm_kwargs)
             _logger.debug(
                 f"Truncating colormap from ({self.vmin:.2f},{self.vmax:.2f}) --> ({self.tmin:.2f},{self.tmax:.2f})"
             )
-        self._sm = plt.cm.ScalarMappable(norm=_norm, cmap=cmapv)
+        self._sm = plt.cm.ScalarMappable(norm=self._norm, cmap=cmapv)
 
     @property
     def vmin(self):
@@ -175,6 +176,10 @@ class NormedColours:
     @property
     def sm(self):
         return self._sm
+
+    @property
+    def norm(self):
+        return self._norm
 
     def get_colour(self, c):
         """
@@ -191,6 +196,25 @@ class NormedColours:
             colour code
         """
         return self._cmapper(c)
+
+    @classmethod
+    def from_array_list(cls, *arr, **kwargs):
+        """
+        Give a list of arrays to determine the colour bounds from.
+
+        Returns
+        -------
+        : NormedColours
+            class instance
+        """
+        vmin = np.inf
+        vmax = -np.inf
+        for a in arr:
+            _min = np.nanmin(a)
+            vmin = _min if _min < vmin else vmin
+            _max = np.nanmax(a)
+            vmax = _max if _max > vmax else vmax
+        return cls(vmin, vmax, **kwargs)
 
 
 def create_offcentre_diverging(vmin, vmax, vcentre=0, cmap="seismic"):

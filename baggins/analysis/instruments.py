@@ -7,10 +7,24 @@ from astropy.units import Unit
 from astropy.cosmology import Planck18
 from astropy.constants import L_sun
 from pygad import ExprMask
+from unyt import arcsecond, erg, s, Hz, angstrom, Msun, kpc, yr
+import synthesizer.particle
+from synthesizer.imaging.image_collection import ImageCollection
+from synthesizer.filters import Filter, FilterCollection
+from synthesizer.emission_models import BimodalPacmanEmission
+from synthesizer.emission_models.attenuation import PowerLaw
+from synthesizer.kernel_functions import Kernel
+from synthesizer.instruments.photometric_imager import PhotometricImager
+from baggins.analysis.obs_helper import (
+    get_synthesizer_grid,
+    get_euclid_filter_collection,
+    get_hst_filter_collection,
+)
 from baggins.analysis.voronoi import VoronoiKinematics
 from baggins.env_config import _cmlogger
 from baggins.cosmology import angular_scale
 from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
+from baggins.plotting import NormedColours
 
 __all__ = [
     "MUSE_NFM",
@@ -187,7 +201,7 @@ class BasicInstrument(ABC):
 # ------------------------------------------------------------------
 
 
-class PhotometricInstrument(BasicInstrument):
+class _PhotometricInstrument(BasicInstrument):
     def __init__(
         self,
         fov,
@@ -745,6 +759,454 @@ class PhotometricInstrument(BasicInstrument):
         return fig, ax
 
 
+class _PhotometricInstrument2(BasicInstrument):
+    def __init__(self, fov, sampling, res=None, z=None, label=None):
+        super().__init__(fov, sampling, res=res, z=z)
+        self.label = label or type(self).__name__
+        self._filters = None
+
+    # ------------------------------------------------------------------
+    # Filters
+    # ------------------------------------------------------------------
+    def set_filters(self, filters):
+        """
+        Attach a filter set to this instrument.
+
+        Parameters
+        ----------
+        filters : FilterCollection, list of Filter, or list of str
+            - a `synthesizer.filters.FilterCollection` instance, or
+            - a list of `synthesizer.filters.Filter` objects (generic
+              top-hat filters, built with lam_min/lam_max -- no network
+              access required), or
+            - a list of SVO filter codes, e.g. "JWST/NIRCam.F200W"
+              (fetched from the SVO filter service -- requires network
+              access).
+        """
+        if isinstance(filters, FilterCollection):
+            self._filters = filters
+        elif filters and isinstance(filters[0], Filter):
+            self._filters = FilterCollection(filters=list(filters))
+        else:
+            self._filters = FilterCollection(filter_codes=list(filters))
+
+    @property
+    def filters(self):
+        if self._filters is None:
+            _logger.exception(
+                "Call set_filters(...) before requesting images.",
+                exc_info=True,
+            )
+            raise RuntimeError
+        return self._filters
+
+    # ------------------------------------------------------------------
+    # Geometry -> Synthesizer's unyt-based resolution/fov
+    # ------------------------------------------------------------------
+    def synthesizer_resolution(self, angular=False):
+        """This instrument's pixel size, as a unyt quantity."""
+        if angular:
+            return self.sampling.to("arcsec").value * arcsecond
+        self._param_check()
+        return self.pixel_width.to("kpc").value * kpc
+
+    def synthesizer_fov(self, angular=False):
+        """This instrument's field of view (post max_extent clip), as a unyt quantity."""
+        if angular:
+            return self.field_of_view.to("arcsec").value * arcsecond
+        self._param_check()
+        return self.extent.to("kpc").value * kpc
+
+    def _project_and_cut(self, pos, xaxis, yaxis):
+        """Same FoV + LOS-depth cut used by the from-scratch Instrument
+        class, kept here so both approaches select an identical subset
+        of particles for a fair comparison."""
+        self._param_check()
+        valid_str = "xyz"
+        xi = valid_str.find(xaxis) if isinstance(xaxis, str) else xaxis
+        yi = valid_str.find(yaxis) if isinstance(yaxis, str) else yaxis
+        los = self._get_LOS_axis(xaxis, yaxis)
+
+        half_extent = 0.5 * self.extent.to("kpc").value
+        half_depth = 0.5 * self.max_extent.to("kpc").value
+
+        x, y, zl = pos[:, xi], pos[:, yi], pos[:, los]
+        keep = (
+            (np.abs(x) <= half_extent)
+            & (np.abs(y) <= half_extent)
+            & (np.abs(zl) <= half_depth)
+        )
+        return x[keep], y[keep], keep
+
+    def _to_instrument_units(self, x_kpc, y_kpc, angular=False):
+        """Convert centered (x, y) in kpc to the units the ImageCollection
+        was built with (kpc for physical, arcsec for angular)."""
+        if not angular:
+            return np.column_stack([x_kpc, y_kpc]) * kpc
+        scale = self.ang_scale.to("kpc/arcsec").value  # kpc per arcsec
+        return np.column_stack([x_kpc / scale, y_kpc / scale]) * arcsecond
+
+    # ------------------------------------------------------------------
+    # Low-level: image directly from a precomputed per-particle signal
+    # ------------------------------------------------------------------
+    def image_from_particles(
+        self,
+        pos,
+        signal,
+        xaxis="x",
+        yaxis="y",
+        filter_code="custom_band",
+        img_type="hist",
+        smoothing_lengths=None,
+        kernel=None,
+        kernel_threshold=1,
+        angular=False,
+        signal_units=erg / s / Hz,
+    ):
+        """
+        Bin an already-computed per-particle signal (e.g. a luminosity
+        you calculated yourself, as in `Instrument.image_from_particles`
+        in instrument.py) into a Synthesizer ImageCollection, using this
+        instrument's FoV/pixel geometry. Delegates the actual binning
+        (and, for img_type="smoothed", SPH-kernel smoothing) to
+        Synthesizer's own C-extension image generators.
+
+        Parameters
+        ----------
+        pos : ndarray, shape (N, 3)
+            Particle positions in kpc, centered on the object of interest.
+        signal : ndarray, shape (N,)
+            Per-particle signal to bin (e.g. luminosity in erg/s/Hz).
+        xaxis, yaxis : int or str
+            Projection axes.
+        filter_code : str
+            Label for the resulting image within the returned
+            ImageCollection. Does not need to be a real filter for this
+            manual path -- it's just a dict key.
+        img_type : {"hist", "smoothed"}
+            "hist": plain 2D histogram, equivalent to
+                `Instrument.bin_particles` in instrument.py.
+            "smoothed": SPH-kernel-smoothed image; requires
+                `smoothing_lengths`, `kernel`, and `self.filters` to be set
+                (Synthesizer's smoothed path wraps signal in a
+                PhotometryCollection, which is filter-aware).
+        smoothing_lengths : ndarray, shape (N,), optional
+            Per-particle smoothing lengths in kpc. Required if
+            img_type="smoothed".
+        kernel : np.ndarray, optional
+            SPH kernel lookup table, e.g. from
+            `synthesizer.kernel_functions.Kernel().get_kernel()`.
+            Required if img_type="smoothed".
+        angular : bool
+            If True, build the image in this instrument's angular
+            (arcsec) geometry instead of physical (kpc) geometry.
+        signal_units : unyt unit
+            Units to attach to `signal` (default erg/s/Hz, a luminosity
+            density; use erg/s/cm**2/Hz for a flux).
+
+        Returns
+        -------
+        ImageCollection
+        """
+        pos = np.asarray(pos)
+        signal = np.asarray(signal)
+
+        x, y, keep = self._project_and_cut(pos, xaxis, yaxis)
+        coords = self._to_instrument_units(x, y, angular=angular)
+        sig = signal[keep] * signal_units
+
+        resolution = self.synthesizer_resolution(angular=angular)
+        fov = self.synthesizer_fov(angular=angular)
+        imgcol = ImageCollection(resolution=resolution, fov=fov)
+
+        if img_type == "hist":
+            return imgcol.generate_imgs_hist(
+                photometry={filter_code: sig}, coordinates=coords
+            )
+
+        if img_type == "smoothed":
+            if smoothing_lengths is None or kernel is None:
+                _logger.exception(
+                    "smoothing_lengths and kernel are required for "
+                    "img_type='smoothed'.",
+                    exc_info=True,
+                )
+                raise ValueError
+
+            sl = np.asarray(smoothing_lengths)[keep]
+            if not angular:
+                sl_q = sl * kpc
+            else:
+                scale = self.ang_scale.to("kpc/arcsec").value
+                sl_q = (sl / scale) * arcsecond
+
+            from synthesizer.photometry import PhotometryCollection
+
+            # PhotometryCollection expects one row per filter; wrap our
+            # single custom signal as a (1, N) array against self.filters.
+            phot = PhotometryCollection(
+                filters=self.filters, photometry=sig.reshape(1, -1)
+            )
+            return imgcol.generate_imgs_smoothed(
+                photometry=phot,
+                coordinates=coords,
+                smoothing_lengths=sl_q,
+                kernel=kernel,
+                kernel_threshold=kernel_threshold,
+            )
+
+        _logger.exception(f"Unknown img_type '{img_type}'", exc_info=True)
+        raise ValueError
+
+    # ------------------------------------------------------------------
+    # Instrument object for PSF / noise post-processing
+    # ------------------------------------------------------------------
+    def build_imager(
+        self, psfs=None, depth=None, snrs=None, noise_maps=None, angular=False
+    ):
+        """
+        Build a Synthesizer PhotometricImager carrying this instrument's
+        resolution plus optional PSFs/depth/SNR/noise maps, for use with
+        `imager.apply_psfs(image_collection)` /
+        `imager.apply_noises(image_collection)` on an ImageCollection
+        (e.g. one returned by `image_from_particles`).
+        """
+        resolution = self.synthesizer_resolution(angular=angular)
+        return PhotometricImager(
+            label=self.label,
+            filters=self.filters,
+            resolution=resolution,
+            psfs=psfs,
+            depth=depth,
+            snrs=snrs,
+            noise_maps=noise_maps,
+        )
+
+    # ------------------------------------------------------------------
+    # High-level: full SED-based imaging from a Synthesizer Galaxy
+    # ------------------------------------------------------------------
+    def image_from_galaxy(
+        self,
+        gal,
+        spectra_type,
+        img_type="smoothed",
+        kernel=None,
+        kernel_threshold=1,
+        cosmo=None,
+        angular=False,
+        psfs=None,
+        depth=None,
+        snrs=None,
+    ):
+        """
+        Full Synthesizer workflow: image a `synthesizer.particle.Galaxy`
+        object that already has photometry computed (via an
+        EmissionModel + `gal.get_photo_lnu(self.filters)`), using this
+        instrument's geometry. This is the "real physics" path --
+        luminosities come from actual stellar population synthesis (age,
+        metallicity, initial mass -> SED -> filter convolution), not a
+        luminosity array you supply yourself; use `image_from_particles`
+        for that.
+
+        Parameters
+        ----------
+        gal : synthesizer.particle.galaxy.Galaxy
+            Galaxy object with photometry already computed for
+            `spectra_type`.
+        spectra_type : str or list of str
+            Which computed spectra/photometry to image (e.g.
+            "attenuated", "intrinsic", "incident").
+        img_type : {"hist", "smoothed"}
+        kernel, kernel_threshold : SPH kernel lookup + threshold; required
+            for img_type="smoothed".
+        cosmo : astropy.cosmology instance, optional
+            Required if `angular=True` (converts particle coordinates to
+            angular units using this instrument's redshift).
+        angular : bool
+            Use angular (arcsec) geometry rather than physical (kpc).
+        psfs, depth, snrs : optional PSF/noise configuration; applied
+            after image generation if given.
+
+        Returns
+        -------
+        ImageCollection, or dict of ImageCollection if spectra_type is
+        a list of labels.
+        """
+        imager = self.build_imager(psfs=psfs, depth=depth, snrs=snrs, angular=angular)
+        fov = self.synthesizer_fov(angular=angular)
+
+        imgs = gal.get_images_luminosity(
+            spectra_type,
+            instrument=imager,
+            fov=fov,
+            img_type=img_type,
+            kernel=kernel,
+            kernel_threshold=kernel_threshold,
+            cosmo=cosmo,
+        )
+
+        if psfs is not None:
+            imgs = imager.apply_psfs(imgs)
+        if depth is not None or snrs is not None:
+            imgs = imager.apply_noises(imgs)
+
+        return imgs
+
+
+class PhotometricInstrument(BasicInstrument):
+    def __init__(self, fov, sampling, label, res=None, z=None, max_extent=40):
+        super().__init__(fov, sampling, res, z, max_extent)
+        self.galaxy = None
+        self._filters = None
+        self.label = label
+        self._instr = None
+
+    @property
+    def filters(self):
+        return self._filters
+
+    @abstractmethod
+    def get_filters(self, grid):
+        raise NotImplementedError
+
+    # ------------------------------------------------------------------
+    # Geometry -> Synthesizer's unyt-based resolution/fov
+    # ------------------------------------------------------------------
+    def synthesizer_resolution(self, angular=False):
+        """This instrument's pixel size, as a unyt quantity."""
+        if angular:
+            return self.sampling.to("arcsec").value * arcsecond
+        self._param_check()
+        return self.pixel_width.to("kpc").value * kpc
+
+    def synthesizer_fov(self, angular=False):
+        """This instrument's field of view (post max_extent clip), as a unyt quantity."""
+        if angular:
+            return self.field_of_view.to("arcsec").value * arcsecond
+        self._param_check()
+        return self.extent.to("kpc").value * kpc
+
+    def _project_and_cut(self, pos, xaxis, yaxis):
+        """Same FoV + LOS-depth cut used by the from-scratch Instrument
+        class, kept here so both approaches select an identical subset
+        of particles for a fair comparison."""
+        self._param_check()
+        valid_str = "xyz"
+        xi = valid_str.find(xaxis) if isinstance(xaxis, str) else xaxis
+        yi = valid_str.find(yaxis) if isinstance(yaxis, str) else yaxis
+        los = self._get_LOS_axis(xaxis, yaxis)
+
+        half_extent = 0.5 * self.extent.to("kpc").value
+        half_depth = 0.5 * self.max_extent.to("kpc").value
+
+        x, y, zl = pos[:, xi], pos[:, yi], pos[:, los]
+        keep = (
+            (np.abs(x) <= half_extent)
+            & (np.abs(y) <= half_extent)
+            & (np.abs(zl) <= half_depth)
+        )
+        return x[keep], y[keep], keep
+
+    def _to_instrument_units(self, x_kpc, y_kpc, angular=False):
+        """Convert centered (x, y) in kpc to the units the ImageCollection
+        was built with (kpc for physical, arcsec for angular)."""
+        if not angular:
+            return np.column_stack([x_kpc, y_kpc]) * kpc
+        scale = self.ang_scale.to("kpc/arcsec").value  # kpc per arcsec
+        return np.column_stack([x_kpc / scale, y_kpc / scale]) * arcsecond
+
+    def load_and_project_galaxy(
+        self, snap, xaxis=0, yaxis=2, ages=None, metallicity=None, softening=None
+    ):
+        if ages is None:
+            # TODO check units
+            ages = np.asarray(snap.stars["age"]) * yr
+        elif isinstance(ages, (float, int)):
+            ages = np.full(len(snap.stars), ages) * yr
+        if metallicity is None:
+            metallicity = snap.stars["metallicity"]
+        elif isinstance(metallicity, (float, int)):
+            metallicity = np.full(len(snap.stars), metallicity)
+        if isinstance(softening, float):
+            softening = np.full(len(snap.stars), softening * kpc)
+        mask = self.get_fov_mask(xaxis, yaxis)
+        snap = snap[mask]
+        stars = synthesizer.particle.Stars(
+            initial_masses=np.asarray(snap.stars["mass"]) * Msun,
+            ages=ages,
+            metallicities=metallicity,
+            coordinates=np.asarray(snap.stars["pos"]) * kpc,
+            centre=np.zeros(3) * kpc,
+            softening_lengths=softening,
+            redshift=self.redshift,
+        )
+        self.galaxy = synthesizer.particle.Galaxy(stars=stars, redshift=self.redshift)
+
+    def generate_particle_spectra(
+        self, grid_name="bpass-2.2.1-bin_chabrier03-0.1,100.0_cloudy-c23.01-sps.hdf5"
+    ):
+        grid = get_synthesizer_grid(
+            grid_name=grid_name, new_lam=np.logspace(2, 5, 50) * angstrom
+        )
+        self._filters = self.get_filters(grid)
+        model = BimodalPacmanEmission(
+            grid=grid,
+            tau_v_ism=1.0,
+            tau_v_birth=0.7,
+            dust_curve_ism=PowerLaw(slope=-1.3),
+            dust_curve_birth=PowerLaw(slope=-0.7),
+            fesc=0.1,
+            fesc_ly_alpha=0.9,
+            label="total",
+            per_particle=True,
+        )
+        self.galaxy.stars.get_spectra(model)
+        self.galaxy.get_observed_spectra(Planck18)
+        self.galaxy.get_photo_lnu(self._filters)
+        return grid
+
+    def build_instrument(self, angular=False):
+        self._instr = PhotometricImager(
+            label=self.label,
+            resolution=self.synthesizer_resolution(angular=angular),
+            filters=self._filters,
+        )
+
+    def observe(self, ax=None, angular=False):
+        kwargs = dict(
+            instrument=self._instr,
+            fov=self.synthesizer_fov(angular=angular),
+            img_type="smoothed",
+            kernel=Kernel().get_kernel(),
+            cosmo=Planck18,
+        )
+        try:
+            imgs = self.galaxy.get_images_luminosity("attenuated", **kwargs)
+        except Exception as e:
+            _logger.error(e)
+            kwargs["img_type"] = "hist"
+            imgs = self.galaxy.get_images_luminosity("attenuated", **kwargs)
+
+        """if psfs is not None:
+            imgs = imager.apply_psfs(imgs)
+        if depth is not None or snrs is not None:
+            imgs = imager.apply_noises(imgs)"""
+
+        if ax is None:
+            nax = len(self.filters)
+            fig, ax = plt.subplots(ncols=nax, sharex="all", sharey="all")
+            if nax == 1:
+                ax = [ax]
+        cmapper = NormedColours.from_array_list(
+            [v.arr for v in imgs.values()], norm="LogNorm", cmap="bone"
+        )
+        for axi, fcode in zip(ax, self.filters.filter_codes):
+            axi.imshow(imgs[fcode].arr, norm=cmapper.norm, cmap=cmapper.cmap)
+            axi.set_title(fcode)
+            axi.set_facecolor("k")
+        return ax
+
+
 class Euclid_VIS(PhotometricInstrument):
     """Euclid VIS imaging channel (broad optical band, ~550-900 nm)."""
 
@@ -754,17 +1216,21 @@ class Euclid_VIS(PhotometricInstrument):
             sampling=0.101,  # arcsec/pixel
             res=0.16,  # PSF FWHM ~0.16"
             z=z,
-            psf_fwhm=0.16,
-            psf_type="gaussian",
-            read_noise=4.5,  # e-
-            dark_current=0.001,  # e-/s/pix
-            sky_background=0.0015,  # e-/s/pix (approximate, zodiacal-dominated)
-            zeropoint=24.7,  # AB mag for 1 e-/s (approximate)
-            gain=1.0,
-            full_well=200000,
-            exposure_time=565.0,  # s, single VIS exposure
+            label="EuclidVIS",
+            # psf_fwhm=0.16,
+            # psf_type="gaussian",
+            # read_noise=4.5,  # e-
+            # dark_current=0.001,  # e-/s/pix
+            # sky_background=0.0015,  # e-/s/pix (approximate, zodiacal-dominated)
+            # zeropoint=24.7,  # AB mag for 1 e-/s (approximate)
+            # gain=1.0,
+            # full_well=200000,
+            # exposure_time=565.0,  # s, single VIS exposure
         )
-        self.label = r"$\mathrm{Euclid-VIS}$"
+        # self.label = r"$\mathrm{Euclid-VIS}$"
+
+    def get_filters(self, grid):
+        return get_euclid_filter_collection(grid)
 
 
 class HSTWFC3(PhotometricInstrument):
@@ -776,17 +1242,21 @@ class HSTWFC3(PhotometricInstrument):
             sampling=0.04,  # arcsec/pixel
             res=0.07,  # diffraction-limited PSF FWHM, approximate
             z=z,
-            psf_fwhm=0.07,
-            psf_type="moffat",
-            moffat_beta=3.0,
-            read_noise=3.1,  # e-
-            dark_current=0.0153,  # e-/s/pix
-            sky_background=0.03,  # e-/s/pix, approximate
-            zeropoint=26.5,  # AB mag for 1 e-/s (approximate, filter-dependent)
-            gain=1.5,
-            full_well=63000,
-            exposure_time=1200.0,  # s
+            label="HSTWFC3",
+            # psf_fwhm=0.07,
+            # psf_type="moffat",
+            # moffat_beta=3.0,
+            # read_noise=3.1,  # e-
+            # dark_current=0.0153,  # e-/s/pix
+            # sky_background=0.03,  # e-/s/pix, approximate
+            # zeropoint=26.5,  # AB mag for 1 e-/s (approximate, filter-dependent)
+            # gain=1.5,
+            # full_well=63000,
+            # exposure_time=1200.0,  # s
         )
+
+    def get_filters(self, grid):
+        return get_hst_filter_collection(grid)
 
 
 # ------------------------------------------------------------------

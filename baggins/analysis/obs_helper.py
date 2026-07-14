@@ -10,6 +10,7 @@ from baggins.utils import get_files_in_dir
 
 __all__ = [
     "set_luminosity",
+    "get_synthesizer_grid",
     "get_spectrum_ssp",
     "get_euclid_filter_collection",
     "get_hst_filter_collection",
@@ -60,10 +61,46 @@ def set_luminosity(snap, sed, z=0):
     )
 
 
+def get_synthesizer_grid(grid_name=None, grid_dir=None, **kwargs):
+    """
+    Get a synthesizer grid.
+
+    Parameters
+    ----------
+    grid_name : str, optional
+        SSP grid to query, by default None"
+    grid_dir : str, optional
+        directory of grid_name, by default None
+
+    Returns
+    -------
+    g : synthesizer.grid.Grid
+        grid object
+    """
+    if grid_name is None:
+        grid_name = "bpass-2.2.1-bin_chabrier03-0.1,100.0.hdf5"
+    if grid_dir is None:
+        # use the default location for grids from baggins config
+        grid_dir = synthesizer_data
+        if grid_dir is None:
+            # use the default install location from synthesizer
+            grid_dir = GRID_DIR
+    try:
+        assert os.path.isfile(os.path.join(grid_dir, grid_name))
+    except AssertionError:
+        valid_grids = get_files_in_dir(grid_dir, ext=".hdf5", name_only=True)
+        _logger.exception(f"No grid called {grid_name}. Valid grids are {valid_grids}")
+        raise
+    _logger.info(f"Using data {os.path.join(grid_dir, grid_name)}")
+    # create the grid
+    kwargs.setdefault("ignore_lines", True)
+    return grid.Grid(grid_name, grid_dir=grid_dir, **kwargs)
+
+
 def get_spectrum_ssp(
     age,
     metallicity,
-    grid_name="bpass-2.2.1-bin_chabrier03-0.1,100.0.hdf5",
+    grid_name=None,
     grid_dir=None,
 ):
     """
@@ -87,21 +124,7 @@ def get_spectrum_ssp(
     sed : synthesizer.Sed
         spectral energy distribution object
     """
-    if grid_dir is None:
-        # use the default location for grids from baggins config
-        grid_dir = synthesizer_data
-        if grid_dir is None:
-            # use the default install location from synthesizer
-            grid_dir = GRID_DIR
-    try:
-        assert os.path.isfile(os.path.join(grid_dir, grid_name))
-    except AssertionError:
-        valid_grids = get_files_in_dir(grid_dir, ext=".hdf5", name_only=True)
-        _logger.exception(f"No grid called {grid_name}. Valid grids are {valid_grids}")
-        raise
-    _logger.info(f"Using data {os.path.join(grid_dir, grid_name)}")
-    # create the grid
-    g = grid.Grid(grid_name, grid_dir=grid_dir, ignore_lines=True)
+    g = get_synthesizer_grid(grid_name=grid_name, grid_dir=grid_dir)
     log10age = np.log10(age)
     # extract the spectrum at the target age / metallicity
     grid_point = g.get_grid_point(log10ages=log10age, metallicity=metallicity)
@@ -126,7 +149,7 @@ def get_euclid_filter_collection(g, new_lam_size=1000):
         collection of Euclid filters
     """
     _filter_codes = ["Euclid/VIS.vis"]
-    _filter_codes.extend([f"Euclid/NISP.{b}" for b in ("Y", "J", "H")])
+    # _filter_codes.extend([f"Euclid/NISP.{b}" for b in ("Y", "J", "H")])
     euclid_filters = instruments.FilterCollection(
         filter_codes=_filter_codes, new_lam=g.lam
     )
@@ -151,7 +174,7 @@ def get_hst_filter_collection(g, new_lam_size=1000):
         collection of HST filters
     """
     hst_filters = instruments.FilterCollection(
-        filter_codes=["HST/ACS_HRC.F435W", "HST/ACS_HRC.F550W", "HST/ACS_HRC.F606W"],
+        filter_codes=["HST/ACS_HRC.F435W", "HST/ACS_HRC.F555W", "HST/ACS_HRC.F606W"],
         new_lam=g.lam,
     )
     hst_filters.resample_filters(lam_size=new_lam_size)
