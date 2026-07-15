@@ -181,7 +181,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
     # Transformed quantities
     # ----------------------------------------------------------------------
 
-    def calculate_mass_profile(self, use_OOS=False, as_xarray=False):
+    def calculate_mass_profile(self, use_OOS=False, as_xarray=False, OOS_data=None):
         """
         Calculate the mass profile from the density profile.
 
@@ -191,6 +191,8 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             use OOS quantities, by default False
         as_xarray : bool, optional
             return as xr.DataSet, by default False
+        OOS_data : dict, optional
+            custom OOS data, by default None
 
         Returns
         -------
@@ -200,15 +202,27 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
         f = lambda p, r: 4 * np.pi * p * r**2
 
         if use_OOS:
-            return f(
-                self.sample_generated_quantity(
-                    self.dependent_qtys_OOS[0], as_xarray=as_xarray
-                ),
-                self.access_independent_qty(
-                    self._independent_qtys_OOS[0], as_xarray=as_xarray
-                ),
-            )
-
+            if OOS_data is None:
+                return f(
+                    self.sample_generated_quantity(
+                        self.dependent_qtys_OOS[0], as_xarray=as_xarray
+                    ),
+                    self.access_independent_qty(
+                        self._independent_qtys_OOS[0], as_xarray=as_xarray
+                    ),
+                )
+            else:
+                for k, v in OOS_data.items():
+                    if len(v) > self.num_OOS:
+                        OOS_data[k] = self._rng.choice(
+                            v, replace=False, size=self.num_OOS
+                        )
+                return f(
+                    self.sample_generated_quantity_custom_OOS(
+                        self.dependent_qtys_OOS[0], data=OOS_data, as_xarray=as_xarray
+                    ),
+                    OOS_data[self._independent_qtys_OOS[0]],
+                )
         else:
             return f(
                 self.sample_generated_quantity(
