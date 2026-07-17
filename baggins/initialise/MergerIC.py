@@ -169,22 +169,7 @@ class MergerIC:
             _oppars[k.rstrip("0")] = oppars[k]
 
         merger = mg.Merger(galaxy1, galaxy2, **_oppars)
-        bh_m = np.concatenate(
-            [
-                g._get_part_masses(mg.ParticleType.BH, 0, None)
-                for g in (galaxy1, galaxy2)
-            ]
-        )
-        transforms = [
-            mg.FilterParticlesBoundToCentralMass(
-                central_object_mass=m,
-                minimum_semi_major_axis=self.parameters["general"]["rmin"],
-                x0=x,
-                v0=v,
-            )
-            for (m, x, v) in zip(bh_m, (merger.x1, merger.x2), (merger.v1, merger.v2))
-        ]
-        merger = mg.TransformedSystem(merger, *transforms)
+
         self._calc_quants["initial_BH_separation"] = radial_separation(
             merger.x1, merger.x2
         )[0]
@@ -212,9 +197,7 @@ class MergerIC:
             center_CoM=self.parameters["general"]["recentre_merger_to_com"],
         )
         _logger.info(f"Merger IC file written to {file_name}")
-        _logger.info(
-            f"{np.sum([t.num_parts_removed for t in transforms])} particles removed"
-        )
+
         # copy parameter file to simulation directory
         shutil.copyfile(
             self.paramfile,
