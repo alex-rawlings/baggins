@@ -3,6 +3,7 @@ from copy import copy
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from seaborn import kdeplot, cubehelix_palette
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.general import BasicQuantityConverter
 from baggins.mathematics import stat_interval, vertical_RMSE
@@ -504,6 +505,25 @@ class LiteratureTables:
         C.table = data
         return C
 
+    @classmethod
+    def load_manga_2024_data(cls):
+        """
+        Note that the MANGA data, originally from https://zenodo.org/records/17518315 file 'SDSSDR17_MaNGA_JAM_v2.fits' has had the following cleaning done to it:
+        df = df[df["fdm_Re"] > 0]
+        df = df[df["log_Ms_Re"] < 12]
+        df = df[df["log_Ms_Re"] > 10.5]
+        """
+        C = cls()
+        C.name = r"$\mathrm{Lu\; et. \; al\; 2024}$"
+        data = pd.read_csv(
+            os.path.join(C._literature_dir, "manga.txt"),
+            sep=",",
+            header=0,
+        )
+        data["gamma_gNFW"] *= -1  # convention where we have -gamma exponents
+        C.table = data
+        return C
+
     def hist(self, var, ax=None, **hist_kwargs):
         """
         Histogram table data
@@ -766,3 +786,25 @@ class LiteratureTables:
             ),
         )
         return ax, p
+
+    def plot_kde(self, x, y, **kwargs):
+        """
+        Wrapper around seaborn's kdeplot()
+
+        Parameters
+        ----------
+        x : str
+            x variable to plot
+        y : str
+            y variable to plot
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        kwargs.setdefault("cmap", cubehelix_palette(as_cmap=True))
+        kwargs.setdefault("fill", True)
+        kwargs.setdefault("levels", 20)
+        ax = kdeplot(self.table, x=x, y=y, **kwargs)
+        return ax
