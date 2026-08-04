@@ -6,3 +6,4 @@ from baggins.literature.radial_relations import *  # noqa
 from baggins.literature.smbh_spins import *  # noqa
 from baggins.literature.smbh_recoil import *  # noqa
 from baggins.literature.simulation_fits import *  # noqa
+from baggins.literature.SinkingBHPlummer import SinkingBHPlummer  # noqa
