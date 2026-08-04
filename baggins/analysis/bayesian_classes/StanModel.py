@@ -81,8 +81,10 @@ class _StanModel(ABC):
             "mec": "k",
             "cmap": "PuRd",
             "zorder": 2,
+            "ls": "",
         }
         self._default_hdi_levels = [0.25, 0.5, 0.8]
+        self.hdi_col_mapper = NormedColours(0.2, 1.1, cmap="PuRd_r")
 
         self._loaded_from_file = False
         self._generated_quantities = None
@@ -1156,20 +1158,6 @@ class _StanModel(ABC):
     # Plots
     # ----------------------------------------------------------------------
 
-    def _make_default_hdi_colours(self):
-        """
-        Create the default colour scheme for HDI regression plots. Basically a wrapper around NormedColours()
-
-        Returns
-        -------
-        : function
-            takes an argument in the range [vmin, vmax] and returns the scaled
-            colour
-        : matplotlib.cm.ScalarMappable
-            object that is required for creating a colour bar
-        """
-        return NormedColours(0.2, 1.1, cmap="PuRd_r")
-
     def _parameter_corner_plot(
         self,
         var_names,
@@ -1219,10 +1207,11 @@ class _StanModel(ABC):
         else:
             sample_dims = None
         num_vars = len(var_names)
-        cmapper = self._make_default_hdi_colours()
         visuals = kwargs.pop("visuals", {})
         for k in ("dist", "scatter"):
-            visuals.setdefault(k, {"color": cmapper.get_colour(cmapper.vmin)})
+            visuals.setdefault(
+                k, {"color": self.hdi_col_mapper.get_colour(self.hdi_col_mapper.vmin)}
+            )
         visuals["divergence"] = divergences
         kwargs["visuals"] = visuals
         with az.rc_context({"plot.max_subplots": num_vars**2}):
@@ -1357,9 +1346,6 @@ class _StanModel(ABC):
         if levels is None:
             levels = copy(self._default_hdi_levels)
         levels.sort()
-        cmapper = NormedColours(
-            max(0, 0.9 * min(levels)), 1.3, cmap="Blues_r", trunc=(None, max(levels))
-        )
         fig, ax = plt.subplots(num_vars, 1, sharex="all", figsize=figsize)
         ax[-1].set_xlabel(xlabel)
         # loop through variables
@@ -1383,7 +1369,9 @@ class _StanModel(ABC):
                     r = patches.Rectangle((k - 0.5, ll), 1, uu - ll)
                     p.append(r)
                 ax[i].add_collection(
-                    collections.PatchCollection(p, fc=cmapper.get_colour(level))
+                    collections.PatchCollection(
+                        p, fc=self.hdi_col_mapper.get_colour(level)
+                    )
                 )
             ax[i].autoscale_view()
             for j in range(len(lower) - 1):
@@ -1396,7 +1384,7 @@ class _StanModel(ABC):
             if i == num_vars - 1:
                 break
             axi.tick_params(axis="x", which="both", bottom=False)
-        plt.colorbar(cmapper.sm, label="HDI", location="top", ax=ax[0])
+        plt.colorbar(self.hdi_col_mapper.sm, label="HDI", location="top", ax=ax[0])
         savefig(
             next(self.gen_hiergroup_plot_name),
             fig=fig,
@@ -1417,9 +1405,10 @@ class _StanModel(ABC):
         pc : arviz.PlotCollection
             plotting collection
         """
-        cmapper = self._make_default_hdi_colours()
         visuals = kwargs.pop("visuals", {})
-        visuals.setdefault("dist", {"color": cmapper.get_colour(cmapper.vmin)})
+        visuals.setdefault(
+            "dist", {"color": self.hdi_col_mapper.get_colour(self.hdi_col_mapper.vmin)}
+        )
         kwargs["visuals"] = visuals
         pc = az.plot_dist(
             self._inference_data,
@@ -1832,8 +1821,12 @@ class HierarchicalModel_2D(_StanModel):
         kwargs.setdefault("xlabeller", self._x_labeller)
         kwargs.setdefault("ylabeller", self._y_labeller)
         kwargs.setdefault("point_estimate", "median")
-        cmapper = self._make_default_hdi_colours()
-        kwargs.setdefault("color", [cmapper.get_colour(c) for c in kwargs["ci_prob"]])
+        visuals = kwargs.pop("visuals", {})
+        visuals.setdefault(
+            "ci_band",
+            {"color": [self.hdi_col_mapper.get_colour(c) for c in kwargs["ci_prob"]]},
+        )
+        kwargs["visuals"] = visuals
         try:
             pc = az.plot_lm(
                 self._inference_data,
@@ -1901,7 +1894,7 @@ class HierarchicalModel_2D(_StanModel):
         return pc
 
     def add_data_to_predictive_plot(
-        self, ax, xobs, yobs, yobs_err=None, collapsed=True
+        self, ax, xobs=None, yobs=None, yobs_err=None, collapsed=True
     ):
         """
         Add data a model has been conditioned on to a plot.
@@ -1925,6 +1918,10 @@ class HierarchicalModel_2D(_StanModel):
         ax : matplotlib.axes.Axes
             axis plotted to
         """
+        if xobs is None:
+            xobs = self._independent_qtys[0]
+        if yobs is None:
+            yobs = self._dependent_qtys[0]
         plot_kwargs = deepcopy(self._plot_obs_data_kwargs)
         # overlay data
         obs = self.obs_collapsed if collapsed else self.obs
@@ -2060,12 +2057,6 @@ class FactorModel_2D(_StanModel):
             _logger.info(f"Creating HDI predictive for factor {i}")
             mask = obs_to_factor == i
             _ys = ys[:, mask]
-            cmapper = NormedColours(
-                max(0, 0.9 * min(levels)),
-                1.2 * max(levels),
-                cmap="Blues_r",
-                norm="LogNorm",
-            )
             for lev in levels:
                 _logger.debug(f"Fitting level {lev}")
                 label = f"{lev}% HDI" if i == 0 else ""
@@ -2075,9 +2066,9 @@ class FactorModel_2D(_StanModel):
                     _ys,
                     hdi_prob=lev / 100,
                     ax=ax[i],
-                    plot_kwargs={"c": cmapper.get_colour(lev)},
+                    plot_kwargs={"c": self.hdi_col_mapper.get_colour(lev)},
                     fill_kwargs={
-                        "color": cmapper.get_colour(lev),
+                        "color": self.hdi_col_mapper.get_colour(lev),
                         "alpha": 0.8,
                         "label": label,
                         "edgecolor": None,

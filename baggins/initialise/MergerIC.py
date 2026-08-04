@@ -16,8 +16,8 @@ from baggins.utils import (
 from baggins.analysis import (
     get_com_of_each_galaxy,
     get_com_velocity_of_each_galaxy,
-    get_virial_info_of_each_galaxy,
     get_all_id_masks,
+    basic_snapshot_centring,
 )
 from baggins.general import snap_num_for_time
 from baggins.mathematics import radial_separation
@@ -109,11 +109,8 @@ class MergerIC:
                 snap = pygad.Snapshot(
                     self.parameters["file_locations"][f"galaxy_file_{i}"], physical=True
                 )
-                try:
-                    xcom = get_com_of_each_galaxy(snap, method="ss", family="stars")
-                except AttributeError:
-                    xcom = get_com_of_each_galaxy(snap, method="ss", family="dm")
-                vr, *_ = get_virial_info_of_each_galaxy(snap, xcom=xcom)
+                basic_snapshot_centring(snap)
+                vr, *_ = pygad.analysis.virial_info(snap)
                 vr_list.append(vr)
             return float(max(vr_list))
 
@@ -170,33 +167,9 @@ class MergerIC:
 
         merger = mg.Merger(galaxy1, galaxy2, **_oppars)
 
-        # clean centre
-        # whilst individual galaxies may have already been cleaned, need to
-        # make sure the combined systems are also cleaned of particles from
-        # system A too close to BH B
-        try:
-            bh_masses = np.concatenate(
-                [
-                    galaxy1._get_part_masses(mg.ParticleType.BH, 0, None),
-                    galaxy2._get_part_masses(mg.ParticleType.BH, 0, None),
-                ]
-            )
-            _logger.debug(f"BH masses are {bh_masses}")
-            _mass_before_cleaning = merger.total_mass()
-            for bh_mass in bh_masses:
-                merger = mg.TransformedSystem(
-                    merger,
-                    mg.FilterParticlesBoundToCentralMass(
-                        central_object_mass=bh_mass,
-                        minimum_semi_major_axis=self.parameters["general"]["rmin"],
-                    ),
-                )
-            _logger.debug(
-                f"Mass change after BH cleaning: {_mass_before_cleaning - merger.total_mass()}"
-            )
-        except KeyError:
-            _logger.warning("No BHs present in merger")
-
+        self._calc_quants["initial_BH_separation"] = radial_separation(
+            merger.x1, merger.x2
+        )[0]
         self._calc_quants["time_to_pericentre"] = merger.time_to_pericenter
         # print some velocity information about merger
         self._calc_quants["initial_velocity"] = {}
@@ -205,6 +178,7 @@ class MergerIC:
 
         if self.save_location is None:
             self.save_location = self._make_saveloc()
+            os.makedirs(self.save_location, exist_ok=self.exist_ok)
         file_name = os.path.join(
             self.save_location,
             f"{self.parameters['general']['galaxy_name_1']}-{self.parameters['general']['galaxy_name_2']}-{self._calc_quants['a0_physical']:.3f}-{self._calc_quants['e0']:.3f}.hdf5",
@@ -220,18 +194,12 @@ class MergerIC:
             center_CoM=self.parameters["general"]["recentre_merger_to_com"],
         )
         _logger.info(f"Merger IC file written to {file_name}")
+
         # copy parameter file to simulation directory
         shutil.copyfile(
             self.paramfile,
             os.path.join(self.save_location, os.path.basename(self.paramfile)),
         )
-
-        # get the actual CoM separation between systems
-        snap = pygad.Snapshot(file_name, physical=True)
-        xcom = get_com_of_each_galaxy(snap, masks=get_all_id_masks(snap))
-        self._calc_quants["initial_COM_separation"] = radial_separation(*xcom.values())[
-            0
-        ]
         # save parameters
         self.write_calculated_parameters()
 
