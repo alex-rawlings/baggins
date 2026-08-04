@@ -109,7 +109,7 @@ class DehnenModel(HierarchicalModel_2D):
         _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
 
     def extract_data(
-        self, snapfile=None, extent=10, bin_count=2e4, family="stars", sed=None, z=0
+        self, snapfile=None, extent=10, bin_count=1e4, family="stars", sed=None, z=0
     ):
         """
         Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
@@ -163,11 +163,14 @@ class DehnenModel(HierarchicalModel_2D):
             [pygad.analysis.profile_dens(subsnap[mask], qty="mass", r_edges=r_edges)]
         )
         obs["r"].append(get_histogram_bin_centres(r_edges, subsnap[mask]["r"]))
-        obs["mass"].append([np.sum(subsnap[mask]["mass"])])
+        obs["mass"].append([np.sum(subsnap["mass"])])
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
         self.obs = obs
         self.collapse_observations(["r", "density"])
+        self.figname_base = os.path.join(
+            super().figname_base, f"{self.merger_id}/{self.merger_id}"
+        )
         return snap
 
     def _prep_OOS_radii(self, r_count=None, rmin=None, rmax=None):
@@ -342,8 +345,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
-            plotting axis
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = self.plot_generated_quantity_dist(
             self.latent_qtys,
@@ -354,7 +357,7 @@ class DehnenModel(HierarchicalModel_2D):
         fig.suptitle("Latent parameters (in-sample)")
         if save:
             savefig(next(self.gen_gq_plot_name))
-        return ax
+        return pc
 
     def plot_posterior_predictive(self, save=True, **kwargs):
         """
@@ -367,8 +370,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.Axes.axes
-            plotting axes
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = super().plot_posterior_predictive(**kwargs)
         ax = pc.get_viz("plot")
@@ -376,7 +379,7 @@ class DehnenModel(HierarchicalModel_2D):
         ax.set_yscale("log")
         if save:
             savefig(next(self.gen_postpred_plot_name))
-        return ax
+        return pc
 
     def plot_prior_predictive(self, save=True, **kwargs):
         """
@@ -389,8 +392,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.Axes.axes
-            plotting axes
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = super().plot_prior_predictive(**kwargs)
         ax = pc.get_viz("plot")
@@ -398,7 +401,7 @@ class DehnenModel(HierarchicalModel_2D):
         ax.set_yscale("log")
         if save:
             savefig(next(self.gen_priorpred_plot_name))
-        return ax
+        return pc
 
     def plot_posterior_OOS(self, save=True, **kwargs):
         """
@@ -411,8 +414,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.Axes.axes
-            plotting axes
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = super().plot_posterior_OOS(**kwargs)
         ax = pc.get_viz("plot")
@@ -420,7 +423,7 @@ class DehnenModel(HierarchicalModel_2D):
         ax.set_yscale("log")
         if save:
             savefig(next(self.gen_postOOS_plot_name))
-        return ax
+        return pc
 
     def all_prior_plots(self, figsize=None, ylim=None):
         """

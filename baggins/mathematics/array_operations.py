@@ -4,6 +4,7 @@ __all__ = [
     "get_histogram_bin_centres",
     "equal_count_bins",
     "dual_region_equal_bins",
+    "radial_bins_by_count",
     "assert_all_unique",
     "get_pixel_value_in_image",
 ]
@@ -159,6 +160,84 @@ def dual_region_equal_bins(x, pivot, N_per_bin_inner, N_per_bin_outer):
     edges = np.concatenate([inner_edges[:-1], outer_edges])
 
     return edges
+
+
+def radial_bins_by_count(r, n_start=100, n_end=10000, n_bins=20, r_min=None):
+    """
+    Compute radial bin edges such that the number of particles per bin
+    grows geometrically from n_start to n_end over n_bins bins, and then
+    continues with constant-size bins of n_end particles for any
+    remaining particles beyond that.
+
+    Parameters
+    ----------
+    r : array_like
+        Radii of all particles (any order).
+    n_start : int
+        Target number of particles in the innermost bin.
+    n_end : int
+        Target number of particles in the outermost geometric bin,
+        and the fixed bin size used for all subsequent bins.
+    n_bins : int
+        Number of geometrically-spaced bins before switching to
+        constant-size bins.
+    r_min : float, optional
+        Inner edge of the first bin. Defaults to the smallest radius
+        in the data (use 0.0 if you want bins starting at the origin).
+
+    Returns
+    -------
+    edges : ndarray, shape (n_bins_actual + 1,)
+        The bin edges.
+    counts : ndarray, shape (n_bins_actual,)
+        The actual number of particles that fall in each bin.
+
+    Notes
+    -----
+    Whichever bin ends up last (geometric or constant-size), if it is
+    under-filled relative to its target count, it is merged into the
+    previous bin instead of being kept as a short bin -- so the final
+    edge always sits exactly at the outermost particle.
+    """
+    r = np.sort(np.asarray(r))
+    N = r.size
+
+    if r_min is None:
+        r_min = r[0]
+
+    # --- Geometric part -----------------------------------------------
+    target_per_bin = np.geomspace(n_start, n_end, n_bins)
+    cum_counts = np.round(np.cumsum(target_per_bin)).astype(int)
+
+    # --- Constant-size part (only if particles remain) -----------------
+    if cum_counts[-1] < N:
+        n_remaining = N - cum_counts[-1]
+        n_extra_bins = int(np.ceil(n_remaining / n_end))
+        extra_cum = cum_counts[-1] + n_end * np.arange(1, n_extra_bins + 1)
+        cum_counts = np.concatenate([cum_counts, extra_cum])
+
+    # Clip to available particles and remove duplicate indices
+    cum_counts = np.clip(cum_counts, 1, N)
+    cum_counts = np.unique(cum_counts)
+
+    # If the last bin is short of its target count (n_end), merge it
+    # into the previous bin by dropping that intermediate edge.
+    if len(cum_counts) >= 2:
+        last_bin_count = cum_counts[-1] - cum_counts[-2]
+        if last_bin_count < n_end:
+            cum_counts = np.delete(cum_counts, -2)
+
+    # Make sure the final edge reaches all the way to the last particle
+    if cum_counts[-1] != N:
+        cum_counts[-1] = N
+
+    # Bin edges: r_min, then the radius at each cumulative count
+    edge_radii = r[cum_counts - 1]
+    edges = np.concatenate(([r_min], edge_radii))
+
+    counts = np.diff(np.concatenate(([0], cum_counts)))
+
+    return edges, counts
 
 
 def assert_all_unique(a, axis=None):

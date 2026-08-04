@@ -85,19 +85,26 @@ def get_all_id_masks(snap, family="stars"):
     """
     masks = dict()
     for i, idx in enumerate(snap.bh["ID"]):
-        masks[idx] = get_id_mask(snap, idx, family=family)
+        if family == "all":
+            _ids = []
+            for fam in ["stars", "dm", "gas"]:
+                try:
+                    _ids.extend(get_id_mask(snap, idx, family=fam).IDs)
+                except AttributeError:
+                    continue
+            masks[idx] = pygad.IDMask(_ids)
+        else:
+            masks[idx] = get_id_mask(snap, idx, family=family)
     return masks
 
 
-def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
+def get_radial_mask(radius, centre=None, id_mask=None):
     """
     Create a radial-based mask, can be either a ball or a shell. The default
     function arguments are designed for compatability with get_all_radial_masks.
 
     Parameters
     ----------
-    snap : pygad.Snapshot
-        snapshot to mask
     radius : float, tuple
         radius to constrain the particles to - can be either a number to
         construct a ball mask, or a tuple of (inner_radius, outer_radius)
@@ -107,9 +114,6 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
         None
     id_mask : pygad.snapshot.masks.IDMask, optional
         ID mask to constrain particles to a given galaxy, by default None
-    family : str, optional
-        particle type to construct the mask for, by default None (all particle
-        used)
 
     Returns
     -------
@@ -121,10 +125,6 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
     ValueError
         radius input is invalid
     """
-    assert snap.phys_units_requested
-    if family is not None:
-        assert family in ["stars", "dm", "bh"]
-        snap = getattr(snap, family)
     if centre is None:
         centre = pygad.UnitArr([0, 0, 0], "kpc")
     if isinstance(radius, int) or isinstance(radius, float):
@@ -142,7 +142,6 @@ def get_radial_mask(snap, radius, centre=None, id_mask=None, family=None):
         )
     if id_mask is not None:
         mask = mask & id_mask
-    snap.delete_blocks()
     return mask
 
 

@@ -16,8 +16,8 @@ from baggins.utils import (
 from baggins.analysis import (
     get_com_of_each_galaxy,
     get_com_velocity_of_each_galaxy,
-    get_virial_info_of_each_galaxy,
     get_all_id_masks,
+    basic_snapshot_centring,
 )
 from baggins.general import snap_num_for_time
 from baggins.mathematics import radial_separation
@@ -109,11 +109,8 @@ class MergerIC:
                 snap = pygad.Snapshot(
                     self.parameters["file_locations"][f"galaxy_file_{i}"], physical=True
                 )
-                try:
-                    xcom = get_com_of_each_galaxy(snap, method="ss", family="stars")
-                except AttributeError:
-                    xcom = get_com_of_each_galaxy(snap, method="ss", family="dm")
-                vr, *_ = get_virial_info_of_each_galaxy(snap, xcom=xcom)
+                basic_snapshot_centring(snap)
+                vr, *_ = pygad.analysis.virial_info(snap)
                 vr_list.append(vr)
             return float(max(vr_list))
 

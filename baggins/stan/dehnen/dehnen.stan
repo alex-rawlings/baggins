@@ -6,6 +6,7 @@ functions {
     }
 }
 
+
 data {
     int<lower=1> N_obs;                  // number of data points
     vector[N_obs] r;                     // radii
@@ -29,7 +30,7 @@ parameters {
 
 transformed parameters {
     array[3] real lprior;
-    lprior[1] = normal_lpdf(log10a | 0, 1);
+    lprior[1] = normal_lpdf(log10a | 1, 1);
     lprior[2] = normal_lpdf(log10g | -1, 1);
     lprior[3] = normal_lpdf(err | 0, 1);
 }

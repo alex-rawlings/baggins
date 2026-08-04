@@ -192,6 +192,9 @@ class NormedColours:
         """
         return self._cmapper(c)
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}: {self.vmin} -> {self.vmax} {self._cmap}"
+
 
 def mplColours():
     """
