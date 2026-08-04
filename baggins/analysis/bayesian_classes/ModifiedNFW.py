@@ -42,7 +42,7 @@ class ModifiedNFWModelSimple(ABGDensityModelSimple):
         self._make_latent_labellers()
         _logger.debug(f"Latent quantities are {self.latent_qtys}")
 
-    def extract_data(self, snapfile=None, extent=300, bin_count=2e5):
+    def extract_data(self, snapfile=None, extent=300, bin_count=1e4):
         """
         Extract data to perform inference on.
 

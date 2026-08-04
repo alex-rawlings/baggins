@@ -109,7 +109,7 @@ class DehnenModel(HierarchicalModel_2D):
         _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
 
     def extract_data(
-        self, snapfile=None, extent=10, bin_count=2e4, family="stars", sed=None, z=0
+        self, snapfile=None, extent=10, bin_count=1e4, family="stars", sed=None, z=0
     ):
         """
         Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
@@ -163,11 +163,14 @@ class DehnenModel(HierarchicalModel_2D):
             [pygad.analysis.profile_dens(subsnap[mask], qty="mass", r_edges=r_edges)]
         )
         obs["r"].append(get_histogram_bin_centres(r_edges, subsnap[mask]["r"]))
-        obs["mass"].append([np.sum(subsnap[mask]["mass"])])
+        obs["mass"].append([np.sum(subsnap["mass"])])
         if not self._loaded_from_file:
             self._add_input_data_file(fname)
         self.obs = obs
         self.collapse_observations(["r", "density"])
+        self.figname_base = os.path.join(
+            super().figname_base, f"{self.merger_id}/{self.merger_id}"
+        )
         return snap
 
     def _prep_OOS_radii(self, r_count=None, rmin=None, rmax=None):
@@ -249,7 +252,7 @@ class DehnenModel(HierarchicalModel_2D):
     # Transformed quantities
     # ----------------------------------------------------------------------
 
-    def calculate_mass_profile(self, use_OOS=False, as_xarray=False):
+    def calculate_mass_profile(self, use_OOS=False, as_xarray=False, OOS_data=None):
         """
         Calculate the mass profile from the density profile.
 
@@ -259,6 +262,8 @@ class DehnenModel(HierarchicalModel_2D):
             use OOS quantities, by default False
         as_xarray : bool, optional
             return as xr.DataSet, by default False
+        OOS_data : dict, optional
+            custom OOS data, by default None
 
         Returns
         -------
@@ -268,15 +273,27 @@ class DehnenModel(HierarchicalModel_2D):
         f = lambda p, r: 4 * np.pi * p * r**2
 
         if use_OOS:
-            return f(
-                self.sample_generated_quantity(
-                    self.dependent_qtys_OOS[0], as_xarray=as_xarray
-                ),
-                self.access_independent_qty(
-                    self._independent_qtys_OOS[0], as_xarray=as_xarray
-                ),
-            )
-
+            if OOS_data is None:
+                return f(
+                    self.sample_generated_quantity(
+                        self.dependent_qtys_OOS[0], as_xarray=as_xarray
+                    ),
+                    self.access_independent_qty(
+                        self._independent_qtys_OOS[0], as_xarray=as_xarray
+                    ),
+                )
+            else:
+                for k, v in OOS_data.items():
+                    if len(v) > self.num_OOS:
+                        OOS_data[k] = self._rng.choice(
+                            v, replace=False, size=self.num_OOS
+                        )
+                return f(
+                    self.sample_generated_quantity_custom_OOS(
+                        self.dependent_qtys_OOS[0], data=OOS_data, as_xarray=as_xarray
+                    ),
+                    OOS_data[self._independent_qtys_OOS[0]],
+                )
         else:
             return f(
                 self.sample_generated_quantity(
@@ -286,6 +303,30 @@ class DehnenModel(HierarchicalModel_2D):
                     self._independent_qtys[0], as_xarray=as_xarray
                 ),
             )
+
+    def calculate_half_mass_radius(self, projected=False, as_xarray=False):
+        """
+        Calculate the mass profile from the density profile.
+
+        Parameters
+        ----------
+        projected : bool, optional
+            projected half mass radius, by default False
+        as_xarray : bool, optional
+            return as xr.DataSet, by default False
+
+        Returns
+        -------
+        : np.array
+            half mass radius
+        """
+        multiplier = 0.75 if projected else 1.0
+        f = lambda a, g: multiplier * a / (2 ** (1 / (3 - g)) - 1)
+
+        return f(
+            self.sample_generated_quantity("a", as_xarray=as_xarray),
+            self.sample_generated_quantity("g", as_xarray=as_xarray),
+        )
 
     # ----------------------------------------------------------------------
     # Plotting methods
@@ -304,8 +345,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.axes.Axes
-            plotting axis
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = self.plot_generated_quantity_dist(
             self.latent_qtys,
@@ -316,7 +357,7 @@ class DehnenModel(HierarchicalModel_2D):
         fig.suptitle("Latent parameters (in-sample)")
         if save:
             savefig(next(self.gen_gq_plot_name))
-        return ax
+        return pc
 
     def plot_posterior_predictive(self, save=True, **kwargs):
         """
@@ -329,8 +370,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.Axes.axes
-            plotting axes
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = super().plot_posterior_predictive(**kwargs)
         ax = pc.get_viz("plot")
@@ -338,7 +379,7 @@ class DehnenModel(HierarchicalModel_2D):
         ax.set_yscale("log")
         if save:
             savefig(next(self.gen_postpred_plot_name))
-        return ax
+        return pc
 
     def plot_prior_predictive(self, save=True, **kwargs):
         """
@@ -351,8 +392,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.Axes.axes
-            plotting axes
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = super().plot_prior_predictive(**kwargs)
         ax = pc.get_viz("plot")
@@ -360,7 +401,7 @@ class DehnenModel(HierarchicalModel_2D):
         ax.set_yscale("log")
         if save:
             savefig(next(self.gen_priorpred_plot_name))
-        return ax
+        return pc
 
     def plot_posterior_OOS(self, save=True, **kwargs):
         """
@@ -373,8 +414,8 @@ class DehnenModel(HierarchicalModel_2D):
 
         Returns
         -------
-        ax : matplotlib.Axes.axes
-            plotting axes
+        pc : arviz.PlotCollection
+            plotting collection
         """
         pc = super().plot_posterior_OOS(**kwargs)
         ax = pc.get_viz("plot")
@@ -382,7 +423,7 @@ class DehnenModel(HierarchicalModel_2D):
         ax.set_yscale("log")
         if save:
             savefig(next(self.gen_postOOS_plot_name))
-        return ax
+        return pc
 
     def all_prior_plots(self, figsize=None, ylim=None):
         """

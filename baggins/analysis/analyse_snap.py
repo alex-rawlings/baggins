@@ -1,5 +1,5 @@
 from datetime import datetime
-from warnings import deprecated
+from tqdm import tqdm
 import numpy as np
 import scipy.linalg
 import scipy.interpolate
@@ -69,104 +69,66 @@ def basic_snapshot_centring(snap):
     """
     # move to CoM frame
     pre_ball_mask = pygad.BallMask(5)
+    try:
+        subsnap = snap.stars
+        R0 = 30
+    except AttributeError:
+        subsnap = snap.dm
+        R0 = 300
     centre = pygad.analysis.shrinking_sphere(
-        snap.stars,
-        pygad.analysis.center_of_mass(snap.stars),
-        30,
+        subsnap,
+        pygad.analysis.center_of_mass(subsnap),
+        R0,
     )
-    vcom = pygad.analysis.mass_weighted_mean(snap.stars[pre_ball_mask], "vel")
+    vcom = pygad.analysis.mass_weighted_mean(subsnap[pre_ball_mask], "vel")
     pygad.Translation(-centre).apply(snap, total=True)
     pygad.Boost(-vcom).apply(snap, total=True)
 
 
-@deprecated("Use basic_snapshot_centring instead")
 def get_com_of_each_galaxy(
-    snap, method="ss", masks=None, family="all", initial_radius=20
+    snap, mask=None, family="stars", return_mask=False, **kwargs
 ):
     """
-    Determine the centre of mass of each galaxy in the simulation, assuming each
-    galaxy has a single SMBH near its centre.
+    Get CoM position of each galaxy, masking particles to the system they were created as a part of.
 
     Parameters
     ----------
     snap : pygad.Snapshot
         snapshot to analyse
-    method : str, optional
-        use minimum potential method (pot) or shrinking sphere method (ss), by
-        default "ss"
-    masks : dict, optional
-        pygad masks to apply to the (sub) snapshot, by default None
+    mask : dict, optional
+        ID masking particles to a galaxy, by default None
     family : str, optional
-        particle family to analyse, by default "all"
-    initial_radius : float, optional
-        initial radius guess for shrinking sphere [kpc], by default 20
+        particle family for centring, by default "stars"
+    return_mask : bool, optional
+        return the mask, by default False
 
     Returns
     -------
-    coms: dict
-        dict with keys of bh ids, where each key corresponds to the centre of
-          mass of each galaxy
+    coms : dict
+        CoM coordinate, with BH ID of the associated galaxy as the key
+    mask : dict, if return_mask=True
+        ID masks used to associate particles with a galaxy
     """
     assert snap.phys_units_requested
-    assert method in ["pot", "ss"]
-    num_bhs = len(snap.bh)
-    # get IDs corresponding to decreasing mass
-    mass_ordered_bh_ids = snap.bh["ID"][np.argsort(-snap.bh["mass"])]
-
-    def _yield_masked_subsnap(s=snap, masks=masks, family=family):
-        # helper function to get the maybe masked-, maybe sub-, snapshot
-        if masks is None:
-            if family == "all":
-                for id in mass_ordered_bh_ids:
-                    yield (s, id)
-            else:
-                for id in mass_ordered_bh_ids:
-                    yield (getattr(s, family), id)
-        else:
-            assert len(masks) == num_bhs
-            for id in mass_ordered_bh_ids:
-                if family == "all":
-                    yield (s[masks[id]], id)
-                else:
-                    ss = getattr(s, family)
-                    yield (ss[masks[id]], id)
-
     coms = dict.fromkeys(snap.bh["ID"], None)
-    masked_subsnap_gen = _yield_masked_subsnap()
-    if method == "pot":
-        for i in range(num_bhs):
-            masked_subsnap, bhid = next(masked_subsnap_gen)
-            if masks is None:
-                if i == 0:
-                    min_pot_idx = np.argmin(masked_subsnap["pot"])
-                    coms[bhid] = masked_subsnap["pos"][min_pot_idx, :]
-                else:
-                    coms[bhid] = list(coms.values())[0]
+    if mask is None:
+        mask = masks.get_all_id_masks(snap, family=family)
+    kwargs.setdefault("R", 30)
+    for bhid, mass in zip(snap.bh["ID"], snap.bh["mass"]):
+        if mass < 1e-15:
+            # essentially zero mass BH, probably from merging. Skip
+            continue
+        coms[bhid] = pygad.analysis.shrinking_sphere(
+            snap[mask[bhid]],
+            center=pygad.analysis.center_of_mass(snap[mask[bhid]]),
+            **kwargs,
+        )
+    if return_mask:
+        return coms, mask
     else:
-        zero_mass_flag = False
-        for i in range(num_bhs):
-            masked_subsnap, bhid = next(masked_subsnap_gen)
-            bh_id_mask = pygad.IDMask(bhid)
-            if snap.bh[bh_id_mask]["mass"] < 1e-15:
-                # the BH has 0 mass, most likley due to a merger -> skip this
-                zero_mass_flag = True
-                _logger.warning(
-                    f"Zero-mass BH ({bhid}) detected! Skipping CoM estimate associated with this BH ID"
-                )
-                continue
-            if masks is None and i > 0 and not zero_mass_flag:
-                # we don't want to get two CoMs --> break early
-                break
-            _logger.debug(f"Finding CoM associated with BH ID {bhid}")
-            coms[bhid] = pygad.analysis.shrinking_sphere(
-                masked_subsnap,
-                center=pygad.analysis.center_of_mass(masked_subsnap),
-                R=initial_radius,
-            )
-    return coms
+        return coms
 
 
-@deprecated("Use basic_snapshot_centring instead")
 def get_com_velocity_of_each_galaxy(
     snap, xcom, masks=None, min_particle_count=5e4, family="stars"
 ):
@@ -236,50 +198,63 @@ def get_com_velocity_of_each_galaxy(
 
 
 def get_galaxy_axis_ratios(
-    snap, bin_mask=None, family="stars", return_eigenvectors=False
+    snap, r_edges=None, cumulative=False, return_eigenvectors=False
 ):
     """
-    Determine the axis ratios b/a and c/a of a galaxy
+    Get triaxiality parameters for a system in either radial shells or spheres.
 
     Parameters
     ----------
     snap : pygad.Snapshot
-        snapshot to analyse
-    bin_mask : pygad.snapshot.masks, optional
-        radial or energy masks to apply to the (sub) snapshot, by default None
-    family : str, optional
-        particle family to analyse, by default "stars"
+        (sub)-snapshot to analyse
+    r_edges : array-like, optional
+        radial bin edges, by default None (single value for whole system determined)
+    cumulative : bool, optional
+        determine for spheres rather than shells, by default False
     return_eigenvectors : bool, optional
-        return eigenvectors as well as axis ratios, by default False
+        return corresponding eigenvectors, by default False
 
     Returns
     -------
-    axis_ratios : tuple
-        b/a, c/a ratios
-    eigenvecs : np.ndarray, optional
-        eigenvectors of inertia tensor
+    b_a : np.ndarray
+        b/a ratio
+    c_a : np.ndarray
+            c/a ratio
+    eigen_vecs : np.ndarray, optional if return_eigenvectors==True
+        eigenvectors
     """
-    subsnap = getattr(snap, family)
-    # move entire subsnap to CoM coordinates
-    # just doing this for a masked section results in the radial distance 'r'
-    # block not being rederived...
-    if bin_mask is not None:
-        # apply either a ball or shell mask
-        subsnap = subsnap[bin_mask]
-    rit = pygad.analysis.reduced_inertia_tensor(subsnap)
-    eigen_vals, eigen_vecs = scipy.linalg.eig(rit)
-    # need to sort the eigenvalues
-    sorted_idx = np.argsort(eigen_vals)[::-1]
-    eigen_vals = np.real(eigen_vals[sorted_idx])
-    eigen_vecs = eigen_vecs[:, sorted_idx]
-    axis_ratios = np.sqrt(eigen_vals[1:] / eigen_vals[0])
-    if return_eigenvectors:
-        return axis_ratios, eigen_vecs
+    if r_edges is None:
+        # use all particles
+        r_edges = [0, np.max(snap["r"]) + 1]
+    N_bins = len(r_edges) - 1
+    b_a = np.full(N_bins, np.nan)
+    c_a = np.full_like(b_a, np.nan)
+    eigen_vecs = [None] * N_bins
+    if cumulative:
+        r_inner = np.zeros(N_bins)
     else:
-        return axis_ratios
+        r_inner = r_edges[:-1]
+    for i, (rin, rout) in tqdm(
+        enumerate(zip(r_inner, r_edges[1:])),
+        total=N_bins,
+        desc="Doing axis ratios",
+        leave=False,
+    ):
+        mask = masks.get_radial_mask((rin, rout))
+        rit = pygad.analysis.reduced_inertia_tensor(snap[mask])
+        evals, evecs = scipy.linalg.eig(rit)
+        # need to sort the eigenvalues
+        sorted_idx = np.argsort(evals)[::-1]
+        evals = np.real(evals[sorted_idx])
+        eigen_vecs[i] = evecs[:, sorted_idx]
+        b_a[i], c_a[i] = evals[1:] / evals[0]
+    if return_eigenvectors:
+        return b_a, c_a, eigen_vecs
+    else:
+        return b_a, c_a
 
 
-def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
+def get_virial_info_of_each_galaxy(snap, xcom, masks=None):
     """
     Extract the virial mass and radius from either the initial set up of a
     merger system, or when the merger has relaxed.
@@ -288,9 +263,9 @@ def get_virial_info_of_each_galaxy(snap, xcom=None, masks=None):
     ----------
     snap : pygad.Snapshot
         snapshot to analyse
-    xcom : dict, optional
+    xcom : dict
         CoM coordinates for each galaxy, assumes the dict keys are the BH
-        particle IDs, by default None
+        particle IDs
     masks : dict, list, optional
         particle ID masks. Can be either a dict (thus only one particle
         family goes into the calculation), or a list of dicts (thus stars

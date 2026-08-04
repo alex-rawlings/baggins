@@ -1,4 +1,5 @@
 import numpy as np
+import os.path
 import re
 import json
 import yaml
@@ -14,6 +15,7 @@ __all__ = [
     "write_calculated_parameters",
     "overwrite_parameter_file",
     "to_json",
+    "read_simulation_parameters",
 ]
 
 
@@ -47,6 +49,65 @@ class ScientificDumper(yaml.SafeDumper):
             if "." not in value and "e" in value:
                 value = value.replace("e", ".0e", 1)
         return self.represent_scalar("tag:yaml.org,2002:float", value)
+
+
+class NumpyParser:
+    def __init__(self):
+        """
+        Helper class to read in strings that contain something like 'np.pi * 0.5'.
+        """
+        self.constants = {
+            "np.pi": np.pi,
+            "np.e": np.e,
+        }
+        self.operators = {
+            "*": lambda a, b: a * b,
+            "/": lambda a, b: a / b,
+            "+": lambda a, b: a + b,
+            "-": lambda a, b: a - b,
+            "**": lambda a, b: a**b,
+        }
+
+    def parse_np_expression(self, expr: str) -> float | str:
+        """
+        Convert the given expression if needed.
+
+        Parameters
+        ----------
+        expr : str
+            input string
+
+        Returns
+        -------
+        float | str
+            evaluated output string
+        """
+        # Check if any known constant is present in the expression
+        pattern = "|".join(re.escape(key) for key in self.constants)
+        if not re.search(pattern, expr):
+            return expr
+        expr = expr.strip().replace(" ", "")
+
+        # Try to split on an operator (handle ** before * to avoid misparse)
+        for op in ("**", "*", "/", "+", "-"):
+            # Split into at most 2 parts around the operator
+            parts = expr.split(op, 1)
+            if len(parts) != 2:
+                continue
+
+            left, right = parts[0].strip(), parts[1].strip()
+
+            # Both sides must be non-empty
+            if not left or not right:
+                continue
+
+            left_val = self.constants.get(left) or float(left)
+            right_val = self.constants.get(right) or float(right)
+
+            return self.operators[op](left_val, right_val)
+
+        # No operator found — must be a plain constant or number
+        return self.constants.get(expr) or float(expr)
 
 
 def read_parameters(filepath):
@@ -251,60 +312,42 @@ def to_json(obj, fname):
         json.dump(d, f, indent=4)
 
 
-class NumpyParser:
-    def __init__(self):
-        """
-        Helper class to read in strings that contain something like 'np.pi * 0.5'.
-        """
-        self.constants = {
-            "np.pi": np.pi,
-            "np.e": np.e,
-        }
-        self.operators = {
-            "*": lambda a, b: a * b,
-            "/": lambda a, b: a / b,
-            "+": lambda a, b: a + b,
-            "-": lambda a, b: a - b,
-            "**": lambda a, b: a**b,
-        }
+def read_simulation_parameters(snapdir, *p):
+    """
+    Read parameters used to run a Gadget-style simulation.
 
-    def parse_np_expression(self, expr: str) -> float | str:
-        """
-        Convert the given expression if needed.
+    Parameters
+    ----------
+    snapdir : str
+        simulation output directory
+    *p : str
+        parameters to read from file
 
-        Parameters
-        ----------
-        expr : str
-            input string
-
-        Returns
-        -------
-        float | str
-            evaluated output string
-        """
-        # Check if any known constant is present in the expression
-        pattern = "|".join(re.escape(key) for key in self.constants)
-        if not re.search(pattern, expr):
-            return expr
-        expr = expr.strip().replace(" ", "")
-
-        # Try to split on an operator (handle ** before * to avoid misparse)
-        for op in ("**", "*", "/", "+", "-"):
-            # Split into at most 2 parts around the operator
-            parts = expr.split(op, 1)
-            if len(parts) != 2:
-                continue
-
-            left, right = parts[0].strip(), parts[1].strip()
-
-            # Both sides must be non-empty
-            if not left or not right:
-                continue
-
-            left_val = self.constants.get(left) or float(left)
-            right_val = self.constants.get(right) or float(right)
-
-            return self.operators[op](left_val, right_val)
-
-        # No operator found — must be a plain constant or number
-        return self.constants.get(expr) or float(expr)
+    Returns
+    -------
+    par_dict : dict
+        dict of parameters with their values. Numerical parameters are converted to float.
+    """
+    par_dict = {}
+    with open(os.path.join(snapdir, "../parameters-usedvalues"), "r") as f:
+        params = f.readlines()
+        for param in params:
+            k, v = param.split()
+            if k in p:
+                try:
+                    par_dict[k] = float(v)
+                except ValueError:
+                    par_dict[k] = v
+    try:
+        assert set(par_dict.keys()) == set(p)
+    except AssertionError:
+        missing_keys = []
+        for _p in p:
+            if _p not in par_dict:
+                missing_keys.append(_p)
+        _logger.exception(
+            f"Not all simulation parameters found! {missing_keys} are missing.",
+            exc_info=True,
+        )
+        raise
+    return par_dict

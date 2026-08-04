@@ -16,7 +16,6 @@ __all__ = [
     "stat_interval",
     "uniform_sample_sphere",
     "vertical_RMSE",
-    "empirical_cdf",
     "EmpiricalCDF",
 ]
 
@@ -349,28 +348,6 @@ def vertical_RMSE(x, y, return_linregress=False):
         return norm_lss, *poly.c
     else:
         return norm_lss
-
-
-def empirical_cdf(x, t):
-    """
-    Determine the empirical cumulative distribution function of an array.
-
-    Parameters
-    ----------
-    x : array-like
-        observed data
-    t : float
-        value to determine cdf of
-
-    Returns
-    -------
-    : float
-        ECDF value at point
-    """
-    DeprecationWarning(
-        "Empirical CDFs should be constructed using the new 'EmpiricalCDF' class"
-    )
-    return np.nanmean(x <= t)
 
 
 class EmpiricalCDF:

@@ -10,11 +10,11 @@ from baggins.env_config import _cmlogger
 __all__ = [
     "draw_sizebar",
     "NormedColours",
-    "create_offcentre_diverging",
     "mplColours",
     "mplLines",
     "mplChars",
     "shade_bool_regions",
+    "shade_quantile_bands",
     "create_odd_number_subplots",
     "nice_log10_scale",
     "arrow_on_line",
@@ -192,45 +192,8 @@ class NormedColours:
         """
         return self._cmapper(c)
 
-
-def create_offcentre_diverging(vmin, vmax, vcentre=0, cmap="seismic"):
-    """
-    Create a diverging colourmap centred about some value. The colours are mapped to the extent that has the larger magnitude, and then truncated to just those values given by the desired colour limits.
-
-    Parameters
-    ----------
-    vmin : float
-        minimum value of colour variable
-    vmax : float
-        maximum value of colour variable
-    vcentre : float, optional
-        value of central colour variable, by default 0
-    cmap : str or matplotlib.colors.ListedColormap, optional
-        colour map to use, by default "seismic"
-
-    Returns
-    -------
-    : function
-        takes an argument in the range [vmin, vmax] and returns the scaled
-        colour
-    sm : matplotlib.cm.ScalarMappable
-        object that is required for creating a colour bar
-    """
-    # first create the diverging colour scheme
-    if isinstance(cmap, str):
-        _cmapv = plt.get_cmap(cmap)
-    else:
-        _cmapv = cmap
-    _norm = colors.CenteredNorm(
-        vcenter=vcentre, halfrange=max(np.abs(vmax), np.abs(vmin))
-    )
-    # now get the values we wish to restrict to
-    u = np.linspace(vmin, vmax, 256)
-    col_list = _cmapv(_norm(u))
-    cmapv = colors.LinearSegmentedColormap.from_list("custom", col_list)
-    norm = colors.Normalize(vmin=vmin, vmax=vmax)
-    sm = plt.cm.ScalarMappable(norm, cmap=cmapv)
-    return lambda x: cmapv(norm(x)), sm
+    def __repr__(self):
+        return f"{self.__class__.__name__}: {self.vmin} -> {self.vmax} {self._cmap}"
 
 
 def mplColours():
@@ -321,6 +284,20 @@ def shade_bool_regions(ax, xdata, mask, **kwargs):
     ]
     for region in regions:
         ax.axvspan(xdata[region[0]], xdata[region[1]], **kwargs)
+
+
+def shade_quantile_bands(ax, data, regions, xaxis=True, **kwargs):
+    regions = np.atleast_1d(regions)
+    shade_func = ax.axvspan if xaxis else ax.axhspan
+    alpha0 = kwargs.pop("alpha", 0.8)
+    kwargs.setdefault("color", "gray")
+    kwargs.setdefault("ec", "none")
+    label = kwargs.pop("label", "")
+    alpha = np.linspace(alpha0, 0.3, len(regions))
+    for r, a in zip(regions, alpha):
+        lab = f"{label} {r*100:.0f}%"
+        qs = np.nanquantile(data, 0.5 * np.array([1 - r, 1 + r]))
+        shade_func(*qs, alpha=a, label=lab, **kwargs)
 
 
 def create_odd_number_subplots(nrow, ncol, fkwargs={}, gskwargs={}):
