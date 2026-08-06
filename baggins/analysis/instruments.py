@@ -1003,7 +1003,7 @@ class MUSE_NFM(IFUInstrument):
         super().__init__(
             fov=7.42,
             sampling=0.025,
-            res=0.2,
+            res=0.055,
             z=z,
             pseudo_particle_split=pseudo_particle_split,
         )
@@ -1067,7 +1067,7 @@ class HARMONI_SPATIAL(IFUInstrument):
         super().__init__(
             fov=0.61,
             sampling=4e-3,
-            res=20e-3,
+            res=10e-3,
             z=z,
             pseudo_particle_split=pseudo_particle_split,
         )
@@ -1099,7 +1099,7 @@ class JWST_IFU(IFUInstrument):
         super().__init__(
             fov=3,
             sampling=0.1,
-            res=68e-3,
+            res=100e-3,
             z=z,
             pseudo_particle_split=pseudo_particle_split,
         )
@@ -1261,7 +1261,7 @@ class MICADO_WFM(LongSlitInstrument):
         super().__init__(
             fov=50.5,
             sampling=4e-3,
-            res=50e-6,
+            res=10e-3,
             slit_width=16e-3,
             slit_length=3,
             rng=rng,
@@ -1333,7 +1333,7 @@ class JWST_LSS(LongSlitInstrument):
         super().__init__(
             fov=3.4 * 60,
             sampling=0.1,
-            res=68e-3,
+            res=100e-3,
             slit_width=0.2,
             slit_length=3.2,
             z=z,
