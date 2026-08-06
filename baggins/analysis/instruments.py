@@ -1,16 +1,17 @@
+import os
 from abc import ABC, abstractmethod
+from functools import lru_cache
 import numpy as np
 from scipy.stats import binned_statistic, gaussian_kde
-from scipy.signal import fftconvolve
 import matplotlib.pyplot as plt
+from matplotlib.colors import AsinhNorm
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from astropy.units import Unit
 from astropy.cosmology import Planck18
-from astropy.constants import L_sun
 from pygad import ExprMask
-from unyt import arcsecond, erg, s, Hz, angstrom, Msun, kpc, yr
+from unyt import arcsecond, angstrom, Msun, kpc, yr
 import synthesizer.particle
-from synthesizer.imaging.image_collection import ImageCollection
-from synthesizer.filters import Filter, FilterCollection
+from synthesizer.photometry import PhotometryCollection
 from synthesizer.emission_models import BimodalPacmanEmission
 from synthesizer.emission_models.attenuation import PowerLaw
 from synthesizer.kernel_functions import Kernel
@@ -19,12 +20,15 @@ from baggins.analysis.obs_helper import (
     get_synthesizer_grid,
     get_euclid_filter_collection,
     get_hst_filter_collection,
+    get_filter_lam_range,
+    EUCLID_FILTER_CODES,
+    HST_FILTER_CODES,
 )
 from baggins.analysis.voronoi import VoronoiKinematics
 from baggins.env_config import _cmlogger
 from baggins.cosmology import angular_scale
 from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
-from baggins.plotting import NormedColours
+from baggins.plotting import draw_sizebar
 
 __all__ = [
     "MUSE_NFM",
@@ -44,6 +48,63 @@ __all__ = [
 ]
 
 _logger = _cmlogger.getChild(__name__)
+
+# Cap on threads handed to synthesizer's particle spectra extraction, to
+# avoid oversubscribing shared/large-core-count nodes when nthreads=-1
+# ("all available") is requested.
+_MAX_SPECTRA_THREADS = 8
+
+
+def _resolve_nthreads():
+    """Number of threads to use for spectra generation, capped at
+    `_MAX_SPECTRA_THREADS`."""
+    return min(os.cpu_count() or 1, _MAX_SPECTRA_THREADS)
+
+
+# If fewer than this fraction of particles have a unique age, deduplicating
+# spectra generation (see PhotometricInstrument._generate_particle_photometry_deduped)
+# pays off enough over the per-particle approach to bother with the extra
+# bookkeeping.
+_DEDUP_UNIQUE_AGE_FRACTION = 0.5
+
+
+def _filter_tailored_lam(lam_lo, lam_hi, n_fine=100, n_coarse=30):
+    """
+    Build a wavelength grid that is finely sampled across [lam_lo, lam_hi]
+    (where an instrument's filters actually have transmission) and coarsely
+    sampled outside that range (for the continuum/dust-curve shape). This
+    keeps per-particle spectra generation cheap without under-resolving the
+    photometry that's actually computed downstream.
+
+    Parameters
+    ----------
+    lam_lo, lam_hi : float
+        wavelength bounds in Angstrom to sample finely
+    n_fine : int, optional
+        number of linearly-spaced points across [lam_lo, lam_hi], by default 100
+    n_coarse : int, optional
+        number of log-spaced points on either side of [lam_lo, lam_hi], by
+        default 30
+
+    Returns
+    -------
+    : unyt_array
+        wavelength grid, in Angstrom
+    """
+    fine = np.linspace(lam_lo, lam_hi, n_fine)
+    coarse_lo = np.geomspace(100, lam_lo, n_coarse, endpoint=False)
+    coarse_hi = np.geomspace(lam_hi, 1e5, n_coarse)[1:]
+    return np.sort(np.concatenate([coarse_lo, fine, coarse_hi])) * angstrom
+
+
+@lru_cache(maxsize=8)
+def _cached_synthesizer_grid(grid_name, new_lam_key):
+    """Memoized `get_synthesizer_grid`, keyed on (grid_name, new_lam), so
+    repeated calls (e.g. across galaxies/instruments sharing the same grid
+    and wavelength sampling) don't re-read and re-resample the same grid
+    from disk every time."""
+    new_lam = np.asarray(new_lam_key) * angstrom
+    return get_synthesizer_grid(grid_name=grid_name, new_lam=new_lam)
 
 
 class BasicInstrument(ABC):
@@ -73,6 +134,8 @@ class BasicInstrument(ABC):
             self.redshift = z
 
     def _param_check(self):
+        """Ensure the instrument's redshift (and hence angular scale) has
+        been set before any angular/physical unit conversion is used."""
         try:
             assert self._ang_scale is not None
         except AssertionError:
@@ -81,10 +144,20 @@ class BasicInstrument(ABC):
 
     @property
     def redshift(self):
+        """Redshift of the observation."""
         return self._redshift
 
     @redshift.setter
     def redshift(self, z):
+        """
+        Set the observation redshift, updating the cached angular scale.
+
+        Parameters
+        ----------
+        z : float
+            redshift to set; values below 1e-3 are clamped to 1e-3 to
+            avoid cosmology methods failing at z=0
+        """
         if z < 1e-3:
             # protect against cosmology methods failing at z=0
             z = 1e-3
@@ -93,10 +166,20 @@ class BasicInstrument(ABC):
 
     @property
     def max_extent(self):
+        """Maximum spatial extent of the instrument's field of view, in kpc."""
         return self._max_extent
 
     @max_extent.setter
     def max_extent(self, R):
+        """
+        Set the maximum spatial extent, attaching kpc units if a bare
+        number is given.
+
+        Parameters
+        ----------
+        R : float, astropy.units.Quantity
+            maximum spatial extent; assumed to be in kpc if unitless
+        """
         self._max_extent = R
         try:
             self._max_extent.value
@@ -105,35 +188,39 @@ class BasicInstrument(ABC):
 
     @property
     def ang_scale(self):
-        # in kpc/arcsec
+        """Angular scale of the observation, in kpc/arcsec."""
         return self._ang_scale
 
     @property
     def pixel_width(self):
-        # in kpc
+        """Width of a single detector pixel, in kpc."""
         self._param_check()
         return self.sampling * self._ang_scale
 
     @property
     def resolution_kpc(self):
+        """Angular resolution (e.g. PSF FWHM) of the instrument, in kpc."""
         self._param_check()
         return self.angular_resolution * self._ang_scale
 
     @property
     def extent(self):
-        # in kpc
+        """Spatial extent of the field of view, in kpc, clipped to `max_extent`."""
         self._param_check()
         return min(self.ang_scale * self.field_of_view, self.max_extent)
 
     @property
     def number_pixels(self):
+        """Number of pixels spanning `extent` at this instrument's pixel width."""
         return int(self.extent / self.pixel_width)
 
     @property
     def name(self):
+        """Class name of this instrument."""
         return type(self).__name__
 
     def __repr__(self):
+        """Human-readable summary of this instrument's geometry."""
         return f"{self.name}:\n FoV: {self.field_of_view}\n sampling: {self.sampling}/pix\n angular resolution: {self.angular_resolution}\n pixel width: {self.pixel_width:.3e}\n # pixels: {self.number_pixels}\n extent: {self.extent:.3e}"
 
     def get_fov_mask(self, xaxis, yaxis):
@@ -201,860 +288,57 @@ class BasicInstrument(ABC):
 # ------------------------------------------------------------------
 
 
-class _PhotometricInstrument(BasicInstrument):
-    def __init__(
-        self,
-        fov,
-        sampling,
-        res=None,
-        z=None,
-        psf_fwhm=None,
-        psf_type="gaussian",
-        moffat_beta=2.5,
-        read_noise=0.0,
-        dark_current=0.0,
-        sky_background=0.0,
-        zeropoint=25.0,
-        flux_zeropoint=None,
-        gain=1.0,
-        full_well=None,
-        exposure_time=1.0,
-    ):
-        """
-        Parameters
-        ----------
-        fov, sampling, res, z : see BasicInstrument
-        psf_fwhm : float, optional
-            PSF FWHM in arcsec. Defaults to `angular_resolution` if not given.
-        psf_type : {"gaussian", "moffat"}
-            Functional form of the PSF.
-        moffat_beta : float
-            Moffat profile beta parameter (only used if psf_type="moffat").
-        read_noise : float
-            Detector read noise, in electrons (e-) per pixel.
-        dark_current : float
-            Dark current, in e-/s/pixel.
-        sky_background : float
-            Sky background, in e-/s/pixel (already matched to `sampling`).
-        zeropoint : float
-            AB magnitude corresponding to 1 e-/s in this band.
-        flux_zeropoint : float, optional
-            Flux, in erg/s/cm^2, corresponding to 1 e-/s in this band.
-            Used to convert particle luminosities to count rate in
-            `luminosity_to_rate` / `image_from_particles`. If your
-            luminosities are already band-specific and monochromatic-flux
-            calibrated, set this from the instrument's throughput; otherwise
-            treat it as a tunable calibration constant.
-        gain : float
-            Detector gain, in e-/ADU. Use 1.0 to keep everything in electrons.
-        full_well : float, optional
-            Full well depth in e-, for saturation. None disables saturation.
-        exposure_time : float
-            Default exposure time in seconds.
-        """
-        super().__init__(fov, sampling, res=res, z=z)
-
-        self.psf_fwhm = (
-            psf_fwhm if psf_fwhm is not None else self.angular_resolution.value
-        )
-        self.psf_type = psf_type
-        self.moffat_beta = moffat_beta
-
-        self.read_noise = read_noise
-        self.dark_current = dark_current
-        self.sky_background = sky_background
-        self.zeropoint = zeropoint
-        self.flux_zeropoint = flux_zeropoint
-        self.gain = gain
-        self.full_well = full_well
-        self.exposure_time = exposure_time
-
-    # ------------------------------------------------------------------
-    # PSF
-    # ------------------------------------------------------------------
-    @property
-    def psf_sigma_pix(self):
-        """PSF Gaussian sigma, in pixels, from FWHM."""
-        fwhm_pix = self.psf_fwhm / self.sampling.value
-        return fwhm_pix / (2.0 * np.sqrt(2.0 * np.log(2.0)))
-
-    def psf_kernel(self, size=None):
-        """
-        Build a normalized 2D PSF kernel in pixel units.
-
-        Parameters
-        ----------
-        size : int, optional
-            Kernel side length in pixels (odd). Defaults to ~8x sigma,
-            clipped to be odd and at least 7 pixels.
-
-        Returns
-        -------
-        kernel : ndarray
-            Normalized (sum=1) 2D PSF kernel.
-        """
-        sigma = self.psf_sigma_pix
-        if size is None:
-            size = max(7, int(np.ceil(8 * sigma)) | 1)  # force odd
-        elif size % 2 == 0:
-            size += 1
-
-        y, x = np.mgrid[0:size, 0:size]
-        cy = cx = size // 2
-        r2 = (x - cx) ** 2 + (y - cy) ** 2
-
-        if self.psf_type == "gaussian":
-            kernel = np.exp(-0.5 * r2 / sigma**2)
-        elif self.psf_type == "moffat":
-            # alpha related to FWHM and beta for a Moffat profile
-            fwhm_pix = self.psf_fwhm / self.sampling.value
-            alpha = fwhm_pix / (2.0 * np.sqrt(2.0 ** (1.0 / self.moffat_beta) - 1.0))
-            kernel = (1.0 + r2 / alpha**2) ** (-self.moffat_beta)
-        else:
-            _logger.exception(f"Unknown psf_type '{self.psf_type}'", exc_info=True)
-            raise ValueError
-
-        return kernel / kernel.sum()
-
-    def convolve_with_psf(self, image):
-        """Convolve a 2D image (counts or flux) with the instrument PSF."""
-        kernel = self.psf_kernel()
-        return fftconvolve(image, kernel, mode="same")
-
-    # ------------------------------------------------------------------
-    # Photometric calibration
-    # ------------------------------------------------------------------
-    def mag_to_rate(self, mag):
-        """AB magnitude -> count rate in e-/s, using the instrument zeropoint."""
-        return 10.0 ** (-0.4 * (mag - self.zeropoint))
-
-    def rate_to_mag(self, rate):
-        """Count rate in e-/s -> AB magnitude."""
-        rate = np.clip(rate, 1e-12, None)
-        return self.zeropoint - 2.5 * np.log10(rate)
-
-    # ------------------------------------------------------------------
-    # Scene generation (simple synthetic sources -> flux-rate image)
-    # ------------------------------------------------------------------
-    def render_scene(self, catalog):
-        """
-        Render a flux-rate image (e-/s/pixel, pre-PSF) from a source catalog.
-
-        Parameters
-        ----------
-        catalog : list of dict
-            Each entry needs: 'x', 'y' (pixel coords), 'mag' (AB mag).
-            Optional 'r_eff' (pixels) and 'n' (Sersic index) for extended
-            sources; point sources are used if 'r_eff' is omitted.
-
-        Returns
-        -------
-        image : ndarray
-            2D array of count rate (e-/s/pixel), shape (npix, npix).
-        """
-        npix = self.number_pixels
-        image = np.zeros((npix, npix))
-
-        yy, xx = np.mgrid[0:npix, 0:npix]
-        for src in catalog:
-            rate = self.mag_to_rate(src["mag"])
-            x0, y0 = src["x"], src["y"]
-
-            if "r_eff" in src and src["r_eff"] > 0:
-                r_eff = src["r_eff"]
-                n = src.get("n", 1.0)
-                bn = 1.9992 * n - 0.3271  # standard approximation
-                r = np.sqrt((xx - x0) ** 2 + (yy - y0) ** 2)
-                profile = np.exp(-bn * ((r / r_eff) ** (1.0 / n) - 1.0))
-                profile /= profile.sum()
-                image += rate * profile
-            else:
-                # point source: deposit into nearest pixel
-                ix, iy = int(round(x0)), int(round(y0))
-                if 0 <= ix < npix and 0 <= iy < npix:
-                    image[iy, ix] += rate
-
-        return image
-
-    def random_catalog(self, n_sources=50, mag_range=(20, 26), seed=None):
-        """Generate a random point-source + extended-source catalog for testing."""
-        rng = np.random.default_rng(seed)
-        npix = self.number_pixels
-        catalog = []
-        for _ in range(n_sources):
-            entry = {
-                "x": rng.uniform(0, npix),
-                "y": rng.uniform(0, npix),
-                "mag": rng.uniform(*mag_range),
-            }
-            if rng.random() < 0.5:
-                entry["r_eff"] = rng.uniform(1.5, 6.0)
-                entry["n"] = rng.choice([1.0, 4.0])
-            catalog.append(entry)
-        return catalog
-
-    # ------------------------------------------------------------------
-    # Noise / detector effects
-    # ------------------------------------------------------------------
-    def add_noise(self, counts_image, exposure_time=None):
-        """
-        Apply sky, dark current, Poisson, and read noise to a noiseless
-        counts image (in e-, already integrated over exposure_time).
-        """
-        t = exposure_time if exposure_time is not None else self.exposure_time
-
-        sky = self.sky_background * t
-        dark = self.dark_current * t
-
-        total_e = np.clip(counts_image + sky + dark, 0, None)
-        noisy_e = np.random.poisson(total_e).astype(float)
-        noisy_e += np.random.normal(0.0, self.read_noise, size=counts_image.shape)
-
-        if self.full_well is not None:
-            noisy_e = np.clip(noisy_e, None, self.full_well)
-
-        return noisy_e / self.gain  # convert to ADU if gain != 1
-
-    # ------------------------------------------------------------------
-    # Full observation pipeline
-    # ------------------------------------------------------------------
-    def observe(self, scene_rate_image, exposure_time=None):
-        """
-        Run the full pipeline on a noiseless count-rate image (e-/s/pixel):
-        PSF convolution -> integrate over exposure time -> add noise.
-
-        Parameters
-        ----------
-        scene_rate_image : ndarray
-            2D count-rate image (e-/s/pixel), e.g. from `render_scene`.
-        exposure_time : float, optional
-            Overrides `self.exposure_time` if given.
-
-        Returns
-        -------
-        image_adu : ndarray
-            Simulated detector frame, in ADU (or e- if gain=1).
-        """
-        t = exposure_time if exposure_time is not None else self.exposure_time
-        blurred_rate = self.convolve_with_psf(scene_rate_image)
-        counts = blurred_rate * t
-        return self.add_noise(counts, exposure_time=t)
-
-    def mock_observation(
-        self,
-        catalog=None,
-        n_sources=50,
-        mag_range=(20, 26),
-        seed=None,
-        exposure_time=None,
-    ):
-        """Convenience: build a random scene (or use given catalog) and observe it."""
-        if catalog is None:
-            catalog = self.random_catalog(
-                n_sources=n_sources, mag_range=mag_range, seed=seed
-            )
-        scene = self.render_scene(catalog)
-        return self.observe(scene, exposure_time=exposure_time)
-
-    # ------------------------------------------------------------------
-    # Photometric calibration from luminosity
-    # ------------------------------------------------------------------
-    def flux_from_luminosity(self, luminosity, z=None, cosmology=None):
-        """
-        Convert luminosity (Lsun) to observed flux (erg/s/cm^2) via the
-        luminosity distance at the instrument's redshift.
-
-        Parameters
-        ----------
-        luminosity : array_like
-            Per-particle (or per-pixel) luminosity in solar luminosities.
-            For band-correct photometry this should already be luminosity
-            *in the instrument's bandpass* -- this does not apply a
-            K-correction or SED integration.
-        z : float, optional
-            Redshift to use; defaults to `self.redshift` if already set.
-        cosmology : astropy.cosmology instance, optional
-            Defaults to astropy.cosmology.Planck18.
-
-        Returns
-        -------
-        flux : ndarray
-            Flux in erg/s/cm^2.
-        """
-
-        if z is None:
-            z = self.redshift
-        cosmo = cosmology if cosmology is not None else Planck18
-
-        d_L = cosmo.luminosity_distance(z).to("cm").value
-        L_erg_s = np.asarray(luminosity) * L_sun.to("erg/s").value
-        return L_erg_s / (4.0 * np.pi * d_L**2)
-
-    def luminosity_to_rate(
-        self, luminosity, z=None, flux_zeropoint=None, cosmology=None
-    ):
-        """
-        Convert luminosity (Lsun) directly to a detector count rate (e-/s),
-        using `self.flux_zeropoint` (flux in erg/s/cm^2 for 1 e-/s) unless
-        overridden here.
-        """
-        zp = flux_zeropoint if flux_zeropoint is not None else self.flux_zeropoint
-        if zp is None:
-            _logger.exception(
-                "flux_zeropoint must be set on the instrument (flux in erg/s/cm^2 "
-                "corresponding to 1 e-/s) before converting luminosity to count rate.",
-                exc_info=True,
-            )
-            raise RuntimeError
-        flux = self.flux_from_luminosity(luminosity, z=z, cosmology=cosmology)
-        return flux / zp
-
-    # ------------------------------------------------------------------
-    # Building images directly from particle data
-    # ------------------------------------------------------------------
-    def project_particles(self, pos, xaxis="x", yaxis="y"):
-        """
-        Select particles inside the instrument FoV and LOS depth, and
-        convert their in-plane positions into pixel coordinates.
-
-        Parameters
-        ----------
-        pos : ndarray, shape (N, 3)
-            Particle positions in kpc, centered on the object of interest.
-        xaxis, yaxis : int or str
-            Spatial axes to project onto (see `BasicInstrument._get_LOS_axis`).
-
-        Returns
-        -------
-        px, py : ndarray
-            Pixel coordinates of the selected particles (float, unbinned).
-        keep : ndarray (bool)
-            Mask into the original `pos` array marking retained particles.
-        """
-        self._param_check()
-        valid_str = "xyz"
-        xi = valid_str.find(xaxis) if isinstance(xaxis, str) else xaxis
-        yi = valid_str.find(yaxis) if isinstance(yaxis, str) else yaxis
-        los = self._get_LOS_axis(xaxis, yaxis)
-
-        half_extent = 0.5 * self.extent.value  # kpc, in-plane
-        half_depth = 0.5 * self.max_extent.to("kpc").value  # kpc, along LOS
-
-        x, y, zlos = pos[:, xi], pos[:, yi], pos[:, los]
-        keep = (
-            (np.abs(x) <= half_extent)
-            & (np.abs(y) <= half_extent)
-            & (np.abs(zlos) <= half_depth)
-        )
-
-        npix = self.number_pixels
-        pixel_width = self.pixel_width.to("kpc").value  # kpc/pixel
-
-        px = (x[keep] + half_extent) / pixel_width
-        py = (y[keep] + half_extent) / pixel_width
-        px = np.clip(px, 0, npix - 1e-6)
-        py = np.clip(py, 0, npix - 1e-6)
-
-        return px, py, keep
-
-    def bin_particles(self, px, py, weights):
-        """Bin projected particle positions + per-particle weights into a 2D image."""
-        npix = self.number_pixels
-        image, _, _ = np.histogram2d(
-            py, px, bins=npix, range=[[0, npix], [0, npix]], weights=weights
-        )
-        return image
-
-    def image_from_particles(
-        self,
-        pos,
-        weights,
-        xaxis="x",
-        yaxis="y",
-        weight_type="rate",
-        z=None,
-        flux_zeropoint=None,
-        exposure_time=None,
-        apply_noise=True,
-    ):
-        """
-        Build a mock observation directly from particle position + weight
-        arrays (mass, velocities aren't needed for imaging itself, but
-        `pos` is expected to already be centered on the object of interest;
-        velocities are typically used upstream for e.g. kinematic cuts).
-
-        Parameters
-        ----------
-        pos : ndarray, shape (N, 3)
-            Particle positions in kpc.
-        weights : ndarray, shape (N,)
-            Per-particle quantity to bin; interpretation set by `weight_type`.
-        xaxis, yaxis : int or str
-            Projection axes.
-        weight_type : {"rate", "luminosity"}
-            "rate": weights are already a detector count rate (e-/s) per
-                particle -- use this if you've already done SED/bandpass
-                integration per particle.
-            "luminosity": weights are luminosity in Lsun; converted to
-                count rate via `luminosity_to_rate` (needs `self.redshift`
-                and `self.flux_zeropoint`, or override with `z`/`flux_zeropoint`).
-        z : float, optional
-            Redshift override, only used if weight_type="luminosity".
-        flux_zeropoint : float, optional
-            Flux (erg/s/cm^2) for 1 e-/s; only used if weight_type="luminosity".
-        exposure_time : float, optional
-            Overrides `self.exposure_time`.
-        apply_noise : bool
-            If False, returns the noiseless PSF-convolved rate image
-            (useful for checking geometry/projection before adding noise).
-
-        Returns
-        -------
-        image : ndarray
-            Simulated detector frame (ADU or e-), or noiseless PSF-convolved
-            rate image if apply_noise=False.
-        """
-        pos = np.asarray(pos)
-        weights = np.asarray(weights)
-
-        px, py, keep = self.project_particles(pos, xaxis=xaxis, yaxis=yaxis)
-        w = weights[keep]
-
-        if weight_type == "luminosity":
-            w = self.luminosity_to_rate(w, z=z, flux_zeropoint=flux_zeropoint)
-        elif weight_type != "rate":
-            _logger.exception(f"Unknown weight_type '{weight_type}'", exc_info=True)
-            raise ValueError
-
-        rate_image = self.bin_particles(px, py, w)
-
-        if not apply_noise:
-            return self.convolve_with_psf(rate_image)
-
-        return self.observe(rate_image, exposure_time=exposure_time)
-
-    def image_from_snapshot(
-        self,
-        snap,
-        xaxis="x",
-        yaxis="y",
-        pos_key="pos",
-        luminosity_key="lum",
-        mass_key="mass",
-        weight_type="luminosity",
-        z=None,
-        flux_zeropoint=None,
-        exposure_time=None,
-        apply_noise=False,
-    ):
-        """
-        Convenience wrapper around `image_from_particles` for a pygad-style
-        snapshot object (dict-like field access), so you can go straight
-        from a loaded snapshot to a mock image.
-
-        Parameters
-        ----------
-        snap : dict-like
-            Must support `snap[pos_key]` and either `snap[luminosity_key]`
-            (weight_type="luminosity"/"rate") or `snap[mass_key]`
-            (weight_type="mass"). Apply any pygad ExprMask / sub-snapshot
-            selection (e.g. `self.get_fov_mask`, star/gas cuts) to `snap`
-            *before* passing it in here -- this function does the spatial
-            FoV + LOS-depth cut itself via `project_particles`, but any
-            physical selection (particle type, SF state, etc.) is on you.
-        pos_key, luminosity_key, mass_key : str
-            Field names to look up on `snap`.
-        weight_type : {"luminosity", "rate", "mass"}
-            "mass" bins raw mass and returns a noiseless, uncalibrated mass
-            map (no PSF/noise applied) -- useful as a sanity check on
-            projection/geometry, not a photometric image.
-        (remaining parameters as in `image_from_particles`)
-
-        Returns
-        -------
-        image : ndarray
-        """
-        pos = np.asarray(snap[pos_key])
-
-        if weight_type == "mass":
-            weights = np.asarray(snap[mass_key])
-            px, py, keep = self.project_particles(pos, xaxis=xaxis, yaxis=yaxis)
-            return self.bin_particles(px, py, weights[keep])
-
-        weights = np.asarray(snap[luminosity_key])
-        return self.image_from_particles(
-            pos,
-            weights,
-            xaxis=xaxis,
-            yaxis=yaxis,
-            weight_type="luminosity" if weight_type == "luminosity" else "rate",
-            z=z,
-            flux_zeropoint=flux_zeropoint,
-            exposure_time=exposure_time,
-            apply_noise=apply_noise,
-        )
-
-    # ------------------------------------------------------------------
-    # Plotting
-    # ------------------------------------------------------------------
-    def plot_image(self, image, ax=None, stretch="asinh", cmap="bone", title=None):
-        """
-        Display a simulated image with an astronomy-style stretch.
-
-        Parameters
-        ----------
-        image : ndarray
-            2D image to display (e.g. output of `observe`/`mock_observation`).
-        ax : matplotlib Axes, optional
-            Existing axes to plot into; a new figure is created if None.
-        stretch : {"asinh", "linear", "log"}
-            Intensity stretch to apply before display.
-        cmap : str
-            Matplotlib colormap name.
-        title : str, optional
-            Plot title; defaults to instrument name.
-
-        Returns
-        -------
-        fig, ax : matplotlib Figure, Axes
-        """
-        if ax is None:
-            fig, ax = plt.subplots(figsize=(6, 6))
-        else:
-            fig = ax.figure
-
-        if self.full_well is not None:
-            sat_frac = np.nanmean(image >= self.full_well)
-            if sat_frac > 0.01:
-                _logger.warning(
-                    f"{sat_frac:.1%} of pixels are at or above full_well "
-                    f"({self.full_well} e-). The image is saturated over a "
-                    "significant area -- check flux_zeropoint, exposure_time, "
-                    "or source luminosities. A saturated plateau this large "
-                    "will dominate percentile-based stretches."
-                )
-
-        data = image - np.nanmedian(image)
-        if stretch == "asinh":
-            # Use a median-absolute-deviation scale rather than a fixed
-            # percentile: a percentile can land inside a saturated plateau
-            # when a sizeable fraction of pixels are clipped to full_well,
-            # which crushes all unsaturated (background/source) contrast
-            # to ~0. MAD stays anchored to the bulk of the distribution
-            # as long as saturated pixels are a minority (<50%).
-            mad = np.nanmedian(np.abs(data - np.nanmedian(data)))
-            scale = 1.4826 * mad if mad > 0 else (np.nanstd(data) or 1.0)
-            disp = np.arcsinh(data / scale)
-        elif stretch == "log":
-            disp = np.log10(np.clip(data - data.min() + 1.0, 1, None))
-        else:
-            disp = data
-
-        vmin, vmax = np.nanpercentile(disp, [1, 99.5])
-        ax.imshow(disp, origin="lower", cmap=cmap, vmin=vmin, vmax=vmax)
-        ax.set_title(title or f"{self.name} mock observation")
-        ax.set_xlabel("x [pixel]")
-        ax.set_ylabel("y [pixel]")
-        fig.tight_layout()
-        return fig, ax
-
-
-class _PhotometricInstrument2(BasicInstrument):
-    def __init__(self, fov, sampling, res=None, z=None, label=None):
-        super().__init__(fov, sampling, res=res, z=z)
-        self.label = label or type(self).__name__
-        self._filters = None
-
-    # ------------------------------------------------------------------
-    # Filters
-    # ------------------------------------------------------------------
-    def set_filters(self, filters):
-        """
-        Attach a filter set to this instrument.
-
-        Parameters
-        ----------
-        filters : FilterCollection, list of Filter, or list of str
-            - a `synthesizer.filters.FilterCollection` instance, or
-            - a list of `synthesizer.filters.Filter` objects (generic
-              top-hat filters, built with lam_min/lam_max -- no network
-              access required), or
-            - a list of SVO filter codes, e.g. "JWST/NIRCam.F200W"
-              (fetched from the SVO filter service -- requires network
-              access).
-        """
-        if isinstance(filters, FilterCollection):
-            self._filters = filters
-        elif filters and isinstance(filters[0], Filter):
-            self._filters = FilterCollection(filters=list(filters))
-        else:
-            self._filters = FilterCollection(filter_codes=list(filters))
-
-    @property
-    def filters(self):
-        if self._filters is None:
-            _logger.exception(
-                "Call set_filters(...) before requesting images.",
-                exc_info=True,
-            )
-            raise RuntimeError
-        return self._filters
-
-    # ------------------------------------------------------------------
-    # Geometry -> Synthesizer's unyt-based resolution/fov
-    # ------------------------------------------------------------------
-    def synthesizer_resolution(self, angular=False):
-        """This instrument's pixel size, as a unyt quantity."""
-        if angular:
-            return self.sampling.to("arcsec").value * arcsecond
-        self._param_check()
-        return self.pixel_width.to("kpc").value * kpc
-
-    def synthesizer_fov(self, angular=False):
-        """This instrument's field of view (post max_extent clip), as a unyt quantity."""
-        if angular:
-            return self.field_of_view.to("arcsec").value * arcsecond
-        self._param_check()
-        return self.extent.to("kpc").value * kpc
-
-    def _project_and_cut(self, pos, xaxis, yaxis):
-        """Same FoV + LOS-depth cut used by the from-scratch Instrument
-        class, kept here so both approaches select an identical subset
-        of particles for a fair comparison."""
-        self._param_check()
-        valid_str = "xyz"
-        xi = valid_str.find(xaxis) if isinstance(xaxis, str) else xaxis
-        yi = valid_str.find(yaxis) if isinstance(yaxis, str) else yaxis
-        los = self._get_LOS_axis(xaxis, yaxis)
-
-        half_extent = 0.5 * self.extent.to("kpc").value
-        half_depth = 0.5 * self.max_extent.to("kpc").value
-
-        x, y, zl = pos[:, xi], pos[:, yi], pos[:, los]
-        keep = (
-            (np.abs(x) <= half_extent)
-            & (np.abs(y) <= half_extent)
-            & (np.abs(zl) <= half_depth)
-        )
-        return x[keep], y[keep], keep
-
-    def _to_instrument_units(self, x_kpc, y_kpc, angular=False):
-        """Convert centered (x, y) in kpc to the units the ImageCollection
-        was built with (kpc for physical, arcsec for angular)."""
-        if not angular:
-            return np.column_stack([x_kpc, y_kpc]) * kpc
-        scale = self.ang_scale.to("kpc/arcsec").value  # kpc per arcsec
-        return np.column_stack([x_kpc / scale, y_kpc / scale]) * arcsecond
-
-    # ------------------------------------------------------------------
-    # Low-level: image directly from a precomputed per-particle signal
-    # ------------------------------------------------------------------
-    def image_from_particles(
-        self,
-        pos,
-        signal,
-        xaxis="x",
-        yaxis="y",
-        filter_code="custom_band",
-        img_type="hist",
-        smoothing_lengths=None,
-        kernel=None,
-        kernel_threshold=1,
-        angular=False,
-        signal_units=erg / s / Hz,
-    ):
-        """
-        Bin an already-computed per-particle signal (e.g. a luminosity
-        you calculated yourself, as in `Instrument.image_from_particles`
-        in instrument.py) into a Synthesizer ImageCollection, using this
-        instrument's FoV/pixel geometry. Delegates the actual binning
-        (and, for img_type="smoothed", SPH-kernel smoothing) to
-        Synthesizer's own C-extension image generators.
-
-        Parameters
-        ----------
-        pos : ndarray, shape (N, 3)
-            Particle positions in kpc, centered on the object of interest.
-        signal : ndarray, shape (N,)
-            Per-particle signal to bin (e.g. luminosity in erg/s/Hz).
-        xaxis, yaxis : int or str
-            Projection axes.
-        filter_code : str
-            Label for the resulting image within the returned
-            ImageCollection. Does not need to be a real filter for this
-            manual path -- it's just a dict key.
-        img_type : {"hist", "smoothed"}
-            "hist": plain 2D histogram, equivalent to
-                `Instrument.bin_particles` in instrument.py.
-            "smoothed": SPH-kernel-smoothed image; requires
-                `smoothing_lengths`, `kernel`, and `self.filters` to be set
-                (Synthesizer's smoothed path wraps signal in a
-                PhotometryCollection, which is filter-aware).
-        smoothing_lengths : ndarray, shape (N,), optional
-            Per-particle smoothing lengths in kpc. Required if
-            img_type="smoothed".
-        kernel : np.ndarray, optional
-            SPH kernel lookup table, e.g. from
-            `synthesizer.kernel_functions.Kernel().get_kernel()`.
-            Required if img_type="smoothed".
-        angular : bool
-            If True, build the image in this instrument's angular
-            (arcsec) geometry instead of physical (kpc) geometry.
-        signal_units : unyt unit
-            Units to attach to `signal` (default erg/s/Hz, a luminosity
-            density; use erg/s/cm**2/Hz for a flux).
-
-        Returns
-        -------
-        ImageCollection
-        """
-        pos = np.asarray(pos)
-        signal = np.asarray(signal)
-
-        x, y, keep = self._project_and_cut(pos, xaxis, yaxis)
-        coords = self._to_instrument_units(x, y, angular=angular)
-        sig = signal[keep] * signal_units
-
-        resolution = self.synthesizer_resolution(angular=angular)
-        fov = self.synthesizer_fov(angular=angular)
-        imgcol = ImageCollection(resolution=resolution, fov=fov)
-
-        if img_type == "hist":
-            return imgcol.generate_imgs_hist(
-                photometry={filter_code: sig}, coordinates=coords
-            )
-
-        if img_type == "smoothed":
-            if smoothing_lengths is None or kernel is None:
-                _logger.exception(
-                    "smoothing_lengths and kernel are required for "
-                    "img_type='smoothed'.",
-                    exc_info=True,
-                )
-                raise ValueError
-
-            sl = np.asarray(smoothing_lengths)[keep]
-            if not angular:
-                sl_q = sl * kpc
-            else:
-                scale = self.ang_scale.to("kpc/arcsec").value
-                sl_q = (sl / scale) * arcsecond
-
-            from synthesizer.photometry import PhotometryCollection
-
-            # PhotometryCollection expects one row per filter; wrap our
-            # single custom signal as a (1, N) array against self.filters.
-            phot = PhotometryCollection(
-                filters=self.filters, photometry=sig.reshape(1, -1)
-            )
-            return imgcol.generate_imgs_smoothed(
-                photometry=phot,
-                coordinates=coords,
-                smoothing_lengths=sl_q,
-                kernel=kernel,
-                kernel_threshold=kernel_threshold,
-            )
-
-        _logger.exception(f"Unknown img_type '{img_type}'", exc_info=True)
-        raise ValueError
-
-    # ------------------------------------------------------------------
-    # Instrument object for PSF / noise post-processing
-    # ------------------------------------------------------------------
-    def build_imager(
-        self, psfs=None, depth=None, snrs=None, noise_maps=None, angular=False
-    ):
-        """
-        Build a Synthesizer PhotometricImager carrying this instrument's
-        resolution plus optional PSFs/depth/SNR/noise maps, for use with
-        `imager.apply_psfs(image_collection)` /
-        `imager.apply_noises(image_collection)` on an ImageCollection
-        (e.g. one returned by `image_from_particles`).
-        """
-        resolution = self.synthesizer_resolution(angular=angular)
-        return PhotometricImager(
-            label=self.label,
-            filters=self.filters,
-            resolution=resolution,
-            psfs=psfs,
-            depth=depth,
-            snrs=snrs,
-            noise_maps=noise_maps,
-        )
-
-    # ------------------------------------------------------------------
-    # High-level: full SED-based imaging from a Synthesizer Galaxy
-    # ------------------------------------------------------------------
-    def image_from_galaxy(
-        self,
-        gal,
-        spectra_type,
-        img_type="smoothed",
-        kernel=None,
-        kernel_threshold=1,
-        cosmo=None,
-        angular=False,
-        psfs=None,
-        depth=None,
-        snrs=None,
-    ):
-        """
-        Full Synthesizer workflow: image a `synthesizer.particle.Galaxy`
-        object that already has photometry computed (via an
-        EmissionModel + `gal.get_photo_lnu(self.filters)`), using this
-        instrument's geometry. This is the "real physics" path --
-        luminosities come from actual stellar population synthesis (age,
-        metallicity, initial mass -> SED -> filter convolution), not a
-        luminosity array you supply yourself; use `image_from_particles`
-        for that.
-
-        Parameters
-        ----------
-        gal : synthesizer.particle.galaxy.Galaxy
-            Galaxy object with photometry already computed for
-            `spectra_type`.
-        spectra_type : str or list of str
-            Which computed spectra/photometry to image (e.g.
-            "attenuated", "intrinsic", "incident").
-        img_type : {"hist", "smoothed"}
-        kernel, kernel_threshold : SPH kernel lookup + threshold; required
-            for img_type="smoothed".
-        cosmo : astropy.cosmology instance, optional
-            Required if `angular=True` (converts particle coordinates to
-            angular units using this instrument's redshift).
-        angular : bool
-            Use angular (arcsec) geometry rather than physical (kpc).
-        psfs, depth, snrs : optional PSF/noise configuration; applied
-            after image generation if given.
-
-        Returns
-        -------
-        ImageCollection, or dict of ImageCollection if spectra_type is
-        a list of labels.
-        """
-        imager = self.build_imager(psfs=psfs, depth=depth, snrs=snrs, angular=angular)
-        fov = self.synthesizer_fov(angular=angular)
-
-        imgs = gal.get_images_luminosity(
-            spectra_type,
-            instrument=imager,
-            fov=fov,
-            img_type=img_type,
-            kernel=kernel,
-            kernel_threshold=kernel_threshold,
-            cosmo=cosmo,
-        )
-
-        if psfs is not None:
-            imgs = imager.apply_psfs(imgs)
-        if depth is not None or snrs is not None:
-            imgs = imager.apply_noises(imgs)
-
-        return imgs
+def _robust_asinh_norm(arr):
+    """
+    Build a percentile-clipped arcsinh colour norm, robust to images that
+    are mostly zero-valued (as SPH-kernel-smoothed particle images are
+    outside the light distribution) -- a plain linear or log norm over
+    such an image either saturates almost all of the signal or floors at
+    an arbitrary epsilon. Operating directly on `arr` (rather than a
+    pre-transformed display array) means the norm can be attached to the
+    image's `imshow` call and read straight off by a colourbar, so the
+    colourbar reflects real (flux) values rather than stretched ones.
+
+    Parameters
+    ----------
+    arr : np.array
+        image array (in physical units, e.g. flux) to normalize
+
+    Returns
+    -------
+    : matplotlib.colors.AsinhNorm
+        colour norm with a MAD-based linear width around zero and
+        1st/99.5th percentile display bounds
+    """
+    arr = np.asarray(arr, dtype=float)
+    mad = np.nanmedian(np.abs(arr - np.nanmedian(arr)))
+    scale = 1.4826 * mad if mad > 0 else (np.nanstd(arr) or 1.0)
+    vmin, vmax = np.nanpercentile(arr, [1, 99.5])
+    return AsinhNorm(linear_width=scale, vmin=vmin, vmax=vmax)
 
 
 class PhotometricInstrument(BasicInstrument):
     def __init__(self, fov, sampling, label, res=None, z=None, max_extent=40):
+        """
+        Base class for instruments that generate photometric (imaging)
+        observations via synthesizer.
+
+        Parameters
+        ----------
+        fov : float
+            field of view in arcsecs
+        sampling : float
+            spatial sampling of instrument in arcsec/pixel
+        label : str
+            instrument label, used by the underlying synthesizer
+            PhotometricImager
+        res : float, optional
+            angular resolution in arcsec, by default None
+        z : float, optional
+            redshift of observations, by default None
+        max_extent : float, optional
+            maximum spatial extent [kpc], by default 40
+        """
         super().__init__(fov, sampling, res, z, max_extent)
         self.galaxy = None
         self._filters = None
@@ -1063,10 +347,32 @@ class PhotometricInstrument(BasicInstrument):
 
     @property
     def filters(self):
+        """The synthesizer FilterCollection built for this instrument."""
         return self._filters
+
+    @property
+    @abstractmethod
+    def filter_codes(self):
+        """SVO filter codes for this instrument, independent of any grid --
+        used to tailor the SSP grid's wavelength sampling to this
+        instrument's filters before the grid itself is built."""
+        raise NotImplementedError
 
     @abstractmethod
     def get_filters(self, grid):
+        """
+        Build this instrument's filter collection.
+
+        Parameters
+        ----------
+        grid : synthesizer.grid.Grid
+            grid to sample filter transmission curves onto
+
+        Returns
+        -------
+        : synthesizer.filters.FilterCollection
+            this instrument's filters
+        """
         raise NotImplementedError
 
     # ------------------------------------------------------------------
@@ -1118,6 +424,33 @@ class PhotometricInstrument(BasicInstrument):
     def load_and_project_galaxy(
         self, snap, xaxis=0, yaxis=2, ages=None, metallicity=None, softening=None
     ):
+        """
+        Build a synthesizer Galaxy from a pygad snapshot, restricted to
+        this instrument's field of view.
+
+        Parameters
+        ----------
+        snap : pygad.Snapshot
+            snapshot to analyse
+        xaxis : int, optional
+            spatial x axis, by default 0
+        yaxis : int, optional
+            spatial y axis, by default 2
+        ages : float, int, np.array, unyt_array, optional
+            stellar ages; a scalar is broadcast to all particles, by
+            default None (uses the snapshot's own per-particle "age"
+            block)
+        metallicity : float, int, np.array, optional
+            stellar metallicities; a scalar is broadcast to all
+            particles, by default None (uses the snapshot's own
+            per-particle "metallicity" block)
+        softening : float, int, np.array, unyt_array, optional
+            per-particle smoothing length in kpc, by default None (falls
+            back to half the instrument's resolution element)
+        """
+        mask = self.get_fov_mask(xaxis, yaxis)
+        snap = snap[mask]
+
         if ages is None:
             # TODO check units
             ages = np.asarray(snap.stars["age"]) * yr
@@ -1127,17 +460,24 @@ class PhotometricInstrument(BasicInstrument):
             metallicity = snap.stars["metallicity"]
         elif isinstance(metallicity, (float, int)):
             metallicity = np.full(len(snap.stars), metallicity)
-        if isinstance(softening, float):
+        if softening is None:
+            # no physical smoothing length available (e.g. collisionless
+            # snapshots without an hsml block) -- fall back to a fraction
+            # of the instrument's resolution element rather than leaving
+            # particles unsmoothed
+            softening = (
+                np.full(len(snap.stars), 0.5 * self.resolution_kpc.to("kpc").value)
+                * kpc
+            )
+        elif isinstance(softening, (float, int)):
             softening = np.full(len(snap.stars), softening * kpc)
-        mask = self.get_fov_mask(xaxis, yaxis)
-        snap = snap[mask]
         stars = synthesizer.particle.Stars(
             initial_masses=np.asarray(snap.stars["mass"]) * Msun,
             ages=ages,
             metallicities=metallicity,
             coordinates=np.asarray(snap.stars["pos"]) * kpc,
             centre=np.zeros(3) * kpc,
-            softening_lengths=softening,
+            smoothing_lengths=softening,
             redshift=self.redshift,
         )
         self.galaxy = synthesizer.particle.Galaxy(stars=stars, redshift=self.redshift)
@@ -1145,9 +485,35 @@ class PhotometricInstrument(BasicInstrument):
     def generate_particle_spectra(
         self, grid_name="bpass-2.2.1-bin_chabrier03-0.1,100.0_cloudy-c23.01-sps.hdf5"
     ):
-        grid = get_synthesizer_grid(
-            grid_name=grid_name, new_lam=np.logspace(2, 5, 50) * angstrom
-        )
+        """
+        Generate per-particle spectra and photometry for the loaded galaxy.
+
+        Builds an SSP grid whose wavelength sampling is tailored to this
+        instrument's own filters (see `_filter_tailored_lam`), then
+        generates dust-attenuated per-particle photometry through this
+        instrument's filters via a BimodalPacmanEmission model. If most
+        particles share their age with another particle (few unique ages
+        relative to the particle count -- see `_DEDUP_UNIQUE_AGE_FRACTION`),
+        this is done by deduplicating on (age, metallicity) rather than
+        running every particle individually (see
+        `_generate_particle_photometry_deduped`); otherwise every particle
+        is run through the model directly (see
+        `_generate_particle_photometry_full`).
+
+        Parameters
+        ----------
+        grid_name : str, optional
+            SSP grid to query, by default
+            "bpass-2.2.1-bin_chabrier03-0.1,100.0_cloudy-c23.01-sps.hdf5"
+
+        Returns
+        -------
+        grid : synthesizer.grid.Grid
+            grid used to generate the spectra
+        """
+        lam_lo, lam_hi = get_filter_lam_range(self.filter_codes)
+        new_lam = _filter_tailored_lam(lam_lo, lam_hi)
+        grid = _cached_synthesizer_grid(grid_name, tuple(new_lam.to("angstrom").value))
         self._filters = self.get_filters(grid)
         model = BimodalPacmanEmission(
             grid=grid,
@@ -1160,19 +526,176 @@ class PhotometricInstrument(BasicInstrument):
             label="total",
             per_particle=True,
         )
-        self.galaxy.stars.get_spectra(model)
-        self.galaxy.get_observed_spectra(Planck18)
-        self.galaxy.get_photo_lnu(self._filters)
+
+        n_particles = len(self.galaxy.stars.ages)
+        n_unique_ages = len(np.unique(self.galaxy.stars.ages.to("yr").value))
+        if n_unique_ages / n_particles < _DEDUP_UNIQUE_AGE_FRACTION:
+            self._generate_particle_photometry_deduped(model)
+        else:
+            self._generate_particle_photometry_full(model)
         return grid
 
-    def build_instrument(self, angular=False):
+    def _generate_particle_photometry_full(self, model):
+        """
+        Generate per-particle spectra and photometry by running every
+        particle through the emission model directly.
+
+        Parameters
+        ----------
+        model : synthesizer.emission_models.BimodalPacmanEmission
+            emission model to generate spectra with
+        """
+        self.galaxy.stars.get_spectra(model, nthreads=_resolve_nthreads())
+        self.galaxy.get_observed_spectra(Planck18)
+        self.galaxy.get_photo_fnu(self._filters)
+
+    def _generate_particle_photometry_deduped(self, model):
+        """
+        Generate per-particle photometry by exploiting the finite SSP
+        grid: particles sharing the same (age, metallicity) necessarily
+        produce byte-identical spectra before mass scaling, so only
+        unique (age, metallicity) pairs need to be run through the
+        emission model. Results are expanded back out to the full
+        particle array by index and rescaled by each particle's own
+        mass, so this loses no fidelity relative to
+        `_generate_particle_photometry_full` -- it only avoids repeating
+        identical grid interpolations.
+
+        Only `particle_photo_fnu["attenuated"]` (what `observe()` reads
+        via `get_images_flux`) is reconstructed for the full particle
+        array; per-particle spectra are not, since nothing here consumes
+        them.
+
+        Parameters
+        ----------
+        model : synthesizer.emission_models.BimodalPacmanEmission
+            emission model to generate spectra with
+        """
+        stars = self.galaxy.stars
+        ages = stars.ages.to("yr").value
+        metallicities = np.asarray(stars.metallicities)
+        masses = stars.initial_masses.to("Msun").value
+
+        pairs = np.column_stack([ages, metallicities])
+        unique_pairs, inverse = np.unique(pairs, axis=0, return_inverse=True)
+        inverse = inverse.ravel()
+        n_unique = len(unique_pairs)
+        if n_unique == 1:
+            # sidestep a synthesizer bug triggered by a size-1 emitter:
+            # a dimensionless masked attribute (e.g. log10age vs the
+            # model's age_pivot) gets stripped to a bare ndarray via
+            # `.ndview` in Particles.get_mask, and a later `attr.value`
+            # call then assumes it's still a unyt array once
+            # attr.size == 1. Padding to 2 identical particles avoids
+            # that branch entirely and is otherwise inert, since
+            # `inverse` (all zeros here) still indexes the duplicated
+            # row 0.
+            unique_pairs = np.repeat(unique_pairs, 2, axis=0)
+            n_unique = 2
+        _logger.info(
+            f"Deduplicating spectra generation: {n_unique} unique "
+            f"(age, metallicity) pairs for {len(ages)} particles."
+        )
+
+        reduced_stars = synthesizer.particle.Stars(
+            initial_masses=np.ones(n_unique) * Msun,
+            ages=unique_pairs[:, 0] * yr,
+            metallicities=unique_pairs[:, 1],
+            coordinates=np.zeros((n_unique, 3)) * kpc,
+            centre=np.zeros(3) * kpc,
+            smoothing_lengths=np.ones(n_unique) * kpc,
+            redshift=self.redshift,
+        )
+        reduced_galaxy = synthesizer.particle.Galaxy(
+            stars=reduced_stars, redshift=self.redshift
+        )
+        reduced_galaxy.stars.get_spectra(model, nthreads=_resolve_nthreads())
+        reduced_galaxy.get_observed_spectra(Planck18)
+        reduced_galaxy.get_photo_fnu(self._filters)
+
+        # rescale each unique pair's (1 Msun) photometry by every
+        # particle's real mass, expanding back out to the full array
+        reduced_phot = reduced_galaxy.stars.particle_photo_fnu["attenuated"]
+        expanded_fnu = reduced_phot.photo_fnu[:, inverse] * masses[np.newaxis, :]
+        stars.particle_photo_fnu["attenuated"] = PhotometryCollection(
+            filters=self._filters, photometry=expanded_fnu
+        )
+
+        # the model's routing metadata (which labels are directly
+        # generated vs combined from others) depends only on model
+        # structure, not particle data, so it's safe to copy over from
+        # the reduced run
+        stars.model_param_cache.update(reduced_galaxy.stars.model_param_cache)
+        self.galaxy.model_param_cache.update(reduced_galaxy.model_param_cache)
+
+    def _gaussian_psf_kernel(self, size=25):
+        """Build a normalized Gaussian PSF kernel, in pixel units, sized
+        from this instrument's angular resolution (PSF FWHM).
+
+        Parameters
+        ----------
+        size : int, optional
+            side length of the (square) kernel array in pixels, by default 25
+
+        Returns
+        -------
+        : np.array
+            normalized 2D PSF kernel
+        """
+        fwhm_pix = (self.resolution_kpc / self.pixel_width).to("").value
+        sigma = fwhm_pix / (2 * np.sqrt(2 * np.log(2)))
+        y, x = np.mgrid[0:size, 0:size]
+        c = size // 2
+        psf = np.exp(-0.5 * ((x - c) ** 2 + (y - c) ** 2) / sigma**2)
+        return psf / psf.sum()
+
+    def build_instrument(self, angular=False, apply_psf=True, psf_size=25):
+        """
+        Build the underlying synthesizer PhotometricImager instrument.
+
+        Parameters
+        ----------
+        angular : bool, optional
+            use angular (arcsec) units instead of physical (kpc), by default False
+        apply_psf : bool, optional
+            convolve images with a Gaussian PSF matched to this instrument's
+            angular resolution, by default True
+        psf_size : int, optional
+            side length of the PSF kernel array in pixels, by default 25
+        """
+        psfs = None
+        if apply_psf:
+            kernel = self._gaussian_psf_kernel(size=psf_size)
+            psfs = {fcode: kernel for fcode in self._filters.filter_codes}
         self._instr = PhotometricImager(
             label=self.label,
             resolution=self.synthesizer_resolution(angular=angular),
             filters=self._filters,
+            psfs=psfs,
         )
 
     def observe(self, ax=None, angular=False):
+        """
+        Generate and plot flux images for this instrument's filters.
+
+        Each panel is drawn with an arcsinh stretch, an inset scale bar,
+        and an inset colourbar labelled with the image's true flux units;
+        grid lines and axis ticks/labels are always switched off.
+
+        Parameters
+        ----------
+        ax : list of matplotlib.axes.Axes, optional
+            axes to plot each filter's image into, one per filter, by
+            default None (creates a new figure with one axis per filter)
+        angular : bool, optional
+            use angular (arcsec) units instead of physical (kpc), by
+            default False
+
+        Returns
+        -------
+        ax : list of matplotlib.axes.Axes
+            axes the images were plotted onto
+        """
         kwargs = dict(
             instrument=self._instr,
             fov=self.synthesizer_fov(angular=angular),
@@ -1181,29 +704,65 @@ class PhotometricInstrument(BasicInstrument):
             cosmo=Planck18,
         )
         try:
-            imgs = self.galaxy.get_images_luminosity("attenuated", **kwargs)
+            imgs = self.galaxy.get_images_flux("attenuated", **kwargs)
         except Exception as e:
-            _logger.error(e)
+            _logger.warning(
+                f"Smoothed imaging failed ({e}); falling back to unsmoothed "
+                "'hist' imaging. Images will look noticeably worse."
+            )
             kwargs["img_type"] = "hist"
-            imgs = self.galaxy.get_images_luminosity("attenuated", **kwargs)
+            imgs = self.galaxy.get_images_flux("attenuated", **kwargs)
 
-        """if psfs is not None:
-            imgs = imager.apply_psfs(imgs)
-        if depth is not None or snrs is not None:
-            imgs = imager.apply_noises(imgs)"""
+        if self._instr.psfs is not None:
+            imgs = self._instr.apply_psfs(imgs)
 
         if ax is None:
             nax = len(self.filters)
             fig, ax = plt.subplots(ncols=nax, sharex="all", sharey="all")
             if nax == 1:
                 ax = [ax]
-        cmapper = NormedColours.from_array_list(
-            [v.arr for v in imgs.values()], norm="LogNorm", cmap="bone"
-        )
+        else:
+            try:
+                fig = ax.get_figure()
+            except AttributeError:
+                fig = ax[0].get_figure()
+        fig.suptitle(rf"$z={self.redshift:.3f}$")
+        fov_width = self.synthesizer_fov(angular=angular)
+        half_width = 0.5 * fov_width.value
+        extent = [-half_width, half_width, -half_width, half_width]
+        sizebar_units = "arcsec" if angular else "kpc"
+        sizebar_length = 0.2 * half_width
+
         for axi, fcode in zip(ax, self.filters.filter_codes):
-            axi.imshow(imgs[fcode].arr, norm=cmapper.norm, cmap=cmapper.cmap)
+            img = imgs[fcode]
+            norm = _robust_asinh_norm(img.arr)
+            im = axi.imshow(
+                img.arr, cmap="bone", norm=norm, extent=extent, origin="lower"
+            )
             axi.set_title(fcode)
             axi.set_facecolor("k")
+
+            # a) grid lines always off
+            axi.grid(False)
+            # b) no x/y ticks or labels
+            axi.set_xticks([])
+            axi.set_yticks([])
+            axi.set_xlabel("")
+            axi.set_ylabel("")
+            # c) inset scale bar
+            draw_sizebar(axi, sizebar_length, sizebar_units, color="w", fmt=".0f")
+            # d) inset colourbar, labelled with the image's true flux units
+            cax = inset_axes(
+                axi,
+                width="5%",
+                height="50%",
+                loc="upper left",
+                borderpad=1,
+            )
+            cbar = axi.figure.colorbar(im, cax=cax)
+            cbar.set_label(f"[{img.units}]", color="w")
+            cbar.ax.yaxis.set_tick_params(color="w", labelcolor="w")
+            cbar.outline.set_edgecolor("w")
         return ax
 
 
@@ -1211,25 +770,41 @@ class Euclid_VIS(PhotometricInstrument):
     """Euclid VIS imaging channel (broad optical band, ~550-900 nm)."""
 
     def __init__(self, z=None):
+        """
+        Euclid VIS imaging channel.
+
+        Parameters
+        ----------
+        z : float, optional
+            redshift of observations, by default None
+        """
         super().__init__(
             fov=0.787 * 3600,  # ~0.787 deg per detector -> arcsec (illustrative)
             sampling=0.101,  # arcsec/pixel
             res=0.16,  # PSF FWHM ~0.16"
             z=z,
             label="EuclidVIS",
-            # psf_fwhm=0.16,
-            # psf_type="gaussian",
-            # read_noise=4.5,  # e-
-            # dark_current=0.001,  # e-/s/pix
-            # sky_background=0.0015,  # e-/s/pix (approximate, zodiacal-dominated)
-            # zeropoint=24.7,  # AB mag for 1 e-/s (approximate)
-            # gain=1.0,
-            # full_well=200000,
-            # exposure_time=565.0,  # s, single VIS exposure
         )
-        # self.label = r"$\mathrm{Euclid-VIS}$"
+
+    @property
+    def filter_codes(self):
+        """SVO filter codes for Euclid VIS."""
+        return EUCLID_FILTER_CODES
 
     def get_filters(self, grid):
+        """
+        Build the Euclid VIS filter collection.
+
+        Parameters
+        ----------
+        grid : synthesizer.grid.Grid
+            grid to sample filter transmission curves onto
+
+        Returns
+        -------
+        : synthesizer.filters.FilterCollection
+            Euclid VIS filter collection
+        """
         return get_euclid_filter_collection(grid)
 
 
@@ -1237,6 +812,14 @@ class HSTWFC3(PhotometricInstrument):
     """HST WFC3/UVIS, F606W-like broad V band."""
 
     def __init__(self, z=None):
+        """
+        HST WFC3/UVIS, F606W-like broad V band.
+
+        Parameters
+        ----------
+        z : float, optional
+            redshift of observations, by default None
+        """
         super().__init__(
             fov=162.0,  # arcsec, UVIS field of view
             sampling=0.04,  # arcsec/pixel
@@ -1255,7 +838,25 @@ class HSTWFC3(PhotometricInstrument):
             # exposure_time=1200.0,  # s
         )
 
+    @property
+    def filter_codes(self):
+        """SVO filter codes for HST WFC3/UVIS."""
+        return HST_FILTER_CODES
+
     def get_filters(self, grid):
+        """
+        Build the HST WFC3/UVIS filter collection.
+
+        Parameters
+        ----------
+        grid : synthesizer.grid.Grid
+            grid to sample filter transmission curves onto
+
+        Returns
+        -------
+        : synthesizer.filters.FilterCollection
+            HST WFC3/UVIS filter collection
+        """
         return get_hst_filter_collection(grid)
 
 
@@ -1544,6 +1145,7 @@ class LongSlitInstrument(BasicInstrument):
 
     @property
     def slit_length_kpc(self):
+        """Slit length in kpc, truncated to the instrument's maximum extent."""
         if self._slit_length_kpc is None:
             sl = self.slit_length * self._ang_scale
             if sl > self.extent:
@@ -1556,6 +1158,7 @@ class LongSlitInstrument(BasicInstrument):
 
     @property
     def slit_width_kpc(self):
+        """Slit width in kpc."""
         return self.slit_width * self._ang_scale
 
     def get_slit_mask(self, xaxis=0, yaxis=2):

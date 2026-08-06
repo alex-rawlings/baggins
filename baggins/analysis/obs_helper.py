@@ -4,6 +4,7 @@ from copy import copy
 from pygad import UnitQty
 import unyt
 from synthesizer import grid, instruments, GRID_DIR
+from synthesizer.filters import Filter
 from astropy import cosmology
 from baggins.env_config import _cmlogger, synthesizer_data
 from baggins.utils import get_files_in_dir
@@ -14,12 +15,22 @@ __all__ = [
     "get_spectrum_ssp",
     "get_euclid_filter_collection",
     "get_hst_filter_collection",
+    "get_filter_lam_range",
     "get_surface_brightness",
     "get_flux_from_magnitude",
+    "EUCLID_FILTER_CODES",
+    "HST_FILTER_CODES",
 ]
 
 
 _logger = _cmlogger.getChild(__name__)
+
+EUCLID_FILTER_CODES = ["Euclid/VIS.vis"]
+HST_FILTER_CODES = [
+    "HST/ACS_HRC.F435W",
+    "HST/ACS_HRC.F555W",
+    "HST/ACS_HRC.F606W",
+]
 
 
 def set_luminosity(snap, sed, z=0):
@@ -148,10 +159,8 @@ def get_euclid_filter_collection(g, new_lam_size=1000):
     euclid_filters : synthesizer.FilterCollection
         collection of Euclid filters
     """
-    _filter_codes = ["Euclid/VIS.vis"]
-    # _filter_codes.extend([f"Euclid/NISP.{b}" for b in ("Y", "J", "H")])
     euclid_filters = instruments.FilterCollection(
-        filter_codes=_filter_codes, new_lam=g.lam
+        filter_codes=EUCLID_FILTER_CODES, new_lam=g.lam
     )
     euclid_filters.resample_filters(lam_size=new_lam_size)
     return euclid_filters
@@ -174,11 +183,41 @@ def get_hst_filter_collection(g, new_lam_size=1000):
         collection of HST filters
     """
     hst_filters = instruments.FilterCollection(
-        filter_codes=["HST/ACS_HRC.F435W", "HST/ACS_HRC.F555W", "HST/ACS_HRC.F606W"],
+        filter_codes=HST_FILTER_CODES,
         new_lam=g.lam,
     )
     hst_filters.resample_filters(lam_size=new_lam_size)
     return hst_filters
+
+
+def get_filter_lam_range(filter_codes, pad_frac=0.05):
+    """
+    Get the native wavelength range spanned by a set of filters, without
+    requiring a synthesizer grid. Used to tailor a grid's wavelength
+    sampling to where a specific instrument's filters actually have
+    transmission, before the grid itself is built.
+
+    Parameters
+    ----------
+    filter_codes : list of str
+        SVO filter codes (e.g. "Euclid/VIS.vis")
+    pad_frac : float, optional
+        fractional padding applied to the combined [min, max] range, by
+        default 0.05
+
+    Returns
+    -------
+    lam_min, lam_max : float
+        wavelength bounds in Angstrom
+    """
+    lam_min = np.inf
+    lam_max = -np.inf
+    for code in filter_codes:
+        f = Filter(code)
+        lam_min = min(lam_min, f.original_lam.min().to("angstrom").value)
+        lam_max = max(lam_max, f.original_lam.max().to("angstrom").value)
+    pad = (lam_max - lam_min) * pad_frac
+    return lam_min - pad, lam_max + pad
 
 
 def get_surface_brightness(

@@ -17,6 +17,13 @@ parser.add_argument(
     type=str,
     dest="model",
 )
+parser.add_argument(
+    "--part-per-bin",
+    help="particles per bin",
+    dest="partperbin",
+    type=float,
+    default=1e5,
+)
 parser.add_argument("-s", "--save", help="save location", dest="save", type=str)
 parser.add_argument(
     "--saveOOS", help="save sampled density data", dest="saveOOS", type=str
@@ -50,6 +57,7 @@ if args.model == "s":
             args.files[0], figname_base=figname_base
         )
     else:
+        args.files = args.files[0]
         abgdens = bgs.analysis.ABGDensityModelSimple(figname_base=figname_base)
 else:
     figname_base = "abg_density/abg_density_hierarchy"
@@ -59,7 +67,7 @@ else:
         )
     else:
         abgdens = bgs.analysis.ABGDensityModelHierarchy(figname_base=figname_base)
-abgdens.extract_data(args.files, extent=20, bin_count=1e5)
+abgdens.extract_data(args.files, extent=20, bin_count=args.partperbin)
 
 sample_kwargs = {"adapt_delta": 0.995, "max_treedepth": 15}
 if args.save is not None:
@@ -81,11 +89,11 @@ else:
         abgdens.all_posterior_pred_plots()
 
         # set up guiding Plummer lines
-        ax = abgdens.all_posterior_OOS_plots(save=False)
-        abgdens.add_guiding_Plummer(ax=ax, rS=0.2)
+        ax = abgdens.plot_posterior_OOS(save=False)
+        """abgdens.add_guiding_Plummer(ax=ax, rS=0.2)
         bgs.plotting.add_log_guiding_gradients(
             ax=ax, x0=0.085, x1=0.2, y1=1e3, b=[-2, -1, 0, 1, 2], offset=-0.01
-        )
+        )"""
         bgs.plotting.savefig(next(abgdens.gen_postOOS_plot_name))
 abgdens.print_parameter_percentiles(abgdens.latent_qtys)
 if args.model == "h":

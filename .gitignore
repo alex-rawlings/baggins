@@ -161,6 +161,7 @@ TSWLatexianTemp*
 *.bak
 *.sav
 .vscode
+.claude
 
 # Texpad
 .texpadtmp
@@ -205,6 +206,7 @@ baggins/logs
 
 # documentation
 baggins/docs/_build/*
+AI_output/*
 
 # evironment parameters: template available
 baggins/env_params.yml
