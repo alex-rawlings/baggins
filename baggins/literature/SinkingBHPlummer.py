@@ -229,11 +229,15 @@ class SinkingBHPlummer:
             plotting axes, by default None
         """
         has_ketju = True
+        label = kwargs.setdefault("label", "")
         try:
             ketju_file = get_ketjubhs_in_dir(simdir)[0]
+            label += " Ketju"
         except IndexError:
             _logger.warning("BH position will be taken from snapshots!")
             has_ketju = False
+            label += " Gadget"
+        kwargs["label"] = label
         snapfiles = get_snapshots_in_dir(simdir)
         N = len(snapfiles)
         t = np.full(N, np.nan)
@@ -273,7 +277,7 @@ class SinkingBHPlummer:
                 )
             ax.plot(bh.t / Gyr, radial_separation(xcom_interp - bh.x / kpc), **kwargs)
         else:
-            ax.plot(t, radial_separation(snap_bh - xcom), marker=".")
+            ax.plot(t, radial_separation(snap_bh - xcom), marker=".", **kwargs)
         ax.set_ylim(None, 2 * self.a / kpc)
         ax.legend()
 

@@ -13,13 +13,14 @@ __all__ = [
     "set_luminosity",
     "get_synthesizer_grid",
     "get_spectrum_ssp",
-    "get_euclid_filter_collection",
-    "get_hst_filter_collection",
+    "get_filter_collection",
     "get_filter_lam_range",
     "get_surface_brightness",
     "get_flux_from_magnitude",
     "EUCLID_FILTER_CODES",
     "HST_FILTER_CODES",
+    "JWST_MIRI_FILTER_CODES",
+    "JWST_NIRCam_FILTER_CODES",
 ]
 
 
@@ -30,6 +31,58 @@ HST_FILTER_CODES = [
     "HST/ACS_HRC.F435W",
     "HST/ACS_HRC.F555W",
     "HST/ACS_HRC.F606W",
+]
+JWST_MIRI_FILTER_CODES = [
+    f"JWST/MIRI.F{x}"
+    for x in [
+        "560W",
+        "770W",
+        "1000W",
+        "1065C",
+        "1140C",
+        "1130W",
+        "1280W",
+        "1500W",
+        "1550C",
+        "1800W",
+        "2100W",
+        "2300C",
+        "2550W",
+    ]
+]
+JWST_NIRCam_FILTER_CODES = [
+    f"JWST/NIRCam.F{x}"
+    for x in [
+        "070W",
+        "090W",
+        "115W",
+        "140M",
+        "150W",
+        "162M",
+        "164N",
+        "150W2",
+        "182M",
+        "187N",
+        "200W",
+        "210M",
+        "212N",
+        "250M",
+        "277W",
+        "300M",
+        "323N",
+        "322W2",
+        "335M",
+        "356W",
+        "360M",
+        "405N",
+        "410M",
+        "430M",
+        "444W",
+        "460M",
+        "466N",
+        "470N",
+        "480M",
+    ]
 ]
 
 
@@ -143,51 +196,35 @@ def get_spectrum_ssp(
     return g, sed
 
 
-def get_euclid_filter_collection(g, new_lam_size=1000):
+def get_filter_collection(g, instr, new_lam_size=1000):
     """
-    Convenience function to return all Euclid transmission filters.
+    Convenience function to return all instrument transmission filters.
 
     Parameters
     ----------
     g : synthesizer.grid.Grid
         grid object to query wavelengths from
+    instr : str
+        instrument name
     new_lam_size : int, optional
         resample grid with this many wavelength bins, by default 1000
 
     Returns
     -------
-    euclid_filters : synthesizer.FilterCollection
-        collection of Euclid filters
+    instr_filters : synthesizer.FilterCollection
+        collection of instrument filters
     """
-    euclid_filters = instruments.FilterCollection(
-        filter_codes=EUCLID_FILTER_CODES, new_lam=g.lam
+    instr_filter_map = dict(
+        euclid=EUCLID_FILTER_CODES,
+        hst=HST_FILTER_CODES,
+        jwst_miri=JWST_MIRI_FILTER_CODES,
+        jwst_nircam=JWST_NIRCam_FILTER_CODES,
     )
-    euclid_filters.resample_filters(lam_size=new_lam_size)
-    return euclid_filters
-
-
-def get_hst_filter_collection(g, new_lam_size=1000):
-    """
-    Convenience function to return all HST transmission filters.
-
-    Parameters
-    ----------
-    g : synthesizer.grid.Grid
-        grid object to query wavelengths from
-    new_lam_size : int, optional
-        resample grid with this many wavelength bins, by default 1000
-
-    Returns
-    -------
-    hst_filters : synthesizer.FilterCollection
-        collection of HST filters
-    """
-    hst_filters = instruments.FilterCollection(
-        filter_codes=HST_FILTER_CODES,
-        new_lam=g.lam,
+    instr_filters = instruments.FilterCollection(
+        filter_codes=instr_filter_map[instr.lower()], new_lam=g.lam
     )
-    hst_filters.resample_filters(lam_size=new_lam_size)
-    return hst_filters
+    instr_filters.resample_filters(lam_size=new_lam_size)
+    return instr_filters
 
 
 def get_filter_lam_range(filter_codes, pad_frac=0.05):

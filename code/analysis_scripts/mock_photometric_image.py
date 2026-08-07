@@ -8,6 +8,8 @@ Synthesizer's particle imaging pipeline
 """
 
 import argparse
+import os.path
+import matplotlib.pyplot as plt
 import pygad
 import baggins as bgs
 
@@ -24,34 +26,47 @@ parser.add_argument(
     dest="instrument",
     type=str,
     help="instrument",
-    choices=["HST", "Euclid"],
+    choices=["HST", "Euclid", "JWST-MIRI", "JWST-NIRCam"],
     default="Euclid",
+)
+parser.add_argument(
+    "--rgb",
+    dest="rgb",
+    type=int,
+    nargs="*",
+    help="filters to use for RGB image",
+    default=[0, 1, 2],
 )
 args = parser.parse_args()
 
 snapfile = "/orion/ptmp/arawling/recoil-sims/k0540_snap_009.hdf5"
-redshift = 0.6
-
 
 snap = pygad.Snapshot(args.snapfile, physical=True)
 bgs.analysis.basic_snapshot_centring(snap)
-# snap = snap[pygad.BallMask(10)]
+
+rgb = {"r": None, "g": None, "b": None}
 
 if args.instrument == "Euclid":
     instr = bgs.analysis.Euclid_VIS(z=args.redshift)
-else:
+elif args.instrument == "HST":
     instr = bgs.analysis.HSTWFC3(z=args.redshift)
-# This snapshot only tracks a 2 kpc nuclear region around the BH -- cap
-# the instrument's default 40 kpc frame down to something comparable to
-# the data, so the galaxy isn't a tiny speck in an otherwise empty image.
-# instr.max_extent = 10.0
-# This snapshot has no age/metallicity blocks (collisionless-only
-# output), so every star is assigned the same SSP -- expect a
-# structurally realistic but colour-flat mock from this dataset.
-# `softening` is left as None so the instrument derives a smoothing
-# length from its own resolution element instead of an arbitrary value.
+    rgb.update(zip("rgb", (bgs.analysis.HST_FILTER_CODES[c] for c in args.rgb)))
+elif args.instrument == "JWST-MIRI":
+    instr = bgs.analysis.JWST_MIRI(z=args.redshift)
+    rgb.update(zip("rgb", (bgs.analysis.JWST_MIRI_FILTER_CODES[c] for c in args.rgb)))
+elif args.instrument == "JWST-NIRCam":
+    instr = bgs.analysis.JWST_NIRCam(z=args.redshift)
+    rgb.update(zip("rgb", (bgs.analysis.JWST_NIRCam_FILTER_CODES[c] for c in args.rgb)))
+
 instr.load_and_project_galaxy(snap, ages=1e9, metallicity=0.03396)
 instr.generate_particle_spectra()
 instr.build_instrument()
 instr.observe()
-bgs.plotting.savefig("test.png")
+bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"mock_obs/{instr.name}_flux.png"))
+plt.close()
+try:
+    instr.make_rgb_image(**rgb)
+    bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"mock_obs/{instr.name}_rgb.png"))
+    plt.close()
+except ValueError:
+    print(f"Can't make RGB image for instrument {instr.name}")

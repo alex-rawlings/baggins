@@ -4,7 +4,7 @@ from functools import lru_cache
 import numpy as np
 from scipy.stats import binned_statistic, gaussian_kde
 import matplotlib.pyplot as plt
-from matplotlib.colors import AsinhNorm
+from matplotlib.colors import AsinhNorm, Normalize
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from astropy.units import Unit
 from astropy.cosmology import Planck18
@@ -18,16 +18,21 @@ from synthesizer.kernel_functions import Kernel
 from synthesizer.instruments.photometric_imager import PhotometricImager
 from baggins.analysis.obs_helper import (
     get_synthesizer_grid,
-    get_euclid_filter_collection,
-    get_hst_filter_collection,
+    get_filter_collection,
     get_filter_lam_range,
     EUCLID_FILTER_CODES,
     HST_FILTER_CODES,
+    JWST_MIRI_FILTER_CODES,
+    JWST_NIRCam_FILTER_CODES,
 )
 from baggins.analysis.voronoi import VoronoiKinematics
 from baggins.env_config import _cmlogger
 from baggins.cosmology import angular_scale
-from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
+from baggins.mathematics import (
+    get_histogram_bin_centres,
+    equal_count_bins,
+    next_square_root,
+)
 from baggins.plotting import draw_sizebar
 
 __all__ = [
@@ -38,6 +43,8 @@ __all__ = [
     "HARMONI_SPATIAL",
     "Euclid_VIS",
     "HSTWFC3",
+    "JWST_MIRI",
+    "JWST_NIRCam",
     "ERIS_IFU",
     "JWST_IFU",
     "MICADO_WFM",
@@ -674,6 +681,130 @@ class PhotometricInstrument(BasicInstrument):
             psfs=psfs,
         )
 
+    def _generate_flux_images(self, angular=False):
+        """
+        Generate the attenuated flux image collection for this instrument.
+
+        Falls back to unsmoothed 'hist' imaging if smoothed imaging fails,
+        and applies the instrument's PSFs when present.
+
+        Parameters
+        ----------
+        angular : bool, optional
+            use angular (arcsec) units instead of physical (kpc), by
+            default False
+
+        Returns
+        -------
+        imgs : synthesizer.imaging.ImageCollection
+            one image per filter, keyed by filter code
+        """
+        kwargs = dict(
+            instrument=self._instr,
+            fov=self.synthesizer_fov(angular=angular),
+            img_type="smoothed",
+            kernel=Kernel().get_kernel(),
+            cosmo=Planck18,
+        )
+        try:
+            imgs = self.galaxy.get_images_flux("attenuated", **kwargs)
+        except Exception as e:
+            _logger.warning(
+                f"Smoothed imaging failed ({e}); falling back to unsmoothed "
+                "'hist' imaging. Images will look noticeably worse."
+            )
+            kwargs["img_type"] = "hist"
+            imgs = self.galaxy.get_images_flux("attenuated", **kwargs)
+
+        if self._instr.psfs is not None:
+            imgs = self._instr.apply_psfs(imgs)
+
+        return imgs
+
+    def make_rgb_image(self, r, g, b, ax=None, angular=False):
+        """
+        Create and plot an RGB composite image from three of this
+        instrument's filters.
+
+        The three filters are mapped to the red, green and blue channels,
+        combined with synthesizer's ``make_rgb_image``, and normalised with
+        a percentile stretch before display.
+
+        Parameters
+        ----------
+        r : str
+            filter code to map to the red channel
+        g : str
+            filter code to map to the green channel
+        b : str
+            filter code to map to the blue channel
+        ax : matplotlib.axes.Axes, optional
+            axis to plot the composite into, by default None (creates a new
+            figure and axis)
+        angular : bool, optional
+            use angular (arcsec) units instead of physical (kpc), by
+            default False
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            axis the RGB image was plotted onto
+
+        Raises
+        ------
+        ValueError
+            if any of the requested filter codes is not one of this
+            instrument's filters
+        """
+        rgb_filters = {"R": r, "G": g, "B": b}
+        valid = set(self.filters.filter_codes)
+        for channel, fcode in rgb_filters.items():
+            if fcode not in valid:
+                raise ValueError(
+                    f"filter '{fcode}' requested for the {channel} channel is "
+                    f"not one of this instrument's filters: {sorted(valid)}"
+                )
+
+        imgs = self._generate_flux_images(angular=angular)
+        rgb_img = imgs.make_rgb_image(
+            rgb_filters={channel: [fcode] for channel, fcode in rgb_filters.items()}
+        )
+
+        vmin = -np.percentile(rgb_img, 32)
+        vmax = np.percentile(rgb_img, 99.9)
+        norm = Normalize(vmin=vmin, vmax=vmax, clip=True)
+        rgb_img = norm(rgb_img)
+
+        if ax is None:
+            fig, ax = plt.subplots()
+        else:
+            fig = ax.get_figure()
+        rgb_fmt = lambda x: os.path.splitext(x)[-1].lstrip(".")
+        fig.suptitle(
+            rf"{self.label} (r:{rgb_fmt(r)}, g:{rgb_fmt(g)}, b:{rgb_fmt(b)}) $z={self.redshift:.3f}$"
+        )
+
+        fov_width = self.synthesizer_fov(angular=angular)
+        half_width = 0.5 * fov_width.value
+        extent = [-half_width, half_width, -half_width, half_width]
+        sizebar_units = "arcsec" if angular else "kpc"
+        sizebar_length = 0.2 * half_width
+
+        ax.imshow(
+            rgb_img.swapaxes(0, 1),
+            origin="lower",
+            interpolation="nearest",
+            extent=extent,
+        )
+        ax.set_facecolor("k")
+        ax.grid(False)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        draw_sizebar(ax, sizebar_length, sizebar_units, color="w", fmt=".0f")
+        return ax
+
     def observe(self, ax=None, angular=False):
         """
         Generate and plot flux images for this instrument's filters.
@@ -696,31 +827,26 @@ class PhotometricInstrument(BasicInstrument):
         ax : list of matplotlib.axes.Axes
             axes the images were plotted onto
         """
-        kwargs = dict(
-            instrument=self._instr,
-            fov=self.synthesizer_fov(angular=angular),
-            img_type="smoothed",
-            kernel=Kernel().get_kernel(),
-            cosmo=Planck18,
-        )
-        try:
-            imgs = self.galaxy.get_images_flux("attenuated", **kwargs)
-        except Exception as e:
-            _logger.warning(
-                f"Smoothed imaging failed ({e}); falling back to unsmoothed "
-                "'hist' imaging. Images will look noticeably worse."
-            )
-            kwargs["img_type"] = "hist"
-            imgs = self.galaxy.get_images_flux("attenuated", **kwargs)
-
-        if self._instr.psfs is not None:
-            imgs = self._instr.apply_psfs(imgs)
+        imgs = self._generate_flux_images(angular=angular)
 
         if ax is None:
             nax = len(self.filters)
-            fig, ax = plt.subplots(ncols=nax, sharex="all", sharey="all")
+            fig, ax = plt.subplots(ncols=nax, sharex="all", sharey="all", squeeze=False)
+            if nax > 3:
+                nr = next_square_root(nax)
+                fig, ax = plt.subplots(
+                    nrows=nr,
+                    ncols=nr,
+                    sharex="all",
+                    sharey="all",
+                    figsize=(2 * nr, 2 * nr),
+                )
+            else:
+                fig, ax = plt.subplots(
+                    ncols=nax, sharex="all", sharey="all", squeeze=False
+                )
             if nax == 1:
-                ax = [ax]
+                ax = np.array([ax])
         else:
             try:
                 fig = ax.get_figure()
@@ -733,11 +859,13 @@ class PhotometricInstrument(BasicInstrument):
         sizebar_units = "arcsec" if angular else "kpc"
         sizebar_length = 0.2 * half_width
 
-        for axi, fcode in zip(ax, self.filters.filter_codes):
+        used_axes = set()
+        for axi, fcode in zip(ax.flat, self.filters.filter_codes):
+            used_axes.add(axi)
             img = imgs[fcode]
             norm = _robust_asinh_norm(img.arr)
             im = axi.imshow(
-                img.arr, cmap="bone", norm=norm, extent=extent, origin="lower"
+                img.arr.T, cmap="bone", norm=norm, extent=extent, origin="lower"
             )
             axi.set_title(fcode)
             axi.set_facecolor("k")
@@ -763,6 +891,10 @@ class PhotometricInstrument(BasicInstrument):
             cbar.set_label(f"[{img.units}]", color="w")
             cbar.ax.yaxis.set_tick_params(color="w", labelcolor="w")
             cbar.outline.set_edgecolor("w")
+
+        for axi in ax.flat:
+            if axi not in used_axes:
+                fig.delaxes(axi)
         return ax
 
 
@@ -805,7 +937,7 @@ class Euclid_VIS(PhotometricInstrument):
         : synthesizer.filters.FilterCollection
             Euclid VIS filter collection
         """
-        return get_euclid_filter_collection(grid)
+        return get_filter_collection(grid, "euclid")
 
 
 class HSTWFC3(PhotometricInstrument):
@@ -826,16 +958,6 @@ class HSTWFC3(PhotometricInstrument):
             res=0.07,  # diffraction-limited PSF FWHM, approximate
             z=z,
             label="HSTWFC3",
-            # psf_fwhm=0.07,
-            # psf_type="moffat",
-            # moffat_beta=3.0,
-            # read_noise=3.1,  # e-
-            # dark_current=0.0153,  # e-/s/pix
-            # sky_background=0.03,  # e-/s/pix, approximate
-            # zeropoint=26.5,  # AB mag for 1 e-/s (approximate, filter-dependent)
-            # gain=1.5,
-            # full_well=63000,
-            # exposure_time=1200.0,  # s
         )
 
     @property
@@ -857,7 +979,91 @@ class HSTWFC3(PhotometricInstrument):
         : synthesizer.filters.FilterCollection
             HST WFC3/UVIS filter collection
         """
-        return get_hst_filter_collection(grid)
+        return get_filter_collection(grid, "hst")
+
+
+class JWST_MIRI(PhotometricInstrument):
+    """JWST MIRI"""
+
+    def __init__(self, z=None):
+        """
+        JWST MIRI
+
+        Parameters
+        ----------
+        z : float, optional
+            redshift of observations, by default None
+        """
+        super().__init__(
+            fov=74,  # arcsec
+            sampling=0.11,  # arcsec/pixel
+            res=0.07,  # diffraction-limited PSF FWHM, approximate
+            z=z,
+            label="JWST-MIRI",
+        )
+
+    @property
+    def filter_codes(self):
+        """SVO filter codes for JWST-MIRI."""
+        return JWST_MIRI_FILTER_CODES
+
+    def get_filters(self, grid):
+        """
+        Build the JWST-MIRI filter collection.
+
+        Parameters
+        ----------
+        grid : synthesizer.grid.Grid
+            grid to sample filter transmission curves onto
+
+        Returns
+        -------
+        : synthesizer.filters.FilterCollection
+            JWST-MIRI filter collection
+        """
+        return get_filter_collection(grid, "jwst_miri")
+
+
+class JWST_NIRCam(PhotometricInstrument):
+    """JWST NIRCam"""
+
+    def __init__(self, z=None):
+        """
+        JWST NIRCam
+
+        Parameters
+        ----------
+        z : float, optional
+            redshift of observations, by default None
+        """
+        super().__init__(
+            fov=132,  # arcsec
+            sampling=0.031,  # arcsec/pixel
+            res=0.07,  # diffraction-limited PSF FWHM, approximate
+            z=z,
+            label="JWST-NIRCam",
+        )
+
+    @property
+    def filter_codes(self):
+        """SVO filter codes for JWST-NIRCam."""
+        return JWST_NIRCam_FILTER_CODES
+
+    def get_filters(self, grid):
+        """
+        Build the JWST-MIRI filter collection.
+
+        Parameters
+        ----------
+        grid : synthesizer.grid.Grid
+            grid to sample filter transmission curves onto
+
+        Returns
+        -------
+        : synthesizer.filters.FilterCollection
+            JWST-MIRI filter collection
+        """
+        return get_filter_collection(grid, "jwst_nircam")
 
 
 # ------------------------------------------------------------------
