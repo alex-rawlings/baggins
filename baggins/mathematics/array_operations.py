@@ -207,35 +207,36 @@ def radial_bins_by_count(r, n_start=100, n_end=10000, n_bins=20, r_min=None):
 
     # --- Geometric part -----------------------------------------------
     target_per_bin = np.geomspace(n_start, n_end, n_bins)
-    cum_counts = np.round(np.cumsum(target_per_bin)).astype(int)
+    cumul_counts = np.round(np.cumsum(target_per_bin))
 
     # --- Constant-size part (only if particles remain) -----------------
-    if cum_counts[-1] < N:
-        n_remaining = N - cum_counts[-1]
+    if cumul_counts[-1] < N:
+        n_remaining = N - cumul_counts[-1]
         n_extra_bins = int(np.ceil(n_remaining / n_end))
-        extra_cum = cum_counts[-1] + n_end * np.arange(1, n_extra_bins + 1)
-        cum_counts = np.concatenate([cum_counts, extra_cum])
+        extra_cumul = cumul_counts[-1] + n_end * np.arange(1, n_extra_bins + 1)
+        cumul_counts = np.concatenate([cumul_counts, extra_cumul])
 
     # Clip to available particles and remove duplicate indices
-    cum_counts = np.clip(cum_counts, 1, N)
-    cum_counts = np.unique(cum_counts)
+    cumul_counts = np.clip(cumul_counts, 1, N)
+    cumul_counts = np.unique(cumul_counts)
 
     # If the last bin is short of its target count (n_end), merge it
     # into the previous bin by dropping that intermediate edge.
-    if len(cum_counts) >= 2:
-        last_bin_count = cum_counts[-1] - cum_counts[-2]
+    if len(cumul_counts) >= 2:
+        last_bin_count = cumul_counts[-1] - cumul_counts[-2]
         if last_bin_count < n_end:
-            cum_counts = np.delete(cum_counts, -2)
+            cumul_counts = np.delete(cumul_counts, -2)
 
     # Make sure the final edge reaches all the way to the last particle
-    if cum_counts[-1] != N:
-        cum_counts[-1] = N
+    if cumul_counts[-1] != N:
+        cumul_counts[-1] = N
 
     # Bin edges: r_min, then the radius at each cumulative count
-    edge_radii = r[cum_counts - 1]
+    cumul_counts = cumul_counts.astype(int)
+    edge_radii = r[cumul_counts - 1]
     edges = np.concatenate(([r_min], edge_radii))
 
-    counts = np.diff(np.concatenate(([0], cum_counts)))
+    counts = np.diff(cumul_counts, prepend=0)
 
     return edges, counts
 
