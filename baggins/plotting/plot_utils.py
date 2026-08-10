@@ -3,7 +3,7 @@ import inspect
 from matplotlib import rc_file, rcdefaults, rcParams, use
 from matplotlib.pyplot import gcf, subplots, close
 from PIL import Image
-import os.path
+import os
 from baggins._backend.States import PublishingState
 from baggins.env_config import _cmlogger, git_hash, username, date_format, fig_ext
 
@@ -52,6 +52,7 @@ def savefig(fname, fig=None, save_kwargs={}, force_ext=False):
         meta_data = dict(
             Author=username, Creator=f.filename, CreationDate=now, Keywords=git_hash
         )
+        os.makedirs(os.path.abspath(os.path.dirname(fname)), exist_ok=True)
         # save to the correct format
         if force_ext:
             fig.savefig(fname, metadata=meta_data, **save_kwargs)
