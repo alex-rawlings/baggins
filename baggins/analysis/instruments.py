@@ -24,6 +24,7 @@ from baggins.analysis.obs_helper import (
     HST_FILTER_CODES,
     JWST_MIRI_FILTER_CODES,
     JWST_NIRCam_FILTER_CODES,
+    VLT_FORS2_FILTER_CODES,
 )
 from baggins.analysis.voronoi import VoronoiKinematics
 from baggins.env_config import _cmlogger
@@ -47,10 +48,10 @@ __all__ = [
     "JWST_NIRCam",
     "ERIS_IFU",
     "JWST_IFU",
-    "MICADO_WFM",
-    "MICADO_NFM",
-    "VLT_FORS2",
-    "ERIS_NIX_NFM",
+    "MICADO_WFM_LSS",
+    "MICADO_NFM_LSS",
+    "VLT_FORS2_LSS",
+    "ERIS_NIX_NFM_LSS",
     "JWST_LSS",
 ]
 
@@ -997,7 +998,7 @@ class JWST_MIRI(PhotometricInstrument):
         super().__init__(
             fov=74,  # arcsec
             sampling=0.11,  # arcsec/pixel
-            res=0.07,  # diffraction-limited PSF FWHM, approximate
+            res=0.22,  # diffraction-limited PSF FWHM at F560W; grows with wavelength
             z=z,
             label="JWST-MIRI",
         )
@@ -1051,7 +1052,7 @@ class JWST_NIRCam(PhotometricInstrument):
 
     def get_filters(self, grid):
         """
-        Build the JWST-MIRI filter collection.
+        Build the JWST-NIRCam filter collection.
 
         Parameters
         ----------
@@ -1061,9 +1062,51 @@ class JWST_NIRCam(PhotometricInstrument):
         Returns
         -------
         : synthesizer.filters.FilterCollection
-            JWST-MIRI filter collection
+            JWST-NIRCam filter collection
         """
         return get_filter_collection(grid, "jwst_nircam")
+
+
+class VLT_FORS2(PhotometricInstrument):
+    """VLT FORS2 Imager"""
+
+    def __init__(self, z=None):
+        """
+        VLT FORS2 Imager
+
+        Parameters
+        ----------
+        z : float, optional
+            redshift of observations, by default None
+        """
+        super().__init__(
+            fov=6.8 * 60,  # arcsec (6.8' FoV, standard-resolution collimator)
+            sampling=0.25,  # arcsec/pixel (SR collimator, default 2x2 binning)
+            res=0.5,  # seeing-limited PSF FWHM (ground-based; Paranal ~0.5-0.8")
+            z=z,
+            label="FORS2",
+        )
+
+    @property
+    def filter_codes(self):
+        """SVO filter codes for Paranal VLT FORS2"""
+        return VLT_FORS2_FILTER_CODES
+
+    def get_filters(self, grid):
+        """
+        Build the Paranal VLT FORS2 filter collection.
+
+        Parameters
+        ----------
+        grid : synthesizer.grid.Grid
+            grid to sample filter transmission curves onto
+
+        Returns
+        -------
+        : synthesizer.filters.FilterCollection
+            Paranal VLT FORS2 filter collection
+        """
+        return get_filter_collection(grid, "vlt_fors2")
 
 
 # ------------------------------------------------------------------
@@ -1458,7 +1501,7 @@ class LongSlitInstrument(BasicInstrument):
         return get_histogram_bin_centres(bins), vel_disp
 
 
-class MICADO_WFM(LongSlitInstrument):
+class MICADO_WFM_LSS(LongSlitInstrument):
     def __init__(self, rng=None, z=None):
         """
         MICADO for ELT
@@ -1476,7 +1519,7 @@ class MICADO_WFM(LongSlitInstrument):
         self.label = r"$\mathrm{MICADO}$"
 
 
-class MICADO_NFM(LongSlitInstrument):
+class MICADO_NFM_LSS(LongSlitInstrument):
     def __init__(self, rng=None, z=None):
         """
         MICADO for ELT
@@ -1494,7 +1537,7 @@ class MICADO_NFM(LongSlitInstrument):
         self.label = r"$\mathrm{MICADO}$"
 
 
-class VLT_FORS2(LongSlitInstrument):
+class VLT_FORS2_LSS(LongSlitInstrument):
     def __init__(self, rng=None, z=None):
         """
         VLT FORS2 instrument for long slit spectroscopy
@@ -1512,7 +1555,7 @@ class VLT_FORS2(LongSlitInstrument):
         self.label = r"$\mathrm{FORS2}$"
 
 
-class ERIS_NIX_NFM(LongSlitInstrument):
+class ERIS_NIX_NFM_LSS(LongSlitInstrument):
     def __init__(self, z=None, rng=None):
         """
         Eris long slit. Parameters taken from:

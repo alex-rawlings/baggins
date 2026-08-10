@@ -21,6 +21,7 @@ __all__ = [
     "HST_FILTER_CODES",
     "JWST_MIRI_FILTER_CODES",
     "JWST_NIRCam_FILTER_CODES",
+    "VLT_FORS2_FILTER_CODES",
 ]
 
 
@@ -83,6 +84,9 @@ JWST_NIRCam_FILTER_CODES = [
         "470N",
         "480M",
     ]
+]
+VLT_FORS2_FILTER_CODES = [
+    f"Paranal/FORS2.ESO{x}" for x in ["1073", "1074", "1082", "1075", "1076", "1077"]
 ]
 
 
@@ -219,6 +223,7 @@ def get_filter_collection(g, instr, new_lam_size=1000):
         hst=HST_FILTER_CODES,
         jwst_miri=JWST_MIRI_FILTER_CODES,
         jwst_nircam=JWST_NIRCam_FILTER_CODES,
+        vlt_fors2=VLT_FORS2_FILTER_CODES,
     )
     instr_filters = instruments.FilterCollection(
         filter_codes=instr_filter_map[instr.lower()], new_lam=g.lam
