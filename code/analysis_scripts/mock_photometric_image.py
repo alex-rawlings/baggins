@@ -26,7 +26,7 @@ parser.add_argument(
     dest="instrument",
     type=str,
     help="instrument",
-    choices=["HST", "Euclid", "JWST-MIRI", "JWST-NIRCam"],
+    choices=["HST", "Euclid", "JWST-MIRI", "JWST-NIRCam", "FORS2"],
     default="Euclid",
 )
 parser.add_argument(
@@ -57,6 +57,9 @@ elif args.instrument == "JWST-MIRI":
 elif args.instrument == "JWST-NIRCam":
     instr = bgs.analysis.JWST_NIRCam(z=args.redshift)
     rgb.update(zip("rgb", (bgs.analysis.JWST_NIRCam_FILTER_CODES[c] for c in args.rgb)))
+elif args.instrument == "FORS2":
+    instr = bgs.analysis.VLT_FORS2(z=args.redshift)
+    rgb.update(zip("rgb", (bgs.analysis.VLT_FORS2_FILTER_CODES[c] for c in args.rgb)))
 
 instr.load_and_project_galaxy(snap, ages=1e9, metallicity=0.03396)
 instr.generate_particle_spectra()

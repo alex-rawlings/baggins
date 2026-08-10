@@ -46,6 +46,7 @@ __all__ = [
     "HSTWFC3",
     "JWST_MIRI",
     "JWST_NIRCam",
+    "VLT_FORS2",
     "ERIS_IFU",
     "JWST_IFU",
     "MICADO_WFM_LSS",
