@@ -1,14 +1,6 @@
-```
-888888b.         d8888  .d8888b.   .d8888b.  8888888           .d8888b.   
-888  "88b       d88888 d88P  Y88b d88P  Y88b   888            d88P  Y88b  
-888  .88P      d88P888 888    888 888    888   888            Y88b.       
-8888888K.     d88P 888 888        888          888   88888b.   "Y888b.    
-888  "Y88b   d88P  888 888  88888 888  88888   888   888 "88b     "Y88b.  
-888    888  d88P   888 888    888 888    888   888   888  888       "888  
-888   d88P d8888888888 Y88b  d88P Y88b  d88P   888   888  888 Y88b  d88P  
-8888888P" d88P     888  "Y8888P88  "Y8888P88 8888888 888  888  "Y8888P"   
-                                                                          
-```
+<p align="center">
+<img src="logo/baggins.png" width="300">
+</p>
 
 # BAGGInS: Bayesian Analysis of Galaxy-Galaxy Interactions in Simulations
 
@@ -19,11 +11,10 @@ Helsinki Theoretical Astrophyiscs Group.
 * Mostly the code is designed for use of *isolated* and *gas-free* mergers.
 
 ## How do I get set up?  
-1. A few private repositories need to be installed and added to your python path. These are:  
+1. A few private repositories need to be installed and added to your python path - if you don't have access to these, contact the maintainer. The needed private repos are:  
 - ketjugw  
 - merger-ic-generator  
 - pygad  
-- orbit-analysis  
 - voronoi-binning-cpp  
 2. Next, install the BAGGInS package with `pip install -e .`  
 3. Next, `cd baggins`, and copy a `env_params.yml` file to `baggins` and edit as necessary. The fields under the second document are internal settings of the code, and should not be edited.  

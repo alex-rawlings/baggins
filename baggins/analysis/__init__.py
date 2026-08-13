@@ -1,7 +1,6 @@
 from baggins.analysis.masks import *  # noqa
 from baggins.analysis.analyse_snap import *  # noqa
 from baggins.analysis.analyse_ketju import *  # noqa
-from baggins.analysis.orbits import *  # noqa
 from baggins.analysis.voronoi import *  # noqa
 from baggins.analysis.obs_helper import *  # noqa
 from baggins.analysis.data_classes import *  # noqa
