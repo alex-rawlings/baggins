@@ -39,6 +39,7 @@ Thumbs.db
 *.wmv
 *.png
 *.pdf
+!logo/baggins.png
 
 # Simulation outputs
 *.hdf5
