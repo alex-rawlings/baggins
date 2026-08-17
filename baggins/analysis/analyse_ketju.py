@@ -3,7 +3,6 @@ import scipy.spatial.distance
 import scipy.signal
 import scipy.optimize
 import scipy.integrate
-import scipy.interpolate
 import ketjugw
 from baggins.general.list_ops import get_idx_in_array
 from baggins.general import units
@@ -96,8 +95,18 @@ def interpolate_particle_data(p_old, t):
     p_new = ketjugw.Particle(-99, 0, [0, 0, 0], [0, 0, 0])
     setattr(p_new, "t", t)
     for k, v in p_old.__dict__.items():
-        finterp = scipy.interpolate.interp1d(p_old.t, v, axis=0)
-        setattr(p_new, k, finterp(t))
+        v = np.asarray(v)
+        if v.ndim == 1:
+            interpolated = np.interp(t, p_old.t, v)
+        elif v.ndim == 2:
+            # np.interp only accepts 1-D fp, so interpolate column-by-column
+            # for vector attributes (x, v, spin, ...) of shape (N, M)
+            interpolated = np.column_stack(
+                [np.interp(t, p_old.t, v[:, i]) for i in range(v.shape[1])]
+            )
+        else:
+            raise ValueError(f"Cannot interpolate attribute '{k}' with shape {v.shape}")
+        setattr(p_new, k, interpolated)
     return p_new
 
 
@@ -523,10 +532,7 @@ def get_hard_timespan(t, a, t_s, ah_s):
     int
         array index corresponding to when the binary first becomes hard
     """
-    f = scipy.interpolate.interp1d(
-        t_s, ah_s, bounds_error=False, fill_value=(ah_s[0], ah_s[-1])
-    )
-    bool_arr = a < f(t)
+    bool_arr = a < np.interp(t, t_s, ah_s)
     return np.sum(bool_arr) * (t[1] - t[0]), get_idx_in_array(1, bool_arr)
 
 
