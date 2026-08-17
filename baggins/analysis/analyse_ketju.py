@@ -95,10 +95,9 @@ def interpolate_particle_data(p_old, t):
     # initialise the new particle object
     p_new = ketjugw.Particle(-99, 0, [0, 0, 0], [0, 0, 0])
     setattr(p_new, "t", t)
-    for a in ("m", "x", "v", "spin"):
-        v = getattr(p_old, a)
+    for k, v in p_old.__dict__.items():
         finterp = scipy.interpolate.interp1d(p_old.t, v, axis=0)
-        setattr(p_new, a, finterp(t))
+        setattr(p_new, k, finterp(t))
     return p_new
 
 
