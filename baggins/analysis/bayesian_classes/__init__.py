@@ -25,6 +25,9 @@ from baggins.analysis.bayesian_classes.ABGDensityModels import (  # noqa
     ABGDensityModelSimple,
     ABGDensityModelHierarchy,
 )
-from baggins.analysis.bayesian_classes.ModifiedNFW import ModifiedNFWModelSimple  # noqa
+from baggins.analysis.bayesian_classes.ModifiedNFW import (  # noqa
+    ModifiedNFWModelSimple,
+    ModifiedNFWSpikeModelSimple,
+)
 from baggins.analysis.bayesian_classes.BHBinaryGP import BHBinaryGP  # noqa
 from baggins.analysis.bayesian_classes.GaussianProcesses import GeneralGP  # noqa

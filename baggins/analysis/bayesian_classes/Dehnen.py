@@ -4,8 +4,7 @@ import numpy as np
 import pygad
 from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_snap import basic_snapshot_centring
-from baggins.analysis.obs_helper import set_luminosity
-from baggins.mathematics import get_histogram_bin_centres, equal_count_bins
+from baggins.mathematics import get_histogram_bin_centres, radial_bins_by_count
 from baggins.env_config import _cmlogger, baggins_dir
 from baggins.general import get_snapshot_number
 from baggins.plotting import savefig, get_all_axes_from_plot_collection
@@ -109,7 +108,13 @@ class DehnenModel(HierarchicalModel_2D):
         _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
 
     def extract_data(
-        self, snapfile=None, extent=10, bin_count=1e4, family="stars", sed=None, z=0
+        self,
+        snapfile=None,
+        extent=10,
+        n_start=100,
+        n_end=10000,
+        n_bins=20,
+        family="stars",
     ):
         """
         Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
@@ -135,12 +140,18 @@ class DehnenModel(HierarchicalModel_2D):
         if self._loaded_from_file:
             fname = d[0]
             extent = self._input_data_and_pars["data_opts"]["extent"]
-            bin_count = self._input_data_and_pars["data_opts"]["bin_count"]
             family = self._input_data_and_pars["data_opts"]["family"]
+            n_start = self._input_data_and_pars["data_opts"]["n_start"]
+            n_end = self._input_data_and_pars["data_opts"]["n_end"]
+            n_bins = self._input_data_and_pars["data_opts"]["n_bins"]
         else:
             fname = snapfile
             self._input_data_and_pars["data_opts"] = dict(
-                extent=extent, bin_count=bin_count, family=family
+                extent=extent,
+                n_start=n_start,
+                n_end=n_end,
+                n_bins=n_bins,
+                family=family,
             )
         mask = pygad.BallMask(extent)
         _logger.info(f"Loading file: {fname}")
@@ -149,14 +160,8 @@ class DehnenModel(HierarchicalModel_2D):
         snap = pygad.Snapshot(fname, physical=True)
         basic_snapshot_centring(snap)
         _logger.debug("snapshot loaded and centred")
-        if sed is not None and family == "stars":
-            # this is not used in sampling, so can be set freely each time
-            # method is called
-            obs.update({"lum_per_mass": []})
-            set_luminosity(snap, sed=sed, z=z)
-            obs["lum_per_mass"].append([snap.stars["lum"][0] / snap.stars["mass"][0]])
         subsnap = getattr(snap, family)
-        r_edges = equal_count_bins(subsnap[mask]["r"], bin_count)
+        r_edges = radial_bins_by_count(subsnap[mask]["r"], n_start, n_end, n_bins)[0]
         if len(r_edges) < 3:
             _logger.warning("There are less than 2 data bins!")
         obs["density"].append(

@@ -11,7 +11,11 @@ from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis.analyse_snap import basic_snapshot_centring
 from baggins.general import get_snapshot_number
 from baggins.literature import AlphaBetaGamma_profile
-from baggins.mathematics import equal_count_bins, get_histogram_bin_centres
+from baggins.mathematics import (
+    equal_count_bins,
+    get_histogram_bin_centres,
+    radial_bins_by_count,
+)
 from baggins.plotting import savefig, get_all_axes_from_plot_collection
 from baggins.utils import get_files_in_dir
 from baggins.general import common_string_subgroups
@@ -637,9 +641,18 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         self.merger_id = f"{dname}_{snapnum}"
         _logger.warning(f"Merger ID set to the default value of {self.merger_id}")
 
-    def extract_data(self, snapfile=None, extent=10, bin_count=2e5, family="stars"):
+    def extract_data(
+        self,
+        snapfile=None,
+        extent=10,
+        n_start=100,
+        n_end=10000,
+        n_bins=20,
+        family="stars",
+    ):
         """
-        Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters 'extent' and 'bin_count' are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
+        Extract data to fit from snapshot files. The snapshot is centred using the shrinking sphere method. The parameters are saved to the data .yml files, so calling this method on a previously-fit set will use the original values.
+        The method uses a geometric particle-count binning scheme.
 
         Parameters
         ----------
@@ -647,8 +660,12 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
             snapshot to fit, by default None
         extent : float, optional
             maximum radial extent to fit to [kpc], by default 10
-        bin_count : int, float, optional
-            number of stellar particles per bin, by default 2e5
+        n_start : int, optional
+            number of stellar particles in the innermost bin, by default 100
+        n_end : int, optional
+            number of stellar particles in the outermost bin, by default 10000
+        n_bins : int, optional
+            number of bins to geometrically increase over, by default 20
         family : str, optional
             particle family to analyse, by default 'stars'
 
@@ -662,12 +679,18 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         if self._loaded_from_file:
             fname = d[0]
             extent = self._input_data_and_pars["data_opts"]["extent"]
-            bin_count = self._input_data_and_pars["data_opts"]["bin_count"]
             family = self._input_data_and_pars["data_opts"]["family"]
+            n_start = self._input_data_and_pars["data_opts"]["n_start"]
+            n_end = self._input_data_and_pars["data_opts"]["n_end"]
+            n_bins = self._input_data_and_pars["data_opts"]["n_bins"]
         else:
             fname = snapfile
             self._input_data_and_pars["data_opts"] = dict(
-                extent=extent, bin_count=bin_count, family=family
+                extent=extent,
+                n_start=n_start,
+                n_end=n_end,
+                n_bins=n_bins,
+                family=family,
             )
         mask = pygad.BallMask(extent)
         _logger.info(f"Loading file: {fname}")
@@ -677,7 +700,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         basic_snapshot_centring(snap)
         _logger.debug("snapshot loaded and centred")
         subsnap = getattr(snap, family)
-        r_edges = equal_count_bins(subsnap[mask]["r"], bin_count)
+        r_edges = radial_bins_by_count(subsnap[mask]["r"], n_start, n_end, n_bins)[0]
         obs["density"].append(
             [pygad.analysis.profile_dens(subsnap[mask], qty="mass", r_edges=r_edges)]
         )
