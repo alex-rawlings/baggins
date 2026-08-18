@@ -574,9 +574,7 @@ class _ABGDensityModelBase(HierarchicalModel_2D):
             _logger.exception(f"File {fname} already exists!", exc_info=True)
             raise
         r = self.stan_data[self._independent_qtys_OOS[0]]
-        rho = self.sample_generated_quantity(
-            self.dependent_qtys_posterior[0], state="OOS"
-        )
+        rho = self.sample_generated_quantity(self.dependent_qtys_OOS[0])
         pars = {}
         for p in self.latent_qtys_posterior:
             pars[p] = self.sample_generated_quantity(p)
@@ -729,7 +727,7 @@ class ABGDensityModelSimple(_ABGDensityModelBase):
         fname : str, path-like
             data file
         """
-        d = self._get_data_dir(fname)
+        d = self._get_data_files(fname)
         if self._loaded_from_file:
             if os.path.isdir(d):
                 fname = d[0]
@@ -959,7 +957,7 @@ class ABGDensityModelHierarchy(_ABGDensityModelBase):
         obs = {"r": [], "density": []}
         fname = fname.rstrip("/")
         if self._loaded_from_file:
-            fname = self._get_data_dir(None)[0]
+            fname = self._get_data_files(None)[0]
         if not isinstance(fname, list) and os.path.isfile(fname):
             _logger.info(f"Loading file: {fname}")
             data = np.loadtxt(fname, **kwargs)

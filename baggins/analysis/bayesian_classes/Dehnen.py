@@ -514,7 +514,7 @@ class DehnenModel(HierarchicalModel_2D):
             _logger.exception(f"File {fname} already exists!", exc_info=True)
             raise
         r = self.stan_data["r_OOS"]
-        rho = self.sample_generated_quantity(self.folded_qtys_posterior[0], state="OOS")
+        rho = self.sample_generated_quantity(self.dependent_qtys_OOS[0])
         pars = {}
         for p in self.latent_qtys_posterior:
             pars[p] = self.sample_generated_quantity(p)
