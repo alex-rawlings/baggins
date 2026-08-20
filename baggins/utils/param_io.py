@@ -312,7 +312,7 @@ def to_json(obj, fname):
         json.dump(d, f, indent=4)
 
 
-def read_simulation_parameters(snapdir, *p):
+def read_simulation_parameters(snapdir, *p, parfile=None):
     """
     Read parameters used to run a Gadget-style simulation.
 
@@ -321,7 +321,10 @@ def read_simulation_parameters(snapdir, *p):
     snapdir : str
         simulation output directory
     *p : str
-        parameters to read from file
+        parameter names to read from file. Entries may be plain names or
+        regex patterns (matched against each parameter name with
+        `re.fullmatch`), e.g. "Omega.*" will match all of "Omega0",
+        "OmegaLambda", "OmegaBaryon", etc.
 
     Returns
     -------
@@ -329,22 +332,30 @@ def read_simulation_parameters(snapdir, *p):
         dict of parameters with their values. Numerical parameters are converted to float.
     """
     par_dict = {}
-    with open(os.path.join(snapdir, "../parameters-usedvalues"), "r") as f:
+    potential_parfiles = ["../parameters-usedvalues", "../paramfile-usedvalues"]
+    if parfile is not None:
+        potential_parfiles.insert(0, parfile)
+    for pp in potential_parfiles:
+        parfile = os.path.join(snapdir, pp)
+        if os.path.exists(parfile):
+            break
+    patterns = {_p: re.compile(_p) for _p in p}
+    matched_patterns = set()
+    with open(parfile, "r") as f:
         params = f.readlines()
         for param in params:
             k, v = param.split()
-            if k in p:
-                try:
-                    par_dict[k] = float(v)
-                except ValueError:
-                    par_dict[k] = v
+            for _p, pattern in patterns.items():
+                if pattern.fullmatch(k):
+                    matched_patterns.add(_p)
+                    try:
+                        par_dict[k] = float(v)
+                    except ValueError:
+                        par_dict[k] = v
     try:
-        assert set(par_dict.keys()) == set(p)
+        assert matched_patterns == set(p)
     except AssertionError:
-        missing_keys = []
-        for _p in p:
-            if _p not in par_dict:
-                missing_keys.append(_p)
+        missing_keys = [_p for _p in p if _p not in matched_patterns]
         _logger.exception(
             f"Not all simulation parameters found! {missing_keys} are missing.",
             exc_info=True,
