@@ -16,7 +16,7 @@ class MultipleBHTrajectories:
         self.bhsA = []
         self.bhsB = []
         for _kf in kf:
-            bh1, bh2, _ = bgs.analysis.get_bh_particles(_kf)
+            bh1, bh2 = bgs.analysis.get_bh_particle_pair(_kf)
             bh1, bh2 = bgs.analysis.move_to_centre_of_mass(bh1, bh2)
             self.bhsA.append(bh1)
             self.bhsB.append(bh2)
