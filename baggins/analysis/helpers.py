@@ -1,13 +1,14 @@
 from tqdm import tqdm
 from operator import itemgetter
 from copy import copy
+import h5py
 import pygad
 from baggins.analysis.analyse_snap import basic_snapshot_centring
 from baggins.general.pygad_helper import convert_gadget_time
 from baggins.utils import get_snapshots_in_dir
 from baggins.env_config import _cmlogger
 
-__all__ = ["SnapshotIterator"]
+__all__ = ["SnapshotIterator", "KetjuMergerInfo"]
 
 _logger = _cmlogger.getChild(__name__)
 
@@ -120,3 +121,25 @@ class SnapshotIterator:
             snap = pygad.Snapshot(s, physical=True)
             ts[i] = convert_gadget_time(snap)
         return ts
+
+
+class KetjuMergerInfo:
+    def __init__(self, kfile):
+        self.merged = True
+        with h5py.File(kfile, "r") as f:
+            for k in f["/mergers"].dtype.fields.keys():
+                # all fields hold scalars
+                if f["/mergers"][k].size > 0:
+                    v = f["/mergers"][k]
+                else:
+                    v = None
+                setattr(self, k, v)
+            else:
+                self.merged = False
+
+    @property
+    def radiated_mass(self):
+        if None in [self.m1, self.m2, self.m_remnant]:
+            return None
+        else:
+            return (self.m1 + self.m2) - self.m_remnant

@@ -22,7 +22,7 @@ data_dirs = [
 
 class HardScatter:
     def _data_init(self, i):
-        b1, b2, *_ = bgs.analysis.get_bh_particles(
+        b1, b2 = bgs.analysis.get_bh_particle_pair(
             bgs.utils.get_ketjubhs_in_dir(data_dirs[i])[0]
         )
         b1, b2 = bgs.analysis.move_to_centre_of_mass(b1, b2)

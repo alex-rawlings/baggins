@@ -16,7 +16,8 @@ from baggins.analysis.analyse_snap import (
     velocity_anisotropy,
     escape_velocity,
 )
-from baggins.analysis.analyse_ketju import get_bh_particles
+from baggins.analysis.analyse_ketju import get_bh_particle_pair
+from baggins.analysis.helpers import KetjuMergerInfo
 from baggins.env_config import _cmlogger, date_format, username
 from baggins.general import convert_gadget_time
 from baggins.utils import get_ketjubhs_in_dir, get_snapshots_in_dir, read_parameters
@@ -102,18 +103,19 @@ class HMQuantitiesSingle(HMQuantitiesSingleData):
         self._snap_counter = 0
 
         # #------------------- Determine merger properties -------------------##
-        bh1, bh2, merger_info = get_bh_particles(self.ketju_file)
+        bh1, bh2 = get_bh_particle_pair(self.ketju_file)
         self.merger_remnant = {
             "merged": False,
             "mass": None,
             "spin": None,
             "kick": None,
         }
+        merger_info = KetjuMergerInfo(self.ketju_file)
         if merger_info.merged:
             self.merger_remnant["merged"] = True
-            self.merger_remnant["mass"] = merger_info.mass
-            self.merger_remnant["spin"] = merger_info.chi
-            self.merger_remnant["kick"] = merger_info.kick_magnitude
+            self.merger_remnant["mass"] = merger_info.m_remnant
+            self.merger_remnant["spin"] = merger_info.chi_remnant
+            self.merger_remnant["kick"] = merger_info.kick_velocity
 
     @property
     def snaplist(self):

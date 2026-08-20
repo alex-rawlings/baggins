@@ -7,6 +7,7 @@ __all__ = [
     "radial_bins_by_count",
     "assert_all_unique",
     "get_pixel_value_in_image",
+    "equal_tail_indices",
 ]
 
 
@@ -303,3 +304,47 @@ def get_pixel_value_in_image(x, y, im):
     col = np.clip(((x - xmin) / (xmax - xmin) * nc).astype(int), 0, nc - 1)
     row = np.clip(((y - ymin) / (ymax - ymin) * nr).astype(int), 0, nr - 1)
     return im.get_array()[row, col], row, col
+
+
+def equal_tail_indices(a, b, rtol=1e-9, atol=1e-12):
+    """
+    For two arrays, find where (from the end) the arrays are equal. The arrays may be of differeing lengths. The return is the index in each array from which point onwards the arrays remain equal.
+
+    Parameters
+    ----------
+    a : np.array
+        array 1
+    b : np.array
+        array 2
+    rtol : float, optional
+        relative tolerance, by default 1e-9
+    atol : float, optional
+        absolute tolerance, by default 1e-12
+
+    Returns
+    -------
+    start_a : int
+        starting index for equal parts
+    b_tail : int
+        starting index for equal parts
+    """
+    a = np.asarray(a, dtype=float)
+    b = np.asarray(b, dtype=float)
+
+    n = min(len(a), len(b))
+    if n == 0:
+        return len(a), len(b)
+
+    # Compare the last n elements of each, aligned from the end
+    a_tail = a[-n:]
+    b_tail = b[-n:]
+
+    mismatches = np.flatnonzero(~np.isclose(a_tail, b_tail, rtol=rtol, atol=atol))
+    offset_from_end = (mismatches[-1] + 1) if mismatches.size else 0
+
+    # Convert "offset from the end of the tail" into an absolute index
+    # in each original array
+    start_a = len(a) - n + offset_from_end
+    start_b = len(b) - n + offset_from_end
+
+    return start_a, start_b

@@ -36,7 +36,8 @@ new_filename = bgs.utils.create_file_copy(args.file)
 gyr = ketjugw.units.yr * 1e9
 kpc = ketjugw.units.pc * 1e3
 
-bh1, bh2, merger_info = bgs.analysis.get_bh_particles(new_filename, interp=args.interp)
+bh1, bh2 = bgs.analysis.get_bh_particle_pair(new_filename, interp=args.interp)
+merger_info = bgs.analysis.KetjuMergerInfo(new_filename)
 if merger_info.merged:
     SL.info("A merger has occured!")
 
@@ -75,9 +76,7 @@ ax[1].set_ylabel("Energy")
 
 
 if args.orbparams:
-    bh1, bh2, merger_info = bgs.analysis.get_bound_binary(
-        new_filename, interp=args.interp
-    )
+    bh1, bh2 = bgs.analysis.get_bound_binary(new_filename, interp=args.interp)
     op = ketjugw.orbital_parameters(bh1, bh2)
     bgs.plotting.binary_param_plot(op)
 plt.show()

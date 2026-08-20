@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import itertools
 import pygad
 import ketjugw
-from baggins.analysis import get_bound_binary, get_bh_particles
+from baggins.analysis import get_bound_binary, get_bh_particle_pair
 from baggins.plotting import plot_galaxies_with_pygad
 
 
@@ -68,9 +68,9 @@ class SMBHtrajectory:
         kpc = ketjugw.units.pc * 1e3
         myr = ketjugw.units.yr * 1e6
         if only_bound:
-            bh1, bh2, merged = get_bound_binary(bhdata)
+            bh1, bh2 = get_bound_binary(bhdata)
         else:
-            bh1, bh2, merged = get_bh_particles(bhdata)
+            bh1, bh2 = get_bh_particle_pair(bhdata)
         self.com = (bh1.m[:, np.newaxis] * bh1.x + bh2.m[:, np.newaxis] * bh2.x) / (
             bh1.m + bh2.m
         )[:, np.newaxis]

@@ -4,19 +4,21 @@ import scipy.signal
 import scipy.optimize
 import scipy.integrate
 import ketjugw
+from baggins.analysis.helpers import KetjuMergerInfo
 from baggins.general.list_ops import get_idx_in_array
 from baggins.general import units
 from baggins.mathematics import (
     radial_separation,
     angle_between_vectors,
     project_orthogonal,
+    equal_tail_indices,
 )
 from baggins.env_config import _cmlogger
 
 __all__ = [
     "find_pericentre_time",
     "interpolate_particle_data",
-    "get_bh_particles",
+    "get_bh_particle_pair",
     "get_bound_binary",
     "get_binary_before_bound",
     "get_bh_after_merger",
@@ -92,25 +94,50 @@ def interpolate_particle_data(p_old, t):
         object with interpolated data
     """
     # initialise the new particle object
-    p_new = ketjugw.Particle(-99, 0, [0, 0, 0], [0, 0, 0])
+    p_new = ketjugw.Particle(t=-1, m=-1, x=np.full(3, np.nan), v=np.full(3, np.nan))
     setattr(p_new, "t", t)
     for k, v in p_old.__dict__.items():
         v = np.asarray(v)
         if v.ndim == 1:
-            interpolated = np.interp(t, p_old.t, v)
+            interpolated = np.interp(t, p_old.t, v, left=np.nan, right=np.nan)
         elif v.ndim == 2:
             # np.interp only accepts 1-D fp, so interpolate column-by-column
             # for vector attributes (x, v, spin, ...) of shape (N, M)
             interpolated = np.column_stack(
-                [np.interp(t, p_old.t, v[:, i]) for i in range(v.shape[1])]
+                [
+                    np.interp(t, p_old.t, v[:, i], left=np.nan, right=np.nan)
+                    for i in range(v.shape[1])
+                ]
             )
         else:
             raise ValueError(f"Cannot interpolate attribute '{k}' with shape {v.shape}")
         setattr(p_new, k, interpolated)
+    _logger.debug(
+        f"Interpolated particle: t0 {p_old.t[0]} -> {p_new.t[0]}, tf {p_old.t[-1]} -> {p_new.t[-1]}, len {len(p_old)} -> {len(p_new)}"
+    )
     return p_new
 
 
-def get_bh_particles(ketju_file, tol=1e-15, interp=False, merged_mass_frac=0.5):
+def _get_tmax_helper(p1, p2):
+    """
+    Return the maximum time shared between two particles.
+
+    Parameters
+    ----------
+    p1 : ketjugw.Particle
+        particle 1
+    p2 : ketjugw.Particle
+        particle 2
+
+    Returns
+    -------
+    : float
+        maximum common time
+    """
+    return min(p1.t[-1], p2.t[-1])
+
+
+def get_bh_particle_pair(ketju_file, ids=None, interp=False):
     """
     Return the bh particles in the (usually-named) ketju_bhs.hdf5 file.
     This is really just a wrapper that ensures:
@@ -125,64 +152,40 @@ def get_bh_particles(ketju_file, tol=1e-15, interp=False, merged_mass_frac=0.5):
     ----------
     ketju_file : str
         path to ketju_bhs.hdf5 file to analyse
-    tol : float, optional
-        tolerance for equality testing, by default 1e-15
+    ids : list, optional
+        BH ids to include in the pair, by default None (raises an error of more than 2 BHs present)
     interp : bool, optional
         iterpolate particle data to consistent time domain, by default False
-    merged_mass_frac : float, optional
-        check that the coalesced BH has this fraction of the secondary's mass to define a merger as having occurred, by default 0.5
 
     Returns
     -------
     bh1 : ketjugw.Particle
-        object for the BH (will be named bh1interp if interpolation was
-        performed)
+        bh particle with (maybe interpolated) consistent time data
     bh2 : ketjugw.Particle
-        same as bh1, but for bh2
-    merger_info : MergerInfo
-        class containing merger remnant info
+        bh particle with (maybe interpolated) consistent time data
     """
-    bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
-    len1, len2 = len(bh1), len(bh2)
-    _logger.debug(f"BH data lengths are {len1} and {len2}")
-    min_len = min(len1, len2)
-    merger_info = MergerInfo()
-    # first need to determine if time series are consistent between particles
-    if interp and np.any(np.abs(bh1.t[:min_len] - bh2.t[:min_len]) > tol):
-        # particle time series are not in sync, need to interpolate
-        # merger only occurs if Ketju is activated, in which case the time
-        # series are in sync by construction, so no merger has occurred here
-        # TODO is there a more robust way to ascertain if a merger has (not)
-        # occurred that doesn't tie us to how Ketju data output occurs
-        _logger.warning(
-            "Particle time series are not consistent with each other: linear interpolation will be performed"
-        )
-        t_arr = np.linspace(
-            max(bh1.t[0], bh2.t[0]), min(bh1.t[-1], bh2.t[-1]), max(len1, len2)
-        )
-        bh1interp = interpolate_particle_data(bh1, t_arr)
-        bh2interp = interpolate_particle_data(bh2, t_arr)
-        return bh1interp, bh2interp, merger_info
+    bhs = ketjugw.data_input.load_hdf5(ketju_file)
+    if ids is None:
+        assert len(bhs) == 2
+        bh1, bh2 = bhs.values()
     else:
-        # particles are in sync, and we can return as normal
-        # in addition to length of data, check that the coalesced BH mass has
-        # suddenly increased by a fraction comparable to the merged BH. This is
-        # not 100% of the merged BH mass due to GW emission
-        if len1 > len2:
-            m_diff_frac = (bh1.m[len2] - bh1.m[len2 - 1]) / bh2.m[-1]
-            _logger.debug(f"BH mass difference fraction {m_diff_frac}")
-            if m_diff_frac > merged_mass_frac:
-                # bh2 has merged into bh1
-                merger_info.update(bh1[len2])
-            bh1 = bh1[:len2]
-        elif len1 < len2:
-            m_diff_frac = (bh2.m[len1] - bh2.m[len1 - 1]) / bh1.m[-1]
-            _logger.debug(f"BH mass difference fraction {m_diff_frac}")
-            if m_diff_frac > merged_mass_frac:
-                # bh1 has merged into bh2
-                merger_info.update(bh2[len1])
-            bh2 = bh2[:len1]
-        return bh1, bh2, merger_info
+        bh1 = bhs[ids[0]]
+        bh2 = bhs[ids[1]]
+
+    # perform interpolation if needed
+    if interp:
+        _logger.warning(
+            "Particle time series may not be consistent with each other: linear interpolation will be performed"
+        )
+        t_for_interp = np.arange(
+            max(bh1.t[0], bh2.t[0]),
+            _get_tmax_helper(bh1, bh2),
+            min([np.min(np.diff(bh.t)) for bh in (bh1, bh2)]),
+        )
+        bh1 = interpolate_particle_data(bh1, t_for_interp)
+        bh2 = interpolate_particle_data(bh2, t_for_interp)
+    tmax = _get_tmax_helper(bh1, bh2)
+    return bh1[bh1.t < tmax], bh2[bh2.t < tmax]
 
 
 def get_bound_binary(ketju_file, **kwargs):
@@ -195,7 +198,7 @@ def get_bound_binary(ketju_file, **kwargs):
     ketju_file : str
         path to ketju_bhs.hdf5 file to analyse
     kwargs :
-        other options parsed to get_bh_particles()
+        other options parsed to get_bh_particle_pair()
 
     Returns
     -------
@@ -203,22 +206,28 @@ def get_bound_binary(ketju_file, **kwargs):
         object for bh1, where the particle has the same time domain as bh2
     bh2 : ketjugw.Particle
         same as bh1, but for bh2
-    merger_info: MergerInfo
-        class containing merger remnant info
     """
-    bh1, bh2, merger_info = get_bh_particles(ketju_file, **kwargs)
-    bhs = {0: bh1, 1: bh2}
+    kwargs["interp"] = False
+    bh1, bh2 = get_bh_particle_pair(ketju_file, **kwargs)
+    idx1, idx2 = equal_tail_indices(bh1.t, bh2.t)
+    _logger.debug(
+        f"BH particles have equal time arrays from indices {idx1} (BH1) and {idx2} (BH2)."
+    )
     try:
-        bh1, bh2 = list(ketjugw.find_binaries(bhs, remove_unbound_gaps=True).values())[
-            0
-        ]
-    except IndexError:
-        _logger.exception("No binaries found!", exc_info=True)
+        bh1, bh2 = list(
+            ketjugw.find_binaries(
+                [bh1[idx1:], bh2[idx2:]], remove_unbound_gaps=True
+            ).values()
+        )[0]
+        if len(bh1) == 1 or len(bh2) == 1:
+            raise AssertionError("Length of 'bound binary' is 1")
+    except Exception as e:
+        _logger.exception(f"No binaries found! {e}", exc_info=True)
         raise
-    return bh1, bh2, merger_info
+    return bh1, bh2
 
 
-def get_binary_before_bound(ketju_file, tol=1e-15):
+def get_binary_before_bound(ketju_file, **kwargs):
     """
     Return the data from the ketju_bhs.hdf5 file corresponding to before when
     the binary becomes (and remains) bound.
@@ -227,8 +236,6 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
     ----------
     ketju_file : str
         path to ketju_bhs.hdf5 file to analyse
-    tol : float, optional
-        tolerance for equality testing, by default 1e-15
 
     Returns
     -------
@@ -239,7 +246,8 @@ def get_binary_before_bound(ketju_file, tol=1e-15):
     bound_state : str
         how binary is behaving
     """
-    bh1, bh2, merger_info = get_bh_particles(ketju_file, tol, interp=True)
+    kwargs["interp"] = True
+    bh1, bh2 = get_bh_particle_pair(ketju_file, **kwargs)
     energy_mask = ketjugw.orbital_energy(bh1, bh2) > 0
     try:
         bound_idx = len(energy_mask) - get_idx_in_array(1, energy_mask[::-1])
@@ -278,14 +286,13 @@ def get_bh_after_merger(ketju_file):
     bh : ketjugw.Particle
         remnant BH particle
     """
-    bh1, bh2 = ketjugw.data_input.load_hdf5(ketju_file).values()
-    len1, len2 = len(bh1), len(bh2)
-    if len1 > len2:
-        # bh1 is the "merged" BH
-        return bh1[len2:]
-    else:
-        # bh2 is the "merged" BH
-        return bh2[len1:]
+    bhs = ketjugw.data_input.load_hdf5(ketju_file)
+    assert len(bhs) == 2
+    # TODO generalise this to more than two BHs
+    merger = KetjuMergerInfo(ketju_file)
+    tmax = _get_tmax_helper(bhs.values())
+    bh = bhs[merger.ID_remnant]
+    return bh[bh.t > tmax]
 
 
 def _do_linear_fitting(t, y, t0, tspan, return_idxs=False):
@@ -769,61 +776,3 @@ def first_major_deflection_angle(angles, threshold=np.pi / 6):
             f"No deflection angles were greater than the threshold value of {threshold:.3f}! Largest is {np.max(angles):.3f}"
         )
         return np.nan, None
-
-
-# CLASS DEFINITIONS THAT ARE NEEDED IN THIS FILE, AND SO SHOULD NOT #
-# BE IN ANALYSIS_CLASSES.PY, TO PREVENT CIRCULAR IMPORTS            #
-
-
-class MergerInfo:
-    def __init__(self):
-        """
-        A simple class to hold some information about the BH merger remnant
-        """
-        self._merged = False
-        self._time = np.nan
-        self._mass = np.nan
-        self._kick = np.full(3, np.nan)
-        self._spin = np.full(3, np.nan)
-
-    def __str__(self):
-        return f"BH Merger Remnant\n  Merged: {self.merged}\n  Time:   {self.time:<7.1f} Myr\n  Mass:   {self.mass:<7.1e} Msol\n  Kick:   {self.kick_magnitude:<7.1f} km/s\n  Chi:    {self.chi:<7.2f}"
-
-    @property
-    def merged(self):
-        return self._merged
-
-    @property
-    def mass(self):
-        return self._mass
-
-    @property
-    def time(self):
-        return self._time
-
-    @property
-    def kick(self):
-        return self._kick
-
-    @property
-    def kick_magnitude(self):
-        return np.sqrt(np.sum(self.kick**2))
-
-    @property
-    def spin(self):
-        return self._spin
-
-    @property
-    def spin_magnitude(self):
-        return np.sqrt(np.sum(self.spin**2))
-
-    @property
-    def chi(self):
-        return self.spin_magnitude / self.mass**2
-
-    def update(self, bh):
-        self._merged = True
-        self._time = bh.t[0] / myr
-        self._mass = bh.m[0]
-        self._kick = bh.v / ketjugw.units.km_per_s
-        self._spin = bh.spin[0, :]

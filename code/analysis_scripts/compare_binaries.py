@@ -85,10 +85,10 @@ def _load_binary_data(kf, SL, interp, t0, tf) -> Optional[LoadedBinary]:
     """Load one ketju file and compute its orbital parameters."""
     SL.debug(f"Reading: {kf}")
     try:
-        bh1, bh2, merged = bgs.analysis.get_bound_binary(kf, interp=interp)
-        if merged.merged:
+        bh1, bh2 = bgs.analysis.get_bound_binary(kf, interp=interp)
+        merger_info = bgs.analysis.KetjuMergerInfo(kf)
+        if merger_info.merged:
             SL.info(f"Merger in {kf}")
-            SL.info(merged)
     except IndexError:
         SL.warning(f"No binaries found in: {kf} --> skipping...")
         return None
