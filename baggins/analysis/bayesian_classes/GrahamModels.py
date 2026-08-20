@@ -470,7 +470,7 @@ class GrahamModelSimple(_GrahamModelBase):
         mergerid : str
             merger id to be used in figure names etc.
         """
-        d = self._get_data_dir(fname)
+        d = self._get_data_files(fname)
         if self._loaded_from_file:
             fname = d[0]
         _logger.info(f"Loading file: {fname}")
@@ -514,6 +514,9 @@ class GrahamModelSimple(_GrahamModelBase):
     def set_stan_data(self):
         """See docs for _GrahamModelBase.set_stan_data()"""
         super().set_stan_data()
+
+    def diagnose_sample(self):
+        return super().diagnose_sample(self.latent_qtys)
 
     def all_prior_plots(self, figsize=None, ylim=(-1, 15.1)):
         return super().all_prior_plots(figsize, ylim)

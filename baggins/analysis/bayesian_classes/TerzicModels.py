@@ -8,7 +8,7 @@ from baggins.analysis.bayesian_classes.StanModel import HierarchicalModel_2D
 from baggins.analysis import basic_snapshot_centring
 from baggins.general import get_snapshot_number
 from baggins.mathematics import equal_count_bins, get_histogram_bin_centres
-from baggins.plotting import savefig
+from baggins.plotting import savefig, plot_hdi, get_all_axes_from_plot_collection
 
 __all__ = ["TerzicModel"]
 
@@ -110,7 +110,7 @@ class TerzicModel(HierarchicalModel_2D):
             number of stellar particles per bin, by default 2e5
         """
         obs = {"r": [], "density": [], "mass": []}
-        d = self._get_data_dir(snapfile)
+        d = self._get_data_files(snapfile)
         if self._loaded_from_file:
             fname = d[0][0]
             extent = self._input_data_files["kwargs"]["extent"]
@@ -145,7 +145,7 @@ class TerzicModel(HierarchicalModel_2D):
         fname : str, path-like
             data file
         """
-        d = self._get_data_dir(fname)
+        d = self._get_data_files(fname)
         if self._loaded_from_file:
             fname = d[0]
         _logger.info(f"Loading file: {fname}")
@@ -179,9 +179,10 @@ class TerzicModel(HierarchicalModel_2D):
         rmax = np.min([r[-1] for r in self.obs["r"]])
         if r_count is None:
             r_count = max([len(rs) for rs in self.obs["r"]]) * 10
-        self._num_OOS = r_count
-        rs = np.geomspace(rmin, rmax, r_count)
-        self.stan_data.update(dict(N_OOS=self.num_OOS, r_OOS=rs))
+        OOS_data = super()._set_stan_data_OOS(r_count)
+        rs = np.geomspace(rmin, rmax, self.num_OOS)
+        OOS_data.update({"r_OOS": rs})
+        self.stan_data.update(OOS_data)
 
     def set_stan_data(self):
         """
@@ -195,18 +196,38 @@ class TerzicModel(HierarchicalModel_2D):
         if not self._loaded_from_file:
             self._set_stan_data_OOS()
 
-    def sample_model(self, sample_kwargs={}, diagnose=True):
-        """
-        Wrapper around StanModel.sample_model() to handle determining num_OOS
-        from previous sample.
-        """
-        super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
-        if self._loaded_from_file:
-            self._determine_num_OOS(self._folded_qtys_posterior[0])
-            self._set_stan_data_OOS()
+    def diagnose_sample(self):
+        return super().diagnose_sample(self.latent_qtys)
 
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        v = super().sample_generated_quantity(gq, force_resample, state)
+    def _get_GQ_indices(self, state):
+        """
+        The Terzic Stan model evaluates the density generated quantity at the
+        concatenation of in-sample and OOS radii (length N + N_OOS). Get the
+        indices of the requested subset.
+
+        Parameters
+        ----------
+        state : str
+            inference type, must be one of 'pred' or 'OOS'
+
+        Returns
+        -------
+        slice
+            index range for the requested subset
+        """
+        dividing_idx = self.num_obs_collapsed
+        return (
+            slice(None, dividing_idx)
+            if state == "pred"
+            else slice(dividing_idx, self.num_OOS + dividing_idx)
+        )
+
+    def sample_generated_quantity(
+        self, gq, force_resample=False, state="pred", as_xarray=False
+    ):
+        v = super().sample_generated_quantity(
+            gq, force_resample=force_resample, as_xarray=as_xarray
+        )
         if gq in self.folded_qtys or gq in self.folded_qtys_posterior:
             idxs = self._get_GQ_indices(state)
             return v[..., idxs]
@@ -229,23 +250,110 @@ class TerzicModel(HierarchicalModel_2D):
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        ncol = int(np.ceil(len(self.latent_qtys) / 2))
-        fig, ax = plt.subplots(2, ncol, figsize=figsize)
+        vals = self.latent_qtys_posterior if transformed else self.latent_qtys
         try:
-            if transformed:
-                vals = self.latent_qtys_posterior
-                labs = self._latent_qtys_posterior_labs
-            else:
-                vals = self.latent_qtys
-                labs = self._latent_qtys_labs
-            self.plot_generated_quantity_dist(vals, ax=ax, xlabels=labs)
+            pc = self.plot_generated_quantity_dist(vals)
         except ValueError:  # TODO check this
             _logger.warning(
                 "Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
             )
-            self.plot_generated_quantity_dist(
-                self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs
+            pc = self.plot_generated_quantity_dist(self.latent_qtys)
+        ax = get_all_axes_from_plot_collection(pc)
+        return ax
+
+    def _plot_predictive_1var(
+        self, ymodel, state, xobs=None, yobs=None, ax=None, levels=None, collapsed=True
+    ):
+        """
+        Plot a HDI band for a generated quantity against the observed data.
+
+        Parameters
+        ----------
+        ymodel : str
+            generated quantity to plot
+        state : str
+            'pred' for the in-sample radii, 'OOS' for the out-of-sample radii
+        xobs : str, optional
+            observed independent variable to overlay, by default None
+        yobs : str, optional
+            observed dependent variable to overlay, by default None
+        ax : matplotlib.axes.Axes, optional
+            axis to plot to, by default None (creates new instance)
+        levels : list, optional
+            HDI intervals to plot, by default None
+        collapsed : bool, optional
+            plot collapsed observations, by default True
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+        if levels is None:
+            levels = list(self._default_hdi_levels)
+        x = self.stan_data["r" if state == "pred" else "r_OOS"]
+        y = self.sample_generated_quantity(ymodel, state=state)
+        for lev in sorted(levels):
+            plot_hdi(
+                x,
+                y,
+                hdi_prob=lev,
+                ax=ax,
+                plot_kwargs={"color": self.hdi_col_mapper.get_colour(lev)},
+                fill_kwargs={
+                    "alpha": 0.4,
+                    "color": self.hdi_col_mapper.get_colour(lev),
+                },
+                hdi_kwargs={"skipna": True},
             )
+        if xobs is not None and yobs is not None:
+            obs = self.obs_collapsed if collapsed else self.obs
+            ax.scatter(obs[xobs], obs[yobs], **self._plot_obs_data_kwargs)
+        return ax
+
+    def plot_prior_predictive(self, save=True, ax=None, **kwargs):
+        """
+        Plot the prior predictive density profile against observed data.
+        """
+        ax = self._plot_predictive_1var(
+            ymodel=f"log10_{self.folded_qtys[0]}_prior",
+            state="pred",
+            xobs="r",
+            yobs="log10_density",
+            ax=ax,
+            **kwargs,
+        )
+        if save:
+            savefig(next(self.gen_priorpred_plot_name), fig=ax.get_figure())
+        return ax
+
+    def plot_posterior_predictive(self, save=True, ax=None, **kwargs):
+        """
+        Plot the posterior predictive density profile against observed data.
+        """
+        ax = self._plot_predictive_1var(
+            ymodel=self.folded_qtys_posterior[0],
+            state="pred",
+            xobs="r",
+            yobs="density",
+            ax=ax,
+            **kwargs,
+        )
+        if save:
+            savefig(next(self.gen_postpred_plot_name), fig=ax.get_figure())
+        return ax
+
+    def plot_posterior_OOS(self, save=True, ax=None, **kwargs):
+        """
+        Plot the out-of-sample posterior density profile.
+        """
+        ax = self._plot_predictive_1var(
+            ymodel=self.folded_qtys_posterior[0], state="OOS", ax=ax, **kwargs
+        )
+        if save:
+            savefig(next(self.gen_postOOS_plot_name), fig=ax.get_figure())
         return ax
 
     def all_prior_plots(self, figsize=None, ylim=None):
@@ -266,14 +374,7 @@ class TerzicModel(HierarchicalModel_2D):
         ax1.set_xlabel("r/kpc")
         ax1.set_ylabel(self._folded_qtys_labs[0])
         ax1.set_xscale("log")
-        # ax1.set_yscale("log")
-        self.plot_predictive(
-            xmodel="r",
-            ymodel=f"log10_{self._folded_qtys[0]}_prior",
-            xobs="r",
-            yobs="log10_density",
-            ax=ax1,
-        )
+        self.plot_prior_predictive(ax=ax1)
 
         # prior latent quantities
         self.plot_latent_distributions(figsize=figsize)
@@ -284,12 +385,7 @@ class TerzicModel(HierarchicalModel_2D):
             combine_dims={"group"},
         )
         fig1 = ax1[0, 0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_prior_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig1,
-        )
+        savefig(next(self.gen_corner_plot_name), fig=fig1)
 
     def all_posterior_pred_plots(self, figsize=None):
         """
@@ -316,13 +412,7 @@ class TerzicModel(HierarchicalModel_2D):
         ax1.set_ylabel(self._folded_qtys_labs[0])
         ax1.set_xscale("log")
         ax1.set_yscale("log")
-        self.plot_predictive(
-            xmodel="r",
-            ymodel=f"{self._folded_qtys_posterior[0]}",
-            xobs="r",
-            yobs="density",
-            ax=ax1,
-        )
+        self.plot_posterior_predictive(ax=ax1)
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize, transformed=True)
@@ -333,12 +423,7 @@ class TerzicModel(HierarchicalModel_2D):
             labeller=self._labeller_latent_posterior,
         )
         fig = ax.flatten()[0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
+        savefig(next(self.gen_corner_plot_name), fig=fig)
         return ax
 
     def all_posterior_OOS_plots(self, figsize=None):
@@ -347,9 +432,7 @@ class TerzicModel(HierarchicalModel_2D):
         ax.set_xlabel(r"$r$/kpc")
         ax.set_xscale("log")
         ax.set_yscale("log")
-        self.posterior_OOS_plot(
-            xmodel="r_OOS", ymodel=self._folded_qtys_posterior[0], ax=ax
-        )
+        self.plot_posterior_OOS(ax=ax)
         return ax
 
     def save_density_data_to_npz(self, dname, exist_ok=False):

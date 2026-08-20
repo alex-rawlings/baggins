@@ -9,7 +9,7 @@ from baggins.analysis.analyse_ketju import get_bound_binary
 from baggins.env_config import _cmlogger
 from baggins.general.units import kpc
 from baggins.literature import SMBHSpins, ketju_calculate_bh_merger_remnant_properties
-from baggins.plotting import savefig, plot_hdi
+from baggins.plotting import savefig, plot_hdi, get_all_axes_from_plot_collection
 from baggins.utils import get_ketjubhs_in_dir, get_files_in_dir
 
 __all__ = ["VkickApocentreGP"]
@@ -85,7 +85,7 @@ class VkickApocentreGP(_GPBase):
                 exc_info=True,
             )
             raise
-        d = self._get_data_dir(d)
+        d = self._get_data_files(d)
         try:
             fnames = get_files_in_dir(d, ext=".txt")
         except NotADirectoryError:
@@ -168,7 +168,6 @@ class VkickApocentreGP(_GPBase):
         vkickOOS : np.array, optional
             desired values of kick velocity to sample, by default None
         """
-        _OOS = {"N2": None}
         if vkickOOS is None:
             # randomly sample recoil velocities from Zlochower Lousto
             spins = SMBHSpins("zlochower_dry", "skewed")
@@ -194,40 +193,41 @@ class VkickApocentreGP(_GPBase):
             _logger.debug(
                 f"{np.sum(np.isnan(vkick)) / len(vkick) * 100:.2f}% of calculations from from the Zlochower Lousto relation are NaN!"
             )
-            _OOS["x2"] = vkick[
+            vkick_OOS = vkick[
                 np.logical_and(
                     ~np.isnan(vkick), vkick < np.max(np.array(self.obs["vkick"]))
                 )
             ]
             try:
-                assert len(_OOS["x2"]) > 1
+                assert len(vkick_OOS) > 1
             except AssertionError:
                 _logger.exception(
                     "At least two points are required for GP interpolation!",
                     exc_info=True,
                 )
                 raise
-            self._num_OOS = len(_OOS["x2"])
-            _OOS["N2"] = self.num_OOS
         else:
             try:
                 assert isinstance(vkickOOS, np.ndarray)
-                vkickOOS = vkickOOS.flatten()
+                vkick_OOS = vkickOOS.flatten()
             except AssertionError:
                 _logger.exception(
                     f"User-defined OOS kick velocities must be an array, not {type(vkickOOS)}",
                     exc_info=True,
                 )
                 raise
-            _OOS["x2"] = vkickOOS
-            _OOS["N2"] = len(_OOS["x2"])
-        self.stan_data.update(_OOS)
+        OOS_data = super()._set_stan_data_OOS(len(vkick_OOS))
+        OOS_data["x_OOS"] = vkick_OOS
+        self.stan_data.update(OOS_data)
 
     def set_stan_data(self, vkickOOS=None):
-        super().set_stan_data(vkickOOS)
-        self.stan_data.update(
-            dict(x1=self.obs_collapsed["vkick"], y1=self.obs_collapsed["rapo"])
+        self.stan_data = dict(
+            N_obs=self.num_obs_collapsed,
+            x=self.obs_collapsed["vkick"],
+            y=self.obs_collapsed["rapo"],
         )
+        if not self._loaded_from_file:
+            self._set_stan_data_OOS(vkickOOS)
 
     def all_plots(self, figsize=None):
         """
@@ -238,7 +238,7 @@ class VkickApocentreGP(_GPBase):
         figsize : tuple, optional
             figure size, by default None
         """
-        super().all_plots(figsize)
+        super().all_posterior_pred_plots(figsize)
         ylims = (
             np.quantile(self.obs_collapsed["rapo"], 0.01),
             np.quantile(self.obs_collapsed["rapo"], 0.99),
@@ -249,13 +249,7 @@ class VkickApocentreGP(_GPBase):
         ax.set_ylim(*ylims)
         ax.set_xlabel(self._input_qtys_labs[0])
         ax.set_ylabel(self._folded_qtys_labs[0])
-        self.plot_predictive(
-            xmodel="x1",
-            ymodel=self.folded_qtys_posterior[0],
-            xobs="vkick",
-            yobs="rapo",
-            ax=ax,
-        )
+        self.plot_posterior_predictive(ax=ax, save=False)
 
         # OOS
         fig, ax = plt.subplots(1, 1, figsize=figsize)
@@ -263,24 +257,14 @@ class VkickApocentreGP(_GPBase):
         ax.set_ylim(*ylims)
         ax.set_xlabel(self._input_qtys_labs[0])
         ax.set_ylabel(self._folded_qtys_labs[0])
-        self.posterior_OOS_plot(
-            xmodel="x2", ymodel=self.folded_qtys_posterior[0], ax=ax, smooth=True
-        )
+        self.plot_posterior_OOS(ax=ax, save=False)
 
-        rapo_mode = self.calculate_mode("y")
+        rapo_mode = self.calculate_mode("y_OOS")
         _logger.info(f"Forward-folded apocentre mode is {rapo_mode:.3f} kpc")
 
         # marginal distribution of dependent variable
-        fig, ax_rapo = plt.subplots()
-        # add a secondary axis, turning off ticks from the top axis (if they are there)
-        ax_rapo.tick_params(axis="x", which="both", top=False)
-        self.plot_generated_quantity_dist(
-            ["y"],
-            bounds=[(0, 1e4)],
-            state="OOS",
-            xlabels=self._folded_qtys_labs,
-            ax=ax_rapo,
-        )
+        pc = self.plot_generated_quantity_dist(["y_OOS"])
+        get_all_axes_from_plot_collection(pc)
 
     def plot_kick_distribution(self, ax=None, save=True, **kwargs):
         """
@@ -304,15 +288,9 @@ class VkickApocentreGP(_GPBase):
             ax.set_ylabel(r"$P(v_\mathrm{kick}\cos(\theta))$")
         else:
             fig = ax.get_figure()
-        plot_dist(self.stan_data["x2"], **kwargs)
+        plot_dist(self.stan_data["x_OOS"], **kwargs)
         if save:
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
-                ),
-                fig=fig,
-            )
-            self._gq_distribution_plot_counter += 1
+            savefig(next(self.gen_gq_plot_name), fig=fig)
         return ax
 
     def fraction_apo_above_threshold(self, threshold, proj=False):
@@ -332,7 +310,7 @@ class VkickApocentreGP(_GPBase):
         : float
             fraction of apocentres above threshold
         """
-        r_apo = self.sample_generated_quantity("y", state="OOS")
+        r_apo = self.sample_generated_quantity("y_OOS")
         # make sure there are no negative values
         mask = r_apo >= 0
         if proj:
@@ -340,7 +318,7 @@ class VkickApocentreGP(_GPBase):
         # fraction above threshold
         # relative to the total kick distribution, i.e. not truncated to some
         # upper value
-        vk = np.tile(self.stan_data["x2"], mask.shape[0]).reshape(mask.shape)
+        vk = np.tile(self.stan_data["x_OOS"], mask.shape[0]).reshape(mask.shape)
         return np.nansum(r_apo[mask] > threshold(vk)[mask]) / (
             self._num_OOS_requested * mask.shape[0]
         )
@@ -359,8 +337,8 @@ class VkickApocentreGP(_GPBase):
         : array-like
             minimum angle
         """
-        r_apo = self.sample_generated_quantity("y", state="OOS")
-        vk = np.tile(self.stan_data["x2"], r_apo.shape[0]).reshape(r_apo.shape)
+        r_apo = self.sample_generated_quantity("y_OOS")
+        vk = np.tile(self.stan_data["x_OOS"], r_apo.shape[0]).reshape(r_apo.shape)
         theta = np.arcsin(threshold(vk) / r_apo) * 180 / np.pi  # in degrees
         # set apocentres below threshold to nan
         theta[r_apo < threshold(vk)] = np.nan
@@ -404,7 +382,7 @@ class VkickApocentreGP(_GPBase):
         for lev in levels:
             _logger.debug(f"Fitting level {lev}")
             plot_hdi(
-                self.stan_data["x2"],
+                self.stan_data["x_OOS"],
                 theta,
                 hdi_prob=lev / 100,
                 ax=ax,
@@ -420,13 +398,7 @@ class VkickApocentreGP(_GPBase):
                 hdi_kwargs={"skipna": True},
             )
         if save:
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
-                ),
-                fig=fig,
-            )
-            self._gq_distribution_plot_counter += 1
+            savefig(next(self.gen_gq_plot_name), fig=fig)
         return ax
 
     def plot_observable_fraction(
@@ -455,7 +427,7 @@ class VkickApocentreGP(_GPBase):
         """
         theta = self.angle_to_exceed_threshold(threshold=threshold)
         draws = theta.shape[0]
-        vk = np.tile(self.stan_data["x2"], draws).reshape(theta.shape)
+        vk = np.tile(self.stan_data["x_OOS"], draws).reshape(theta.shape)
         theta = theta.flatten()
         vk = vk.flatten()
         # -> visible = 1 - not_visible
@@ -495,13 +467,7 @@ class VkickApocentreGP(_GPBase):
 
         if save:
             ax.legend()
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
-                ),
-                fig=fig,
-            )
-            self._gq_distribution_plot_counter += 1
+            savefig(next(self.gen_gq_plot_name), fig=fig)
         return ax
 
     def _interpolate_apo_to_time(self, r):
@@ -546,17 +512,11 @@ class VkickApocentreGP(_GPBase):
             fig, ax = plt.subplots()
         ax.set_xlabel(r"$t_\mathrm{apo}/\mathrm{Myr}$")
         ax.set_ylabel(r"$\mathrm{CDF}$" if cumulative else r"$\mathrm{PDF}$")
-        r_apo = self.sample_generated_quantity("y", state="OOS")
+        r_apo = self.sample_generated_quantity("y_OOS")
         t_apo = self._interpolate_apo_to_time(r_apo)
         plot_dist(t_apo, ax=ax, cumulative=cumulative, **kwargs)
         if save:
-            savefig(
-                self._make_fig_name(
-                    self.figname_base, f"gqs_{self._gq_distribution_plot_counter}"
-                ),
-                fig=fig,
-            )
-            self._gq_distribution_plot_counter += 1
+            savefig(next(self.gen_gq_plot_name), fig=fig)
         return ax
 
     @classmethod

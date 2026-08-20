@@ -89,7 +89,7 @@ class _GPBase(HierarchicalModel_2D):
     # Stan Data
     # ----------------------------------------------------------------------
 
-    def set_stan_data(self, *kwargs):
+    def set_stan_data(self, **kwargs):
         if self.stan_data is None:
             self.stan_data = {}
         self.stan_data.update(
@@ -112,9 +112,6 @@ class _GPBase(HierarchicalModel_2D):
         super().sample_model(
             sample_kwargs=sample_kwargs, diagnose=diagnose, pathfinder=False
         )
-        if self._loaded_from_file:
-            self._determine_num_OOS(self._folded_qtys_posterior[0])
-            self._set_stan_data_OOS()
 
     def diagnose_sample(self):
         return super().diagnose_sample(self.latent_qtys)
@@ -260,9 +257,7 @@ class _GPBase(HierarchicalModel_2D):
         """
         data = {
             f"{xkey}": self.access_independent_qty(self._independent_qtys[0]),
-            f"{ykey}": self.sample_generated_quantity(
-                self.sample_generated_quantity(self.dependent_qtys[0])
-            ),
+            f"{ykey}": self.sample_generated_quantity(self.dependent_qtys_posterior[0]),
         }
         save_data(data, fname)
 

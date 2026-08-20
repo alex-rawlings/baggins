@@ -14,7 +14,7 @@ from baggins.literature import (
     ketju_calculate_bh_merger_remnant_properties,
 )
 from baggins.mathematics import uniform_sample_sphere, convert_spherical_to_cartesian
-from baggins.plotting import savefig
+from baggins.plotting import savefig, plot_hdi, get_all_axes_from_plot_collection
 from baggins.utils import load_data, get_ketjubhs_in_dir
 
 
@@ -122,7 +122,7 @@ class _CoreKickBase(HierarchicalModel_2D):
                 exc_info=True,
             )
             raise
-        d = self._get_data_dir(d)
+        d = self._get_data_files(d)
         data = load_data(d)
         obs = {"vkick": [], "rb": []}
         for k, v in data["rb"].items():
@@ -171,12 +171,11 @@ class _CoreKickBase(HierarchicalModel_2D):
             spins = convert_spherical_to_cartesian(np.vstack((spin_mag, t, p)).T)
             return spins[:nn, :], spins[nn:, :]
 
-        _OOS = {"N_OOS": N}
-        self._num_OOS = _OOS["N_OOS"]
+        _OOS = super()._set_stan_data_OOS(N)
         self._vmax = np.nanmax(self.obs_collapsed["vkick"])
-        vkick = np.full(_OOS["N_OOS"], np.nan)
+        vkick = np.full(self.num_OOS, np.nan)
         _logger.debug(f"Maximum fitted velocity is {self.vmax:.2e}")
-        remaining = np.ones(N, dtype=bool)
+        remaining = np.ones(self.num_OOS, dtype=bool)
         iters = 0
         max_iters = 100
         while np.any(remaining) and iters < max_iters:
@@ -238,23 +237,146 @@ class _CoreKickBase(HierarchicalModel_2D):
         if not self._loaded_from_file:
             self._set_stan_data_OOS()
 
-    def sample_model(self, sample_kwargs=..., diagnose=True):
+    def sample_model(self, sample_kwargs=None, diagnose=True):
         """
-        Wrapper around StanModel.sample_model() to handle determining num_OOS
-        from previous sample.
+        Wrapper around StanModel.sample_model().
         """
-        super().sample_model(sample_kwargs, diagnose=diagnose)
-        if self._loaded_from_file:
-            self._determine_num_OOS(self._folded_qtys_posterior[0])
-            self._set_stan_data_OOS()
+        super().sample_model(sample_kwargs=sample_kwargs, diagnose=diagnose)
 
-    def sample_generated_quantity(self, gq, force_resample=False, state="pred"):
-        v = super().sample_generated_quantity(gq, force_resample, state)
+    def diagnose_sample(self):
+        return super().diagnose_sample(self.latent_qtys)
+
+    def _get_GQ_indices(self, state, collapsed=False):
+        """
+        The CoreKick generated quantity is evaluated at the concatenation of
+        in-sample and OOS kick velocities. Get the indices of the requested
+        subset.
+
+        Parameters
+        ----------
+        state : str
+            inference type, must be one of 'pred' or 'OOS'
+        collapsed : bool, optional
+            has the variable been collapsed (1-dimensional), by default False
+
+        Returns
+        -------
+        slice
+            index range for the requested subset
+        """
+        dividing_idx = self.num_obs_collapsed if collapsed else self.num_obs
+        return (
+            slice(None, dividing_idx)
+            if state == "pred"
+            else slice(dividing_idx, self.num_OOS + dividing_idx)
+        )
+
+    def sample_generated_quantity(
+        self, gq, force_resample=False, state="pred", as_xarray=False
+    ):
+        v = super().sample_generated_quantity(
+            gq, force_resample=force_resample, as_xarray=as_xarray
+        )
         if gq in self.folded_qtys or gq in self.folded_qtys_posterior:
             idxs = self._get_GQ_indices(state, collapsed=True)
             return v[..., idxs]
         else:
             return v
+
+    def _plot_predictive_1var(
+        self, ymodel, state, xobs=None, yobs=None, ax=None, levels=None, collapsed=True
+    ):
+        """
+        Plot a HDI band for a generated quantity against the observed data.
+
+        Parameters
+        ----------
+        ymodel : str
+            generated quantity to plot
+        state : str
+            'pred' for the in-sample kick velocities, 'OOS' for the
+            out-of-sample kick velocities
+        xobs : str, optional
+            observed independent variable to overlay, by default None
+        yobs : str, optional
+            observed dependent variable to overlay, by default None
+        ax : matplotlib.axes.Axes, optional
+            axis to plot to, by default None (creates new instance)
+        levels : list, optional
+            HDI intervals to plot, by default None
+        collapsed : bool, optional
+            plot collapsed observations, by default True
+
+        Returns
+        -------
+        ax : matplotlib.axes.Axes
+            plotting axis
+        """
+        if ax is None:
+            fig, ax = plt.subplots()
+        if levels is None:
+            levels = list(self._default_hdi_levels)
+        x = self.stan_data["vkick" if state == "pred" else "vkick_OOS"]
+        y = self.sample_generated_quantity(ymodel, state=state)
+        for lev in sorted(levels):
+            plot_hdi(
+                x,
+                y,
+                hdi_prob=lev,
+                ax=ax,
+                plot_kwargs={"color": self.hdi_col_mapper.get_colour(lev)},
+                fill_kwargs={
+                    "alpha": 0.4,
+                    "color": self.hdi_col_mapper.get_colour(lev),
+                },
+                hdi_kwargs={"skipna": True},
+            )
+        if xobs is not None and yobs is not None:
+            obs = self.obs_collapsed if collapsed else self.obs
+            ax.scatter(obs[xobs], obs[yobs], **self._plot_obs_data_kwargs)
+        return ax
+
+    def plot_posterior_predictive(self, save=True, ax=None, **kwargs):
+        """
+        Plot the posterior predictive core-radius ratio against observed data.
+        """
+        ax = self._plot_predictive_1var(
+            ymodel=self.folded_qtys_posterior[0],
+            state="pred",
+            xobs="vkick",
+            yobs=self.folded_qtys[0],
+            ax=ax,
+            **kwargs,
+        )
+        if save:
+            savefig(next(self.gen_postpred_plot_name), fig=ax.get_figure())
+        return ax
+
+    def plot_prior_predictive(self, save=True, ax=None, **kwargs):
+        """
+        Plot the prior predictive core-radius ratio.
+
+        Not currently implemented: no CoreKick Stan model in this repository
+        defines a prior-predictive generated quantity, so the variable name
+        to sample cannot be inferred. Implement this once the corresponding
+        `.stan` file's generated quantities block is known.
+        """
+        raise NotImplementedError(
+            "plot_prior_predictive() is not implemented for CoreKick models: "
+            "the prior-predictive generated quantity name is model-specific "
+            "and unverified."
+        )
+
+    def plot_posterior_OOS(self, save=True, ax=None, **kwargs):
+        """
+        Plot the out-of-sample posterior core-radius ratio.
+        """
+        ax = self._plot_predictive_1var(
+            ymodel=self.folded_qtys_posterior[0], state="OOS", ax=ax, **kwargs
+        )
+        if save:
+            savefig(next(self.gen_postOOS_plot_name), fig=ax.get_figure())
+        return ax
 
     def plot_latent_distributions(self, figsize=None):
         """
@@ -270,18 +392,14 @@ class _CoreKickBase(HierarchicalModel_2D):
         ax : matplotlib.axes.Axes
             plotting axis
         """
-        fig, ax = plt.subplots(len(self.latent_qtys), 1, figsize=figsize)
         try:
-            self.plot_generated_quantity_dist(
-                self.latent_qtys_posterior, ax=ax, xlabels=self._latent_qtys_labs
-            )
+            pc = self.plot_generated_quantity_dist(self.latent_qtys_posterior)
         except ValueError:  # TODO check this
             _logger.warning(
                 "Cannot plot latent distributions for `latent_qtys_posterior`, trying for `latent_qtys`."
             )
-            self.plot_generated_quantity_dist(
-                self.latent_qtys, ax=ax, xlabels=self._latent_qtys_labs
-            )
+            pc = self.plot_generated_quantity_dist(self.latent_qtys)
+        ax = get_all_axes_from_plot_collection(pc)
         return ax
 
     def all_posterior_pred_plots(self, figsize=None):
@@ -311,13 +429,7 @@ class _CoreKickBase(HierarchicalModel_2D):
         )
         ax.set_xlabel(r"$v/v_\mathrm{esc}$")
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
-        self.plot_predictive(
-            xmodel="vkick",
-            ymodel=self.folded_qtys_posterior[0],
-            xobs="vkick",
-            yobs=self.folded_qtys[0],
-            ax=ax,
-        )
+        self.plot_posterior_predictive(ax=ax, save=False)
 
         # latent parameter distributions
         self.plot_latent_distributions(figsize=figsize)
@@ -326,12 +438,7 @@ class _CoreKickBase(HierarchicalModel_2D):
             self.latent_qtys, figsize=figsize, labeller=self._labeller_latent
         )
         fig = ax.flatten()[0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
+        savefig(next(self.gen_corner_plot_name), fig=fig)
         return ax
 
     def all_posterior_OOS_plots(self, figsize=None):
@@ -349,28 +456,17 @@ class _CoreKickBase(HierarchicalModel_2D):
             labeller=self._labeller_latent_posterior,
         )
         fig = ax.flatten()[0].get_figure()
-        savefig(
-            self._make_fig_name(
-                self.figname_base, f"corner_OOS_{self._parameter_corner_plot_counter}"
-            ),
-            fig=fig,
-        )
+        savefig(next(self.gen_corner_plot_name), fig=fig)
 
         # out of sample posterior
         fig, ax = plt.subplots(1, 1, figsize=figsize)
         ax.set_xlabel(r"$v/v_\mathrm{esc}$")
         ax.set_ylabel(r"$r_\mathrm{b}/r_{\mathrm{b},0}$")
-        self.posterior_OOS_plot(
-            xmodel="vkick_OOS", ymodel=self.folded_qtys_posterior[0], ax=ax
-        )
+        self.plot_posterior_OOS(ax=ax, save=False)
 
         # distribution of core radius
-        ax = self.plot_generated_quantity_dist(
-            ["rb_posterior"],
-            state="OOS",
-            xlabels=self._folded_qtys_labs,
-            save=False,
-        )
+        pc = self.plot_generated_quantity_dist(["rb_posterior"])
+        ax = get_all_axes_from_plot_collection(pc)
         rb_mode = self.calculate_mode("rb_posterior")
         _logger.info(
             f"Forward-folded core radius mode is {rb_mode*self._rb0:.3f} kpc ({rb_mode:.3f} rb0)"
@@ -382,7 +478,7 @@ class _CoreKickBase(HierarchicalModel_2D):
         secax = ax.flatten()[0].secondary_xaxis("top", functions=(rb02kpc, kpc2rb0))
         secax.set_xlabel(r"$r_\mathrm{b}/\mathrm{kpc}$")
         fig = ax.flatten()[0].get_figure()
-        savefig(self._make_fig_name(self.figname_base, "gqs"), fig=fig)
+        savefig(next(self.gen_gq_plot_name), fig=fig)
 
     def all_plots(self, figsize=None):
         self.plot_latent_distributions(figsize)
@@ -393,6 +489,7 @@ class _CoreKickBase(HierarchicalModel_2D):
     def load_fit(
         cls,
         model_file,
+        prior_file,
         fit_files,
         figname_base,
         escape_vel,
@@ -406,6 +503,8 @@ class _CoreKickBase(HierarchicalModel_2D):
         ----------
         model_file : str
             path to .stan file specifying the likelihood model
+        prior_file : str
+            path to .stan file specifying the prior model
         fit_files : str, path-like
             path to previously saved csv files
         figname_base : str
@@ -418,7 +517,9 @@ class _CoreKickBase(HierarchicalModel_2D):
         rng : np.random._generator.Generator, optional
             random number generator, by default None (creates a new instance)
         """
-        C = super().load_fit(model_file, fit_files, figname_base, rng)
+        C = super().load_fit(
+            fit_files, figname_base, rng, model_file=model_file, prior_file=prior_file
+        )
         C.escape_vel = escape_vel
         C.premerger_ketjufile = premerger_ketjufile
         return C

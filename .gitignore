@@ -208,6 +208,7 @@ baggins/logs
 # documentation
 baggins/docs/_build/*
 AI_output/*
+CLAUDE.md
 
 # evironment parameters: template available
 baggins/env_params.yml

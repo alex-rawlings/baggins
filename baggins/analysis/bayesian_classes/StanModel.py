@@ -88,6 +88,9 @@ class _StanModel(ABC):
 
         self._loaded_from_file = False
         self._generated_quantities = None
+        self._obs = None
+        self._num_obs_collapsed = None
+        self._sample_diagnosis = None
         self._obs_collapsed = {}
         self._obs_collapsed_names = []
         self._input_data_file_count = 0
@@ -219,8 +222,10 @@ class _StanModel(ABC):
                 "Input to property 'stan_data' must be a dict!", exc_info=True
             )
             raise
-        if isinstance(d, dict):
-            self._stan_data.update(d)
+
+    @property
+    def inference_data(self):
+        return self._inference_data
 
     # ----------------------------------------------------------------------
     # Abstract interface
@@ -869,7 +874,9 @@ class _StanModel(ABC):
                 fit = self._model.sample(self.stan_data, inits=inits, **sample_kwargs)
                 self._write_input_data_yml(fit.runset.csv_files[0])
             _logger.info(f"Sampling completed in {datetime.now()-start_time}")
-            _logger.info(f"Number of threads used: {os.environ['STAN_NUM_THREADS']}")
+            _logger.info(
+                f"Number of threads used: {os.environ.get('STAN_NUM_THREADS', 'n/a')}"
+            )
             if diagnose:
                 self._sample_diagnosis = fit.diagnose()
                 _logger.info(f"\n{fit.summary(sig_figs=4)}")
@@ -1105,7 +1112,10 @@ class _StanModel(ABC):
                 _logger.debug(
                     "Generated quantities already exist and will not be resampled"
                 )
-            self.generated_quantities.stan_variable(gq)
+            # reading gq here also validates it is accessible; a ValueError
+            # triggers the fallback below, which resamples into a fresh
+            # output directory
+            result = self.generated_quantities.stan_variable(gq)
         except ValueError as e:
             _model, _fit = self._choose_model_fit_for_GQ()
             TMPDIRs.make_new_dir()
@@ -1117,6 +1127,7 @@ class _StanModel(ABC):
                 previous_fit=_fit,
                 gq_output_dir=TMPDIRs.register[-1],
             )
+            result = self.generated_quantities.stan_variable(gq)
         if as_xarray:
             ds = self.generated_quantities.draws_xr(gq)
             if gq in self._dependent_qtys_OOS:
@@ -1125,7 +1136,7 @@ class _StanModel(ABC):
                 ds = ds.rename_dims({f"{gq}_dim_0": "N_obs"})
             return ds
         else:
-            return self.generated_quantities.stan_variable(gq)
+            return result
 
     def sample_generated_quantity_custom_OOS(self, gq, data, as_xarray=False):
         """
@@ -1437,9 +1448,9 @@ class _StanModel(ABC):
             elpd data object from arviz
         """
         if self.generated_quantities is None:
-            self.sample_generated_quantity(stan_log_lik, state="pred")
+            self.sample_generated_quantity(stan_log_lik)
         if "log_likelihood" not in self._inference_data:
-            self.sample_generated_quantity(stan_log_lik, state="pred")
+            self.sample_generated_quantity(stan_log_lik)
             self._inference_data.add_groups(
                 {"log_likelihood": self.generated_quantities.draws_xr(stan_log_lik)}
             )
@@ -1485,7 +1496,9 @@ class _StanModel(ABC):
     # ----------------------------------------------------------------------
 
     @classmethod
-    def load_fit(cls, fit_files, figname_base, rng=None):
+    def load_fit(
+        cls, fit_files, figname_base, rng=None, model_file=None, prior_file=None
+    ):
         """
         Restore a stan model from a previously-saved set of csv files. Accepts either a glob pattern or a directory. In the latter case, the most recent fits will be used.
 
@@ -1497,9 +1510,21 @@ class _StanModel(ABC):
             path-like base name that all plots will share
         rng : np.random._generator.Generator, optional
             random number generator, by default None (creates a new instance)
+        model_file : str, optional
+            path to .stan file specifying the likelihood model, by default None.
+            Only required for subclasses whose __init__() does not already
+            hardcode model_file/prior_file internally.
+        prior_file : str, optional
+            path to .stan file specifying the prior model, by default None.
+            See model_file.
         """
         # initiate a class instance
-        C = cls(figname_base=figname_base, rng=rng)
+        init_kwargs = {"figname_base": figname_base, "rng": rng}
+        if model_file is not None:
+            init_kwargs["model_file"] = model_file
+        if prior_file is not None:
+            init_kwargs["prior_file"] = prior_file
+        C = cls(**init_kwargs)
 
         # set up the model, be aware of changes between sampling and loading
         C.build_executable()
@@ -1825,6 +1850,10 @@ class HierarchicalModel_2D(_StanModel):
         visuals.setdefault(
             "ci_band",
             {"color": [self.hdi_col_mapper.get_colour(c) for c in kwargs["ci_prob"]]},
+        )
+        visuals.setdefault(
+            "pe_line",
+            {"lw": 0.5},
         )
         kwargs["visuals"] = visuals
         try:
