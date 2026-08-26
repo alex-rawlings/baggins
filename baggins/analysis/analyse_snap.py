@@ -197,11 +197,151 @@ def get_com_velocity_of_each_galaxy(
     return vcoms
 
 
+def _weighted_inertia_tensor(pos, mass, r2):
+    """
+    Reduced inertia tensor (Gerhard 1983 / Bailin & Steinmetz 2005), but
+    generalised to accept an arbitrary radial weight r2 rather than assuming
+    the spherical radius^2 that pygad.analysis.reduced_inertia_tensor uses.
+    Passing the true (spherical) r^2 recovers the pygad result.
+
+    Parameters
+    ----------
+    pos : np.ndarray
+        (N, 3) particle positions
+    mass : np.ndarray
+        (N,) particle masses
+    r2 : np.ndarray
+        (N,) squared radial coordinate to weight each particle by, e.g. the
+        elliptical radius^2 of the ellipsoid the shape is being fit with
+
+    Returns
+    -------
+    I : np.ndarray
+        (3, 3) reduced inertia tensor
+    """
+    I_xx = np.sum(mass * pos[:, 0] ** 2 / r2)
+    I_yy = np.sum(mass * pos[:, 1] ** 2 / r2)
+    I_zz = np.sum(mass * pos[:, 2] ** 2 / r2)
+    I_xy = np.sum(mass * pos[:, 0] * pos[:, 1] / r2)
+    I_xz = np.sum(mass * pos[:, 0] * pos[:, 2] / r2)
+    I_yz = np.sum(mass * pos[:, 1] * pos[:, 2] / r2)
+    return np.array([[I_xx, I_xy, I_xz], [I_xy, I_yy, I_yz], [I_xz, I_yz, I_zz]])
+
+
+def _principal_axes(tens_I):
+    """
+    Diagonalise a symmetric inertia tensor, returning eigenvalues/vectors
+    sorted by descending eigenvalue. The eigenvectors are forced into a
+    proper (right-handed, det=+1) rotation matrix so they can be fed
+    straight to scipy.spatial.transform.Rotation.
+
+    Parameters
+    ----------
+    tens_I : np.ndarray
+        (3, 3) symmetric inertia tensor
+
+    Returns
+    -------
+    evals : np.ndarray
+        eigenvalues, sorted descending
+    evecs : np.ndarray
+        (3, 3) corresponding eigenvectors as columns, forming a proper
+        rotation matrix
+    """
+    evals, evecs = scipy.linalg.eigh(tens_I)
+    sorted_idx = np.argsort(evals)[::-1]
+    evals = evals[sorted_idx]
+    evecs = evecs[:, sorted_idx]
+    if np.linalg.det(evecs) < 0:
+        evecs[:, -1] *= -1
+    return evals, evecs
+
+
+def _iterative_ellipsoidal_axis_ratios(snap, rin, rout, max_iter, tol=1e-3):
+    """
+    Determine b/a and c/a between rin and rout (rin=0 for a ball) by
+    iteratively fitting a triaxial ellipsoid (Dubinski & Carlberg 1991),
+    rather than reading the shape off a spherical shell/ball, which biases
+    the result towards sphericity.
+
+    Each iteration re-evaluates which particles fall in the (rin, rout)
+    "radial" bin, and weights the inertia tensor, using the elliptical
+    radial coordinate of the ellipsoid found on the previous iteration,
+    then re-diagonalises to refine the axis ratios and orientation. Starts
+    from a spherical guess (q_b = q_c = 1), so the first iteration
+    reproduces the old spherical-mask behaviour.
+
+    Parameters
+    ----------
+    snap : pygad.Snapshot
+        (sub)-snapshot to analyse
+    rin : float
+        inner radius of the bin (0 for a ball)
+    rout : float
+        outer radius of the bin
+    max_iter : int
+        maximum number of iterations to run before giving up on
+        convergence (see approx in get_galaxy_axis_ratios)
+    tol : float, optional
+        convergence tolerance, by default 1e-3
+
+    Returns
+    -------
+    b_a : float
+        b/a ratio, np.nan if no particles were found in the bin
+    c_a : float
+        c/a ratio, np.nan if no particles were found in the bin
+    evecs : np.ndarray, None
+        (3, 3) eigenvectors of the final iteration, None if no particles
+        were found in the bin
+    """
+    # a sphere of radius rout is always a superset of the true ellipsoidal
+    # bin, since b/a, c/a <= 1 makes the elliptical radius >= the spherical
+    # radius for every particle
+    superset_mask = masks.get_radial_mask((0, rout))
+    sub = snap[superset_mask]
+    pos = sub["pos"].view(np.ndarray)
+    mass = sub["mass"].view(np.ndarray)
+
+    rotation = scipy.spatial.transform.Rotation.identity()
+    q_b, q_c = 1.0, 1.0
+    b_a, c_a, evecs = np.nan, np.nan, None
+    for _ in range(max_iter):
+        pos_prime = rotation.inv().apply(pos)
+        r2 = (
+            pos_prime[:, 0] ** 2
+            + (pos_prime[:, 1] / q_b) ** 2
+            + (pos_prime[:, 2] / q_c) ** 2
+        )
+        sel = (r2 >= rin**2) & (r2 < rout**2)
+        if not np.any(sel):
+            break
+        tens_I = _weighted_inertia_tensor(pos[sel], mass[sel], r2[sel])
+        evals, evecs = _principal_axes(tens_I)
+        # axis ratios are the sqrt of the eigenvalue ratios, since the
+        # (reduced) inertia tensor's eigenvalues scale as length^2
+        b_a_new, c_a_new = np.sqrt(evals[1] / evals[0]), np.sqrt(evals[2] / evals[0])
+        rotation = scipy.spatial.transform.Rotation.from_matrix(evecs)
+        converged = abs(b_a_new - q_b) < tol and abs(c_a_new - q_c) < tol
+        b_a, c_a, q_b, q_c = b_a_new, c_a_new, b_a_new, c_a_new
+        if converged:
+            break
+    return b_a, c_a, evecs
+
+
 def get_galaxy_axis_ratios(
-    snap, r_edges=None, cumulative=False, return_eigenvectors=False
+    snap,
+    r_edges=None,
+    cumulative=False,
+    return_eigenvectors=False,
+    approx=False,
+    tol=1e-3,
 ):
     """
-    Get triaxiality parameters for a system in either radial shells or spheres.
+    Get triaxiality parameters for a system in either radial shells or
+    spheres, by iteratively fitting a triaxial ellipsoid at each radius
+    (Dubinski & Carlberg 1991) instead of reading the shape directly off a
+    spherical shell/ball, which biases b/a and c/a towards 1.
 
     Parameters
     ----------
@@ -213,6 +353,12 @@ def get_galaxy_axis_ratios(
         determine for spheres rather than shells, by default False
     return_eigenvectors : bool, optional
         return corresponding eigenvectors, by default False
+    approx : bool, optional
+        if True, stop the ellipsoidal fit after at most 4 iterations
+        regardless of convergence; if False, iterate until b/a and c/a
+        change by less than 1e-3 between iterations, by default False
+    tol : float, optional
+        convergence tolerance if 'approx' is True, by default 1e-3
 
     Returns
     -------
@@ -234,20 +380,16 @@ def get_galaxy_axis_ratios(
         r_inner = np.zeros(N_bins)
     else:
         r_inner = r_edges[:-1]
+    max_iter = 4 if approx else 100
     for i, (rin, rout) in tqdm(
         enumerate(zip(r_inner, r_edges[1:])),
         total=N_bins,
         desc="Doing axis ratios",
         leave=False,
     ):
-        mask = masks.get_radial_mask((rin, rout))
-        rit = pygad.analysis.reduced_inertia_tensor(snap[mask])
-        evals, evecs = scipy.linalg.eig(rit)
-        # need to sort the eigenvalues
-        sorted_idx = np.argsort(evals)[::-1]
-        evals = np.real(evals[sorted_idx])
-        eigen_vecs[i] = evecs[:, sorted_idx]
-        b_a[i], c_a[i] = evals[1:] / evals[0]
+        b_a[i], c_a[i], eigen_vecs[i] = _iterative_ellipsoidal_axis_ratios(
+            snap, rin, rout, max_iter, tol=tol
+        )
     if return_eigenvectors:
         return b_a, c_a, eigen_vecs
     else:

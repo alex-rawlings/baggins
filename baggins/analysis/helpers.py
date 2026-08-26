@@ -104,6 +104,23 @@ class SnapshotIterator:
             del snap
             pygad.gc_full_collect()
 
+    def make_filename_generator(self):
+        """
+        Make the filename generator.
+
+        Parameters
+        ----------
+
+        Yields
+        ------
+        i : int
+            iterator number
+        snap : str
+            snapshot filename
+        """
+        for i, s in enumerate(self.snapfiles):
+            yield i, s
+
     def get_min_max_times(self):
         """
         Get the minimum and maximum times of a series of snapshots.
@@ -125,6 +142,14 @@ class SnapshotIterator:
 
 class KetjuMergerInfo:
     def __init__(self, kfile):
+        """
+        Class to store information about mergers stored in a ketju_bhs.hdf5 file.
+
+        Parameters
+        ----------
+        kfile : str
+            ketju_bhs.hdf5 file
+        """
         self.merged = True
         with h5py.File(kfile, "r") as f:
             for k in f["/mergers"].dtype.fields.keys():
@@ -139,6 +164,7 @@ class KetjuMergerInfo:
 
     @property
     def radiated_mass(self):
+        # determine the mass lost due to GW emission
         if None in [self.m1, self.m2, self.m_remnant]:
             return None
         else:

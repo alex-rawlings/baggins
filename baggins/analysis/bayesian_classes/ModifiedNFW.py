@@ -111,9 +111,11 @@ class ModifiedNFWSpikeModelSimple(ModifiedNFWModelSimple):
         self._M_BH = None
         # update latent parameters
         self._latent_qtys.append("gamma_sp")
-        self._latent_qtys_posterior.append("gamma_sp")
+        self._latent_qtys_posterior.extend(["gamma_sp", "r_sp"])
         self._latent_qtys_labs.append(r"$\gamma_\mathrm{sp}$")
-        self._latent_qtys_posterior_labs.append(r"$\gamma_\mathrm{sp}$")
+        self._latent_qtys_posterior_labs.extend(
+            [r"$\gamma_\mathrm{sp}$", r"$r_\mathrm{sp}$"]
+        )
         self._make_latent_labellers()
 
     @property

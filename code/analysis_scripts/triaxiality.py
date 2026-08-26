@@ -93,7 +93,7 @@ def dask_helper(s, r):
     if len(s[mask]) < 1000:
         SL.warning(f"Only {len(s[mask])} particles in {r}")
         return (np.nan, np.nan)
-    rats = bgs.analysis.get_galaxy_axis_ratios(s, bin_mask=mask, family=args.family)
+    rats = bgs.analysis.get_galaxy_axis_ratios(s)
     del mask
     return rats
 
@@ -170,7 +170,7 @@ else:
         results = []
         # delay the data once so we don't send multiple copies
         # from https://docs.dask.org/en/stable/delayed-best-practices.html
-        _snap = dask.delayed(snap)
+        _snap = dask.delayed(getattr(snap, args.family))
         for r in radii:
             results.append(dask_helper(_snap, r))
         results = dask.compute(*results)
