@@ -47,10 +47,12 @@ args = parser.parse_args()
 SL = bgs.setup_logger("script", console_level=args.verbose)
 rng = np.random.default_rng()
 
+full_particle_set = set(["STARS", "DM_HALO", "BH"])
+
 if args.batch == 1:
     galaxy = bgs.initialise.GalaxyIC(parameter_file=args.pf)
     galaxy.generate_galaxy(allow_overwrite=args.overwrite)
-    if galaxy.families == set(["STARS", "DM", "BH"]):
+    if galaxy.families == full_particle_set:
         galaxy.plot_mass_scaling_relations()
         galaxy.plot_kinematics(num_rots=args.nrot)
 else:
@@ -105,6 +107,6 @@ else:
         # generate the galaxy
         galaxy = bgs.initialise.GalaxyIC(parameter_file=new_filename)
         galaxy.generate_galaxy(allow_overwrite=args.overwrite)
-        if galaxy.families == set(["STARS", "DM", "BH"]):
+        if galaxy.families == full_particle_set:
             galaxy.plot_mass_scaling_relations()
             galaxy.plot_ic_kinematics(num_rots=args.nrot)
