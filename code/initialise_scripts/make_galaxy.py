@@ -49,11 +49,9 @@ rng = np.random.default_rng()
 
 if args.batch == 1:
     galaxy = bgs.initialise.GalaxyIC(parameter_file=args.pf)
-    plot_flag = galaxy.families == set(["STARS", "DM", "BH"])
-    if plot_flag:
-        galaxy.plot_mass_scaling_relations()
     galaxy.generate_galaxy(allow_overwrite=args.overwrite)
-    if plot_flag:
+    if galaxy.families == set(["STARS", "DM", "BH"]):
+        galaxy.plot_mass_scaling_relations()
         galaxy.plot_kinematics(num_rots=args.nrot)
 else:
     suffixes = "abcdefghijklmnopqrstuvwxyz"
@@ -106,9 +104,7 @@ else:
         SL.warning(f"File {new_filename} created")
         # generate the galaxy
         galaxy = bgs.initialise.GalaxyIC(parameter_file=new_filename)
-        plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
-        if plot_flag:
-            galaxy.plot_mass_scaling_relations()
         galaxy.generate_galaxy(allow_overwrite=args.overwrite)
-        if plot_flag:
+        if galaxy.families == set(["STARS", "DM", "BH"]):
+            galaxy.plot_mass_scaling_relations()
             galaxy.plot_ic_kinematics(num_rots=args.nrot)
