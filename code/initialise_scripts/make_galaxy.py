@@ -49,7 +49,7 @@ rng = np.random.default_rng()
 
 if args.batch == 1:
     galaxy = bgs.initialise.GalaxyIC(parameter_file=args.pf)
-    plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
+    plot_flag = galaxy.families == set(["STARS", "DM", "BH"])
     if plot_flag:
         galaxy.plot_mass_scaling_relations()
     galaxy.generate_galaxy(allow_overwrite=args.overwrite)

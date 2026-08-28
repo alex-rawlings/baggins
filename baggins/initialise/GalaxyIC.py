@@ -96,6 +96,10 @@ class GalaxyIC:
             "zorder": 0.5,
         }
 
+    @property
+    def families(self):
+        return set([c.particle_type.name for c in self.components])
+
     def _set_up(self):
         # set up components
         # stars
