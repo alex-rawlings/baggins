@@ -357,8 +357,7 @@ def read_simulation_parameters(snapdir, *p, parfile=None):
     except AssertionError:
         missing_keys = [_p for _p in p if _p not in matched_patterns]
         _logger.exception(
-            f"Not all simulation parameters found! {missing_keys} are missing.",
-            exc_info=True,
+            f"Not all simulation parameters found! {missing_keys} are missing."
         )
         raise
     return par_dict

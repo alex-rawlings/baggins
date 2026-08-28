@@ -205,14 +205,18 @@ class GalaxyIC:
         self._calc_quants["last_update"] = now.strftime(date_format)
         write_calculated_parameters(self._calc_quants, self.parameter_file)
 
-    def generate_galaxy(self, allow_overwrite=False, plot_df=False):
+    def generate_galaxy(self, *transforms, allow_overwrite=False, plot_df=False):
         """
         Generate the initial conditions.
 
         Parameters
         ----------
+        transforms : , optional
+            transformations to apply to the system from merger-ic-generator, e.g. Translations
         allow_overwrite : bool, optional
             allow overwriting of the IC file, by default False
+        plot_df : bool, optional
+            plot the distribution function, by default False
         """
         self._set_up()
         self.pars["general"]["rng"] = self._rng
@@ -230,13 +234,22 @@ class GalaxyIC:
 
         # clean centre
         if self._bh_mass is not None:
-            gal = mg.TransformedSystem(
-                gal,
+            transforms = transforms + (
                 mg.FilterParticlesBoundToCentralMass(
                     central_object_mass=self._bh_mass / MSUN_TO_GADGET,
                     minimum_semi_major_axis=self.pars["general"]["rmin"],
                 ),
             )
+            """gal = mg.TransformedSystem(
+                gal,
+                mg.FilterParticlesBoundToCentralMass(
+                    central_object_mass=self._bh_mass / MSUN_TO_GADGET,
+                    minimum_semi_major_axis=self.pars["general"]["rmin"],
+                ),
+            )"""
+
+        # apply transformations
+        gal = mg.TransformedSystem(gal, *tuple(t for t in transforms if t is not None))
 
         # ensure no particles dropped
         ensure_reasonable_particle_counts(gal, 1e3)

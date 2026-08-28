@@ -27,13 +27,6 @@ parser.add_argument(
     default=1,
 )
 parser.add_argument(
-    "-L",
-    "--LEGACY",
-    dest="bh_legacy",
-    action="store_true",
-    help="use legacy Sahu method for BH mass",
-)
-parser.add_argument(
     "--overwrite",
     dest="overwrite",
     action="store_true",
@@ -55,13 +48,13 @@ SL = bgs.setup_logger("script", console_level=args.verbose)
 rng = np.random.default_rng()
 
 if args.batch == 1:
-    galaxy = bgs.initialise.GalaxyIC(parameter_file=args.pf, sahu_legacy=args.bh_legacy)
+    galaxy = bgs.initialise.GalaxyIC(parameter_file=args.pf)
     plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
     if plot_flag:
         galaxy.plot_mass_scaling_relations()
-    galaxy.generate_galaxy(args.overwrite)
+    galaxy.generate_galaxy(allow_overwrite=args.overwrite)
     if plot_flag:
-        galaxy.plot_ic_kinematics(num_rots=args.nrot)
+        galaxy.plot_kinematics(num_rots=args.nrot)
 else:
     suffixes = "abcdefghijklmnopqrstuvwxyz"
     try:
@@ -112,12 +105,10 @@ else:
             bgs.utils.overwrite_parameter_file(f, contents)
         SL.warning(f"File {new_filename} created")
         # generate the galaxy
-        galaxy = bgs.initialise.GalaxyIC(
-            parameter_file=new_filename, sahu_legacy=args.bh_legacy
-        )
+        galaxy = bgs.initialise.GalaxyIC(parameter_file=new_filename)
         plot_flag = not any(getattr(galaxy, a) is None for a in ["stars", "dm", "bh"])
         if plot_flag:
             galaxy.plot_mass_scaling_relations()
-        galaxy.generate_galaxy(args.overwrite)
+        galaxy.generate_galaxy(allow_overwrite=args.overwrite)
         if plot_flag:
             galaxy.plot_ic_kinematics(num_rots=args.nrot)
