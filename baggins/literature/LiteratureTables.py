@@ -632,7 +632,8 @@ class LiteratureTables:
             scatter_kwargs = {}
         else:
             scatter_kwargs = copy(scatter_kwargs)
-        scatter_kwargs.setdefault("fmt", ".")
+        if "marker" not in scatter_kwargs:
+            scatter_kwargs.setdefault("fmt", ".")
         scatter_kwargs.setdefault("alpha", 1)
         scatter_kwargs.setdefault("c", "gray")
         scatter_kwargs.setdefault("mec", "k")
