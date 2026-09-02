@@ -197,37 +197,6 @@ def get_com_velocity_of_each_galaxy(
     return vcoms
 
 
-def _weighted_inertia_tensor(pos, mass, r2):
-    """
-    Reduced inertia tensor (Gerhard 1983 / Bailin & Steinmetz 2005), but
-    generalised to accept an arbitrary radial weight r2 rather than assuming
-    the spherical radius^2 that pygad.analysis.reduced_inertia_tensor uses.
-    Passing the true (spherical) r^2 recovers the pygad result.
-
-    Parameters
-    ----------
-    pos : np.ndarray
-        (N, 3) particle positions
-    mass : np.ndarray
-        (N,) particle masses
-    r2 : np.ndarray
-        (N,) squared radial coordinate to weight each particle by, e.g. the
-        elliptical radius^2 of the ellipsoid the shape is being fit with
-
-    Returns
-    -------
-    I : np.ndarray
-        (3, 3) reduced inertia tensor
-    """
-    I_xx = np.sum(mass * pos[:, 0] ** 2 / r2)
-    I_yy = np.sum(mass * pos[:, 1] ** 2 / r2)
-    I_zz = np.sum(mass * pos[:, 2] ** 2 / r2)
-    I_xy = np.sum(mass * pos[:, 0] * pos[:, 1] / r2)
-    I_xz = np.sum(mass * pos[:, 0] * pos[:, 2] / r2)
-    I_yz = np.sum(mass * pos[:, 1] * pos[:, 2] / r2)
-    return np.array([[I_xx, I_xy, I_xz], [I_xy, I_yy, I_yz], [I_xz, I_yz, I_zz]])
-
-
 def _principal_axes(tens_I):
     """
     Diagonalise a symmetric inertia tensor, returning eigenvalues/vectors
@@ -257,111 +226,44 @@ def _principal_axes(tens_I):
     return evals, evecs
 
 
-def _iterative_ellipsoidal_axis_ratios(snap, rin, rout, max_iter, tol=1e-3):
-    """
-    Determine b/a and c/a between rin and rout (rin=0 for a ball) by
-    iteratively fitting a triaxial ellipsoid (Dubinski & Carlberg 1991),
-    rather than reading the shape off a spherical shell/ball, which biases
-    the result towards sphericity.
-
-    Each iteration re-evaluates which particles fall in the (rin, rout)
-    "radial" bin, and weights the inertia tensor, using the elliptical
-    radial coordinate of the ellipsoid found on the previous iteration,
-    then re-diagonalises to refine the axis ratios and orientation. Starts
-    from a spherical guess (q_b = q_c = 1), so the first iteration
-    reproduces the old spherical-mask behaviour.
-
-    Parameters
-    ----------
-    snap : pygad.Snapshot
-        (sub)-snapshot to analyse
-    rin : float
-        inner radius of the bin (0 for a ball)
-    rout : float
-        outer radius of the bin
-    max_iter : int
-        maximum number of iterations to run before giving up on
-        convergence (see approx in get_galaxy_axis_ratios)
-    tol : float, optional
-        convergence tolerance, by default 1e-3
-
-    Returns
-    -------
-    b_a : float
-        b/a ratio, np.nan if no particles were found in the bin
-    c_a : float
-        c/a ratio, np.nan if no particles were found in the bin
-    evecs : np.ndarray, None
-        (3, 3) eigenvectors of the final iteration, None if no particles
-        were found in the bin
-    """
-    # a sphere of radius rout is always a superset of the true ellipsoidal
-    # bin, since b/a, c/a <= 1 makes the elliptical radius >= the spherical
-    # radius for every particle
-    superset_mask = masks.get_radial_mask((0, rout))
-    sub = snap[superset_mask]
-    pos = sub["pos"].view(np.ndarray)
-    mass = sub["mass"].view(np.ndarray)
-
-    rotation = scipy.spatial.transform.Rotation.identity()
-    q_b, q_c = 1.0, 1.0
-    b_a, c_a, evecs = np.nan, np.nan, None
-    for _ in range(max_iter):
-        pos_prime = rotation.inv().apply(pos)
-        r2 = (
-            pos_prime[:, 0] ** 2
-            + (pos_prime[:, 1] / q_b) ** 2
-            + (pos_prime[:, 2] / q_c) ** 2
-        )
-        sel = (r2 >= rin**2) & (r2 < rout**2)
-        if not np.any(sel):
-            break
-        tens_I = _weighted_inertia_tensor(pos[sel], mass[sel], r2[sel])
-        evals, evecs = _principal_axes(tens_I)
-        # axis ratios are the sqrt of the eigenvalue ratios, since the
-        # (reduced) inertia tensor's eigenvalues scale as length^2
-        b_a_new, c_a_new = np.sqrt(evals[1] / evals[0]), np.sqrt(evals[2] / evals[0])
-        rotation = scipy.spatial.transform.Rotation.from_matrix(evecs)
-        converged = abs(b_a_new - q_b) < tol and abs(c_a_new - q_c) < tol
-        b_a, c_a, q_b, q_c = b_a_new, c_a_new, b_a_new, c_a_new
-        if converged:
-            break
-    return b_a, c_a, evecs
-
-
 def get_galaxy_axis_ratios(
-    snap,
-    r_edges=None,
-    cumulative=False,
-    return_eigenvectors=False,
-    approx=False,
-    tol=1e-3,
+    snap, n_bins=None, cumulative=False, return_eigenvectors=False
 ):
     """
-    Get triaxiality parameters for a system in either radial shells or
-    spheres, by iteratively fitting a triaxial ellipsoid at each radius
-    (Dubinski & Carlberg 1991) instead of reading the shape directly off a
-    spherical shell/ball, which biases b/a and c/a towards 1.
+    Get triaxiality parameters for a system, binned by particle binding
+    energy rather than radius.
+
+    A particle's binding energy is conserved along its orbit, unlike its
+    instantaneous radius (which oscillates between peri- and apocentre), so
+    grouping particles by energy -- rather than selecting them from a
+    spherical shell/ball -- does not impose any assumption about the
+    spatial shape of the region being measured. This avoids the bias a
+    spherical selection introduces for a non-spherical system, without
+    needing the iterative ellipsoidal fit that correcting for it otherwise
+    requires.
 
     Parameters
     ----------
     snap : pygad.Snapshot
-        (sub)-snapshot to analyse
-    r_edges : array-like, optional
-        radial bin edges, by default None (single value for whole system determined)
+        (sub)-snapshot to analyse, must have a "pot" block
+    n_bins : int, optional
+        number of binding-energy bin edges, built with
+        numpy.geomspace(min_E, max_E, n_bins) over the *bound* particles'
+        binding energy (see binding_energy()) -- i.e. n_bins - 1 bins are
+        produced. Binding energy increases with how deeply bound a particle
+        is, so bin 0 is the least-bound (outermost) particles and the last
+        bin the most-bound (innermost). By default None (single bin
+        covering the whole bound system)
     cumulative : bool, optional
-        determine for spheres rather than shells, by default False
+        determine cumulatively (all particles at least as bound as the bin
+        edge) rather than in energy shells, by default False
     return_eigenvectors : bool, optional
         return corresponding eigenvectors, by default False
-    approx : bool, optional
-        if True, stop the ellipsoidal fit after at most 4 iterations
-        regardless of convergence; if False, iterate until b/a and c/a
-        change by less than 1e-3 between iterations, by default False
-    tol : float, optional
-        convergence tolerance if 'approx' is True, by default 1e-3
 
     Returns
     -------
+    e_edges : pygad.UnitArr
+        energy bin edges, with units attached (see binding_energy())
     b_a : np.ndarray
         b/a ratio
     c_a : np.ndarray
@@ -369,31 +271,49 @@ def get_galaxy_axis_ratios(
     eigen_vecs : np.ndarray, optional if return_eigenvectors==True
         eigenvectors
     """
-    if r_edges is None:
-        # use all particles
-        r_edges = [0, np.max(snap["r"]) + 1]
-    N_bins = len(r_edges) - 1
+    E = binding_energy(snap)
+    E_units = E.units
+    E = E.view(np.ndarray)
+    bound = E > 0
+    if not np.all(bound):
+        _logger.debug(
+            f"Excluding {np.sum(~bound)} unbound particle(s) from the "
+            "binding-energy binning"
+        )
+    snap = snap[bound]
+    E = E[bound]
+
+    if n_bins is None:
+        # use all bound particles
+        e_edges = np.array([np.min(E), np.max(E)])
+    else:
+        e_edges = np.geomspace(np.min(E), np.max(E), n_bins)
+    N_bins = len(e_edges) - 1
     b_a = np.full(N_bins, np.nan)
     c_a = np.full_like(b_a, np.nan)
     eigen_vecs = [None] * N_bins
-    if cumulative:
-        r_inner = np.zeros(N_bins)
-    else:
-        r_inner = r_edges[:-1]
-    max_iter = 4 if approx else 100
-    for i, (rin, rout) in tqdm(
-        enumerate(zip(r_inner, r_edges[1:])),
+    e_lo = e_edges[:-1]
+    e_hi = np.full(N_bins, e_edges[-1]) if cumulative else e_edges[1:]
+    for i, (elo, ehi) in tqdm(
+        enumerate(zip(e_lo, e_hi)),
         total=N_bins,
         desc="Doing axis ratios",
         leave=False,
     ):
-        b_a[i], c_a[i], eigen_vecs[i] = _iterative_ellipsoidal_axis_ratios(
-            snap, rin, rout, max_iter, tol=tol
-        )
+        sel = (E >= elo) & (E <= ehi)
+        if not np.any(sel):
+            continue
+        tens_I = np.asarray(pygad.analysis.reduced_inertia_tensor(snap[sel]))
+        evals, evecs = _principal_axes(tens_I)
+        # axis ratios are the sqrt of the eigenvalue ratios, since the
+        # (reduced) inertia tensor's eigenvalues scale as length^2
+        b_a[i], c_a[i] = np.sqrt(evals[1] / evals[0]), np.sqrt(evals[2] / evals[0])
+        eigen_vecs[i] = evecs
+    e_edges = pygad.UnitArr(e_edges, units=E_units)
     if return_eigenvectors:
-        return b_a, c_a, eigen_vecs
+        return e_edges, b_a, c_a, eigen_vecs
     else:
-        return b_a, c_a
+        return e_edges, b_a, c_a
 
 
 def get_virial_info_of_each_galaxy(snap, xcom, masks=None):
