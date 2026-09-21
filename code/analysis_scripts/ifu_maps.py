@@ -36,7 +36,15 @@ parser.add_argument(
 parser.add_argument(
     "-z", "--redshift", type=float, help="redshift", dest="redshift", default=0.1
 )
-parser.add_argument("--SN", type=int, help="signal-noise ratio", dest="SN", default=200)
+parser.add_argument("--SN", type=int, help="signal-noise ratio", dest="SN", default=500)
+parser.add_argument(
+    "--instrument",
+    type=str,
+    default="JWST_IFU",
+    choices=list(bgs.analysis.IFU_INSTRUMENTS),
+    dest="instrument",
+    help="IFU instrument to use",
+)
 parser.add_argument(
     "-v",
     "--verbosity",
@@ -51,8 +59,8 @@ args = parser.parse_args()
 SL = bgs.setup_logger("script", args.verbosity)
 
 
-# will use MUSE, but can be switched for other instruments as API is the same
-ifu = bgs.analysis.MUSE_NFM(z=args.redshift)
+# all IFU instruments share the same API
+ifu = bgs.analysis.IFU_INSTRUMENTS[args.instrument](z=args.redshift)
 SL.info(ifu)
 
 # ensure determinism
@@ -78,4 +86,4 @@ for i, t, snap in snap_gen.make_generator(hide_prog=True):
     # bgs.utils.save_data(ifu.voronoi.dump_to_dict(), "/path/to/save/dir")
     ax = ifu.voronoi.plot_kinematic_maps(cbar="inset")
     ifu.overlay_isophotes_on_maps(snap, ax, xaxis=args.axes[0], yaxis=args.axes[1])
-    bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"ifu_t{t:.3f}.png"))
+    bgs.plotting.savefig(os.path.join(bgs.FIGDIR, f"ifu/ifu_{ifu.name}_t{t:.3f}.png"))

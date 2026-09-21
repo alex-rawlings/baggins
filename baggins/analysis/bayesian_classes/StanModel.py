@@ -84,7 +84,7 @@ class _StanModel(ABC):
             "ls": "",
         }
         self._default_hdi_levels = [0.25, 0.5, 0.8]
-        self.hdi_col_mapper = NormedColours(0.2, 1.1, cmap="PuRd_r")
+        self.hdi_col_mapper = NormedColours(0.2, 1.2, cmap="PuRd_r")
 
         self._loaded_from_file = False
         self._generated_quantities = None
@@ -1219,10 +1219,25 @@ class _StanModel(ABC):
             sample_dims = None
         num_vars = len(var_names)
         visuals = kwargs.pop("visuals", {})
-        for k in ("dist", "scatter"):
-            visuals.setdefault(
-                k, {"color": self.hdi_col_mapper.get_colour(self.hdi_col_mapper.vmin)}
-            )
+        visuals.setdefault("scatter", False)
+        # filled contour bands run from the outermost HDI level to the
+        # innermost, so the colours are ordered by descending level. The
+        # colour map is dark for small levels, so the innermost band is darkest
+        band_cols = [self.hdi_col_mapper.get_colour(lev) for lev in levels[::-1]]
+        contourf_kwargs = visuals.get("contourf", True)
+        if contourf_kwargs is True:
+            contourf_kwargs = {}
+        if contourf_kwargs is not False:
+            contourf_kwargs = dict(contourf_kwargs)
+            contourf_kwargs.setdefault("color", band_cols)
+            contourf_kwargs.setdefault("cmap", None)
+            visuals["contourf"] = contourf_kwargs
+        # marginal KDEs match the innermost (darkest) contour band
+        dist_kwargs = visuals.get("dist", {})
+        if dist_kwargs is not False:
+            dist_kwargs = dict(dist_kwargs)
+            dist_kwargs.setdefault("color", band_cols[-1])
+            visuals["dist"] = dist_kwargs
         visuals["divergence"] = divergences
         kwargs["visuals"] = visuals
         with az.rc_context({"plot.max_subplots": num_vars**2}):
@@ -1234,7 +1249,7 @@ class _StanModel(ABC):
                 triangle="lower",
                 marginal=True,
                 marginal_kind="kde",
-                aes_by_visuals={"dist": "contour"},
+                levels=levels,
                 sample_dims=sample_dims,
             )
             pc = az.plot_pair(**pp_kwargs, **kwargs)

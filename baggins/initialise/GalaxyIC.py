@@ -76,6 +76,7 @@ class GalaxyIC:
         except KeyError:
             _logger.warning("No random seed set")
             self._rng = np.random.default_rng()
+        self._set_up_complete = False
         self.components = []
         self.anisotropy_radius = None
         self._stellar_mass = None
@@ -102,6 +103,10 @@ class GalaxyIC:
 
     def _set_up(self):
         # set up components
+        if self._set_up_complete:
+            # prevent appending multiple copies of components if this method is
+            # called multiple times
+            return
         # stars
         try:
             star_pars = copy(self.pars["stars"])
@@ -187,6 +192,7 @@ class GalaxyIC:
                 self.components.append(c)
         except KeyError:
             _logger.warning("No BH component")
+        self._set_up_complete = True
 
     @classmethod
     def load_from_hdf5(cls, parameter_file):

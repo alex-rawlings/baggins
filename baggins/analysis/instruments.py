@@ -54,6 +54,9 @@ __all__ = [
     "VLT_FORS2_LSS",
     "ERIS_NIX_NFM_LSS",
     "JWST_LSS",
+    "PHOTOMETRIC_INSTRUMENTS",
+    "IFU_INSTRUMENTS",
+    "LSS_INSTRUMENTS",
 ]
 
 _logger = _cmlogger.getChild(__name__)
@@ -1590,3 +1593,31 @@ class JWST_LSS(LongSlitInstrument):
             rng=rng,
         )
         self.label = r"$\mathrm{JWST}$"
+
+
+# dicts holding different classes of instruments
+PHOTOMETRIC_INSTRUMENTS = {
+    "EUCLID_VIS": Euclid_VIS,
+    "HSTWFC3": HSTWFC3,
+    "JWST_MIRI": JWST_MIRI,
+    "JWST_NIRCam": JWST_NIRCam,
+    "VLT_FORS2": VLT_FORS2,
+}
+
+IFU_INSTRUMENTS = {
+    "MUSE_NFM": MUSE_NFM,
+    "MUSE_WFM": MUSE_WFM,
+    "HARMONI_SENSITIVE": HARMONI_SENSITIVE,
+    "HARMONI_BALANCED": HARMONI_BALANCED,
+    "HARMONI_SPATIAL": HARMONI_SPATIAL,
+    "ERIS_IFU": ERIS_IFU,
+    "JWST_IFU": JWST_IFU,
+}
+
+LSS_INSTRUMENTS = {
+    "MICADO_WFM_LSS": MICADO_WFM_LSS,
+    "MICADO_NFM_LSS": MICADO_NFM_LSS,
+    "VLT_FORS2_LSS": VLT_FORS2_LSS,
+    "ERIS_NIX_NFM_LSS": ERIS_NIX_NFM_LSS,
+    "JWST_LSS": JWST_LSS,
+}

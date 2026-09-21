@@ -498,7 +498,7 @@ def _find_radius_for_mass(s, M, centre=[0, 0, 0]):
     return pygad.UnitScalar(r_desired, units=s["pos"].units, subs=s)
 
 
-def enclosed_mass_radius(snap, combined=False, mass_frac=1):
+def enclosed_mass_radius(snap, combined=False, mass_frac=1, family="stars"):
     """
     Determine the radius containining a fraction of the mass of the (possibly
     combined) BH.
@@ -513,6 +513,8 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
     mass_frac : float, optional
         fraction of the stellar mass (relative to BH mass) to search for.
         Influence radius corresponds to mass_frac = 2., by default 1.
+    family : str, optional
+        particle family to determine mass radius for, by default 'stars'.
 
     Returns
     -------
@@ -526,13 +528,14 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
         if snapshot not in physical units
     """
     assert snap.phys_units_requested
+    subsnap = getattr(snap, family)
     r = dict()
     if combined:
         # we are dealing with the combined mass
         mass_bh = np.sum(snap.bh["mass"])
         centre = pygad.analysis.center_of_mass(snap.bh)
         massive_ID = get_massive_bh_ID(snap.bh)
-        _r = _find_radius_for_mass(snap.stars, mass_frac * mass_bh, centre=centre)
+        _r = _find_radius_for_mass(subsnap, mass_frac * mass_bh, centre=centre)
         r[massive_ID] = _r
     else:
         # we want the influence radius for each BH. No masking is done to
@@ -541,7 +544,7 @@ def enclosed_mass_radius(snap, combined=False, mass_frac=1):
         for id in snap.bh["ID"][bh_idx]:
             bh_id_mask = pygad.IDMask(id)
             _r = _find_radius_for_mass(
-                snap.stars,
+                subsnap,
                 mass_frac * snap.bh[bh_id_mask]["mass"][0],
                 centre=snap.bh[bh_id_mask]["pos"].flatten(),
             )
@@ -570,7 +573,7 @@ def lagrangian_radius(snap, mass_frac=0.1):
     return _find_radius_for_mass(snap, target_mass)
 
 
-def influence_radius(snap, combined=False):
+def influence_radius(snap, **kwargs):
     """
     Determine the influence radius for the system, defined as Eq. 2.11 in
     Merritt 2013. This is denoted as r_m, whereas the alternative definition,
@@ -582,9 +585,8 @@ def influence_radius(snap, combined=False):
     ----------
     snap : pygad.Snapshot
         snapshot to analyse
-    combined : bool, optional
-        should the influence radius be calculated for the binary as a single
-        object (True), or separately for each BH (False)?, by default False
+    **kwargs :
+        other keyword arguments for enclosed_mass_radius()
 
     Returns
     -------
@@ -592,7 +594,7 @@ def influence_radius(snap, combined=False):
         keys correspond to BH ID (or the more massive BH ID if combined=True),
         and values to the influence radius
     """
-    return enclosed_mass_radius(snap, combined, mass_frac=2)
+    return enclosed_mass_radius(snap, mass_frac=2, **kwargs)
 
 
 def hardening_radius(bhms, rm):
